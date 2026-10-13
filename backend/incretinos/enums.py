@@ -189,8 +189,10 @@ class IceEvent(StrEnum):
 
 
 class EstimandBasis(StrEnum):
-    STATED_BY_SOURCE = "STATED_BY_SOURCE"
+    STATED_BY_SOURCE = "STATED_BY_SOURCE"  # a quote from the cited source names the estimand
     INFERRED_FROM_ANALYSIS_DESCRIPTION = "INFERRED_FROM_ANALYSIS_DESCRIPTION"
+    # Curated label for which no quote from the cited source naming the estimand is held: the curator's attribution.
+    INFERRED_BY_CURATOR = "INFERRED_BY_CURATOR"
     NOT_DETERMINABLE = "NOT_DETERMINABLE"
 
 
@@ -217,7 +219,10 @@ class AeMeasureKind(StrEnum):
     TREATMENT_DISCONTINUATION_DUE_TO_AE = "TREATMENT_DISCONTINUATION_DUE_TO_AE"
     # Participants who did not complete the STUDY (period) with "adverse event" as the reason (registry participant flow).
     STUDY_WITHDRAWAL_DUE_TO_AE = "STUDY_WITHDRAWAL_DUE_TO_AE"
+    # Participants who did not complete the STUDY (period) for any reason (registry participant flow).
     DISCONTINUATION_ANY_REASON = "DISCONTINUATION_ANY_REASON"
+    # Participants who stopped study TREATMENT for any reason (as reported in publications/releases).
+    TREATMENT_DISCONTINUATION_ANY_REASON = "TREATMENT_DISCONTINUATION_ANY_REASON"
     DEATHS = "DEATHS"
 
 
@@ -226,6 +231,7 @@ AE_KIND_LABEL: dict[str, str] = {
     "TREATMENT_DISCONTINUATION_DUE_TO_AE": "Discontinued study treatment because of an adverse event",
     "STUDY_WITHDRAWAL_DUE_TO_AE": "Did not complete the study period; reason recorded as adverse event",
     "DISCONTINUATION_ANY_REASON": "Did not complete the study period (any reason)",
+    "TREATMENT_DISCONTINUATION_ANY_REASON": "Discontinued study treatment for any reason",
     "DEATHS": "Deaths (all causes)",
 }
 
@@ -233,6 +239,7 @@ DISCONTINUATION_KINDS = {
     "TREATMENT_DISCONTINUATION_DUE_TO_AE",
     "STUDY_WITHDRAWAL_DUE_TO_AE",
     "DISCONTINUATION_ANY_REASON",
+    "TREATMENT_DISCONTINUATION_ANY_REASON",
 }
 
 

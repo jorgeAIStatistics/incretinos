@@ -28,7 +28,7 @@ from .snapshots import (
     record_snapshot,
     sha256_text,
 )
-from .transport import FixtureMissing, ResourceNotFound, Transport
+from .transport import FixtureMissing, ResourceNotFound, Transport, TransportError
 
 LABEL_LICENSE = "FDA-approved prescribing information via openFDA (U.S. Government work / CC0); stored in full."
 FAERS_LICENSE = "FDA Adverse Event Reporting System data via openFDA (CC0). Report counts only; not validated; not incidence."
@@ -102,8 +102,13 @@ class OpenFDALabelAdapter:
                 fixture_key=f"openfda/label-search/{_slug(generic)}.json",
             )
         except ResourceNotFound:
-            return 0
-        return int(json.loads(raw).get("meta", {}).get("results", {}).get("total", 0))
+            return 0  # openFDA answers 404 when no label matches: a definite zero
+        total = json.loads(raw).get("meta", {}).get("results", {}).get("total")
+        if not isinstance(total, int) or isinstance(total, bool):
+            # A response without a result total says nothing about how many labels exist. Recording 0 would
+            # report "no label" for an investigational drug and suppress the approval review item.
+            raise TransportError(f"openFDA label search for {generic!r} returned no result total; the number of label records is unknown", service="openfda")
+        return total
 
     def watch_generic(self, session: Session, drug: Drug, generic: str) -> int:
         """Record a dated check of the label database for an investigational drug.
