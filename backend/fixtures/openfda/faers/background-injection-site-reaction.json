@@ -1,0 +1,670 @@
+{
+  "meta": {
+    "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+    "terms": "https://open.fda.gov/terms/",
+    "license": "https://open.fda.gov/license/",
+    "last_updated": "2026-07-30",
+    "results": {
+      "skip": 0,
+      "limit": 1,
+      "total": 67721
+    }
+  },
+  "results": [
+    {
+      "safetyreportversion": "2",
+      "safetyreportid": "10003707",
+      "primarysourcecountry": "US",
+      "occurcountry": "US",
+      "transmissiondateformat": "102",
+      "transmissiondate": "20141002",
+      "reporttype": "2",
+      "serious": "1",
+      "seriousnesshospitalization": "1",
+      "receivedateformat": "102",
+      "receivedate": "20140312",
+      "receiptdateformat": "102",
+      "receiptdate": "20140312",
+      "fulfillexpeditecriteria": "1",
+      "companynumb": "US-US-EMD SERONO, INC.-7269785",
+      "duplicate": "1",
+      "reportduplicate": {
+        "duplicatesource": "EMD SERONO INC",
+        "duplicatenumb": "US-US-EMD SERONO, INC.-7269785"
+      },
+      "primarysource": {
+        "reportercountry": "US",
+        "qualification": "5"
+      },
+      "sender": {
+        "sendertype": "2",
+        "senderorganization": "FDA-Public Use"
+      },
+      "receiver": {
+        "receivertype": "6",
+        "receiverorganization": "FDA"
+      },
+      "patient": {
+        "patientonsetage": "41",
+        "patientonsetageunit": "801",
+        "patientsex": "2",
+        "reaction": [
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Suicide attempt",
+            "reactionoutcome": "2"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Antipsychotic drug level below therapeutic",
+            "reactionoutcome": "3"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Mental disorder",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Antipsychotic drug level above therapeutic",
+            "reactionoutcome": "3"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Adverse reaction",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Suicidal ideation",
+            "reactionoutcome": "2"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Dizziness",
+            "reactionoutcome": "3"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Aphasia",
+            "reactionoutcome": "3"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Syncope",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Memory impairment",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Bronchitis",
+            "reactionoutcome": "2"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Irritability",
+            "reactionoutcome": "3"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Feeling abnormal",
+            "reactionoutcome": "3"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Amnesia",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Conversion disorder",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Visual impairment",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Vision blurred",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Headache",
+            "reactionoutcome": "3"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Pyrexia",
+            "reactionoutcome": "3"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Pain",
+            "reactionoutcome": "3"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Injection site reaction",
+            "reactionoutcome": "3"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Injection site haemorrhage",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Fatigue",
+            "reactionoutcome": "6"
+          }
+        ],
+        "drug": [
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "REBIF",
+            "drugauthorizationnumb": "103780",
+            "drugstructuredosagenumb": "22",
+            "drugstructuredosageunit": "004",
+            "drugseparatedosagenumb": "3",
+            "drugintervaldosageunitnumb": "1",
+            "drugintervaldosagedefinition": "803",
+            "drugdosageform": "INJECTION",
+            "drugadministrationroute": "058",
+            "drugindication": "MULTIPLE SCLEROSIS",
+            "drugstartdateformat": "102",
+            "drugstartdate": "20140108",
+            "actiondrug": "5",
+            "openfda": {
+              "application_number": [
+                "BLA103780"
+              ],
+              "brand_name": [
+                "REBIF"
+              ],
+              "generic_name": [
+                "INTERFERON BETA-1A"
+              ],
+              "manufacturer_name": [
+                "EMD Serono, Inc."
+              ],
+              "product_ndc": [
+                "44087-0022",
+                "44087-8822",
+                "44087-0188",
+                "44087-0044",
+                "44087-3322",
+                "44087-3344"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "SUBCUTANEOUS"
+              ],
+              "substance_name": [
+                "INTERFERON BETA-1A"
+              ],
+              "rxcui": [
+                "758025",
+                "758027",
+                "758028",
+                "758029",
+                "758030",
+                "758032",
+                "795748",
+                "795749",
+                "1649994",
+                "1649996",
+                "1650003",
+                "1650004",
+                "1650011",
+                "1650012",
+                "1650268",
+                "1650282"
+              ],
+              "spl_id": [
+                "037d2645-544b-41bb-bea8-00b578366ac6"
+              ],
+              "spl_set_id": [
+                "c6fcb5d2-8fcd-44fa-a838-b84ee5f44f0f"
+              ],
+              "package_ndc": [
+                "44087-8822-1",
+                "44087-0188-1",
+                "44087-0022-9",
+                "44087-0022-3",
+                "44087-0044-9",
+                "44087-0044-3",
+                "44087-3322-9",
+                "44087-3322-1",
+                "44087-3344-9",
+                "44087-3344-1"
+              ],
+              "nui": [
+                "M0025715",
+                "N0000191625"
+              ],
+              "pharm_class_cs": [
+                "Interferon-beta [CS]"
+              ],
+              "pharm_class_epc": [
+                "Interferon beta [EPC]"
+              ],
+              "unii": [
+                "XRO4566Q4R"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "REBIF",
+            "drugauthorizationnumb": "103780",
+            "drugstructuredosagenumb": "44",
+            "drugstructuredosageunit": "004",
+            "drugseparatedosagenumb": "3",
+            "drugintervaldosageunitnumb": "1",
+            "drugintervaldosagedefinition": "803",
+            "drugdosageform": "INJECTION",
+            "drugadministrationroute": "058",
+            "drugenddateformat": "102",
+            "drugenddate": "20140221",
+            "actiondrug": "5",
+            "openfda": {
+              "application_number": [
+                "BLA103780"
+              ],
+              "brand_name": [
+                "REBIF"
+              ],
+              "generic_name": [
+                "INTERFERON BETA-1A"
+              ],
+              "manufacturer_name": [
+                "EMD Serono, Inc."
+              ],
+              "product_ndc": [
+                "44087-0022",
+                "44087-8822",
+                "44087-0188",
+                "44087-0044",
+                "44087-3322",
+                "44087-3344"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "SUBCUTANEOUS"
+              ],
+              "substance_name": [
+                "INTERFERON BETA-1A"
+              ],
+              "rxcui": [
+                "758025",
+                "758027",
+                "758028",
+                "758029",
+                "758030",
+                "758032",
+                "795748",
+                "795749",
+                "1649994",
+                "1649996",
+                "1650003",
+                "1650004",
+                "1650011",
+                "1650012",
+                "1650268",
+                "1650282"
+              ],
+              "spl_id": [
+                "037d2645-544b-41bb-bea8-00b578366ac6"
+              ],
+              "spl_set_id": [
+                "c6fcb5d2-8fcd-44fa-a838-b84ee5f44f0f"
+              ],
+              "package_ndc": [
+                "44087-8822-1",
+                "44087-0188-1",
+                "44087-0022-9",
+                "44087-0022-3",
+                "44087-0044-9",
+                "44087-0044-3",
+                "44087-3322-9",
+                "44087-3322-1",
+                "44087-3344-9",
+                "44087-3344-1"
+              ],
+              "nui": [
+                "M0025715",
+                "N0000191625"
+              ],
+              "pharm_class_cs": [
+                "Interferon-beta [CS]"
+              ],
+              "pharm_class_epc": [
+                "Interferon beta [EPC]"
+              ],
+              "unii": [
+                "XRO4566Q4R"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "2",
+            "medicinalproduct": "WELLBUTRIN",
+            "drugindication": "BIPOLAR DISORDER",
+            "openfda": {
+              "application_number": [
+                "NDA021515",
+                "NDA020358"
+              ],
+              "brand_name": [
+                "WELLBUTRIN XL",
+                "WELLBUTRIN SR"
+              ],
+              "generic_name": [
+                "BUPROPION HYDROCHLORIDE"
+              ],
+              "manufacturer_name": [
+                "Bausch Health US LLC",
+                "GlaxoSmithKline LLC"
+              ],
+              "product_ndc": [
+                "0187-0730",
+                "0187-0731",
+                "0173-0135",
+                "0173-0947",
+                "0173-0722"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "ORAL"
+              ],
+              "substance_name": [
+                "BUPROPION HYDROCHLORIDE"
+              ],
+              "rxcui": [
+                "993541",
+                "993545",
+                "993557",
+                "993564",
+                "993503",
+                "993511",
+                "993518",
+                "993528",
+                "993536",
+                "993537"
+              ],
+              "spl_id": [
+                "22308f71-fc56-430d-b559-bed47e17a46c",
+                "5ffc8b63-7d69-4f3a-bf05-a9c138724a91"
+              ],
+              "spl_set_id": [
+                "a435da9d-f6e8-4ddc-897d-8cd2bf777b21",
+                "cbc8c074-f080-4489-a5ae-207b5fadeba3"
+              ],
+              "package_ndc": [
+                "0187-0730-30",
+                "0187-0730-90",
+                "0187-0730-07",
+                "0187-0731-30",
+                "0187-0731-07",
+                "0173-0947-55",
+                "0173-0135-55",
+                "0173-0722-00"
+              ],
+              "unii": [
+                "ZG7E5POY8O"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "2",
+            "medicinalproduct": "LITHIUM",
+            "drugindication": "BIPOLAR DISORDER",
+            "drugstartdateformat": "602",
+            "drugstartdate": "1989",
+            "openfda": {
+              "application_number": [
+                "ANDA217183",
+                "ANDA070755"
+              ],
+              "brand_name": [
+                "LITHIUM"
+              ],
+              "generic_name": [
+                "LITHIUM",
+                "LITHIUM BROMATUM"
+              ],
+              "manufacturer_name": [
+                "Saptalis Pharmaceuticals, LLC",
+                "PAI Holdings, LLC dba PAI Pharma",
+                "Marco Pharma International LLC."
+              ],
+              "product_ndc": [
+                "71656-072",
+                "0121-1027",
+                "0121-4027",
+                "60986-1019"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG",
+                "HUMAN OTC DRUG"
+              ],
+              "route": [
+                "ORAL"
+              ],
+              "substance_name": [
+                "LITHIUM CITRATE",
+                "LITHIUM BROMIDE"
+              ],
+              "rxcui": [
+                "756059"
+              ],
+              "spl_id": [
+                "3ccc30e9-1f5d-5715-e063-6394a90a6bc1",
+                "0a44f05f-6cf7-4264-a228-1372bf0e9154",
+                "483c1e49-a5da-749f-e063-6394a90a226e"
+              ],
+              "spl_set_id": [
+                "e95036c7-542a-437a-969b-f95f6f949f84",
+                "677b20c4-84f0-4716-aca3-aead3bbe1283",
+                "f4a1d451-33ad-4df3-ae68-58cfbfccfa89"
+              ],
+              "package_ndc": [
+                "71656-072-16",
+                "71656-072-05",
+                "71656-072-50",
+                "0121-1027-16",
+                "0121-4027-05",
+                "0121-4027-94",
+                "60986-1019-3",
+                "60986-1019-4"
+              ],
+              "unii": [
+                "5Z6E9K79YV",
+                "864G646I84"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "2",
+            "medicinalproduct": "ATIVAN",
+            "drugindication": "BIPOLAR DISORDER",
+            "openfda": {
+              "application_number": [
+                "NDA017794"
+              ],
+              "brand_name": [
+                "ATIVAN"
+              ],
+              "generic_name": [
+                "LORAZEPAM"
+              ],
+              "manufacturer_name": [
+                "Bausch Health US LLC"
+              ],
+              "product_ndc": [
+                "0187-0063",
+                "0187-0064",
+                "0187-0065"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "ORAL"
+              ],
+              "substance_name": [
+                "LORAZEPAM"
+              ],
+              "rxcui": [
+                "104719",
+                "197900",
+                "197901",
+                "197902",
+                "206821",
+                "206828"
+              ],
+              "spl_id": [
+                "93bdf2de-1222-44a4-b4d5-2280f9ce58d8"
+              ],
+              "spl_set_id": [
+                "89057c93-8155-4040-acec-64e877bd2b4c"
+              ],
+              "package_ndc": [
+                "0187-0063-01",
+                "0187-0063-50",
+                "0187-0063-10",
+                "0187-0064-01",
+                "0187-0064-50",
+                "0187-0064-10",
+                "0187-0065-01",
+                "0187-0065-50",
+                "0187-0065-10"
+              ],
+              "nui": [
+                "N0000175694",
+                "M0002356"
+              ],
+              "pharm_class_epc": [
+                "Benzodiazepine [EPC]"
+              ],
+              "pharm_class_cs": [
+                "Benzodiazepines [CS]"
+              ],
+              "unii": [
+                "O26FZP769L"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "2",
+            "medicinalproduct": "NEURONTIN",
+            "drugindication": "PRODUCT USED FOR UNKNOWN INDICATION",
+            "openfda": {
+              "application_number": [
+                "NDA020235",
+                "NDA021129",
+                "NDA020882"
+              ],
+              "brand_name": [
+                "NEURONTIN"
+              ],
+              "generic_name": [
+                "GABAPENTIN"
+              ],
+              "manufacturer_name": [
+                "Parke-Davis Div of Pfizer Inc",
+                "Viatris Specialty LLC"
+              ],
+              "product_ndc": [
+                "0071-0805",
+                "0071-0803",
+                "0071-0806",
+                "0071-0513",
+                "0071-0401",
+                "0071-2012",
+                "58151-281",
+                "58151-282",
+                "58151-283",
+                "58151-284",
+                "58151-285",
+                "58151-290"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "ORAL"
+              ],
+              "substance_name": [
+                "GABAPENTIN"
+              ],
+              "rxcui": [
+                "105028",
+                "105029",
+                "105030",
+                "261280",
+                "261281",
+                "283523",
+                "310430",
+                "310431",
+                "310432",
+                "310433",
+                "310434",
+                "351973"
+              ],
+              "spl_id": [
+                "e730d5df-d47b-4d7f-ae3b-bd449f6b1213",
+                "2d43f32d-2d96-4011-84ac-507c3307dc27"
+              ],
+              "spl_set_id": [
+                "ee9ad9ed-6d9f-4ee1-9d7f-cfad438df388",
+                "97935fd9-1d4a-43b6-a5d9-de994591187b"
+              ],
+              "package_ndc": [
+                "0071-0803-24",
+                "0071-0803-40",
+                "0071-0805-24",
+                "0071-0805-40",
+                "0071-0806-24",
+                "0071-0806-40",
+                "0071-0513-24",
+                "0071-0401-24",
+                "0071-2012-23",
+                "0071-2012-44",
+                "0071-2012-47",
+                "58151-281-01",
+                "58151-282-01",
+                "58151-283-01",
+                "58151-284-01",
+                "58151-285-01",
+                "58151-290-35"
+              ],
+              "nui": [
+                "N0000008486"
+              ],
+              "pharm_class_pe": [
+                "Decreased Central Nervous System Disorganized Electrical Activity [PE]"
+              ],
+              "unii": [
+                "6CW7F3G59X"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

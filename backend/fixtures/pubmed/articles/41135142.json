@@ -1,0 +1,36 @@
+{
+ "pmid": "41135142",
+ "title": "Tirzepatide for sleep-disordered breathing in SURMOUNT-OSA: Time course and association with body weight.",
+ "journal": "Sleep medicine",
+ "pub_date": "2025 Dec",
+ "year": 2025,
+ "doi": "10.1016/j.sleep.2025.106853",
+ "authors": [
+  "Malhotra A",
+  "Grunstein RR",
+  "Azarbarzin A",
+  "Sands SA",
+  "Dang X",
+  "Chakladar S",
+  "Dunn JP",
+  "Falcon B",
+  "Bednarik J"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase III",
+  "Research Support, N.I.H., Extramural",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT05412004"
+ ],
+ "abstract_sha256": "189ecc0fcc15f23e2c8fc17bb29412ddd78ce3f51f7dcc85a956cf09e0dc1fd2",
+ "abstract_chars": 1842,
+ "abstract_ncts": [
+  "NCT05412004"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

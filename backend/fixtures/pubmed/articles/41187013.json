@@ -1,0 +1,38 @@
+{
+ "pmid": "41187013",
+ "title": "People With Lowest Physical Functioning Scores Showed Greatest Improvement After Tirzepatide Treatment.",
+ "journal": "Obesity (Silver Spring, Md.)",
+ "pub_date": "2026 Jan",
+ "year": 2026,
+ "doi": "10.1002/oby.70067",
+ "authors": [
+  "Li X",
+  "Cao D",
+  "Sapin H",
+  "Wang F",
+  "Hunter Gibble T",
+  "Raibulet NK",
+  "Denning M",
+  "Kaplan LM"
+ ],
+ "pub_types": [
+  "Clinical Trial, Phase III",
+  "Journal Article",
+  "Multicenter Study",
+  "Randomized Controlled Trial"
+ ],
+ "databank_ncts": [
+  "NCT04184622",
+  "NCT04657016",
+  "NCT04660643"
+ ],
+ "abstract_sha256": "0ad6535c5dcddfcf819f110fc74a467dec618c6ddefe246501c51cc3c189241f",
+ "abstract_chars": 1628,
+ "abstract_ncts": [
+  "NCT04184622",
+  "NCT04657016",
+  "NCT04660643"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

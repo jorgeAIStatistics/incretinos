@@ -1,0 +1,38 @@
+{
+ "pmid": "42251769",
+ "title": "Orforglipron Added to Titrated Insulin Glargine in Type 2 Diabetes: The ACHIEVE-5 Randomized Clinical Trial.",
+ "journal": "JAMA",
+ "pub_date": "2026 Aug 04",
+ "year": 2026,
+ "doi": "10.1001/jama.2026.9512",
+ "authors": [
+  "Giorgino F",
+  "D'Souza S",
+  "Ludwig L",
+  "Kiyosue A",
+  "Ibriga H",
+  "Rha H",
+  "Denning M",
+  "Wu WS",
+  "Fernández Landó L",
+  "Tobian J"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Multicenter Study",
+  "Clinical Trial, Phase III"
+ ],
+ "databank_ncts": [
+  "NCT06109311"
+ ],
+ "abstract_sha256": "d60ccd757898beff6a8d3997734a7f3e0d0210dbfbfc295d9803ec031d2fb5e8",
+ "abstract_chars": 2878,
+ "abstract_ncts": [
+  "NCT06109311"
+ ],
+ "excerpts": [
+  "-1.58%, -1.88%, and -1.82% with orforglipron, 3 mg, 12 mg, and 36 mg once daily, respectively, vs -0.79% with placebo"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

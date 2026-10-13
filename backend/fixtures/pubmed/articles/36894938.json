@@ -1,0 +1,41 @@
+{
+ "pmid": "36894938",
+ "title": "Weight-dependent and weight-independent effects of dulaglutide on blood pressure in patients with type 2 diabetes.",
+ "journal": "Cardiovascular diabetology",
+ "pub_date": "2023 Mar 09",
+ "year": 2023,
+ "doi": "10.1186/s12933-023-01775-x",
+ "authors": [
+  "Ferdinand KC",
+  "Dunn J",
+  "Nicolay C",
+  "Sam F",
+  "Blue EK",
+  "Wang H"
+ ],
+ "pub_types": [
+  "Meta-Analysis",
+  "Journal Article",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT00734474",
+  "NCT01064687",
+  "NCT01149421",
+  "NCT01769378",
+  "NCT02597049",
+  "NCT03495102"
+ ],
+ "abstract_sha256": "509cbe0aa34f1640d7de397201e3f14ed650169dd67a420b99bbdb97a21701c4",
+ "abstract_chars": 2577,
+ "abstract_ncts": [
+  "NCT00734474",
+  "NCT01064687",
+  "NCT01149421",
+  "NCT01769378",
+  "NCT02597049",
+  "NCT03495102"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

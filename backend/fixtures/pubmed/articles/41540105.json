@@ -1,0 +1,37 @@
+{
+ "pmid": "41540105",
+ "title": "Tirzepatide on obstructive sleep apnea-related cardiometabolic risk: secondary outcomes of the SURMOUNT-OSA randomized trial.",
+ "journal": "Nature medicine",
+ "pub_date": "2026 Feb",
+ "year": 2026,
+ "doi": "10.1038/s41591-025-04071-1",
+ "authors": [
+  "Malhotra A",
+  "Grunstein R",
+  "Azarbarzin A",
+  "Sands S",
+  "Somers VK",
+  "Aronne LJ",
+  "Jastreboff AM",
+  "Lou J",
+  "Chakladar S",
+  "Dunn JP",
+  "Bunck MC",
+  "Bednarik J"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase III"
+ ],
+ "databank_ncts": [
+  "NCT05412004"
+ ],
+ "abstract_sha256": "b7ea327aeb388cff1d8cb259c5298b5474230849feb9dd9a399d6110cb0efb79",
+ "abstract_chars": 1614,
+ "abstract_ncts": [
+  "NCT05412004"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

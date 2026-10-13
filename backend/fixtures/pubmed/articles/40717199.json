@@ -1,0 +1,36 @@
+{
+ "pmid": "40717199",
+ "title": "Early-Onset Obesity and Tirzepatide Treatment: A Post Hoc Analysis of the SURMOUNT Clinical Trials.",
+ "journal": "Obesity (Silver Spring, Md.)",
+ "pub_date": "2025 Sep",
+ "year": 2025,
+ "doi": "10.1002/oby.24348",
+ "authors": [
+  "Gourgari E",
+  "Srivastava G",
+  "Kelly AS",
+  "Mojdami D",
+  "Cao D",
+  "Murphy MA",
+  "Karanikas CA",
+  "Lee CJ"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial"
+ ],
+ "databank_ncts": [
+  "NCT04184622",
+  "NCT04657016",
+  "NCT04660643"
+ ],
+ "abstract_sha256": "c9eca18f012575c12cdfda02609eff6579ffc17d37cb715deed58ae8c04c1ee3",
+ "abstract_chars": 1636,
+ "abstract_ncts": [
+  "NCT04184622",
+  "NCT04657016",
+  "NCT04660643"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

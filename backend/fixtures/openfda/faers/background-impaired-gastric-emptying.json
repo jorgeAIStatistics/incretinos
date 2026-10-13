@@ -1,0 +1,488 @@
+{
+  "meta": {
+    "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+    "terms": "https://open.fda.gov/terms/",
+    "license": "https://open.fda.gov/license/",
+    "last_updated": "2026-07-30",
+    "results": {
+      "skip": 0,
+      "limit": 1,
+      "total": 12586
+    }
+  },
+  "results": [
+    {
+      "safetyreportversion": "2",
+      "safetyreportid": "10005217",
+      "primarysourcecountry": "US",
+      "occurcountry": "US",
+      "transmissiondateformat": "102",
+      "transmissiondate": "20200122",
+      "reporttype": "1",
+      "serious": "1",
+      "seriousnessother": "1",
+      "receivedateformat": "102",
+      "receivedate": "20140312",
+      "receiptdateformat": "102",
+      "receiptdate": "20191101",
+      "fulfillexpeditecriteria": "1",
+      "companynumb": "US-PFIZER INC-2014066623",
+      "duplicate": "1",
+      "reportduplicate": {
+        "duplicatesource": "PFIZER",
+        "duplicatenumb": "US-PFIZER INC-2014066623"
+      },
+      "primarysource": {
+        "reportercountry": "US",
+        "qualification": "4"
+      },
+      "sender": {
+        "sendertype": "2",
+        "senderorganization": "FDA-Public Use"
+      },
+      "receiver": {
+        "receivertype": "6",
+        "receiverorganization": "FDA"
+      },
+      "patient": {
+        "patientonsetage": "72",
+        "patientonsetageunit": "801",
+        "patientweight": "81",
+        "patientsex": "2",
+        "reaction": [
+          {
+            "reactionmeddraversionpt": "22.1",
+            "reactionmeddrapt": "Type 2 diabetes mellitus",
+            "reactionoutcome": "3"
+          },
+          {
+            "reactionmeddraversionpt": "22.1",
+            "reactionmeddrapt": "Impaired gastric emptying",
+            "reactionoutcome": "3"
+          }
+        ],
+        "drug": [
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "LIPITOR",
+            "drugauthorizationnumb": "020702",
+            "drugstructuredosagenumb": "10",
+            "drugstructuredosageunit": "003",
+            "drugdosagetext": "10 MG, DAILY",
+            "drugdosageform": "FILM-COATED TABLET",
+            "drugadministrationroute": "048",
+            "drugindication": "BLOOD CHOLESTEROL INCREASED",
+            "drugstartdateformat": "102",
+            "drugstartdate": "20020614",
+            "drugenddateformat": "102",
+            "drugenddate": "20120101",
+            "actiondrug": "5",
+            "drugadditional": "3",
+            "activesubstance": {
+              "activesubstancename": "ATORVASTATIN CALCIUM"
+            },
+            "openfda": {
+              "application_number": [
+                "NDA020702"
+              ],
+              "brand_name": [
+                "LIPITOR"
+              ],
+              "generic_name": [
+                "ATORVASTATIN CALCIUM"
+              ],
+              "manufacturer_name": [
+                "Viatris Specialty LLC"
+              ],
+              "product_ndc": [
+                "58151-155",
+                "58151-156",
+                "58151-157",
+                "58151-158"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "ORAL"
+              ],
+              "substance_name": [
+                "ATORVASTATIN CALCIUM TRIHYDRATE"
+              ],
+              "rxcui": [
+                "259255",
+                "262095",
+                "617310",
+                "617311",
+                "617312",
+                "617314",
+                "617318",
+                "617320"
+              ],
+              "spl_id": [
+                "dd011a82-7356-4b83-86c4-b21cd9138fc6"
+              ],
+              "spl_set_id": [
+                "a60cc18b-0631-4cf0-b021-9f52224ece65"
+              ],
+              "package_ndc": [
+                "58151-155-77",
+                "58151-156-77",
+                "58151-157-77",
+                "58151-158-77"
+              ],
+              "unii": [
+                "48A5M73Z4Q"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "SIMVASTATIN.",
+            "drugstructuredosagenumb": "20",
+            "drugstructuredosageunit": "003",
+            "drugdosagetext": "20 MG, DAILY",
+            "drugindication": "BLOOD CHOLESTEROL INCREASED",
+            "drugstartdateformat": "102",
+            "drugstartdate": "20090217",
+            "drugenddateformat": "102",
+            "drugenddate": "20090517",
+            "actiondrug": "6",
+            "activesubstance": {
+              "activesubstancename": "SIMVASTATIN"
+            },
+            "openfda": {
+              "application_number": [
+                "ANDA078155",
+                "ANDA077691",
+                "ANDA078103",
+                "ANDA200895",
+                "ANDA078034",
+                "ANDA211394",
+                "NDA019766"
+              ],
+              "brand_name": [
+                "SIMVASTATIN",
+                "ZOCOR"
+              ],
+              "generic_name": [
+                "SIMVASTATIN"
+              ],
+              "manufacturer_name": [
+                "Accord Healthcare, Inc.",
+                "NorthStar Rx LLC",
+                "Lupin Pharmaceuticals, Inc.",
+                "XLCare Pharmaceuticals Inc.",
+                "Biocon Pharma Inc,",
+                "Aurobindo Pharma Limited",
+                "Westminster Pharmaceuticals, LLC",
+                "Quallent Pharmaceuticals Health LLC",
+                "Organon LLC",
+                "Camber Pharmaceuticals, Inc."
+              ],
+              "product_ndc": [
+                "16729-004",
+                "16729-005",
+                "16729-006",
+                "16729-007",
+                "16729-156",
+                "16714-681",
+                "16714-682",
+                "16714-683",
+                "16714-684",
+                "16714-685",
+                "68180-464",
+                "68180-482",
+                "68180-478",
+                "68180-479",
+                "68180-480",
+                "68180-481",
+                "68180-465",
+                "72865-305",
+                "72865-306",
+                "72865-307",
+                "72865-308",
+                "72865-309",
+                "70377-001",
+                "70377-002",
+                "70377-003",
+                "70377-004",
+                "70377-005",
+                "65862-050",
+                "65862-051",
+                "65862-052",
+                "65862-053",
+                "65862-054",
+                "69367-374",
+                "69367-375",
+                "69367-376",
+                "69367-377",
+                "82009-012",
+                "82009-013",
+                "82009-014",
+                "82009-015",
+                "82009-016",
+                "78206-180",
+                "78206-182",
+                "78206-181",
+                "31722-510",
+                "31722-511",
+                "31722-512",
+                "31722-513",
+                "31722-514"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "ORAL"
+              ],
+              "substance_name": [
+                "SIMVASTATIN"
+              ],
+              "rxcui": [
+                "198211",
+                "200345",
+                "312961",
+                "312962",
+                "314231",
+                "104490",
+                "104491",
+                "152923"
+              ],
+              "spl_id": [
+                "43910ff2-6a21-bf9e-e063-6294a90a3f5c",
+                "6c353eba-27f3-43cc-b954-ec659881872f",
+                "b78d4e8a-2261-43c6-9321-ac2539bdfd2f",
+                "48bd010d-6429-906e-e063-6394a90ae8b7",
+                "4d832ba0-8b5c-de5a-246a-a5f30e884bb4",
+                "854ac8f7-cca5-434c-a611-9c1752260d4a",
+                "5bcccfd7-0ae8-4fad-a535-5efa7b327550",
+                "1de47781-9000-0fc1-e063-6294a90a8139",
+                "11256523-425c-48e8-afe1-e3a4e28c892e",
+                "1553d57f-414d-2c66-e063-6294a90af8e0"
+              ],
+              "spl_set_id": [
+                "871251c0-36a1-4a32-9eab-ff6c1e925ca9",
+                "0376351b-f1a0-43e5-a0b4-533072c49f39",
+                "3e48217f-8175-4e9b-9fd0-909be4bbba95",
+                "433f8a86-5ad3-43db-8e62-c0812dd3d723",
+                "7b325108-6940-50a7-96b4-822a5206e568",
+                "4724dbb4-3613-4e6a-948f-a43d34f97f06",
+                "acaaab63-c9ff-44c9-8fde-9a4ea6454dd7",
+                "2b4255a7-f9f5-4235-8dbb-b0f03acbd624",
+                "8f55d5de-5a4f-4a39-8c84-c53976dd6af9",
+                "751b79c6-bba8-4d29-b69c-a2ac6453fec8"
+              ],
+              "package_ndc": [
+                "16729-005-10",
+                "16729-005-12",
+                "16729-005-15",
+                "16729-005-17",
+                "16729-006-10",
+                "16729-006-12",
+                "16729-006-15",
+                "16729-006-17",
+                "16729-007-10",
+                "16729-007-12",
+                "16729-007-15",
+                "16729-007-17",
+                "16729-156-10",
+                "16729-156-15",
+                "16729-156-17",
+                "16729-004-10",
+                "16729-004-12",
+                "16729-004-15",
+                "16729-004-17",
+                "16714-681-01",
+                "16714-681-02",
+                "16714-682-01",
+                "16714-682-02",
+                "16714-682-03",
+                "16714-683-01",
+                "16714-683-02",
+                "16714-683-03",
+                "16714-684-01",
+                "16714-684-02",
+                "16714-684-03",
+                "16714-685-01",
+                "16714-685-02",
+                "16714-685-03",
+                "68180-482-09",
+                "68180-482-06",
+                "68180-482-03",
+                "68180-482-11",
+                "68180-478-02",
+                "68180-478-03",
+                "68180-478-01",
+                "68180-479-02",
+                "68180-479-03",
+                "68180-479-01",
+                "68180-480-01",
+                "68180-480-02",
+                "68180-480-03",
+                "68180-481-01",
+                "68180-481-03",
+                "68180-481-02",
+                "68180-464-06",
+                "68180-464-09",
+                "68180-464-03",
+                "68180-465-06",
+                "68180-465-09",
+                "68180-465-03",
+                "72865-305-30",
+                "72865-305-01",
+                "72865-305-10",
+                "72865-305-90",
+                "72865-306-30",
+                "72865-306-01",
+                "72865-306-10",
+                "72865-306-90",
+                "72865-307-30",
+                "72865-307-01",
+                "72865-307-10",
+                "72865-307-90",
+                "72865-307-45",
+                "72865-308-30",
+                "72865-308-01",
+                "72865-308-10",
+                "72865-308-90",
+                "72865-308-45",
+                "72865-309-30",
+                "72865-309-01",
+                "72865-309-05",
+                "72865-309-90",
+                "72865-309-45",
+                "72865-309-10",
+                "70377-001-13",
+                "70377-001-14",
+                "70377-001-15",
+                "70377-001-12",
+                "70377-002-12",
+                "70377-002-13",
+                "70377-002-14",
+                "70377-002-15",
+                "70377-003-12",
+                "70377-003-13",
+                "70377-003-14",
+                "70377-003-15",
+                "70377-004-12",
+                "70377-004-13",
+                "70377-004-14",
+                "70377-004-15",
+                "70377-005-12",
+                "70377-005-13",
+                "70377-005-14",
+                "70377-005-15",
+                "65862-050-30",
+                "65862-050-45",
+                "65862-050-90",
+                "65862-050-01",
+                "65862-050-00",
+                "65862-050-99",
+                "65862-050-26",
+                "65862-051-30",
+                "65862-051-45",
+                "65862-051-90",
+                "65862-051-01",
+                "65862-051-00",
+                "65862-051-99",
+                "65862-051-26",
+                "65862-052-30",
+                "65862-052-45",
+                "65862-052-90",
+                "65862-052-01",
+                "65862-052-00",
+                "65862-052-99",
+                "65862-052-26",
+                "65862-053-30",
+                "65862-053-45",
+                "65862-053-90",
+                "65862-053-01",
+                "65862-053-00",
+                "65862-053-99",
+                "65862-053-22",
+                "65862-054-30",
+                "65862-054-45",
+                "65862-054-90",
+                "65862-054-00",
+                "65862-054-99",
+                "65862-054-39",
+                "69367-374-09",
+                "69367-374-10",
+                "69367-375-09",
+                "69367-375-10",
+                "69367-376-09",
+                "69367-376-10",
+                "69367-377-09",
+                "69367-377-10",
+                "82009-013-10",
+                "82009-012-10",
+                "82009-014-10",
+                "82009-015-10",
+                "82009-016-05",
+                "78206-182-01",
+                "78206-182-02",
+                "78206-181-02",
+                "78206-181-01",
+                "78206-180-01",
+                "78206-180-02",
+                "31722-510-30",
+                "31722-510-01",
+                "31722-510-10",
+                "31722-510-90",
+                "31722-511-30",
+                "31722-511-01",
+                "31722-511-10",
+                "31722-511-90",
+                "31722-512-30",
+                "31722-512-01",
+                "31722-512-10",
+                "31722-512-90",
+                "31722-513-30",
+                "31722-513-01",
+                "31722-513-10",
+                "31722-513-90",
+                "31722-514-30",
+                "31722-514-01",
+                "31722-514-05",
+                "31722-514-90"
+              ],
+              "nui": [
+                "N0000175589",
+                "N0000000121"
+              ],
+              "pharm_class_epc": [
+                "HMG-CoA Reductase Inhibitor [EPC]"
+              ],
+              "pharm_class_moa": [
+                "Hydroxymethylglutaryl-CoA Reductase Inhibitors [MoA]"
+              ],
+              "unii": [
+                "AGG2FN16EV"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "ATORVASTATIN",
+            "drugstructuredosagenumb": "10",
+            "drugstructuredosageunit": "003",
+            "drugdosagetext": "10 MG, DAILY",
+            "drugadministrationroute": "048",
+            "drugindication": "BLOOD CHOLESTEROL INCREASED",
+            "drugstartdateformat": "102",
+            "drugstartdate": "20120109",
+            "actiondrug": "4",
+            "activesubstance": {
+              "activesubstancename": "ATORVASTATIN"
+            }
+          }
+        ],
+        "summary": {
+          "narrativeincludeclinical": "CASE EVENT DATE: 20110824"
+        }
+      }
+    }
+  ]
+}

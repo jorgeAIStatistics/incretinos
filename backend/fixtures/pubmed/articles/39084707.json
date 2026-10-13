@@ -1,0 +1,35 @@
+{
+ "pmid": "39084707",
+ "title": "Tirzepatide and blood pressure reduction: stratified analyses of the SURMOUNT-1 randomised controlled trial.",
+ "journal": "Heart (British Cardiac Society)",
+ "pub_date": "2024 Sep 16",
+ "year": 2024,
+ "doi": "10.1136/heartjnl-2024-324170",
+ "authors": [
+  "Krumholz HM",
+  "de Lemos JA",
+  "Sattar N",
+  "Linetzky B",
+  "Sharma P",
+  "Mast CJ",
+  "Ahmad NN",
+  "Bunck MC",
+  "Stefanski A"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Multicenter Study",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT04184622"
+ ],
+ "abstract_sha256": "54c038bd86be0a866fe228a2ef4e9a1f9646a17b007c792cb596500dd16c69e7",
+ "abstract_chars": 2137,
+ "abstract_ncts": [
+  "NCT04184622"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

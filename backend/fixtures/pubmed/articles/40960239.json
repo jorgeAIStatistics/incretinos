@@ -1,0 +1,50 @@
+{
+ "pmid": "40960239",
+ "title": "Orforglipron, an Oral Small-Molecule GLP-1 Receptor Agonist for Obesity Treatment.",
+ "journal": "The New England journal of medicine",
+ "pub_date": "2025 Nov 06",
+ "year": 2025,
+ "doi": "10.1056/nejmoa2511774",
+ "authors": [
+  "Wharton S",
+  "Aronne LJ",
+  "Stefanski A",
+  "Alfaris NF",
+  "Ciudin A",
+  "Yokote K",
+  "Halpern B",
+  "Shukla AP",
+  "Zhou C",
+  "Macpherson L",
+  "Allen SE",
+  "Ahmad NN",
+  "Klise SR",
+  "ATTAIN-1 Trial Investigators"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Multicenter Study",
+  "Clinical Trial, Phase III"
+ ],
+ "databank_ncts": [
+  "NCT05869903"
+ ],
+ "abstract_sha256": "db13ea220ce92a11f27eb250c31e8a438f3ea35ce04aed236cabb72280074835",
+ "abstract_chars": 2116,
+ "abstract_ncts": [
+  "NCT05869903"
+ ],
+ "excerpts": [
+  "ATTAIN-1 ClinicalTrials.gov number, NCT05869903",
+  "at doses of 6 mg, 12 mg, or 36 mg, as compared with placebo (assigned in a 3:3:3:4 ratio)",
+  "as assessed according to the treatment-regimen estimand in the intention-to-treat population",
+  "54.6% had a reduction of 10% or more, 36.0% had a reduction of 15% or more, and 18.4% had a reduction of 20% or more",
+  "treatment discontinuation in 5.3 to 10.3% of the patients in the orforglipron groups and in 2.7% of those in the placebo group",
+  "-7.5% (95% confidence interval [CI], -8.2 to -6.8) with 6 mg of orforglipron",
+  "-8.4% (95% CI, -9.1 to -7.7) with 12 mg of orforglipron",
+  "-11.2% (95% CI, -12.0 to -10.4) with 36 mg of orforglipron",
+  "-2.1% (95% CI, -2.8 to -1.4) with placebo"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

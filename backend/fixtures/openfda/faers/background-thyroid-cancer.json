@@ -1,0 +1,208 @@
+{
+  "meta": {
+    "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+    "terms": "https://open.fda.gov/terms/",
+    "license": "https://open.fda.gov/license/",
+    "last_updated": "2026-07-30",
+    "results": {
+      "skip": 0,
+      "limit": 1,
+      "total": 11952
+    }
+  },
+  "results": [
+    {
+      "safetyreportversion": "1",
+      "safetyreportid": "10006277",
+      "primarysourcecountry": "US",
+      "occurcountry": "US",
+      "transmissiondateformat": "102",
+      "transmissiondate": "20141002",
+      "reporttype": "1",
+      "serious": "1",
+      "seriousnessother": "1",
+      "receivedateformat": "102",
+      "receivedate": "20140313",
+      "receiptdateformat": "102",
+      "receiptdate": "20140313",
+      "fulfillexpeditecriteria": "1",
+      "companynumb": "US-NOVOPROD-402361",
+      "duplicate": "1",
+      "reportduplicate": {
+        "duplicatesource": "NOVO NORDISK",
+        "duplicatenumb": "US-NOVOPROD-402361"
+      },
+      "primarysource": {
+        "reportercountry": "US",
+        "qualification": "4"
+      },
+      "sender": {
+        "sendertype": "2",
+        "senderorganization": "FDA-Public Use"
+      },
+      "receiver": {
+        "receivertype": "6",
+        "receiverorganization": "FDA"
+      },
+      "patient": {
+        "patientsex": "2",
+        "reaction": [
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Thyroid cancer",
+            "reactionoutcome": "6"
+          }
+        ],
+        "drug": [
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "VICTOZA",
+            "drugbatchnumb": "UNKNOWN",
+            "drugauthorizationnumb": "022341",
+            "drugdosagetext": "UNKNOWN",
+            "drugdosageform": "SOLUTION FOR INJECTION",
+            "drugadministrationroute": "058",
+            "drugindication": "PRODUCT USED FOR UNKNOWN INDICATION",
+            "drugstartdateformat": "610",
+            "drugstartdate": "201009",
+            "actiondrug": "5",
+            "openfda": {
+              "application_number": [
+                "NDA022341"
+              ],
+              "brand_name": [
+                "VICTOZA"
+              ],
+              "generic_name": [
+                "LIRAGLUTIDE"
+              ],
+              "manufacturer_name": [
+                "Novo Nordisk"
+              ],
+              "product_ndc": [
+                "0169-4060"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "SUBCUTANEOUS"
+              ],
+              "substance_name": [
+                "LIRAGLUTIDE"
+              ],
+              "rxcui": [
+                "897122",
+                "897126"
+              ],
+              "spl_id": [
+                "0d10d10e-0fe0-47ee-b9da-628e34907e98"
+              ],
+              "spl_set_id": [
+                "5a9ef4ea-c76a-4d34-a604-27c5b505f5a4"
+              ],
+              "package_ndc": [
+                "0169-4060-13",
+                "0169-4060-12",
+                "0169-4060-90",
+                "0169-4060-97",
+                "0169-4060-98",
+                "0169-4060-99"
+              ],
+              "nui": [
+                "N0000178480",
+                "M0160181",
+                "N0000020058"
+              ],
+              "pharm_class_epc": [
+                "GLP-1 Receptor Agonist [EPC]"
+              ],
+              "pharm_class_cs": [
+                "Glucagon-Like Peptide 1 [CS]"
+              ],
+              "pharm_class_moa": [
+                "Glucagon-like Peptide-1 (GLP-1) Agonists [MoA]"
+              ],
+              "unii": [
+                "839I73S42A"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "BYETTA",
+            "drugbatchnumb": "UNKNOWN",
+            "drugdosagetext": "UNKNOWN",
+            "drugadministrationroute": "058",
+            "drugindication": "PRODUCT USED FOR UNKNOWN INDICATION",
+            "drugstartdateformat": "602",
+            "drugstartdate": "2008",
+            "drugenddateformat": "602",
+            "drugenddate": "2010",
+            "openfda": {
+              "application_number": [
+                "NDA021773"
+              ],
+              "brand_name": [
+                "BYETTA"
+              ],
+              "generic_name": [
+                "EXENATIDE"
+              ],
+              "manufacturer_name": [
+                "AstraZeneca Pharmaceuticals LP"
+              ],
+              "product_ndc": [
+                "0310-6512",
+                "0310-6524"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "SUBCUTANEOUS"
+              ],
+              "substance_name": [
+                "EXENATIDE"
+              ],
+              "rxcui": [
+                "847910",
+                "847913",
+                "847915",
+                "847917"
+              ],
+              "spl_id": [
+                "7333a7dd-9449-4c61-b36d-c5d8d7cc239b"
+              ],
+              "spl_set_id": [
+                "53d03c03-ebf7-418d-88a8-533eabd2ee4f"
+              ],
+              "package_ndc": [
+                "0310-6512-01",
+                "0310-6512-85",
+                "0310-6524-01"
+              ],
+              "nui": [
+                "N0000178480",
+                "M0160181",
+                "N0000020058"
+              ],
+              "pharm_class_epc": [
+                "GLP-1 Receptor Agonist [EPC]"
+              ],
+              "pharm_class_cs": [
+                "Glucagon-Like Peptide 1 [CS]"
+              ],
+              "pharm_class_moa": [
+                "Glucagon-like Peptide-1 (GLP-1) Agonists [MoA]"
+              ],
+              "unii": [
+                "9P1872D4OL"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

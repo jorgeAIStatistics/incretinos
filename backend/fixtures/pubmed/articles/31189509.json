@@ -1,0 +1,63 @@
+{
+ "pmid": "31189509",
+ "title": "Dulaglutide and renal outcomes in type 2 diabetes: an exploratory analysis of the REWIND randomised, placebo-controlled trial.",
+ "journal": "Lancet (London, England)",
+ "pub_date": "2019 Jul 13",
+ "year": 2019,
+ "doi": "10.1016/s0140-6736(19)31150-x",
+ "authors": [
+  "Gerstein HC",
+  "Colhoun HM",
+  "Dagenais GR",
+  "Diaz R",
+  "Lakshmanan M",
+  "Pais P",
+  "Probstfield J",
+  "Botros FT",
+  "Riddle MC",
+  "Rydén L",
+  "Xavier D",
+  "Atisso CM",
+  "Dyal L",
+  "Hall S",
+  "Rao-Melacini P",
+  "Wong G",
+  "Avezum A",
+  "Basile J",
+  "Chung N",
+  "Conget I",
+  "Cushman WC",
+  "Franek E",
+  "Hancu N",
+  "Hanefeld M",
+  "Holt S",
+  "Jansky P",
+  "Keltai M",
+  "Lanas F",
+  "Leiter LA",
+  "Lopez-Jaramillo P",
+  "Cardona Munoz EG",
+  "Pirags V",
+  "Pogosova N",
+  "Raubenheimer PJ",
+  "Shaw JE",
+  "Sheu WH",
+  "Temelkova-Kurktschiev T",
+  "REWIND Investigators"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Multicenter Study",
+  "Randomized Controlled Trial"
+ ],
+ "databank_ncts": [
+  "NCT01394952"
+ ],
+ "abstract_sha256": "7c80609558163ad94d5d8f2afb79b457549316e7bde7dfec31e763ff31992f0e",
+ "abstract_chars": 2646,
+ "abstract_ncts": [
+  "NCT01394952"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

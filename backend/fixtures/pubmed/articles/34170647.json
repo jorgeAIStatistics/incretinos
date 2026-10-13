@@ -1,0 +1,39 @@
+{
+ "pmid": "34170647",
+ "title": "Tirzepatide versus Semaglutide Once Weekly in Patients with Type 2 Diabetes.",
+ "journal": "The New England journal of medicine",
+ "pub_date": "2021 Aug 05",
+ "year": 2021,
+ "doi": "10.1056/nejmoa2107519",
+ "authors": [
+  "Frías JP",
+  "Davies MJ",
+  "Rosenstock J",
+  "Pérez Manghi FC",
+  "Fernández Landó L",
+  "Bergman BK",
+  "Liu B",
+  "Cui X",
+  "Brown K",
+  "SURPASS-2 Investigators"
+ ],
+ "pub_types": [
+  "Clinical Trial, Phase III",
+  "Comparative Study",
+  "Equivalence Trial",
+  "Journal Article",
+  "Multicenter Study",
+  "Randomized Controlled Trial",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT03987919"
+ ],
+ "abstract_sha256": "1bf4c45b6fadde234987977da946ce9b267f4ce6b45803027ca294189818db8c",
+ "abstract_chars": 2502,
+ "abstract_ncts": [
+  "NCT03987919"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

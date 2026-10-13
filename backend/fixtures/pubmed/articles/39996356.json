@@ -1,0 +1,33 @@
+{
+ "pmid": "39996356",
+ "title": "Body composition changes during weight reduction with tirzepatide in the SURMOUNT-1 study of adults with obesity or overweight.",
+ "journal": "Diabetes, obesity & metabolism",
+ "pub_date": "2025 May",
+ "year": 2025,
+ "doi": "10.1111/dom.16275",
+ "authors": [
+  "Look M",
+  "Dunn JP",
+  "Kushner RF",
+  "Cao D",
+  "Harris C",
+  "Gibble TH",
+  "Stefanski A",
+  "Griffin R"
+ ],
+ "pub_types": [
+  "Clinical Trial, Phase III",
+  "Journal Article",
+  "Multicenter Study",
+  "Randomized Controlled Trial"
+ ],
+ "databank_ncts": [],
+ "abstract_sha256": "4fad17dd35a060f250e24c906f3d6c556205ba5c4eeda06359b20944455d4ffe",
+ "abstract_chars": 1607,
+ "abstract_ncts": [],
+ "excerpts": [
+  "Substudy participants (n = 160 of the 2539 in SURMOUNT-1) underwent dual-energy X-ray absorptiometry (DXA) at baseline and Week 72.",
+  "from baseline to Week 72 was -21.3%, -33.9% and -10.9% with tirzepatide and -5.3%, -8.2% and -2.6% with placebo"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

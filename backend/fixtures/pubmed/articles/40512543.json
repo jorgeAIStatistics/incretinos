@@ -1,0 +1,39 @@
+{
+ "pmid": "40512543",
+ "title": "Kidney Parameters with Tirzepatide in Obesity with or without Type 2 Diabetes.",
+ "journal": "Journal of the American Society of Nephrology : JASN",
+ "pub_date": "2025 Nov 01",
+ "year": 2025,
+ "doi": "10.1681/asn.0000000764",
+ "authors": [
+  "Heerspink HJL",
+  "Friedman AN",
+  "Bjornstad P",
+  "van Raalte DH",
+  "Cherney D",
+  "Cao D",
+  "Garcia-Pérez LE",
+  "Stefanski A",
+  "Turfanda I",
+  "Bunck MC",
+  "Benabbad I",
+  "Griffin R",
+  "Piras de Oliveira C"
+ ],
+ "pub_types": [
+  "Journal Article"
+ ],
+ "databank_ncts": [
+  "NCT04184622",
+  "NCT04657003",
+  "NCT05536804"
+ ],
+ "abstract_sha256": "b0e00d312acaf0c150060be91d92490f37be3da71c8b2c0ab0d49034aaef1cc3",
+ "abstract_chars": 2741,
+ "abstract_ncts": [
+  "NCT04184622",
+  "NCT04657003"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

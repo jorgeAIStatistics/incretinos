@@ -1,0 +1,40 @@
+{
+ "pmid": "39536238",
+ "title": "Tirzepatide for Obesity Treatment and Diabetes Prevention.",
+ "journal": "The New England journal of medicine",
+ "pub_date": "2025 Mar 06",
+ "year": 2025,
+ "doi": "10.1056/nejmoa2410819",
+ "authors": [
+  "Jastreboff AM",
+  "le Roux CW",
+  "Stefanski A",
+  "Aronne LJ",
+  "Halpern B",
+  "Wharton S",
+  "Wilding JPH",
+  "Perreault L",
+  "Zhang S",
+  "Battula R",
+  "Bunck MC",
+  "Ahmad NN",
+  "Jouravskaya I",
+  "SURMOUNT-1 Investigators"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase III",
+  "Multicenter Study"
+ ],
+ "databank_ncts": [
+  "NCT04184622"
+ ],
+ "abstract_sha256": "00558372108b59404e646545d3a3f6d0676a330995d1f5f3025bbc6063d10f08",
+ "abstract_chars": 2455,
+ "abstract_ncts": [
+  "NCT04184622"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

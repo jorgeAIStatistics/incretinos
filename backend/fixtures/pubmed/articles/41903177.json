@@ -1,0 +1,35 @@
+{
+ "pmid": "41903177",
+ "title": "Cardiorenal Outcomes With Tirzepatide Compared With Dulaglutide in Patients With Diabetes and Cardiovascular Disease: A Post Hoc Analysis of the SURPASS-CVOT Randomized Clinical Trial.",
+ "journal": "JAMA cardiology",
+ "pub_date": "2026 Jun 01",
+ "year": 2026,
+ "doi": "10.1001/jamacardio.2026.0767",
+ "authors": [
+  "Nissen SE",
+  "Wolski K",
+  "D'Alessio D",
+  "Weerakkody G",
+  "Kiljanski J",
+  "Wiese RJ",
+  "Pavo I",
+  "Cariou B",
+  "Nicholls SJ"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Comparative Study",
+  "Multicenter Study"
+ ],
+ "databank_ncts": [
+  "NCT04255433"
+ ],
+ "abstract_sha256": "2b0fa6a885ad68e6ba3bd30ba1d3fb803911cc243b37c38f0eb1d048ae2ff497",
+ "abstract_chars": 2692,
+ "abstract_ncts": [
+  "NCT04255433"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

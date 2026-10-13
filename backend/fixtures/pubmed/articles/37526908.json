@@ -1,0 +1,42 @@
+{
+ "pmid": "37526908",
+ "title": "Patient-Reported Outcomes in People with Type 2 Diabetes Receiving Tirzepatide in the SURPASS Clinical Trial Programme.",
+ "journal": "Diabetes therapy : research, treatment and education of diabetes and related disorders",
+ "pub_date": "2023 Nov",
+ "year": 2023,
+ "doi": "10.1007/s13300-023-01451-z",
+ "authors": [
+  "Boye KS",
+  "Thieu VT",
+  "Sapin H",
+  "Lee CJ",
+  "Landó LF",
+  "Brown K",
+  "Bray R",
+  "Wiese RJ",
+  "Patel H",
+  "Rodríguez Á",
+  "Yu M"
+ ],
+ "pub_types": [
+  "Journal Article"
+ ],
+ "databank_ncts": [
+  "NCT03730662",
+  "NCT03882970",
+  "NCT03954834",
+  "NCT03987919",
+  "NCT04039503"
+ ],
+ "abstract_sha256": "30adad132417ee4d39236929e78f07a211a368b3b2fc782961d20231d4165f79",
+ "abstract_chars": 1591,
+ "abstract_ncts": [
+  "NCT03730662",
+  "NCT03882970",
+  "NCT03954834",
+  "NCT03987919",
+  "NCT04039503"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

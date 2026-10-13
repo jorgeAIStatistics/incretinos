@@ -1,0 +1,274 @@
+{
+  "meta": {
+    "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+    "terms": "https://open.fda.gov/terms/",
+    "license": "https://open.fda.gov/license/",
+    "last_updated": "2026-07-30",
+    "results": {
+      "skip": 0,
+      "limit": 1,
+      "total": 150299
+    }
+  },
+  "results": [
+    {
+      "safetyreportversion": "9",
+      "safetyreportid": "10005425",
+      "primarysourcecountry": "JP",
+      "occurcountry": "JP",
+      "transmissiondateformat": "102",
+      "transmissiondate": "20180711",
+      "reporttype": "2",
+      "serious": "1",
+      "seriousnesshospitalization": "1",
+      "seriousnessother": "1",
+      "receivedateformat": "102",
+      "receivedate": "20140312",
+      "receiptdateformat": "102",
+      "receiptdate": "20180514",
+      "fulfillexpeditecriteria": "1",
+      "companynumb": "PHHO2014JP003504",
+      "duplicate": "1",
+      "reportduplicate": {
+        "duplicatesource": "NOVARTIS",
+        "duplicatenumb": "PHHO2014JP003504"
+      },
+      "primarysource": {
+        "reportercountry": "JP",
+        "qualification": "3",
+        "literaturereference": "TAKAHASHI N, NAKASEKO C, NISHIWAKI K, AOTSUKA N, OHWADA C, SANO K ET AL.. TREATMENT-FREE REMISSION AFTER 2-YEAR CONSOLIDATION THERAPY WITH NILOTINIB IN PATIENTS WITH CHRONIC MYELOID LEUKEMIA. BLOOD. 2017?1-30"
+      },
+      "sender": {
+        "sendertype": "2",
+        "senderorganization": "FDA-Public Use"
+      },
+      "receiver": {
+        "receivertype": "6",
+        "receiverorganization": "FDA"
+      },
+      "patient": {
+        "patientonsetage": "71",
+        "patientonsetageunit": "801",
+        "patientweight": "59",
+        "patientsex": "1",
+        "reaction": [
+          {
+            "reactionmeddraversionpt": "21.0",
+            "reactionmeddrapt": "Respiratory failure",
+            "reactionoutcome": "1"
+          },
+          {
+            "reactionmeddraversionpt": "21.0",
+            "reactionmeddrapt": "Acute kidney injury",
+            "reactionoutcome": "1"
+          },
+          {
+            "reactionmeddraversionpt": "21.0",
+            "reactionmeddrapt": "Cardiac tamponade",
+            "reactionoutcome": "1"
+          },
+          {
+            "reactionmeddraversionpt": "21.0",
+            "reactionmeddrapt": "Acute coronary syndrome",
+            "reactionoutcome": "1"
+          }
+        ],
+        "drug": [
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "TASIGNA",
+            "drugauthorizationnumb": "022068",
+            "drugstructuredosagenumb": "300",
+            "drugstructuredosageunit": "003",
+            "drugseparatedosagenumb": "2",
+            "drugintervaldosageunitnumb": "1",
+            "drugintervaldosagedefinition": "804",
+            "drugcumulativedosagenumb": "345000",
+            "drugcumulativedosageunit": "003",
+            "drugdosagetext": "300 MG, BID",
+            "drugdosageform": "CAPSULE",
+            "drugadministrationroute": "048",
+            "drugindication": "CHRONIC MYELOID LEUKAEMIA",
+            "drugstartdateformat": "102",
+            "drugstartdate": "20120806",
+            "drugenddateformat": "102",
+            "drugenddate": "20140303",
+            "actiondrug": "1",
+            "drugadditional": "1",
+            "activesubstance": {
+              "activesubstancename": "NILOTINIB"
+            },
+            "openfda": {
+              "application_number": [
+                "NDA022068"
+              ],
+              "brand_name": [
+                "TASIGNA"
+              ],
+              "generic_name": [
+                "NILOTINIB"
+              ],
+              "manufacturer_name": [
+                "Novartis Pharmaceuticals Corporation"
+              ],
+              "product_ndc": [
+                "0078-0526",
+                "0078-0592",
+                "0078-0951"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "ORAL"
+              ],
+              "substance_name": [
+                "NILOTINIB HYDROCHLORIDE MONOHYDRATE"
+              ],
+              "rxcui": [
+                "746606",
+                "746609",
+                "997653",
+                "1002300",
+                "2002717",
+                "2002719"
+              ],
+              "spl_id": [
+                "fe0fef5b-4f09-4f67-946f-67e84d10e102"
+              ],
+              "spl_set_id": [
+                "6093952a-5248-45cb-ad17-33716a411146"
+              ],
+              "package_ndc": [
+                "0078-0526-87",
+                "0078-0526-51",
+                "0078-0592-87",
+                "0078-0592-51",
+                "0078-0951-66"
+              ],
+              "unii": [
+                "5JHU0N1R6K"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "2",
+            "medicinalproduct": "JANUVIA",
+            "drugstructuredosagenumb": "50",
+            "drugstructuredosageunit": "003",
+            "drugseparatedosagenumb": "1",
+            "drugintervaldosageunitnumb": "1",
+            "drugintervaldosagedefinition": "804",
+            "drugcumulativedosagenumb": "27350",
+            "drugcumulativedosageunit": "003",
+            "drugdosagetext": "50 MG, QD",
+            "drugdosageform": "TABLET",
+            "drugadministrationroute": "048",
+            "drugindication": "DIABETES MELLITUS",
+            "drugstartdateformat": "102",
+            "drugstartdate": "20120903",
+            "drugenddateformat": "102",
+            "drugenddate": "20140303",
+            "actiondrug": "1",
+            "drugadditional": "1",
+            "activesubstance": {
+              "activesubstancename": "SITAGLIPTIN PHOSPHATE"
+            },
+            "openfda": {
+              "application_number": [
+                "NDA021995"
+              ],
+              "brand_name": [
+                "JANUVIA"
+              ],
+              "generic_name": [
+                "SITAGLIPTIN"
+              ],
+              "manufacturer_name": [
+                "Merck Sharp & Dohme LLC"
+              ],
+              "product_ndc": [
+                "0006-0112",
+                "0006-0221",
+                "0006-0277"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "ORAL"
+              ],
+              "substance_name": [
+                "SITAGLIPTIN PHOSPHATE"
+              ],
+              "rxcui": [
+                "665036",
+                "665040",
+                "665044",
+                "2709603",
+                "2709608",
+                "2709612"
+              ],
+              "spl_id": [
+                "71d449de-955b-4711-9a44-1e1f66e2e9eb"
+              ],
+              "spl_set_id": [
+                "f85a48d0-0407-4c50-b0fa-7673a160bf01"
+              ],
+              "package_ndc": [
+                "0006-0221-01",
+                "0006-0221-28",
+                "0006-0221-31",
+                "0006-0221-54",
+                "0006-0112-01",
+                "0006-0112-28",
+                "0006-0112-31",
+                "0006-0112-54",
+                "0006-0277-01",
+                "0006-0277-28",
+                "0006-0277-31",
+                "0006-0277-54",
+                "0006-0277-02",
+                "0006-0277-33",
+                "0006-0277-82",
+                "0006-0277-14",
+                "0006-0277-27",
+                "0006-0277-30"
+              ],
+              "unii": [
+                "TS63EW8X6F"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "2",
+            "medicinalproduct": "URSO",
+            "drugstructuredosagenumb": "300",
+            "drugstructuredosageunit": "003",
+            "drugseparatedosagenumb": "1",
+            "drugintervaldosageunitnumb": "1",
+            "drugintervaldosagedefinition": "804",
+            "drugcumulativedosagenumb": "162000",
+            "drugcumulativedosageunit": "003",
+            "drugdosagetext": "300 MG, QD",
+            "drugdosageform": "SLOW RELEASE GRANULE",
+            "drugadministrationroute": "048",
+            "drugindication": "LIVER DISORDER",
+            "drugstartdateformat": "102",
+            "drugstartdate": "20120910",
+            "drugenddateformat": "102",
+            "drugenddate": "20140303",
+            "actiondrug": "1",
+            "drugadditional": "1",
+            "activesubstance": {
+              "activesubstancename": "URSODIOL"
+            }
+          }
+        ],
+        "summary": {
+          "narrativeincludeclinical": "CASE EVENT DATE: 20130701"
+        }
+      }
+    }
+  ]
+}

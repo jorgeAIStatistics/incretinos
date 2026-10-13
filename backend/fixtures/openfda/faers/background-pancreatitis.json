@@ -1,0 +1,156 @@
+{
+  "meta": {
+    "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+    "terms": "https://open.fda.gov/terms/",
+    "license": "https://open.fda.gov/license/",
+    "last_updated": "2026-07-30",
+    "results": {
+      "skip": 0,
+      "limit": 1,
+      "total": 52220
+    }
+  },
+  "results": [
+    {
+      "safetyreportversion": "1",
+      "safetyreportid": "10003753",
+      "primarysourcecountry": "US",
+      "occurcountry": "US",
+      "transmissiondateformat": "102",
+      "transmissiondate": "20141002",
+      "reporttype": "1",
+      "serious": "1",
+      "seriousnessdeath": "1",
+      "receivedateformat": "102",
+      "receivedate": "20140312",
+      "receiptdateformat": "102",
+      "receiptdate": "20140312",
+      "fulfillexpeditecriteria": "2",
+      "companynumb": "US-ABBVIE-13P-163-1078742-00",
+      "duplicate": "1",
+      "reportduplicate": {
+        "duplicatesource": "ABBVIE",
+        "duplicatenumb": "US-ABBVIE-13P-163-1078742-00"
+      },
+      "primarysource": {
+        "reportercountry": "US",
+        "qualification": "5"
+      },
+      "sender": {
+        "sendertype": "2",
+        "senderorganization": "FDA-Public Use"
+      },
+      "receiver": {
+        "receivertype": "6",
+        "receiverorganization": "FDA"
+      },
+      "patient": {
+        "patientsex": "0",
+        "reaction": [
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Pancreatitis",
+            "reactionoutcome": "5"
+          }
+        ],
+        "drug": [
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "DEPAKOTE",
+            "drugbatchnumb": "UNKNOWN",
+            "drugauthorizationnumb": "018723",
+            "drugindication": "PRODUCT USED FOR UNKNOWN INDICATION",
+            "actiondrug": "5",
+            "openfda": {
+              "application_number": [
+                "NDA021168",
+                "NDA018723",
+                "NDA019680"
+              ],
+              "brand_name": [
+                "DEPAKOTE ER",
+                "DEPAKOTE",
+                "DEPAKOTE SPRINKLES"
+              ],
+              "generic_name": [
+                "DIVALPROEX SODIUM"
+              ],
+              "manufacturer_name": [
+                "AbbVie Inc."
+              ],
+              "product_ndc": [
+                "0074-7401",
+                "0074-3826",
+                "0074-7126",
+                "0074-7402",
+                "0074-7325",
+                "0074-6212",
+                "0074-6214",
+                "0074-6215",
+                "0074-7327",
+                "0074-7326",
+                "0074-6114"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "ORAL"
+              ],
+              "substance_name": [
+                "DIVALPROEX SODIUM"
+              ],
+              "rxcui": [
+                "1099563",
+                "1099565",
+                "1099569",
+                "1099571",
+                "1099625",
+                "1099626",
+                "1099678",
+                "1099679",
+                "1099870",
+                "1099871",
+                "1099596",
+                "1099598"
+              ],
+              "spl_id": [
+                "0ee65b66-ead3-44ef-911f-14965b067903",
+                "7cc3a0b3-93f8-4825-88e1-bf6ddb0db23d",
+                "d038b7e9-b014-4771-93be-90aeeaece03d"
+              ],
+              "spl_set_id": [
+                "0dc024ce-efc8-4690-7cb5-639c728fccac",
+                "08a65cf4-7749-4ceb-6895-8f4805e2b01f",
+                "4619aff4-0f80-444f-858d-42e4137aa809"
+              ],
+              "package_ndc": [
+                "0074-3826-13",
+                "0074-3826-11",
+                "0074-7401-13",
+                "0074-7126-13",
+                "0074-7126-53",
+                "0074-7126-11",
+                "0074-7126-72",
+                "0074-7402-13",
+                "0074-6212-13",
+                "0074-6214-13",
+                "0074-6214-53",
+                "0074-6215-13",
+                "0074-6215-53",
+                "0074-7325-13",
+                "0074-7327-13",
+                "0074-7326-13",
+                "0074-6114-13",
+                "0074-6114-11"
+              ],
+              "unii": [
+                "644VL95AO6"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

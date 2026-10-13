@@ -1,0 +1,37 @@
+{
+ "pmid": "41640675",
+ "title": "Nutritional status with tirzepatide in obesity: A post hoc analysis of the SURMOUNT-1-4 randomized clinical trials.",
+ "journal": "Obesity pillars",
+ "pub_date": "2026 Mar",
+ "year": 2026,
+ "doi": "10.1016/j.obpill.2026.100248",
+ "authors": [
+  "Almandoz JP",
+  "Pickett-Blakely O",
+  "Tewksbury C",
+  "Stefanski A",
+  "Gonsahn-Bollie S",
+  "Dimitriadis GK",
+  "Murro AL",
+  "Cao D",
+  "Meng Q",
+  "Neff LM"
+ ],
+ "pub_types": [
+  "Journal Article"
+ ],
+ "databank_ncts": [
+  "NCT04657016",
+  "NCT04660643"
+ ],
+ "abstract_sha256": "547b5641c12ab5fe955b75a990c98f15cfcc6590b31d4b4c7e8b18347045be54",
+ "abstract_chars": 2521,
+ "abstract_ncts": [
+  "NCT04184622",
+  "NCT04657003",
+  "NCT04657016",
+  "NCT04660643"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

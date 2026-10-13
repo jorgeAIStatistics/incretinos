@@ -1,0 +1,39 @@
+{
+ "pmid": "37351564",
+ "title": "Daily Oral GLP-1 Receptor Agonist Orforglipron for Adults with Obesity.",
+ "journal": "The New England journal of medicine",
+ "pub_date": "2023 Sep 07",
+ "year": 2023,
+ "doi": "10.1056/nejmoa2302392",
+ "authors": [
+  "Wharton S",
+  "Blevins T",
+  "Connery L",
+  "Rosenstock J",
+  "Raha S",
+  "Liu R",
+  "Ma X",
+  "Mather KJ",
+  "Haupt A",
+  "Robins D",
+  "Pratt E",
+  "Kazda C",
+  "Konig M",
+  "GZGI Investigators"
+ ],
+ "pub_types": [
+  "Clinical Trial, Phase I",
+  "Journal Article",
+  "Randomized Controlled Trial"
+ ],
+ "databank_ncts": [
+  "NCT05051579"
+ ],
+ "abstract_sha256": "a30627ca08dc32d0834f0002b9e5041ae758351b66830d313e837b86b150e6bd",
+ "abstract_chars": 2145,
+ "abstract_ncts": [
+  "NCT05051579"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

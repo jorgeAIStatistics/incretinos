@@ -1,0 +1,37 @@
+{
+ "pmid": "41885866",
+ "title": "Weight Changes With Tirzepatide and Concomitant Weight-Inducing Medications: Post Hoc Analysis of Randomized Clinical Trials.",
+ "journal": "JAMA network open",
+ "pub_date": "2026 Mar 02",
+ "year": 2026,
+ "doi": "10.1001/jamanetworkopen.2026.3274",
+ "authors": [
+  "Galindo RJ",
+  "Gudzune KA",
+  "Look M",
+  "Lee CJ",
+  "Benabbad I",
+  "Cao D",
+  "Meng Q",
+  "Mojdami D"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Meta-Analysis",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT04184622",
+  "NCT04657016",
+  "NCT04660643"
+ ],
+ "abstract_sha256": "f0233ec58c9ff1f95ec3d18226c89ca69165a05f24e980ee1a0b0f85121c45ce",
+ "abstract_chars": 3530,
+ "abstract_ncts": [
+  "NCT04184622",
+  "NCT04657016",
+  "NCT04660643"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

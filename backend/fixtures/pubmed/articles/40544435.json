@@ -1,0 +1,41 @@
+{
+ "pmid": "40544435",
+ "title": "Orforglipron, an Oral Small-Molecule GLP-1 Receptor Agonist, in Early Type 2 Diabetes.",
+ "journal": "The New England journal of medicine",
+ "pub_date": "2025 Sep 18",
+ "year": 2025,
+ "doi": "10.1056/nejmoa2505669",
+ "authors": [
+  "Rosenstock J",
+  "Hsia S",
+  "Nevarez Ruiz L",
+  "Eyde S",
+  "Cox D",
+  "Wu WS",
+  "Liu R",
+  "Li J",
+  "Fernández Landó L",
+  "Denning M",
+  "Ludwig L",
+  "Chen Y",
+  "ACHIEVE-1 Trial Investigators"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase III",
+  "Multicenter Study"
+ ],
+ "databank_ncts": [
+  "NCT05971940"
+ ],
+ "abstract_sha256": "1d0b0ab6dd1925c4bddfe50f3312cb2dd187cc84159bcb6dd2f0e154b6251172",
+ "abstract_chars": 2521,
+ "abstract_ncts": [
+  "NCT05971940"
+ ],
+ "excerpts": [
+  "-1.24 percentage points with the 3-mg dose, -1.47 percentage points with the 12-mg dose, -1.48 percentage points with the 36-mg dose, and -0.41 percentage points"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

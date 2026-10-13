@@ -1,0 +1,31 @@
+{
+ "pmid": "41090431",
+ "title": "Retatrutide for the treatment of obesity, obstructive sleep apnea and knee osteoarthritis: Rationale and design of the TRIUMPH registrational clinical trials.",
+ "journal": "Diabetes, obesity & metabolism",
+ "pub_date": "2026 Jan",
+ "year": 2026,
+ "doi": "10.1111/dom.70209",
+ "authors": [
+  "Giblin K",
+  "Kaplan LM",
+  "Somers VK",
+  "Le Roux CW",
+  "Hunter DJ",
+  "Wu Q",
+  "Lalonde A",
+  "Ahmad N",
+  "Bethel MA"
+ ],
+ "pub_types": [
+  "Journal Article"
+ ],
+ "databank_ncts": [],
+ "abstract_sha256": "356b084e2975665fac49ce4b55b24f2c636bbf566db87d12602002d50c75deb8",
+ "abstract_chars": 1708,
+ "abstract_ncts": [],
+ "excerpts": [
+  "TRIUMPH consists of four Phase 3, multicenter, randomized, double-blind studies assessing weekly subcutaneous retatrutide compared to placebo",
+  "type I error rate controlled at α = 0.05, split between the overarching weight management and each basket trial"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

@@ -1,0 +1,53 @@
+{
+ "pmid": "41207310",
+ "title": "Eloralintide, a selective amylin receptor agonist for the treatment of obesity: a 48-week phase 2, multicentre, double-blind, randomised, placebo-controlled trial.",
+ "journal": "Lancet (London, England)",
+ "pub_date": "2025 Dec 06",
+ "year": 2025,
+ "doi": "10.1016/s0140-6736(25)02155-5",
+ "authors": [
+  "Billings LK",
+  "Hsia S",
+  "Bays H",
+  "Tidemann-Miller B",
+  "O'Hagan J",
+  "Tham LS",
+  "Butler A",
+  "Kazda C",
+  "Mather KJ",
+  "Coskun T"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase II",
+  "Multicenter Study",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT06230523"
+ ],
+ "abstract_sha256": "43448795824c90a1f2f17dce2cdf0c24b13bb5c7824bc11ab1d4e52a7f696ef1",
+ "abstract_chars": 2524,
+ "abstract_ncts": [
+  "NCT06230523"
+ ],
+ "excerpts": [
+  "Eloralintide is a novel, selective amylin receptor agonist in development for weight management.",
+  "This study was completed on Aug 14, 2025, and is registered with ClinicalTrials.gov (NCT06230523).",
+  "randomly assigned (2:1:1:1:2:1:2) to receive once-per-week subcutaneous injections of placebo or eloralintide at 1 mg, 3 mg, 6 mg, or 9 mg",
+  "a BMI of 27 kg/m2 or higher with at least one weight-related comorbidity and without type 2 diabetes",
+  "mean bodyweight 109·1 kg [22·8], BMI 39·1 kg/m2 [6·8], 204 [78%] female, and 205 [78%] White",
+  "The primary endpoint was percent change in bodyweight from baseline after 48 weeks of treatment.",
+  "-9% (1 mg, 95% CI -12·6 to -6·3)",
+  "-12% (3 mg, -14·9 to -9·8)",
+  "-18% (6 mg, -20·7 to -14·5)",
+  "-20% (9 mg, -22·7 to -17·5)",
+  "-20% (6-9 mg, -22·7 to -17·0)",
+  "-16% (3-9 mg, -18·6 to -14·1)",
+  "compared with -0·4% (-2·2 to 1·4) in the placebo group",
+  "nausea (1 mg 11%, 3 mg 13%, 6 mg 64%, 9 mg 33%, 6-9 mg 54%, 3-9 mg 25%, and placebo 14%)",
+  "fatigue (1 mg 0%, 3 mg 13%, 6 mg 29%, 9 mg 43%, 6-9 mg 46%, 3-9 mg 21%, and placebo 12%)"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

@@ -1,0 +1,84 @@
+{
+  "meta": {
+    "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+    "terms": "https://open.fda.gov/terms/",
+    "license": "https://open.fda.gov/license/",
+    "last_updated": "2026-07-30",
+    "results": {
+      "skip": 0,
+      "limit": 1,
+      "total": 194179
+    }
+  },
+  "results": [
+    {
+      "safetyreportversion": "1",
+      "safetyreportid": "10003406",
+      "primarysourcecountry": "FR",
+      "occurcountry": "FR",
+      "transmissiondateformat": "102",
+      "transmissiondate": "20141002",
+      "reporttype": "1",
+      "serious": "1",
+      "seriousnessdisabling": "1",
+      "receivedateformat": "102",
+      "receivedate": "20140312",
+      "receiptdateformat": "102",
+      "receiptdate": "20140312",
+      "fulfillexpeditecriteria": "1",
+      "companynumb": "FR-ABBVIE-14P-056-1210733-00",
+      "duplicate": "1",
+      "reportduplicate": {
+        "duplicatesource": "ABBVIE",
+        "duplicatenumb": "FR-ABBVIE-14P-056-1210733-00"
+      },
+      "primarysource": {
+        "reportercountry": "FR",
+        "qualification": "3"
+      },
+      "sender": {
+        "sendertype": "2",
+        "senderorganization": "FDA-Public Use"
+      },
+      "receiver": {
+        "receivertype": "6",
+        "receiverorganization": "FDA"
+      },
+      "patient": {
+        "patientsex": "1",
+        "reaction": [
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Cognitive disorder",
+            "reactionoutcome": "2"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Alopecia",
+            "reactionoutcome": "2"
+          }
+        ],
+        "drug": [
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "MICROPAKINE",
+            "drugbatchnumb": "UNKNOWN",
+            "drugauthorizationnumb": "018081",
+            "drugstructuredosagenumb": "250",
+            "drugstructuredosageunit": "003",
+            "drugseparatedosagenumb": "2",
+            "drugintervaldosageunitnumb": "1",
+            "drugintervaldosagedefinition": "804",
+            "drugadministrationroute": "048",
+            "drugindication": "EPILEPSY",
+            "drugstartdateformat": "610",
+            "drugstartdate": "200709",
+            "drugenddateformat": "610",
+            "drugenddate": "201309",
+            "actiondrug": "1"
+          }
+        ]
+      }
+    }
+  ]
+}

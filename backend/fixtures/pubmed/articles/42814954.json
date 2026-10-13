@@ -1,0 +1,42 @@
+{
+ "pmid": "42814954",
+ "title": "Retatrutide, a Triple Hormone Receptor Agonist, for Treatment of Obesity.",
+ "journal": "The New England journal of medicine",
+ "pub_date": "2026 Sep 29",
+ "year": 2026,
+ "doi": "10.1056/nejmoa2604169",
+ "authors": [
+  "Jastreboff AM",
+  "Kaplan LM",
+  "Davies MJ",
+  "Wilding JPH",
+  "Ahmad NN",
+  "Murray M",
+  "Du Y",
+  "Makarova N",
+  "Giblin K",
+  "Schloot NC",
+  "Wang Y",
+  "TRIUMPH-1 Investigators"
+ ],
+ "pub_types": [
+  "Journal Article"
+ ],
+ "databank_ncts": [
+  "NCT05929066"
+ ],
+ "abstract_sha256": "9b22990bf55b8f20beb462190a0e00fef6df710ee661fe23758b4c50ab67424e",
+ "abstract_chars": 2570,
+ "abstract_ncts": [
+  "NCT05929066"
+ ],
+ "excerpts": [
+  "For weight-related end points, intercurrent events were handled by a treatment-regimen estimand (intention-to-treat [ITT]).",
+  "the corresponding changes in the pain score in the retatrutide groups for the hybrid estimand were -3.2, -3.5, and -3.6 versus -1.9 with placebo",
+  "for the hybrid-treatment estimand were -22.9, -34.3, and 31.7 versus -9.9 (differences, -24.4 and -21.9; both P<0.001)",
+  "The mean percent change in body weight in the retatrutide groups was -17.6% (4-mg dose), -23.7% (9-mg dose), and -25.0% (12-mg dose) versus -3.9%",
+  "(differences, -19.8 and -21.0 percentage points, respectively; P<0.001 for both comparisons)",
+  "Retatrutide is a triple-receptor agonist of glucose-dependent insulinotropic polypeptide, glucagon-like peptide-1, and glucagon receptors."
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

@@ -1,0 +1,33 @@
+{
+ "pmid": "33397768",
+ "title": "Efficacy and Safety of Dulaglutide 3.0 mg and 4.5 mg Versus Dulaglutide 1.5 mg in Metformin-Treated Patients With Type 2 Diabetes in a Randomized Controlled Trial (AWARD-11).",
+ "journal": "Diabetes care",
+ "pub_date": "2021 Mar",
+ "year": 2021,
+ "doi": "10.2337/dc20-1473",
+ "authors": [
+  "Frias JP",
+  "Bonora E",
+  "Nevarez Ruiz L",
+  "Li YG",
+  "Yu Z",
+  "Milicevic Z",
+  "Malik R",
+  "Bethel MA",
+  "Cox DA"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Research Support, Non-U.S. Gov't",
+  "Equivalence Trial"
+ ],
+ "databank_ncts": [
+  "NCT03495102"
+ ],
+ "abstract_sha256": "88bd1feda736e93125507ddc0006fa8ca0601ce6ff3cb2b7336fff3cfaf06430",
+ "abstract_chars": 1995,
+ "abstract_ncts": [],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

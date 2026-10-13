@@ -1,0 +1,36 @@
+{
+ "pmid": "33537745",
+ "title": "Efficacy and Safety of Dulaglutide in Older Patients: A post hoc Analysis of the REWIND trial.",
+ "journal": "The Journal of clinical endocrinology and metabolism",
+ "pub_date": "2021 Apr 23",
+ "year": 2021,
+ "doi": "10.1210/clinem/dgab065",
+ "authors": [
+  "Riddle MC",
+  "Gerstein HC",
+  "Xavier D",
+  "Cushman WC",
+  "Leiter LA",
+  "Raubenheimer PJ",
+  "Atisso CM",
+  "Raha S",
+  "Varnado OJ",
+  "Konig M",
+  "Lakshmanan M",
+  "Franek E"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Multicenter Study",
+  "Randomized Controlled Trial",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT01394952"
+ ],
+ "abstract_sha256": "28e966245acd1085aa2c6db1be7f7aac3433213e83cbf6a94ef52915fa147f57",
+ "abstract_chars": 1892,
+ "abstract_ncts": [],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

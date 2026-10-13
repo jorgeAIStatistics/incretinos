@@ -1,0 +1,41 @@
+{
+ "pmid": "42250575",
+ "title": "Efficacy and safety of retatrutide, a GIP, GLP-1, and glucagon receptor agonist, in people with type 2 diabetes and inadequate glycaemic control with diet and exercise (TRANSCEND-T2D-1): a double-blind, randomised, phase 3 trial.",
+ "journal": "Lancet (London, England)",
+ "pub_date": "2026 Jun 13",
+ "year": 2026,
+ "doi": "10.1016/s0140-6736(26)00967-0",
+ "authors": [
+  "Bajaj HS",
+  "Welch M",
+  "Shah P",
+  "Luna E",
+  "Jaouimaa FZ",
+  "Liu B",
+  "Liu R",
+  "Chen Y",
+  "Patel H",
+  "Bartee A"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase III",
+  "Multicenter Study",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT06354660"
+ ],
+ "abstract_sha256": "450421321a8f5cc54d4791d3b226c1c0b33cc4a2cabe16f0d64507c125a0642d",
+ "abstract_chars": 3013,
+ "abstract_ncts": [
+  "NCT06354660"
+ ],
+ "excerpts": [
+  "was -1·69% (SE 0·11) with retatrutide 4 mg, -1·86% (0·10) with 9 mg, and -1·94% (0·08) with 12 mg, versus -0·81% (0·12) with placebo",
+  "-0·88% (95% CI -1·18 to -0·59) with retatrutide 4 mg, -1·04% (-1·32 to -0·76) with 9 mg, and -1·12% (-1·39 to -0·85) with 12 mg",
+  "bodyweight was -11·5% (SE 0·7) with retatrutide 4 mg, -13·9% (0·8) with 9 mg, and -15·3% (0·8) with 12 mg, versus -2·6% (0·5) with placebo"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

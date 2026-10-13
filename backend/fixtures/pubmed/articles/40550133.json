@@ -1,0 +1,35 @@
+{
+ "pmid": "40550133",
+ "title": "Improvements in Cardiometabolic Risk Factors by Weight Reduction: A Post Hoc Analysis of Adults With Obesity Randomly Assigned to Tirzepatide.",
+ "journal": "Annals of internal medicine",
+ "pub_date": "2025 Aug",
+ "year": 2025,
+ "doi": "10.7326/annals-24-02623",
+ "authors": [
+  "Linetzky B",
+  "Sattar N",
+  "Verma S",
+  "Krumholz HM",
+  "Xie CC",
+  "Hoffmann HT",
+  "Zimner-Rapuch S",
+  "Torcello-Gómez A",
+  "Stefanski A"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Multicenter Study",
+  "Clinical Trial, Phase III"
+ ],
+ "databank_ncts": [
+  "NCT04184622"
+ ],
+ "abstract_sha256": "2d5eff7d3d1bf1147aeadd837951e4e51e30375f30a7c706b73bf3c7b1a60524",
+ "abstract_chars": 2663,
+ "abstract_ncts": [
+  "NCT04184622"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

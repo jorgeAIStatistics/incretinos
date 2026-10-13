@@ -1,0 +1,262 @@
+{
+  "meta": {
+    "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+    "terms": "https://open.fda.gov/terms/",
+    "license": "https://open.fda.gov/license/",
+    "last_updated": "2026-07-30"
+  },
+  "results": [
+    {
+      "time": "20250703",
+      "count": 1
+    },
+    {
+      "time": "20260416",
+      "count": 1
+    },
+    {
+      "time": "20260417",
+      "count": 1
+    },
+    {
+      "time": "20260420",
+      "count": 1
+    },
+    {
+      "time": "20260421",
+      "count": 5
+    },
+    {
+      "time": "20260422",
+      "count": 2
+    },
+    {
+      "time": "20260423",
+      "count": 2
+    },
+    {
+      "time": "20260424",
+      "count": 3
+    },
+    {
+      "time": "20260427",
+      "count": 1
+    },
+    {
+      "time": "20260428",
+      "count": 10
+    },
+    {
+      "time": "20260429",
+      "count": 3
+    },
+    {
+      "time": "20260430",
+      "count": 3
+    },
+    {
+      "time": "20260504",
+      "count": 7
+    },
+    {
+      "time": "20260505",
+      "count": 15
+    },
+    {
+      "time": "20260506",
+      "count": 2
+    },
+    {
+      "time": "20260507",
+      "count": 7
+    },
+    {
+      "time": "20260508",
+      "count": 7
+    },
+    {
+      "time": "20260510",
+      "count": 1
+    },
+    {
+      "time": "20260511",
+      "count": 10
+    },
+    {
+      "time": "20260512",
+      "count": 8
+    },
+    {
+      "time": "20260513",
+      "count": 13
+    },
+    {
+      "time": "20260514",
+      "count": 9
+    },
+    {
+      "time": "20260515",
+      "count": 4
+    },
+    {
+      "time": "20260516",
+      "count": 1
+    },
+    {
+      "time": "20260517",
+      "count": 1
+    },
+    {
+      "time": "20260518",
+      "count": 16
+    },
+    {
+      "time": "20260519",
+      "count": 11
+    },
+    {
+      "time": "20260520",
+      "count": 11
+    },
+    {
+      "time": "20260521",
+      "count": 14
+    },
+    {
+      "time": "20260522",
+      "count": 9
+    },
+    {
+      "time": "20260524",
+      "count": 1
+    },
+    {
+      "time": "20260525",
+      "count": 12
+    },
+    {
+      "time": "20260526",
+      "count": 21
+    },
+    {
+      "time": "20260527",
+      "count": 14
+    },
+    {
+      "time": "20260528",
+      "count": 3
+    },
+    {
+      "time": "20260529",
+      "count": 4
+    },
+    {
+      "time": "20260531",
+      "count": 6
+    },
+    {
+      "time": "20260601",
+      "count": 18
+    },
+    {
+      "time": "20260602",
+      "count": 10
+    },
+    {
+      "time": "20260603",
+      "count": 31
+    },
+    {
+      "time": "20260604",
+      "count": 29
+    },
+    {
+      "time": "20260605",
+      "count": 8
+    },
+    {
+      "time": "20260607",
+      "count": 1
+    },
+    {
+      "time": "20260608",
+      "count": 19
+    },
+    {
+      "time": "20260609",
+      "count": 29
+    },
+    {
+      "time": "20260610",
+      "count": 16
+    },
+    {
+      "time": "20260611",
+      "count": 29
+    },
+    {
+      "time": "20260612",
+      "count": 10
+    },
+    {
+      "time": "20260614",
+      "count": 4
+    },
+    {
+      "time": "20260615",
+      "count": 29
+    },
+    {
+      "time": "20260616",
+      "count": 12
+    },
+    {
+      "time": "20260617",
+      "count": 23
+    },
+    {
+      "time": "20260618",
+      "count": 18
+    },
+    {
+      "time": "20260619",
+      "count": 15
+    },
+    {
+      "time": "20260621",
+      "count": 1
+    },
+    {
+      "time": "20260622",
+      "count": 23
+    },
+    {
+      "time": "20260623",
+      "count": 18
+    },
+    {
+      "time": "20260624",
+      "count": 30
+    },
+    {
+      "time": "20260625",
+      "count": 18
+    },
+    {
+      "time": "20260626",
+      "count": 19
+    },
+    {
+      "time": "20260628",
+      "count": 12
+    },
+    {
+      "time": "20260629",
+      "count": 28
+    },
+    {
+      "time": "20260630",
+      "count": 36
+    }
+  ]
+}

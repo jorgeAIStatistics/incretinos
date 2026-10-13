@@ -1,0 +1,38 @@
+{
+ "pmid": "39800653",
+ "title": "Time to weight plateau with tirzepatide treatment in the SURMOUNT-1 and SURMOUNT-4 clinical trials.",
+ "journal": "Clinical obesity",
+ "pub_date": "2025 Jun",
+ "year": 2025,
+ "doi": "10.1111/cob.12734",
+ "authors": [
+  "Horn DB",
+  "Kahan S",
+  "Batterham RL",
+  "Cao D",
+  "Lee CJ",
+  "Murphy M",
+  "Gonsahn-Bollie S",
+  "Chigutsa F",
+  "Stefanski A",
+  "Dunn JP"
+ ],
+ "pub_types": [
+  "Clinical Trial, Phase III",
+  "Journal Article",
+  "Multicenter Study",
+  "Randomized Controlled Trial"
+ ],
+ "databank_ncts": [
+  "NCT04184622",
+  "NCT04660643"
+ ],
+ "abstract_sha256": "06522344755314c71406ef97dc357d0e05dd93a369f159d54c604b0e1766689e",
+ "abstract_chars": 1870,
+ "abstract_ncts": [
+  "NCT04184622",
+  "NCT04660643"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

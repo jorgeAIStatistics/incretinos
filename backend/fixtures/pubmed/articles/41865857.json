@@ -1,0 +1,34 @@
+{
+ "pmid": "41865857",
+ "title": "Relationship of early rapid weight loss to efficacy and safety of tirzepatide and semaglutide for obesity: SURMOUNT-5 post hoc analysis.",
+ "journal": "The American journal of medicine",
+ "pub_date": "2026 Jul",
+ "year": 2026,
+ "doi": "10.1016/j.amjmed.2026.03.010",
+ "authors": [
+  "Aronne LJ",
+  "Horn DB",
+  "Kokkinos AD",
+  "Falcon BL",
+  "Wang H",
+  "Hoffmann HT",
+  "Lee CJ",
+  "Dunn JP"
+ ],
+ "pub_types": [
+  "Clinical Trial, Phase III",
+  "Journal Article",
+  "Multicenter Study",
+  "Randomized Controlled Trial"
+ ],
+ "databank_ncts": [
+  "NCT05822830"
+ ],
+ "abstract_sha256": "59929ea95ca5e175a257fa5770fc4feac7cba3f046999b88f5a7bf03d6b75779",
+ "abstract_chars": 1691,
+ "abstract_ncts": [
+  "NCT05822830"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

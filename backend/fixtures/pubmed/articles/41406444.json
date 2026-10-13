@@ -1,0 +1,57 @@
+{
+ "pmid": "41406444",
+ "title": "Cardiovascular Outcomes with Tirzepatide versus Dulaglutide in Type 2 Diabetes.",
+ "journal": "The New England journal of medicine",
+ "pub_date": "2025 Dec 18",
+ "year": 2025,
+ "doi": "10.1056/nejmoa2505928",
+ "authors": [
+  "Nicholls SJ",
+  "Pavo I",
+  "Bhatt DL",
+  "Buse JB",
+  "Del Prato S",
+  "Kahn SE",
+  "Lincoff AM",
+  "McGuire DK",
+  "Miller D",
+  "Nauck MA",
+  "Nishiyama H",
+  "Nissen SE",
+  "Sattar N",
+  "Weerakkody G",
+  "Wiese RJ",
+  "Zinman B",
+  "Zoungas S",
+  "Basile J",
+  "Davies MJ",
+  "Giorgino F",
+  "Kellerer M",
+  "Ji L",
+  "Varkonyi T",
+  "Menon V",
+  "Broder JC",
+  "Herschtal A",
+  "D'Alessio D",
+  "SURPASS-CVOT Investigators"
+ ],
+ "pub_types": [
+  "Clinical Trial, Phase III",
+  "Equivalence Trial",
+  "Journal Article",
+  "Multicenter Study"
+ ],
+ "databank_ncts": [
+  "NCT04255433"
+ ],
+ "abstract_sha256": "988491c2cf72a51d0695dfe8766284aba6fe89d196d5b310bfe4002d667c0b41",
+ "abstract_chars": 2282,
+ "abstract_ncts": [
+  "NCT04255433"
+ ],
+ "excerpts": [
+  "The primary end point was a composite of death from cardiovascular causes, myocardial infarction, or stroke",
+  "(hazard ratio, 0.92; 95.3% confidence interval, 0.83 to 1.01; P = 0.003 for noninferiority; P = 0.09 for superiority)"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

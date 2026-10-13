@@ -1,0 +1,34 @@
+{
+ "pmid": "34563178",
+ "title": "Exploring potential mediators of the cardiovascular benefit of dulaglutide in type 2 diabetes patients in REWIND.",
+ "journal": "Cardiovascular diabetology",
+ "pub_date": "2021 Sep 25",
+ "year": 2021,
+ "doi": "10.1186/s12933-021-01386-4",
+ "authors": [
+  "Konig M",
+  "Riddle MC",
+  "Colhoun HM",
+  "Branch KR",
+  "Atisso CM",
+  "Lakshmanan MC",
+  "Mody R",
+  "Raha S",
+  "Gerstein HC"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT01394952"
+ ],
+ "abstract_sha256": "13d80ab7e95f46d50bf7bd4173fa7f68e5569b471d8905e9a85d970ab0535861",
+ "abstract_chars": 2537,
+ "abstract_ncts": [
+  "NCT01394952"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

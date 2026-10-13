@@ -1,0 +1,31 @@
+{
+ "pmid": "37700443",
+ "title": "Tirzepatide reduces the predicted risk of developing type 2 diabetes in people with obesity or overweight: Post hoc analysis of the SURMOUNT-1 trial.",
+ "journal": "Diabetes, obesity & metabolism",
+ "pub_date": "2023 Dec",
+ "year": 2023,
+ "doi": "10.1111/dom.15269",
+ "authors": [
+  "Hankosky ER",
+  "Wang H",
+  "Neff LM",
+  "Kan H",
+  "Wang F",
+  "Ahmad NN",
+  "Stefanski A",
+  "Garvey WT"
+ ],
+ "pub_types": [
+  "Randomized Controlled Trial",
+  "Journal Article",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT04184622"
+ ],
+ "abstract_sha256": "69d020e36164480d01eba99db9ad4356eec00430ab19368de6b77795feb43c8f",
+ "abstract_chars": 1702,
+ "abstract_ncts": [],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

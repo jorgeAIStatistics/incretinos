@@ -1,0 +1,35 @@
+{
+ "pmid": "41537305",
+ "title": "Psychiatric Safety of Tirzepatide in People With Obesity and No Known Major Psychopathology: A Post Hoc Analysis of SURMOUNT.",
+ "journal": "Obesity (Silver Spring, Md.)",
+ "pub_date": "2026 Mar",
+ "year": 2026,
+ "doi": "10.1002/oby.70122",
+ "authors": [
+  "Wadden TA",
+  "Oquendo MA",
+  "Kushner RF",
+  "Cao D",
+  "Karanikas CA",
+  "Kechter A",
+  "Murphy MA"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial"
+ ],
+ "databank_ncts": [
+  "NCT04184622",
+  "NCT04657003",
+  "NCT04657016"
+ ],
+ "abstract_sha256": "e79ae81e066ff8e2173f352256f9f2a0086b2798a18f9242405dc53a4eab09c2",
+ "abstract_chars": 1724,
+ "abstract_ncts": [
+  "NCT04184622",
+  "NCT04657003",
+  "NCT04657016"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

@@ -1,0 +1,37 @@
+{
+ "pmid": "36897834",
+ "title": "Biomarker Changes Associated With Both Dulaglutide and Cardiovascular Events in the REWIND Randomized Controlled Trial: A Nested Case-Control Post Hoc Analysis.",
+ "journal": "Diabetes care",
+ "pub_date": "2023 May 01",
+ "year": 2023,
+ "doi": "10.2337/dc22-2397",
+ "authors": [
+  "Gerstein HC",
+  "Lee SF",
+  "Paré G",
+  "Bethel MA",
+  "Colhoun HM",
+  "Hoover A",
+  "Lakshmanan M",
+  "Lin Y",
+  "Pirro V",
+  "Qian HR",
+  "Ruotolo G",
+  "Ryden L",
+  "Wilson JM",
+  "Duffin KL"
+ ],
+ "pub_types": [
+  "Randomized Controlled Trial",
+  "Journal Article",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT01394952"
+ ],
+ "abstract_sha256": "c6550a29a5a32b592276163c58ddb75c860a62e93225c3f6c14c58697fcd5cdb",
+ "abstract_chars": 1802,
+ "abstract_ncts": [],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

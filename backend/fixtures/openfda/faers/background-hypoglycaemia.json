@@ -1,0 +1,340 @@
+{
+  "meta": {
+    "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+    "terms": "https://open.fda.gov/terms/",
+    "license": "https://open.fda.gov/license/",
+    "last_updated": "2026-07-30",
+    "results": {
+      "skip": 0,
+      "limit": 1,
+      "total": 47902
+    }
+  },
+  "results": [
+    {
+      "safetyreportversion": "2",
+      "safetyreportid": "10005336",
+      "primarysourcecountry": "US",
+      "occurcountry": "US",
+      "transmissiondateformat": "102",
+      "transmissiondate": "20151125",
+      "reporttype": "1",
+      "serious": "2",
+      "receivedateformat": "102",
+      "receivedate": "20140312",
+      "receiptdateformat": "102",
+      "receiptdate": "20150812",
+      "fulfillexpeditecriteria": "2",
+      "companynumb": "US-GILEAD-2012-0060028",
+      "duplicate": "1",
+      "reportduplicate": {
+        "duplicatesource": "GILEAD",
+        "duplicatenumb": "US-GILEAD-2012-0060028"
+      },
+      "primarysource": {
+        "reportercountry": "US",
+        "qualification": "5"
+      },
+      "sender": {
+        "sendertype": "2",
+        "senderorganization": "FDA-Public Use"
+      },
+      "receiver": {
+        "receivertype": "6",
+        "receiverorganization": "FDA"
+      },
+      "patient": {
+        "patientonsetage": "77",
+        "patientonsetageunit": "801",
+        "patientagegroup": "6",
+        "patientsex": "1",
+        "reaction": [
+          {
+            "reactionmeddraversionpt": "18.1",
+            "reactionmeddrapt": "Syncope",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "18.1",
+            "reactionmeddrapt": "Hypoglycaemia",
+            "reactionoutcome": "6"
+          }
+        ],
+        "drug": [
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "GLYBURIDE.",
+            "drugrecurreadministration": "3",
+            "activesubstance": {
+              "activesubstancename": "GLYBURIDE"
+            },
+            "openfda": {
+              "application_number": [
+                "ANDA206749",
+                "NDA017532",
+                "ANDA203379",
+                "ANDA074686",
+                "ANDA090937"
+              ],
+              "brand_name": [
+                "GLYBURIDE"
+              ],
+              "generic_name": [
+                "GLYBURIDE"
+              ],
+              "manufacturer_name": [
+                "Zydus Lifesciences Limited",
+                "TEVA Pharmaceuticals USA Inc",
+                "Modavar Pharmaceuticals LLC",
+                "Teva Pharmaceuticals USA, Inc.",
+                "Heritage Pharmaceuticals Inc. d/b/a Avet Pharmaceuticals Inc.",
+                "Cadila Pharmaceuticals Limited",
+                "Chartwell RX, LLC",
+                "Zydus Pharmaceuticals (USA) Inc."
+              ],
+              "product_ndc": [
+                "65841-832",
+                "65841-833",
+                "65841-834",
+                "0093-9364",
+                "0093-9477",
+                "0093-9433",
+                "72241-038",
+                "72241-040",
+                "72241-039",
+                "0093-8035",
+                "0093-8034",
+                "0093-8036",
+                "23155-056",
+                "23155-057",
+                "23155-058",
+                "71209-009",
+                "71209-011",
+                "71209-010",
+                "62135-583",
+                "62135-584",
+                "62135-585",
+                "68382-656",
+                "68382-657",
+                "68382-658"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "ORAL"
+              ],
+              "substance_name": [
+                "GLYBURIDE"
+              ],
+              "rxcui": [
+                "197737",
+                "310534",
+                "310537",
+                "310536",
+                "310539",
+                "314000"
+              ],
+              "spl_id": [
+                "0450d056-3523-44c3-a4cf-f4557e520ce5",
+                "84b83205-8813-494e-933e-a70697393744",
+                "7ebf5b06-fdd3-4120-93f2-d31def5bf104",
+                "d734cd0e-df7b-40a2-a511-fc04308a764d",
+                "98ed9f46-1633-4f82-bd51-ff87b0157871",
+                "54461b9f-3232-47ce-9e73-a26ab1e44702",
+                "458a6ce1-673d-85c7-e063-6294a90a3577",
+                "1ff75368-1bfd-4173-b0aa-18eca2c97a4f"
+              ],
+              "spl_set_id": [
+                "5d0e406f-285d-4716-8971-82f665345517",
+                "50d16f1d-c814-4411-8749-62561321ecce",
+                "a5de0ef6-4c8b-40ab-b0ed-2003a8086750",
+                "e84c0dfc-a4e9-4c89-b6ea-45732eb412f5",
+                "33418bba-c5ea-4c0f-9d28-31dc2724c6c3",
+                "ea7a055b-64f0-46bf-aa8e-4a2ef5c3c035",
+                "7e661288-2d24-4403-86a1-754afa1d04ff",
+                "87781ea8-62ec-483c-a4dd-8c965ce59485"
+              ],
+              "package_ndc": [
+                "65841-832-06",
+                "65841-832-16",
+                "65841-832-01",
+                "65841-832-05",
+                "65841-832-10",
+                "65841-832-30",
+                "65841-832-77",
+                "65841-833-06",
+                "65841-833-16",
+                "65841-833-01",
+                "65841-833-05",
+                "65841-833-10",
+                "65841-833-30",
+                "65841-833-77",
+                "65841-834-06",
+                "65841-834-16",
+                "65841-834-01",
+                "65841-834-05",
+                "65841-834-10",
+                "65841-834-30",
+                "65841-834-77",
+                "0093-9477-53",
+                "0093-9433-01",
+                "0093-9433-05",
+                "0093-9364-01",
+                "0093-9364-05",
+                "0093-9364-10",
+                "72241-040-05",
+                "72241-040-11",
+                "72241-040-10",
+                "72241-039-05",
+                "72241-039-11",
+                "72241-039-10",
+                "72241-038-05",
+                "72241-038-11",
+                "0093-8034-01",
+                "0093-8035-01",
+                "0093-8035-05",
+                "0093-8036-01",
+                "23155-056-01",
+                "23155-056-10",
+                "23155-057-01",
+                "23155-057-10",
+                "23155-058-01",
+                "23155-058-10",
+                "71209-011-05",
+                "71209-011-11",
+                "71209-011-10",
+                "71209-010-05",
+                "71209-010-11",
+                "71209-010-10",
+                "71209-009-05",
+                "71209-009-11",
+                "62135-583-30",
+                "62135-584-30",
+                "62135-585-90",
+                "68382-656-06",
+                "68382-656-16",
+                "68382-656-01",
+                "68382-656-05",
+                "68382-656-10",
+                "68382-656-30",
+                "68382-656-77",
+                "68382-657-06",
+                "68382-657-16",
+                "68382-657-01",
+                "68382-657-05",
+                "68382-657-10",
+                "68382-657-30",
+                "68382-657-77",
+                "68382-658-06",
+                "68382-658-16",
+                "68382-658-01",
+                "68382-658-05",
+                "68382-658-10",
+                "68382-658-30",
+                "68382-658-77"
+              ],
+              "nui": [
+                "N0000175608",
+                "M0020795"
+              ],
+              "pharm_class_epc": [
+                "Sulfonylurea [EPC]"
+              ],
+              "pharm_class_cs": [
+                "Sulfonylurea Compounds [CS]"
+              ],
+              "unii": [
+                "SX6K58TVWC"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "LETAIRIS",
+            "drugauthorizationnumb": "022081",
+            "drugstructuredosagenumb": "5",
+            "drugstructuredosageunit": "003",
+            "drugdosagetext": "5 MG, UNK",
+            "drugdosageform": "TABLET",
+            "drugadministrationroute": "048",
+            "drugindication": "PRODUCT USED FOR UNKNOWN INDICATION",
+            "drugstartdateformat": "102",
+            "drugstartdate": "20120802",
+            "actiondrug": "4",
+            "activesubstance": {
+              "activesubstancename": "AMBRISENTAN"
+            },
+            "openfda": {
+              "application_number": [
+                "NDA022081"
+              ],
+              "brand_name": [
+                "LETAIRIS"
+              ],
+              "generic_name": [
+                "AMBRISENTAN"
+              ],
+              "manufacturer_name": [
+                "Gilead Sciences, Inc."
+              ],
+              "product_ndc": [
+                "61958-0801",
+                "61958-0802"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "ORAL"
+              ],
+              "substance_name": [
+                "AMBRISENTAN"
+              ],
+              "rxcui": [
+                "722116",
+                "722120",
+                "722122",
+                "722124"
+              ],
+              "spl_id": [
+                "2808f55e-aed5-40c7-832b-630e1408951c"
+              ],
+              "spl_set_id": [
+                "725d4e73-6c83-477a-adc6-0ae4a133a844"
+              ],
+              "package_ndc": [
+                "61958-0801-2",
+                "61958-0801-3",
+                "61958-0801-1",
+                "61958-0801-5",
+                "61958-0801-4",
+                "61958-0801-6",
+                "61958-0802-2",
+                "61958-0802-3",
+                "61958-0802-1",
+                "61958-0802-5"
+              ],
+              "nui": [
+                "N0000175581",
+                "N0000175364"
+              ],
+              "pharm_class_epc": [
+                "Endothelin Receptor Antagonist [EPC]"
+              ],
+              "pharm_class_moa": [
+                "Endothelin Receptor Antagonists [MoA]"
+              ],
+              "unii": [
+                "HW6NV07QEC"
+              ]
+            }
+          }
+        ],
+        "summary": {
+          "narrativeincludeclinical": "CASE EVENT DATE: 20120816"
+        }
+      }
+    }
+  ]
+}

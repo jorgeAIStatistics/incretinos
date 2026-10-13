@@ -1,0 +1,30 @@
+{
+ "pmid": "35043140",
+ "title": "HbA1c Reduction in Dulaglutide-Treated Patients Irrespective of Duration of Diabetes, Microvascular Disease, and BMI: A Post Hoc Analysis From the REWIND Trial.",
+ "journal": "Diabetes care",
+ "pub_date": "2022 Mar 01",
+ "year": 2022,
+ "doi": "10.2337/dc21-1160",
+ "authors": [
+  "Kwan AYM",
+  "Gerstein HC",
+  "Basile J",
+  "Xavier D",
+  "Maldonado JM",
+  "Raha S",
+  "Konig M"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT01394952"
+ ],
+ "abstract_sha256": "41d576d1613da3a4f4e8530ce239333b5b44a4645ed2f20b7307cf47a5d6a17b",
+ "abstract_chars": 1822,
+ "abstract_ncts": [],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

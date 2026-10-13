@@ -1,0 +1,1527 @@
+{
+  "meta": {
+    "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+    "terms": "https://open.fda.gov/terms/",
+    "license": "https://open.fda.gov/license/",
+    "last_updated": "2026-07-30",
+    "results": {
+      "skip": 0,
+      "limit": 1,
+      "total": 11729
+    }
+  },
+  "results": [
+    {
+      "safetyreportversion": "3",
+      "safetyreportid": "10005323",
+      "primarysourcecountry": "FR",
+      "occurcountry": "FR",
+      "transmissiondateformat": "102",
+      "transmissiondate": "20160815",
+      "reporttype": "2",
+      "serious": "1",
+      "seriousnesshospitalization": "1",
+      "receivedateformat": "102",
+      "receivedate": "20140313",
+      "receiptdateformat": "102",
+      "receiptdate": "20160621",
+      "fulfillexpeditecriteria": "1",
+      "companynumb": "FR-ROCHE-1164269",
+      "duplicate": "1",
+      "reportduplicate": {
+        "duplicatesource": "ROCHE",
+        "duplicatenumb": "FR-ROCHE-1164269"
+      },
+      "primarysource": {
+        "reportercountry": "FR",
+        "qualification": "1"
+      },
+      "sender": {
+        "sendertype": "2",
+        "senderorganization": "FDA-Public Use"
+      },
+      "receiver": {
+        "receivertype": "6",
+        "receiverorganization": "FDA"
+      },
+      "patient": {
+        "patientonsetage": "54",
+        "patientonsetageunit": "801",
+        "patientsex": "1",
+        "reaction": [
+          {
+            "reactionmeddraversionpt": "19.0",
+            "reactionmeddrapt": "Lung disorder",
+            "reactionoutcome": "1"
+          },
+          {
+            "reactionmeddraversionpt": "19.0",
+            "reactionmeddrapt": "Cholelithiasis",
+            "reactionoutcome": "1"
+          },
+          {
+            "reactionmeddraversionpt": "19.0",
+            "reactionmeddrapt": "Cholecystitis",
+            "reactionoutcome": "1"
+          },
+          {
+            "reactionmeddraversionpt": "19.0",
+            "reactionmeddrapt": "Hypertension",
+            "reactionoutcome": "3"
+          },
+          {
+            "reactionmeddraversionpt": "19.0",
+            "reactionmeddrapt": "Bronchitis",
+            "reactionoutcome": "1"
+          },
+          {
+            "reactionmeddraversionpt": "19.0",
+            "reactionmeddrapt": "Asthenia",
+            "reactionoutcome": "1"
+          },
+          {
+            "reactionmeddraversionpt": "19.0",
+            "reactionmeddrapt": "Pterygium",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "19.0",
+            "reactionmeddrapt": "Gastroenteritis",
+            "reactionoutcome": "1"
+          }
+        ],
+        "drug": [
+          {
+            "drugcharacterization": "2",
+            "medicinalproduct": "CIMZIA",
+            "activesubstance": {
+              "activesubstancename": "CERTOLIZUMAB PEGOL"
+            },
+            "openfda": {
+              "application_number": [
+                "BLA125160"
+              ],
+              "brand_name": [
+                "CIMZIA"
+              ],
+              "generic_name": [
+                "CERTOLIZUMAB PEGOL"
+              ],
+              "manufacturer_name": [
+                "UCB, Inc."
+              ],
+              "product_ndc": [
+                "50474-700",
+                "50474-710",
+                "50474-750"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "rxcui": [
+                "795081",
+                "795085",
+                "849597",
+                "849599",
+                "2724369",
+                "2724370",
+                "2724371",
+                "2724372"
+              ],
+              "spl_id": [
+                "4b984e6f-72ac-4fdc-e063-6394a90af105"
+              ],
+              "spl_set_id": [
+                "b4c2c9dc-a0bb-4d64-a667-a67ebe88392d"
+              ],
+              "package_ndc": [
+                "50474-700-62",
+                "50474-700-61",
+                "50474-710-79",
+                "50474-710-80",
+                "50474-710-81",
+                "50474-750-10"
+              ],
+              "nui": [
+                "N0000175610",
+                "N0000175451"
+              ],
+              "pharm_class_epc": [
+                "Tumor Necrosis Factor Blocker [EPC]"
+              ],
+              "pharm_class_moa": [
+                "Tumor Necrosis Factor Receptor Blocking Activity [MoA]"
+              ],
+              "unii": [
+                "UMD07X179E"
+              ],
+              "route": [
+                "SUBCUTANEOUS"
+              ],
+              "substance_name": [
+                "CERTOLIZUMAB PEGOL"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "2",
+            "medicinalproduct": "CORTANCYL",
+            "drugadministrationroute": "065",
+            "drugstartdateformat": "102",
+            "drugstartdate": "20080410",
+            "activesubstance": {
+              "activesubstancename": "PREDNISONE"
+            }
+          },
+          {
+            "drugcharacterization": "2",
+            "medicinalproduct": "ENBREL",
+            "activesubstance": {
+              "activesubstancename": "ETANERCEPT"
+            },
+            "openfda": {
+              "application_number": [
+                "BLA103795"
+              ],
+              "brand_name": [
+                "ENBREL"
+              ],
+              "generic_name": [
+                "ETANERCEPT"
+              ],
+              "manufacturer_name": [
+                "Immunex Corporation"
+              ],
+              "product_ndc": [
+                "58406-010",
+                "58406-425",
+                "58406-021",
+                "58406-032",
+                "58406-044",
+                "58406-055"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "SUBCUTANEOUS"
+              ],
+              "substance_name": [
+                "ETANERCEPT"
+              ],
+              "rxcui": [
+                "253014",
+                "261105",
+                "727757",
+                "802652",
+                "809158",
+                "809159",
+                "1653223",
+                "1653225",
+                "2182338",
+                "2182340",
+                "2392140",
+                "2392142"
+              ],
+              "spl_id": [
+                "de3ee3bd-0047-4365-a4c7-5786521a1649"
+              ],
+              "spl_set_id": [
+                "a002b40c-097d-47a5-957f-7a7b1807af7f"
+              ],
+              "package_ndc": [
+                "58406-425-41",
+                "58406-425-34",
+                "58406-424-01",
+                "58406-910-01",
+                "58406-021-01",
+                "58406-021-04",
+                "58406-021-96",
+                "58406-032-01",
+                "58406-032-04",
+                "58406-032-96",
+                "58406-032-90",
+                "58406-010-01",
+                "58406-010-04",
+                "58406-010-96",
+                "58406-044-01",
+                "58406-044-04",
+                "58406-044-96",
+                "58406-044-24",
+                "58406-044-90",
+                "58406-055-01",
+                "58406-055-04",
+                "58406-055-96",
+                "58406-055-90"
+              ],
+              "nui": [
+                "N0000175610",
+                "N0000175451"
+              ],
+              "pharm_class_epc": [
+                "Tumor Necrosis Factor Blocker [EPC]"
+              ],
+              "pharm_class_moa": [
+                "Tumor Necrosis Factor Receptor Blocking Activity [MoA]"
+              ],
+              "unii": [
+                "OP401G7OJC"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "TOCILIZUMAB",
+            "drugauthorizationnumb": "125276",
+            "drugstructuredosagenumb": "568",
+            "drugstructuredosageunit": "003",
+            "drugseparatedosagenumb": "1",
+            "drugintervaldosageunitnumb": "1",
+            "drugintervaldosagedefinition": "802",
+            "drugadministrationroute": "065",
+            "drugindication": "RHEUMATOID ARTHRITIS",
+            "drugstartdateformat": "102",
+            "drugstartdate": "20101019",
+            "activesubstance": {
+              "activesubstancename": "TOCILIZUMAB"
+            },
+            "openfda": {
+              "application_number": [
+                "BLA761354",
+                "BLA125276",
+                "BLA125472"
+              ],
+              "brand_name": [
+                "TOFIDENCE",
+                "ACTEMRA",
+                "ACTEMRA ACTPEN"
+              ],
+              "generic_name": [
+                "TOCILIZUMAB"
+              ],
+              "manufacturer_name": [
+                "Biogen MA Inc",
+                "Organon LLC",
+                "Genentech, Inc."
+              ],
+              "product_ndc": [
+                "64406-022",
+                "64406-023",
+                "64406-024",
+                "78206-200",
+                "78206-201",
+                "78206-202",
+                "50242-135",
+                "50242-136",
+                "50242-137",
+                "50242-138",
+                "50242-143"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "INTRAVENOUS",
+                "SUBCUTANEOUS"
+              ],
+              "substance_name": [
+                "TOCILIZUMAB"
+              ],
+              "rxcui": [
+                "2680287",
+                "2680294",
+                "2680296",
+                "2680297",
+                "2680298",
+                "2680299",
+                "1441527",
+                "1441530",
+                "1657974",
+                "1657976",
+                "1657979",
+                "1657980",
+                "1657981",
+                "1657982",
+                "2106073",
+                "2106075"
+              ],
+              "spl_id": [
+                "2edc5db5-3ecd-451e-bbdd-01fe8db1100b",
+                "5976fe7c-d967-45c4-a50f-626a06b486e6",
+                "7f1b03d3-e0e1-4d90-b588-bb8d3ecb154a"
+              ],
+              "spl_set_id": [
+                "00529b23-850a-42b9-a152-125a95b5242c",
+                "1ab3207a-ebfe-4565-9ce5-3a1538815c83",
+                "2e5365ff-cb2a-4b16-b2c7-e35c6bf2de13"
+              ],
+              "package_ndc": [
+                "64406-022-01",
+                "64406-023-01",
+                "64406-024-01",
+                "78206-200-01",
+                "78206-201-01",
+                "78206-202-01",
+                "50242-135-01",
+                "50242-136-01",
+                "50242-137-01",
+                "50242-138-01",
+                "50242-138-86",
+                "50242-143-01",
+                "50242-143-86"
+              ],
+              "nui": [
+                "N0000190478",
+                "N0000190480"
+              ],
+              "pharm_class_moa": [
+                "Interleukin 6 Receptor Antagonists [MoA]"
+              ],
+              "pharm_class_epc": [
+                "Interleukin-6 Receptor Antagonist [EPC]"
+              ],
+              "unii": [
+                "I031V2H011"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "2",
+            "medicinalproduct": "METHOTREXATE",
+            "drugstructuredosagenumb": "10",
+            "drugstructuredosageunit": "003",
+            "drugseparatedosagenumb": "1",
+            "drugintervaldosageunitnumb": "1",
+            "drugintervaldosagedefinition": "803",
+            "drugdosagetext": "15MH/W",
+            "drugadministrationroute": "065",
+            "drugstartdateformat": "102",
+            "drugstartdate": "20080410",
+            "activesubstance": {
+              "activesubstancename": "METHOTREXATE"
+            },
+            "openfda": {
+              "application_number": [
+                "ANDA210454",
+                "NDA011719",
+                "NDA212479",
+                "ANDA040385",
+                "ANDA040263",
+                "ANDA220225",
+                "ANDA040632",
+                "ANDA201529",
+                "ANDA201749",
+                "ANDA081235",
+                "NDA205776",
+                "NDA208400",
+                "ANDA040266",
+                "ANDA040843",
+                "ANDA207812",
+                "ANDA081099",
+                "ANDA040716",
+                "ANDA089343",
+                "ANDA089342",
+                "ANDA089341",
+                "ANDA089340",
+                "ANDA213343",
+                "ANDA217552",
+                "NDA204824"
+              ],
+              "brand_name": [
+                "METHOTREXATE",
+                "JYLAMVO",
+                "TREXALL",
+                "RASUVO",
+                "XATMEP",
+                "OTREXUP"
+              ],
+              "generic_name": [
+                "METHOTREXATE",
+                "METHOTREXATE SODIUM"
+              ],
+              "manufacturer_name": [
+                "Chartwell RX, LLC",
+                "Hospira, Inc.",
+                "SHORLA ONCOLOGY INC.",
+                "Teva Women's Health LLC",
+                "Fresenius Kabi USA, LLC",
+                "Alembic Pharmaceuticals Inc.",
+                "Hikma Pharmaceuticals USA Inc.",
+                "Alembic Pharmaceuticals Limited",
+                "Eugia US LLC",
+                "Sun Pharmaceutical Industries, Inc.",
+                "Mylan Pharmaceuticals Inc.",
+                "Medexus Pharma Inc.",
+                "Aurobindo Pharma Limited",
+                "Azurity Pharmaceuticals, Inc.",
+                "Teva Parenteral Medicines, Inc.",
+                "Zydus Pharmaceuticals USA Inc.",
+                "Teva Pharmaceuticals USA, Inc.",
+                "Accord Healthcare, Inc.",
+                "Zydus Lifesciences Limited",
+                "Accord Healthcare Inc.",
+                "Antares Pharma, Inc."
+              ],
+              "product_ndc": [
+                "62135-772",
+                "61703-350",
+                "61703-408",
+                "81927-204",
+                "51285-366",
+                "51285-367",
+                "51285-368",
+                "51285-369",
+                "63323-123",
+                "62332-711",
+                "62332-712",
+                "0143-9830",
+                "46708-711",
+                "46708-712",
+                "55150-510",
+                "55150-511",
+                "55150-512",
+                "55150-513",
+                "47335-235",
+                "61703-124",
+                "61703-161",
+                "0378-0014",
+                "0143-9367",
+                "59137-505",
+                "59137-510",
+                "59137-515",
+                "59137-520",
+                "59137-525",
+                "59137-530",
+                "59137-535",
+                "59137-540",
+                "59137-550",
+                "59651-182",
+                "52652-2001",
+                "63323-122",
+                "0703-3671",
+                "0703-3675",
+                "0703-3678",
+                "68382-775",
+                "0555-0572",
+                "16729-277",
+                "0143-9516",
+                "0143-9519",
+                "0143-9518",
+                "0143-9517",
+                "70771-1058",
+                "16729-486",
+                "62332-730",
+                "54436-010",
+                "54436-075",
+                "54436-012",
+                "54436-015",
+                "54436-017",
+                "54436-020",
+                "54436-022",
+                "54436-025",
+                "46708-730"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "ORAL",
+                "INTRAMUSCULAR",
+                "INTRAVENOUS",
+                "SUBCUTANEOUS",
+                "INTRATHECAL",
+                "INTRA-ARTERIAL"
+              ],
+              "substance_name": [
+                "METHOTREXATE SODIUM",
+                "METHOTREXATE"
+              ],
+              "rxcui": [
+                "105585",
+                "1655956",
+                "1946772",
+                "2671456",
+                "2671462",
+                "105586",
+                "283510",
+                "283511",
+                "283671",
+                "284592",
+                "284593",
+                "284594",
+                "284595",
+                "311625",
+                "1655959",
+                "1655960",
+                "1655967",
+                "1655968",
+                "1441416",
+                "1544378",
+                "1544383",
+                "1544385",
+                "1544386",
+                "1544387",
+                "1544388",
+                "1544389",
+                "1544390",
+                "1544394",
+                "1544395",
+                "1544396",
+                "1544397",
+                "1544398",
+                "1544401",
+                "1544402",
+                "1544403",
+                "1544404",
+                "1921592",
+                "1921598",
+                "1441402",
+                "1441407",
+                "1441411",
+                "1441413",
+                "1441418",
+                "1441422",
+                "1441424",
+                "1594757",
+                "1594759",
+                "1747179",
+                "1747181",
+                "1747185",
+                "1747187",
+                "1747192",
+                "1747194"
+              ],
+              "spl_id": [
+                "462a5023-e5a1-692a-e063-6294a90a7236",
+                "95b8b8da-da4e-4bba-9038-3cf65f3d5c1a",
+                "37b3e76b-ac3d-4f93-adf1-91f52f676b8a",
+                "53bd9776-70ec-46f9-e063-6294a90a7011",
+                "d1e7432e-253d-49f0-ab0a-bb859210ccd6",
+                "880c2caa-1b11-45ce-a54e-a3733da367f0",
+                "91ce9c78-370f-49a1-ae22-428bdddb389f",
+                "49eb25b2-c59c-4374-a216-076767fe1126",
+                "e98b2abd-8068-482e-9ce3-1ab262f0838e",
+                "adc6f7e8-b3a3-476a-9939-0c5cbda63dbd",
+                "524f657e-d138-9c87-e063-6294a90a93ad",
+                "6bb8643f-6ab4-4e1c-bcf9-b82e8cf18910",
+                "01ad6cb9-5879-4c06-801b-0de84eebaae7",
+                "7950579c-084b-472b-a7ce-f342691aff97",
+                "29d04017-dd64-4dea-a064-7b3b0805f423",
+                "9fe03573-fff3-4051-8598-8542eee1273f",
+                "4e3b0925-2cdc-4743-91cf-860d98dd4661",
+                "3d21237a-ef53-4592-bf06-0c739696203d",
+                "e81074cc-12b4-4ac9-a5bb-749188989b2c",
+                "5d9b7269-19d4-4d2c-b252-f3ff759dffa5",
+                "9c7cf5a6-e720-4e83-bb08-f371e9bb9c9e",
+                "5aa89975-d1a1-19f1-e063-6294a90a4b3e",
+                "3046ff78-3565-46d1-a88b-283e5ff6e7c3",
+                "ae399908-cfb6-44dc-83da-8981f5dabbb8",
+                "52d366f6-f339-ff1a-e063-6294a90a1577",
+                "9dd138d6-6889-400e-a994-9931af68244a",
+                "2d07eb50-d314-a6a0-e063-6394a90ac970",
+                "ff55c573-dc84-4ff3-9d10-2b24c47dd679"
+              ],
+              "spl_set_id": [
+                "2609da8f-80dc-448e-8eba-35d11488ce7f",
+                "0d63ba29-b692-41b4-87e8-351265c8273f",
+                "0e30eaef-5a09-4104-8a11-c32933eadeab",
+                "96e931f5-51ae-4bdf-a441-bb0dd26d4c0e",
+                "e942f8db-510f-44d6-acb5-b822196f5e8c",
+                "b585f621-f6c9-4735-ab61-bd1b401f3df0",
+                "a63364d5-4dfa-49d7-8a5e-c8959ae1d37a",
+                "b080eb92-fc72-4ce6-a7ab-3f9ce2415526",
+                "e98b2abd-8068-482e-9ce3-1ab262f0838e",
+                "63bb6fbf-dd59-4edc-af8f-d0c397ca1262",
+                "8f1260de-b60c-4f0e-8af6-0e957b0a281b",
+                "bd287e89-32f9-4396-95fa-4b562869f476",
+                "70c09984-2b36-424f-8b27-3fd0cd4e833d",
+                "8593f7fc-eabe-44ae-bb05-b3d7d408e4f7",
+                "d0075461-0e7e-4967-9c9b-d6440e912c0e",
+                "09931d44-a3f8-49dc-a3f2-b527ee4214bf",
+                "aec9984e-34c5-481b-b6bf-9bb5caf1daf8",
+                "ec476b11-0b3c-4139-b1eb-a3daa76bc271",
+                "346ec9ce-dc98-4a55-b55e-d3af11f2d703",
+                "948e0bab-6524-4b87-9853-1799d4415558",
+                "9b34b1d8-d125-41a2-9f6f-3fab67b573bd",
+                "dd035a9f-cd40-4314-b9d8-2294b8a924e2",
+                "3989d30d-56e5-4e8d-9379-c30fecc894f2",
+                "59ea7b32-2b6d-4197-92c3-015936f04ebe",
+                "874c7f43-a3be-4236-89cc-24c44e3c5813",
+                "04a95db9-a124-4b97-bd71-1c37a6b3b0c8",
+                "9ab8ce16-f7de-41d4-a4c8-1c742621b6d5",
+                "ff55c573-dc84-4ff3-9d10-2b24c47dd679"
+              ],
+              "package_ndc": [
+                "62135-772-35",
+                "61703-350-37",
+                "61703-350-38",
+                "61703-408-41",
+                "61703-350-09",
+                "61703-350-10",
+                "61703-408-25",
+                "81927-204-01",
+                "51285-366-01",
+                "51285-367-01",
+                "51285-368-01",
+                "51285-369-01",
+                "63323-123-10",
+                "62332-711-01",
+                "62332-711-05",
+                "62332-712-01",
+                "0143-9830-01",
+                "46708-711-01",
+                "46708-711-05",
+                "46708-712-01",
+                "55150-510-01",
+                "55150-510-05",
+                "55150-511-01",
+                "55150-511-10",
+                "55150-512-01",
+                "55150-512-10",
+                "55150-513-01",
+                "47335-235-96",
+                "47335-235-83",
+                "61703-124-40",
+                "61703-161-02",
+                "61703-161-05",
+                "0378-0014-01",
+                "0143-9367-01",
+                "59137-505-00",
+                "59137-505-01",
+                "59137-505-04",
+                "59137-510-00",
+                "59137-510-01",
+                "59137-510-04",
+                "59137-515-00",
+                "59137-515-01",
+                "59137-515-04",
+                "59137-520-00",
+                "59137-520-01",
+                "59137-520-04",
+                "59137-525-00",
+                "59137-525-01",
+                "59137-525-04",
+                "59137-530-00",
+                "59137-530-01",
+                "59137-530-04",
+                "59137-535-00",
+                "59137-535-01",
+                "59137-535-04",
+                "59137-540-00",
+                "59137-540-01",
+                "59137-540-04",
+                "59137-550-00",
+                "59137-550-01",
+                "59137-550-04",
+                "59651-182-36",
+                "59651-182-01",
+                "52652-2001-1",
+                "52652-2001-6",
+                "63323-122-50",
+                "0703-3671-01",
+                "0703-3675-01",
+                "0703-3678-01",
+                "68382-775-60",
+                "68382-775-16",
+                "68382-775-01",
+                "68382-775-05",
+                "68382-775-10",
+                "68382-775-77",
+                "0555-0572-35",
+                "0555-0572-02",
+                "16729-277-30",
+                "16729-277-03",
+                "16729-277-35",
+                "0143-9519-10",
+                "0143-9518-01",
+                "0143-9517-01",
+                "0143-9516-01",
+                "70771-1058-3",
+                "70771-1058-9",
+                "70771-1058-1",
+                "70771-1058-5",
+                "70771-1058-0",
+                "70771-1058-2",
+                "70771-1058-7",
+                "16729-486-36",
+                "16729-486-01",
+                "62332-730-36",
+                "62332-730-31",
+                "54436-075-01",
+                "54436-075-02",
+                "54436-075-04",
+                "54436-010-01",
+                "54436-010-03",
+                "54436-010-02",
+                "54436-010-04",
+                "54436-012-01",
+                "54436-012-03",
+                "54436-012-02",
+                "54436-012-04",
+                "54436-015-01",
+                "54436-015-03",
+                "54436-015-02",
+                "54436-015-04",
+                "54436-017-01",
+                "54436-017-03",
+                "54436-017-02",
+                "54436-017-04",
+                "54436-020-01",
+                "54436-020-03",
+                "54436-020-02",
+                "54436-020-04",
+                "54436-022-01",
+                "54436-022-03",
+                "54436-022-02",
+                "54436-022-04",
+                "54436-025-01",
+                "54436-025-03",
+                "54436-025-02",
+                "54436-025-04",
+                "46708-730-36",
+                "46708-730-31"
+              ],
+              "unii": [
+                "3IG1E710ZN",
+                "YL5FZ2Y5U1"
+              ],
+              "nui": [
+                "N0000175584",
+                "N0000000111"
+              ],
+              "pharm_class_epc": [
+                "Folate Analog Metabolic Inhibitor [EPC]"
+              ],
+              "pharm_class_moa": [
+                "Folic Acid Metabolism Inhibitors [MoA]"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "RITUXIMAB",
+            "drugauthorizationnumb": "103705",
+            "drugstructuredosagenumb": "1",
+            "drugstructuredosageunit": "002",
+            "drugseparatedosagenumb": "1",
+            "drugintervaldosageunitnumb": "1",
+            "drugintervaldosagedefinition": "811",
+            "drugdosagetext": "DAY 15: RECEIVED ON  09/FEB/2010",
+            "drugadministrationroute": "042",
+            "drugstartdateformat": "102",
+            "drugstartdate": "20100125",
+            "actiondrug": "1",
+            "activesubstance": {
+              "activesubstancename": "RITUXIMAB"
+            },
+            "openfda": {
+              "application_number": [
+                "BLA103705"
+              ],
+              "brand_name": [
+                "RITUXAN"
+              ],
+              "generic_name": [
+                "RITUXIMAB"
+              ],
+              "manufacturer_name": [
+                "Genentech, Inc."
+              ],
+              "product_ndc": [
+                "50242-051",
+                "50242-053"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "INTRAVENOUS"
+              ],
+              "substance_name": [
+                "RITUXIMAB"
+              ],
+              "rxcui": [
+                "1657862",
+                "1657864",
+                "1657867",
+                "1657868"
+              ],
+              "spl_id": [
+                "3a716937-c2af-4bf9-976c-c34746b22ff0"
+              ],
+              "spl_set_id": [
+                "b172773b-3905-4a1c-ad95-bab4b6126563"
+              ],
+              "package_ndc": [
+                "50242-051-21",
+                "50242-051-10",
+                "50242-053-06"
+              ],
+              "nui": [
+                "N0000175078",
+                "N0000175657"
+              ],
+              "pharm_class_moa": [
+                "CD20-directed Antibody Interactions [MoA]"
+              ],
+              "pharm_class_epc": [
+                "CD20-directed Cytolytic Antibody [EPC]"
+              ],
+              "unii": [
+                "4F4X42SYQ6"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "RITUXIMAB",
+            "drugauthorizationnumb": "103705",
+            "drugstructuredosagenumb": "1",
+            "drugstructuredosageunit": "002",
+            "drugseparatedosagenumb": "1",
+            "drugintervaldosageunitnumb": "1",
+            "drugintervaldosagedefinition": "811",
+            "drugdosagetext": "DAY 15 DOSE RECEIVED ON 10/APR/2008",
+            "drugdosageform": "SOLUTION FOR INFUSION",
+            "drugadministrationroute": "042",
+            "drugindication": "RHEUMATOID ARTHRITIS",
+            "drugstartdateformat": "102",
+            "drugstartdate": "20080328",
+            "actiondrug": "1",
+            "activesubstance": {
+              "activesubstancename": "RITUXIMAB"
+            },
+            "openfda": {
+              "application_number": [
+                "BLA103705"
+              ],
+              "brand_name": [
+                "RITUXAN"
+              ],
+              "generic_name": [
+                "RITUXIMAB"
+              ],
+              "manufacturer_name": [
+                "Genentech, Inc."
+              ],
+              "product_ndc": [
+                "50242-051",
+                "50242-053"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "INTRAVENOUS"
+              ],
+              "substance_name": [
+                "RITUXIMAB"
+              ],
+              "rxcui": [
+                "1657862",
+                "1657864",
+                "1657867",
+                "1657868"
+              ],
+              "spl_id": [
+                "3a716937-c2af-4bf9-976c-c34746b22ff0"
+              ],
+              "spl_set_id": [
+                "b172773b-3905-4a1c-ad95-bab4b6126563"
+              ],
+              "package_ndc": [
+                "50242-051-21",
+                "50242-051-10",
+                "50242-053-06"
+              ],
+              "nui": [
+                "N0000175078",
+                "N0000175657"
+              ],
+              "pharm_class_moa": [
+                "CD20-directed Antibody Interactions [MoA]"
+              ],
+              "pharm_class_epc": [
+                "CD20-directed Cytolytic Antibody [EPC]"
+              ],
+              "unii": [
+                "4F4X42SYQ6"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "RITUXIMAB",
+            "drugauthorizationnumb": "103705",
+            "drugstructuredosagenumb": "1",
+            "drugstructuredosageunit": "002",
+            "drugseparatedosagenumb": "1",
+            "drugintervaldosageunitnumb": "1",
+            "drugintervaldosagedefinition": "811",
+            "drugdosagetext": "DAY 15: ON 10/NOV/2008",
+            "drugadministrationroute": "042",
+            "drugstartdateformat": "102",
+            "drugstartdate": "20081027",
+            "actiondrug": "1",
+            "activesubstance": {
+              "activesubstancename": "RITUXIMAB"
+            },
+            "openfda": {
+              "application_number": [
+                "BLA103705"
+              ],
+              "brand_name": [
+                "RITUXAN"
+              ],
+              "generic_name": [
+                "RITUXIMAB"
+              ],
+              "manufacturer_name": [
+                "Genentech, Inc."
+              ],
+              "product_ndc": [
+                "50242-051",
+                "50242-053"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "INTRAVENOUS"
+              ],
+              "substance_name": [
+                "RITUXIMAB"
+              ],
+              "rxcui": [
+                "1657862",
+                "1657864",
+                "1657867",
+                "1657868"
+              ],
+              "spl_id": [
+                "3a716937-c2af-4bf9-976c-c34746b22ff0"
+              ],
+              "spl_set_id": [
+                "b172773b-3905-4a1c-ad95-bab4b6126563"
+              ],
+              "package_ndc": [
+                "50242-051-21",
+                "50242-051-10",
+                "50242-053-06"
+              ],
+              "nui": [
+                "N0000175078",
+                "N0000175657"
+              ],
+              "pharm_class_moa": [
+                "CD20-directed Antibody Interactions [MoA]"
+              ],
+              "pharm_class_epc": [
+                "CD20-directed Cytolytic Antibody [EPC]"
+              ],
+              "unii": [
+                "4F4X42SYQ6"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "2",
+            "medicinalproduct": "METHOTREXATE",
+            "drugstructuredosagenumb": "17.5",
+            "drugstructuredosageunit": "003",
+            "drugseparatedosagenumb": "1",
+            "drugintervaldosageunitnumb": "1",
+            "drugintervaldosagedefinition": "803",
+            "drugadministrationroute": "065",
+            "activesubstance": {
+              "activesubstancename": "METHOTREXATE"
+            },
+            "openfda": {
+              "application_number": [
+                "ANDA210454",
+                "NDA011719",
+                "NDA212479",
+                "ANDA040385",
+                "ANDA040263",
+                "ANDA220225",
+                "ANDA040632",
+                "ANDA201529",
+                "ANDA201749",
+                "ANDA081235",
+                "NDA205776",
+                "NDA208400",
+                "ANDA040266",
+                "ANDA040843",
+                "ANDA207812",
+                "ANDA081099",
+                "ANDA040716",
+                "ANDA089343",
+                "ANDA089342",
+                "ANDA089341",
+                "ANDA089340",
+                "ANDA213343",
+                "ANDA217552",
+                "NDA204824"
+              ],
+              "brand_name": [
+                "METHOTREXATE",
+                "JYLAMVO",
+                "TREXALL",
+                "RASUVO",
+                "XATMEP",
+                "OTREXUP"
+              ],
+              "generic_name": [
+                "METHOTREXATE",
+                "METHOTREXATE SODIUM"
+              ],
+              "manufacturer_name": [
+                "Chartwell RX, LLC",
+                "Hospira, Inc.",
+                "SHORLA ONCOLOGY INC.",
+                "Teva Women's Health LLC",
+                "Fresenius Kabi USA, LLC",
+                "Alembic Pharmaceuticals Inc.",
+                "Hikma Pharmaceuticals USA Inc.",
+                "Alembic Pharmaceuticals Limited",
+                "Eugia US LLC",
+                "Sun Pharmaceutical Industries, Inc.",
+                "Mylan Pharmaceuticals Inc.",
+                "Medexus Pharma Inc.",
+                "Aurobindo Pharma Limited",
+                "Azurity Pharmaceuticals, Inc.",
+                "Teva Parenteral Medicines, Inc.",
+                "Zydus Pharmaceuticals USA Inc.",
+                "Teva Pharmaceuticals USA, Inc.",
+                "Accord Healthcare, Inc.",
+                "Zydus Lifesciences Limited",
+                "Accord Healthcare Inc.",
+                "Antares Pharma, Inc."
+              ],
+              "product_ndc": [
+                "62135-772",
+                "61703-350",
+                "61703-408",
+                "81927-204",
+                "51285-366",
+                "51285-367",
+                "51285-368",
+                "51285-369",
+                "63323-123",
+                "62332-711",
+                "62332-712",
+                "0143-9830",
+                "46708-711",
+                "46708-712",
+                "55150-510",
+                "55150-511",
+                "55150-512",
+                "55150-513",
+                "47335-235",
+                "61703-124",
+                "61703-161",
+                "0378-0014",
+                "0143-9367",
+                "59137-505",
+                "59137-510",
+                "59137-515",
+                "59137-520",
+                "59137-525",
+                "59137-530",
+                "59137-535",
+                "59137-540",
+                "59137-550",
+                "59651-182",
+                "52652-2001",
+                "63323-122",
+                "0703-3671",
+                "0703-3675",
+                "0703-3678",
+                "68382-775",
+                "0555-0572",
+                "16729-277",
+                "0143-9516",
+                "0143-9519",
+                "0143-9518",
+                "0143-9517",
+                "70771-1058",
+                "16729-486",
+                "62332-730",
+                "54436-010",
+                "54436-075",
+                "54436-012",
+                "54436-015",
+                "54436-017",
+                "54436-020",
+                "54436-022",
+                "54436-025",
+                "46708-730"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "ORAL",
+                "INTRAMUSCULAR",
+                "INTRAVENOUS",
+                "SUBCUTANEOUS",
+                "INTRATHECAL",
+                "INTRA-ARTERIAL"
+              ],
+              "substance_name": [
+                "METHOTREXATE SODIUM",
+                "METHOTREXATE"
+              ],
+              "rxcui": [
+                "105585",
+                "1655956",
+                "1946772",
+                "2671456",
+                "2671462",
+                "105586",
+                "283510",
+                "283511",
+                "283671",
+                "284592",
+                "284593",
+                "284594",
+                "284595",
+                "311625",
+                "1655959",
+                "1655960",
+                "1655967",
+                "1655968",
+                "1441416",
+                "1544378",
+                "1544383",
+                "1544385",
+                "1544386",
+                "1544387",
+                "1544388",
+                "1544389",
+                "1544390",
+                "1544394",
+                "1544395",
+                "1544396",
+                "1544397",
+                "1544398",
+                "1544401",
+                "1544402",
+                "1544403",
+                "1544404",
+                "1921592",
+                "1921598",
+                "1441402",
+                "1441407",
+                "1441411",
+                "1441413",
+                "1441418",
+                "1441422",
+                "1441424",
+                "1594757",
+                "1594759",
+                "1747179",
+                "1747181",
+                "1747185",
+                "1747187",
+                "1747192",
+                "1747194"
+              ],
+              "spl_id": [
+                "462a5023-e5a1-692a-e063-6294a90a7236",
+                "95b8b8da-da4e-4bba-9038-3cf65f3d5c1a",
+                "37b3e76b-ac3d-4f93-adf1-91f52f676b8a",
+                "53bd9776-70ec-46f9-e063-6294a90a7011",
+                "d1e7432e-253d-49f0-ab0a-bb859210ccd6",
+                "880c2caa-1b11-45ce-a54e-a3733da367f0",
+                "91ce9c78-370f-49a1-ae22-428bdddb389f",
+                "49eb25b2-c59c-4374-a216-076767fe1126",
+                "e98b2abd-8068-482e-9ce3-1ab262f0838e",
+                "adc6f7e8-b3a3-476a-9939-0c5cbda63dbd",
+                "524f657e-d138-9c87-e063-6294a90a93ad",
+                "6bb8643f-6ab4-4e1c-bcf9-b82e8cf18910",
+                "01ad6cb9-5879-4c06-801b-0de84eebaae7",
+                "7950579c-084b-472b-a7ce-f342691aff97",
+                "29d04017-dd64-4dea-a064-7b3b0805f423",
+                "9fe03573-fff3-4051-8598-8542eee1273f",
+                "4e3b0925-2cdc-4743-91cf-860d98dd4661",
+                "3d21237a-ef53-4592-bf06-0c739696203d",
+                "e81074cc-12b4-4ac9-a5bb-749188989b2c",
+                "5d9b7269-19d4-4d2c-b252-f3ff759dffa5",
+                "9c7cf5a6-e720-4e83-bb08-f371e9bb9c9e",
+                "5aa89975-d1a1-19f1-e063-6294a90a4b3e",
+                "3046ff78-3565-46d1-a88b-283e5ff6e7c3",
+                "ae399908-cfb6-44dc-83da-8981f5dabbb8",
+                "52d366f6-f339-ff1a-e063-6294a90a1577",
+                "9dd138d6-6889-400e-a994-9931af68244a",
+                "2d07eb50-d314-a6a0-e063-6394a90ac970",
+                "ff55c573-dc84-4ff3-9d10-2b24c47dd679"
+              ],
+              "spl_set_id": [
+                "2609da8f-80dc-448e-8eba-35d11488ce7f",
+                "0d63ba29-b692-41b4-87e8-351265c8273f",
+                "0e30eaef-5a09-4104-8a11-c32933eadeab",
+                "96e931f5-51ae-4bdf-a441-bb0dd26d4c0e",
+                "e942f8db-510f-44d6-acb5-b822196f5e8c",
+                "b585f621-f6c9-4735-ab61-bd1b401f3df0",
+                "a63364d5-4dfa-49d7-8a5e-c8959ae1d37a",
+                "b080eb92-fc72-4ce6-a7ab-3f9ce2415526",
+                "e98b2abd-8068-482e-9ce3-1ab262f0838e",
+                "63bb6fbf-dd59-4edc-af8f-d0c397ca1262",
+                "8f1260de-b60c-4f0e-8af6-0e957b0a281b",
+                "bd287e89-32f9-4396-95fa-4b562869f476",
+                "70c09984-2b36-424f-8b27-3fd0cd4e833d",
+                "8593f7fc-eabe-44ae-bb05-b3d7d408e4f7",
+                "d0075461-0e7e-4967-9c9b-d6440e912c0e",
+                "09931d44-a3f8-49dc-a3f2-b527ee4214bf",
+                "aec9984e-34c5-481b-b6bf-9bb5caf1daf8",
+                "ec476b11-0b3c-4139-b1eb-a3daa76bc271",
+                "346ec9ce-dc98-4a55-b55e-d3af11f2d703",
+                "948e0bab-6524-4b87-9853-1799d4415558",
+                "9b34b1d8-d125-41a2-9f6f-3fab67b573bd",
+                "dd035a9f-cd40-4314-b9d8-2294b8a924e2",
+                "3989d30d-56e5-4e8d-9379-c30fecc894f2",
+                "59ea7b32-2b6d-4197-92c3-015936f04ebe",
+                "874c7f43-a3be-4236-89cc-24c44e3c5813",
+                "04a95db9-a124-4b97-bd71-1c37a6b3b0c8",
+                "9ab8ce16-f7de-41d4-a4c8-1c742621b6d5",
+                "ff55c573-dc84-4ff3-9d10-2b24c47dd679"
+              ],
+              "package_ndc": [
+                "62135-772-35",
+                "61703-350-37",
+                "61703-350-38",
+                "61703-408-41",
+                "61703-350-09",
+                "61703-350-10",
+                "61703-408-25",
+                "81927-204-01",
+                "51285-366-01",
+                "51285-367-01",
+                "51285-368-01",
+                "51285-369-01",
+                "63323-123-10",
+                "62332-711-01",
+                "62332-711-05",
+                "62332-712-01",
+                "0143-9830-01",
+                "46708-711-01",
+                "46708-711-05",
+                "46708-712-01",
+                "55150-510-01",
+                "55150-510-05",
+                "55150-511-01",
+                "55150-511-10",
+                "55150-512-01",
+                "55150-512-10",
+                "55150-513-01",
+                "47335-235-96",
+                "47335-235-83",
+                "61703-124-40",
+                "61703-161-02",
+                "61703-161-05",
+                "0378-0014-01",
+                "0143-9367-01",
+                "59137-505-00",
+                "59137-505-01",
+                "59137-505-04",
+                "59137-510-00",
+                "59137-510-01",
+                "59137-510-04",
+                "59137-515-00",
+                "59137-515-01",
+                "59137-515-04",
+                "59137-520-00",
+                "59137-520-01",
+                "59137-520-04",
+                "59137-525-00",
+                "59137-525-01",
+                "59137-525-04",
+                "59137-530-00",
+                "59137-530-01",
+                "59137-530-04",
+                "59137-535-00",
+                "59137-535-01",
+                "59137-535-04",
+                "59137-540-00",
+                "59137-540-01",
+                "59137-540-04",
+                "59137-550-00",
+                "59137-550-01",
+                "59137-550-04",
+                "59651-182-36",
+                "59651-182-01",
+                "52652-2001-1",
+                "52652-2001-6",
+                "63323-122-50",
+                "0703-3671-01",
+                "0703-3675-01",
+                "0703-3678-01",
+                "68382-775-60",
+                "68382-775-16",
+                "68382-775-01",
+                "68382-775-05",
+                "68382-775-10",
+                "68382-775-77",
+                "0555-0572-35",
+                "0555-0572-02",
+                "16729-277-30",
+                "16729-277-03",
+                "16729-277-35",
+                "0143-9519-10",
+                "0143-9518-01",
+                "0143-9517-01",
+                "0143-9516-01",
+                "70771-1058-3",
+                "70771-1058-9",
+                "70771-1058-1",
+                "70771-1058-5",
+                "70771-1058-0",
+                "70771-1058-2",
+                "70771-1058-7",
+                "16729-486-36",
+                "16729-486-01",
+                "62332-730-36",
+                "62332-730-31",
+                "54436-075-01",
+                "54436-075-02",
+                "54436-075-04",
+                "54436-010-01",
+                "54436-010-03",
+                "54436-010-02",
+                "54436-010-04",
+                "54436-012-01",
+                "54436-012-03",
+                "54436-012-02",
+                "54436-012-04",
+                "54436-015-01",
+                "54436-015-03",
+                "54436-015-02",
+                "54436-015-04",
+                "54436-017-01",
+                "54436-017-03",
+                "54436-017-02",
+                "54436-017-04",
+                "54436-020-01",
+                "54436-020-03",
+                "54436-020-02",
+                "54436-020-04",
+                "54436-022-01",
+                "54436-022-03",
+                "54436-022-02",
+                "54436-022-04",
+                "54436-025-01",
+                "54436-025-03",
+                "54436-025-02",
+                "54436-025-04",
+                "46708-730-36",
+                "46708-730-31"
+              ],
+              "unii": [
+                "3IG1E710ZN",
+                "YL5FZ2Y5U1"
+              ],
+              "nui": [
+                "N0000175584",
+                "N0000000111"
+              ],
+              "pharm_class_epc": [
+                "Folate Analog Metabolic Inhibitor [EPC]"
+              ],
+              "pharm_class_moa": [
+                "Folic Acid Metabolism Inhibitors [MoA]"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "2",
+            "medicinalproduct": "ORENCIA",
+            "activesubstance": {
+              "activesubstancename": "ABATACEPT"
+            },
+            "openfda": {
+              "application_number": [
+                "BLA125118"
+              ],
+              "brand_name": [
+                "ORENCIA"
+              ],
+              "generic_name": [
+                "ABATACEPT"
+              ],
+              "manufacturer_name": [
+                "E.R. Squibb & Sons, L.L.C."
+              ],
+              "product_ndc": [
+                "0003-2187",
+                "0003-2188",
+                "0003-2814",
+                "0003-2818"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "INTRAVENOUS",
+                "SUBCUTANEOUS"
+              ],
+              "substance_name": [
+                "ABATACEPT"
+              ],
+              "rxcui": [
+                "616015",
+                "616018",
+                "1145929",
+                "1145932",
+                "1799228",
+                "1799230",
+                "1925254",
+                "1925255",
+                "1925256",
+                "1925257"
+              ],
+              "spl_id": [
+                "962695b7-21f5-44bb-80e0-cb3b48c80be6"
+              ],
+              "spl_set_id": [
+                "0836c6ac-ee37-5640-2fed-a3185a0b16eb"
+              ],
+              "package_ndc": [
+                "0003-2187-10",
+                "0003-2187-13",
+                "0003-2188-11",
+                "0003-2188-21",
+                "0003-2188-91",
+                "0003-2188-51",
+                "0003-2188-50",
+                "0003-2188-90",
+                "0003-2814-11",
+                "0003-2818-11"
+              ],
+              "nui": [
+                "N0000008571",
+                "N0000182159",
+                "M0018640"
+              ],
+              "pharm_class_pe": [
+                "Decreased Cytokine Activity [PE]"
+              ],
+              "pharm_class_epc": [
+                "Selective T Cell Costimulation Modulator [EPC]"
+              ],
+              "pharm_class_cs": [
+                "Recombinant Fusion Proteins [CS]"
+              ],
+              "unii": [
+                "7D0YB67S97"
+              ]
+            }
+          }
+        ],
+        "summary": {
+          "narrativeincludeclinical": "CASE EVENT DATE: 20080329"
+        }
+      }
+    }
+  ]
+}

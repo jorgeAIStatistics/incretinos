@@ -1,0 +1,42 @@
+{
+ "pmid": "42259339",
+ "title": "Orforglipron compared with dapagliflozin in adults with type 2 diabetes and inadequate glycaemic control with metformin (ACHIEVE-2): a multicentre, randomised, non-inferiority, open-label, phase 3 trial.",
+ "journal": "Lancet (London, England)",
+ "pub_date": "2026 Jul 11",
+ "year": 2026,
+ "doi": "10.1016/s0140-6736(26)00800-7",
+ "authors": [
+  "Welch M",
+  "Forst T",
+  "Jia W",
+  "Del Pino PO",
+  "Denning M",
+  "Wu WS",
+  "Li J",
+  "Liu R",
+  "Eifu M",
+  "Chen Y",
+  "ACHIEVE-2 Trial Investigators"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Multicenter Study",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase III",
+  "Equivalence Trial",
+  "Comparative Study",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT06192108"
+ ],
+ "abstract_sha256": "a2a0865bc18225d3ebbd2065662e0d8fab4890d05a54ee6eb958354139922a5e",
+ "abstract_chars": 3311,
+ "abstract_ncts": [
+  "NCT06192108"
+ ],
+ "excerpts": [
+  "-1·23% (SE 0·08), -1·50% (0·08), and -1·56% (0·09) with orforglipron 3 mg, 12 mg, and 36 mg, respectively, versus -0·81% (0·07) with dapagliflozin 10 mg"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

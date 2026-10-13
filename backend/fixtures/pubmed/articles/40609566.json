@@ -1,0 +1,33 @@
+{
+ "pmid": "40609566",
+ "title": "Effects of retatrutide on body composition in people with type 2 diabetes: a substudy of a phase 2, double-blind, parallel-group, placebo-controlled, randomised trial.",
+ "journal": "The lancet. Diabetes & endocrinology",
+ "pub_date": "2025 Aug",
+ "year": 2025,
+ "doi": "10.1016/s2213-8587(25)00092-0",
+ "authors": [
+  "Coskun T",
+  "Wu Q",
+  "Schloot NC",
+  "Haupt A",
+  "Milicevic Z",
+  "Khouli C",
+  "Harris C"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase II",
+  "Multicenter Study"
+ ],
+ "databank_ncts": [
+  "NCT04867785"
+ ],
+ "abstract_sha256": "61146575b143a845c23fde4f9df6b9b1aac011185d57e257d912b69135cdb901",
+ "abstract_chars": 3787,
+ "abstract_ncts": [
+  "NCT04867785"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

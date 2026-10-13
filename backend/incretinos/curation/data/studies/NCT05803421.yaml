@@ -1,0 +1,119 @@
+# ACHIEVE-4 — hand-curated cardiovascular analyses (the generated file carries the other findings).
+# The primary cardiovascular objective was NON-INFERIORITY for MACE-4. Mortality findings were
+# reported by the sponsor as not controlled for multiplicity and are entered as exploratory.
+study: NCT05803421
+arms:
+  - {label: Orforglipron, drug: orforglipron, dose_text: "maximum tolerated dose (investigational formulation, up to 36 mg as registered)", formulation: orforglipron-capsule}
+  - {label: Insulin Glargine, drug: insulin-glargine, dose_text: "titrated, once daily", arm_type: ACTIVE_COMPARATOR}
+endpoints:
+  - key: mace4
+    title: "Time to first occurrence of MACE-4 (cardiovascular death, non-fatal myocardial infarction, non-fatal stroke, or hospitalisation for unstable angina)"
+    role: PRIMARY
+    category: MACE
+    multiplicity_controlled: NOT_STATED
+    description: "Primary cardiovascular safety endpoint, tested for non-inferiority against insulin glargine."
+  - key: mace4-participants
+    title: "Participants with a MACE-4 event"
+    role: PRIMARY
+    category: MACE
+    unit: "% of participants"
+  - key: mace3
+    title: "Time to first occurrence of MACE-3 (myocardial infarction, stroke, or cardiovascular death)"
+    role: KEY_SECONDARY
+    category: MACE
+    multiplicity_controlled: NOT_STATED
+  - key: all-cause-death
+    title: "All-cause death"
+    role: EXPLORATORY
+    category: MORTALITY
+    multiplicity_controlled: "NO"
+  - key: all-cause-death-participants
+    title: "Participants who died (any cause)"
+    role: EXPLORATORY
+    category: MORTALITY
+    unit: "% of participants"
+    multiplicity_controlled: "NO"
+  - key: cv-death
+    title: "Cardiovascular death"
+    role: EXPLORATORY
+    category: CV_COMPONENT
+    multiplicity_controlled: "NO"
+analyses:
+  - endpoint: mace4
+    treatment: Orforglipron
+    comparator: Insulin Glargine
+    hypothesis_type: NON_INFERIORITY
+    param_type: Hazard ratio
+    estimate: 0.84
+    ci_low: 0.59
+    ci_high: 1.20
+    ci_level: 95
+    p_value_text: "<0.0001 for non-inferiority"
+    ni_margin: 1.8
+    ni_margin_text: "Non-inferiority if the upper limit of the two-sided 95% CI for the hazard ratio (orforglipron vs insulin glargine) was less than 1.8."
+    ni_met: "YES"
+    superiority_tested: NOT_STATED
+    superiority_met: NOT_STATED
+    multiplicity_controlled: NOT_STATED
+    source: pubmed:42815506
+    quote: "(HR 0·84; 95% CI 0·59-1·20; p<0·0001 for non-inferiority)"
+    extra_quotes:
+      - "if the upper limit of the two-sided 95% CI for the hazard ratio (HR; orforglipron vs insulin glargine) was less than 1·8"
+    comment: "The abstract reports a non-inferiority conclusion only. The sponsor's release gives a log-rank p-value of 0.336 for the same hazard ratio, i.e. no demonstrated difference."
+  - endpoint: mace3
+    treatment: Orforglipron
+    comparator: Insulin Glargine
+    hypothesis_type: NOT_STATED
+    param_type: Hazard ratio
+    estimate: 0.77
+    ci_low: 0.52
+    ci_high: 1.13
+    ci_level: 95
+    p_value_text: "0.181 (log-rank)"
+    multiplicity_controlled: NOT_STATED
+    source: web:eli-lilly-an-2026-09-30-lilly-s-oral-glp-1-foundayo-orforglipron
+    quote: "(hazard ratio: 0.77; 95.0% CI: 0.52 to 1.13)"
+  - endpoint: all-cause-death
+    treatment: Orforglipron
+    comparator: Insulin Glargine
+    hypothesis_type: NOT_STATED
+    param_type: Hazard ratio
+    estimate: 0.43
+    ci_low: 0.25
+    ci_high: 0.75
+    ci_level: 95
+    p_value_text: "0.002 (nominal; not controlled for multiplicity)"
+    multiplicity_controlled: "NO"
+    source: web:eli-lilly-an-2026-09-30-lilly-s-oral-glp-1-foundayo-orforglipron
+    quote: "(hazard ratio: 0.43; 95.0% CI: 0.25 to 0.75) … p = 0.002"
+    comment: "Sponsor states this endpoint was not controlled for family-wise type 1 error."
+  - endpoint: cv-death
+    treatment: Orforglipron
+    comparator: Insulin Glargine
+    hypothesis_type: NOT_STATED
+    param_type: Hazard ratio
+    estimate: 0.47
+    ci_low: 0.25
+    ci_high: 0.90
+    ci_level: 95
+    p_value_text: "0.019 (nominal; not controlled for multiplicity)"
+    multiplicity_controlled: "NO"
+    source: web:eli-lilly-an-2026-09-30-lilly-s-oral-glp-1-foundayo-orforglipron
+    quote: "(hazard ratio: 0.47; 95.0% CI: 0.25 to 0.90)"
+    comment: "Sponsor states this endpoint was not controlled for family-wise type 1 error."
+results:
+  - {endpoint: mace4-participants, arm: Orforglipron, value: 4.2, unit: "% of participants", n_analyzed: 1358, param_type: "Participants with event", source: "pubmed:42815506", quote: "57 (4·2%) of 1358 orforglipron participants"}
+  - {endpoint: mace4-participants, arm: Insulin Glargine, value: 5.0, unit: "% of participants", n_analyzed: 1343, param_type: "Participants with event", source: "pubmed:42815506", quote: "67 (5·0%) of 1343 insulin glargine participants"}
+  - {endpoint: all-cause-death-participants, arm: Orforglipron, value: 1.4, unit: "% of participants", n_analyzed: 1371, param_type: "Participants with event", source: "pubmed:42815506", quote: "19 (1·4%) of 1371 participants receiving orforglipron"}
+  - {endpoint: all-cause-death-participants, arm: Insulin Glargine, value: 3.2, unit: "% of participants", n_analyzed: 1355, param_type: "Participants with event", source: "pubmed:42815506", quote: "43 (3·2%) of 1355 participants receiving insulin glargine"}
+claims:
+  - key: achieve4:ni-design
+    topic: ANALYSIS_DESIGN
+    statement: "ACHIEVE-4's primary cardiovascular objective was non-inferiority of orforglipron to insulin glargine for MACE-4, with a non-inferiority margin of 1.8 on the upper limit of the two-sided 95% CI of the hazard ratio."
+    source: pubmed:42815506
+    quote: "if the upper limit of the two-sided 95% CI for the hazard ratio (HR; orforglipron vs insulin glargine) was less than 1·8"
+  - key: achieve4:multiplicity-uncontrolled
+    topic: MULTIPLICITY
+    statement: "The sponsor states that all-cause death, cardiovascular death and several other endpoints in ACHIEVE-4 were not controlled for family-wise type 1 error."
+    source: web:eli-lilly-an-2026-09-30-lilly-s-oral-glp-1-foundayo-orforglipron
+    quote: "All-cause death, waist circumference, serum lipids, blood pressure, hsCRP, cardiovascular death and kidney function endpoints were not controlled for family-wise type 1 error."

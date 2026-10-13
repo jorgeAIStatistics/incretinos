@@ -1,0 +1,31 @@
+{
+ "pmid": "42412744",
+ "title": "Changes in patient-reported outcomes and objective assessments based on baseline symptom severity in SURMOUNT-OSA: post-hoc analyses.",
+ "journal": "Sleep",
+ "pub_date": "2026 Oct 13",
+ "year": 2026,
+ "doi": "10.1093/sleep/zsag184",
+ "authors": [
+  "Kanu C",
+  "Shinde S",
+  "Falcon B",
+  "Bednarik J",
+  "Xie CC",
+  "Trice K",
+  "Weaver T"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial"
+ ],
+ "databank_ncts": [
+  "NCT05412004"
+ ],
+ "abstract_sha256": "94d38e427fa53d5a0ff619dd989880e9bfdedd60f94caf6d7c3678489594251a",
+ "abstract_chars": 2855,
+ "abstract_ncts": [
+  "NCT05412004"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

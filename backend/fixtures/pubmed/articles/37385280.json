@@ -1,0 +1,39 @@
+{
+ "pmid": "37385280",
+ "title": "Retatrutide, a GIP, GLP-1 and glucagon receptor agonist, for people with type 2 diabetes: a randomised, double-blind, placebo and active-controlled, parallel-group, phase 2 trial conducted in the USA.",
+ "journal": "Lancet (London, England)",
+ "pub_date": "2023 Aug 12",
+ "year": 2023,
+ "doi": "10.1016/s0140-6736(23)01053-x",
+ "authors": [
+  "Rosenstock J",
+  "Frias J",
+  "Jastreboff AM",
+  "Du Y",
+  "Lou J",
+  "Gurbuz S",
+  "Thomas MK",
+  "Hartman ML",
+  "Haupt A",
+  "Milicevic Z",
+  "Coskun T"
+ ],
+ "pub_types": [
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase II",
+  "Journal Article",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT04867785"
+ ],
+ "abstract_sha256": "61b413beba99afb5032b69bd5ae61baf7258e84e9a433a60326bb814f12e3618",
+ "abstract_chars": 5147,
+ "abstract_ncts": [
+  "NCT04867785"
+ ],
+ "excerpts": [
+  "greater than 1·5 mg dulaglutide in the 8 mg slow escalation group (p=0·0019) and 12 mg escalation group (p=0·0002)"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

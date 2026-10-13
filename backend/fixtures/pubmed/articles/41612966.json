@@ -1,0 +1,30 @@
+{
+ "pmid": "41612966",
+ "title": "Efficacy and Safety of Tirzepatide in Japanese Participants With Obesity: A Subpopulation Analysis of the SURMOUNT-1 Trial.",
+ "journal": "Obesity (Silver Spring, Md.)",
+ "pub_date": "2026 Mar",
+ "year": 2026,
+ "doi": "10.1002/oby.70131",
+ "authors": [
+  "Ishigaki Y",
+  "Yamada M",
+  "Shingaki T",
+  "Oura T",
+  "Shimomura I"
+ ],
+ "pub_types": [
+  "Clinical Trial, Phase III",
+  "Journal Article",
+  "Randomized Controlled Trial"
+ ],
+ "databank_ncts": [
+  "NCT04184622"
+ ],
+ "abstract_sha256": "55fc94518bd802069728d9684d4302b868396a23803ed904300d78e294f1127c",
+ "abstract_chars": 1489,
+ "abstract_ncts": [
+  "NCT04184622"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

@@ -1,0 +1,30 @@
+{
+ "pmid": "35546790",
+ "title": "Effect of expanded dulaglutide weekly doses (3.0 mg and 4.5 mg) on cardiovascular disease risk factors in participants with type 2 diabetes at increased cardiovascular disease risk: a post hoc analysis of the AWARD-11 study.",
+ "journal": "Diabetes, obesity & metabolism",
+ "pub_date": "2022 Sep",
+ "year": 2022,
+ "doi": "10.1111/dom.14762",
+ "authors": [
+  "Cox DA",
+  "Wang H",
+  "Nicolay C",
+  "Bethel MA"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Research Support, Non-U.S. Gov't",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase III"
+ ],
+ "databank_ncts": [
+  "NCT03495102"
+ ],
+ "abstract_sha256": "35e2601be8efffaf4b40a91880b27505e51e41d8fea10febbb2f403e7b37472a",
+ "abstract_chars": 1671,
+ "abstract_ncts": [
+  "NCT03495102"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

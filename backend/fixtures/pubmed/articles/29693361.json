@@ -1,0 +1,41 @@
+{
+ "pmid": "29693361",
+ "title": "Generalizability of glucagon-like peptide-1 receptor agonist cardiovascular outcome trials enrollment criteria to the US type 2 diabetes population.",
+ "journal": "The American journal of managed care",
+ "pub_date": "2018 Apr",
+ "year": 2018,
+ "doi": null,
+ "authors": [
+  "Wittbrodt ET",
+  "Eudicone JM",
+  "Bell KF",
+  "Enhoffer DM",
+  "Latham K",
+  "Green JB"
+ ],
+ "pub_types": [
+  "Journal Article"
+ ],
+ "databank_ncts": [
+  "NCT01144338",
+  "NCT01147250",
+  "NCT01179048",
+  "NCT01394952",
+  "NCT01455896",
+  "NCT01720446",
+  "NCT02465515"
+ ],
+ "abstract_sha256": "79628fa06fc7e4e651d99969e64df2561c80901ec69eff4ae08264c346d676c4",
+ "abstract_chars": 2015,
+ "abstract_ncts": [
+  "NCT01144338",
+  "NCT01147250",
+  "NCT01179048",
+  "NCT01394952",
+  "NCT01455896",
+  "NCT01720446",
+  "NCT02465515"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

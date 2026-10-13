@@ -1,0 +1,38 @@
+{
+ "pmid": "37840095",
+ "title": "Tirzepatide after intensive lifestyle intervention in adults with overweight or obesity: the SURMOUNT-3 phase 3 trial.",
+ "journal": "Nature medicine",
+ "pub_date": "2023 Nov",
+ "year": 2023,
+ "doi": "10.1038/s41591-023-02597-w",
+ "authors": [
+  "Wadden TA",
+  "Chao AM",
+  "Machineni S",
+  "Kushner R",
+  "Ard J",
+  "Srivastava G",
+  "Halpern B",
+  "Zhang S",
+  "Chen J",
+  "Bunck MC",
+  "Ahmad NN",
+  "Forrester T"
+ ],
+ "pub_types": [
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase III",
+  "Journal Article",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT04657016"
+ ],
+ "abstract_sha256": "1f60976f1338cf9528cc9497b4a8f518bf63d949e3ebf72b522e89ec98a75031",
+ "abstract_chars": 1585,
+ "abstract_ncts": [
+  "NCT04657016"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

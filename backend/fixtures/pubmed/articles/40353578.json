@@ -1,0 +1,42 @@
+{
+ "pmid": "40353578",
+ "title": "Tirzepatide as Compared with Semaglutide for the Treatment of Obesity.",
+ "journal": "The New England journal of medicine",
+ "pub_date": "2025 Jul 03",
+ "year": 2025,
+ "doi": "10.1056/nejmoa2416394",
+ "authors": [
+  "Aronne LJ",
+  "Horn DB",
+  "le Roux CW",
+  "Ho W",
+  "Falcon BL",
+  "Gomez Valderas E",
+  "Das S",
+  "Lee CJ",
+  "Glass LC",
+  "Senyucel C",
+  "Dunn JP",
+  "SURMOUNT-5 Trial Investigators"
+ ],
+ "pub_types": [
+  "Clinical Trial, Phase III",
+  "Comparative Study",
+  "Equivalence Trial",
+  "Journal Article",
+  "Multicenter Study"
+ ],
+ "databank_ncts": [
+  "NCT05822830"
+ ],
+ "abstract_sha256": "0950d8d07f0a82600e290667efda4ff31935c1793fbaa1e9912c379835e75630",
+ "abstract_chars": 1832,
+ "abstract_ncts": [
+  "NCT05822830"
+ ],
+ "excerpts": [
+  "A total of 751 participants underwent randomization.",
+  "-20.2% (95% confidence interval [CI], -21.4 to -19.1) with tirzepatide and -13.7% (95% CI, -14.9 to -12.6) with semaglutide (P<0.001)"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

@@ -1,0 +1,54 @@
+{
+ "pmid": "41765029",
+ "title": "Efficacy and safety of once-daily oral orforglipron compared with oral semaglutide in adults with type 2 diabetes (ACHIEVE-3): a multinational, multicentre, non-inferiority, open-label, randomised, phase 3 trial.",
+ "journal": "Lancet (London, England)",
+ "pub_date": "2026 Mar 21",
+ "year": 2026,
+ "doi": "10.1016/s0140-6736(26)00202-3",
+ "authors": [
+  "Rosenstock J",
+  "Yabe D",
+  "Cox D",
+  "Li J",
+  "Denning M",
+  "Wu WS",
+  "Liu R",
+  "Zhao Y",
+  "ACHIEVE-3 Investigators"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Multicenter Study",
+  "Clinical Trial, Phase III",
+  "Randomized Controlled Trial",
+  "Comparative Study",
+  "Equivalence Trial"
+ ],
+ "databank_ncts": [
+  "NCT06045221"
+ ],
+ "abstract_sha256": "4927f044dfd0164b60c1d608d21d6e3eb72ac5c7fe509030f06779aa9d5d4c90",
+ "abstract_chars": 4091,
+ "abstract_ncts": [
+  "NCT06045221"
+ ],
+ "excerpts": [
+  "This trial was registered on ClinicalTrials.gov (NCT06045221) and is completed.",
+  "52-week, randomised, open-label, active-controlled, multicentre, multinational, phase 3 study",
+  "Hierarchical analysis for superiority was prespecified after attainment of non-inferiority.",
+  "(12 mg 3·7 bpm; 36 mg 4·7 bpm) than in the semaglutide groups (7 mg 1·0 bpm; 14 mg 1·5 bpm)",
+  "-1·71% (SE 0·07) with orforglipron 12 mg",
+  "-1·91% (0·08) with orforglipron 36 mg",
+  "-1·23% (0·05) with semaglutide 7 mg",
+  "-1·47% (0·06) with semaglutide 14 mg",
+  "-0·48% (95% CI -0·65 to -0·31; p<0·0001) for orforglipron 12 mg versus semaglutide 7 mg",
+  "-0·44% (-0·62 to -0·26; p<0·0001) for orforglipron 36 mg versus semaglutide 14 mg",
+  "-0·24% (95% CI -0·41 to -0·072; p=0·0050) for orforglipron 12 mg versus semaglutide 14 mg",
+  "-0·68% (-0·85 to -0·50; p<0·0001) for orforglipron 36 mg versus semaglutide 7 mg",
+  "249 [59%] of 424 on 12 mg and 245 [58%] of 423 on 36 mg",
+  "157 [37%] of 426 on 7 mg and 193 [45%] of 425 on 14 mg",
+  "(37 [9%] on 12 mg and 41 [10%] on 36 mg) discontinued study treatment due to adverse events",
+  "(19 (4%) on 7 mg and 21 (5%) on 14 mg)"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

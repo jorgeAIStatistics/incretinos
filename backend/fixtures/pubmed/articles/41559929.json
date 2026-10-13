@@ -1,0 +1,33 @@
+{
+ "pmid": "41559929",
+ "title": "Eloralintide, a selective, long-acting amylin receptor agonist for treatment of obesity: Phase 1 proof of concept.",
+ "journal": "Diabetes, obesity & metabolism",
+ "pub_date": "2026 Apr",
+ "year": 2026,
+ "doi": "10.1111/dom.70439",
+ "authors": [
+  "Bhattachar S",
+  "Tham LS",
+  "Tidemann-Miller B",
+  "Ibriga H",
+  "Qu H",
+  "Briere DA",
+  "Haupt A",
+  "Mather KJ",
+  "Pratt E"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase I",
+  "Multicenter Study"
+ ],
+ "databank_ncts": [],
+ "abstract_sha256": "9e01da145605cd40c811ac940f37d946afe1ce154a633e70e02eec2ba2344539",
+ "abstract_chars": 1730,
+ "abstract_ncts": [],
+ "excerpts": [
+  "the least squares mean percent reduction in body weight across the dose groups ranged from 2.6% to 11.3%"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

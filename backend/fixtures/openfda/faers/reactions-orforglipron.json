@@ -1,0 +1,914 @@
+{
+  "meta": {
+    "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+    "terms": "https://open.fda.gov/terms/",
+    "license": "https://open.fda.gov/license/",
+    "last_updated": "2026-07-30"
+  },
+  "results": [
+    {
+      "term": "NAUSEA",
+      "count": 179
+    },
+    {
+      "term": "DRUG INEFFECTIVE",
+      "count": 122
+    },
+    {
+      "term": "CONSTIPATION",
+      "count": 81
+    },
+    {
+      "term": "VOMITING",
+      "count": 75
+    },
+    {
+      "term": "FATIGUE",
+      "count": 70
+    },
+    {
+      "term": "WEIGHT INCREASED",
+      "count": 69
+    },
+    {
+      "term": "WEIGHT LOSS POOR",
+      "count": 64
+    },
+    {
+      "term": "DIARRHOEA",
+      "count": 62
+    },
+    {
+      "term": "HEADACHE",
+      "count": 57
+    },
+    {
+      "term": "ABDOMINAL PAIN UPPER",
+      "count": 36
+    },
+    {
+      "term": "DIZZINESS",
+      "count": 34
+    },
+    {
+      "term": "ABDOMINAL DISTENSION",
+      "count": 33
+    },
+    {
+      "term": "ABDOMINAL DISCOMFORT",
+      "count": 27
+    },
+    {
+      "term": "DYSPEPSIA",
+      "count": 25
+    },
+    {
+      "term": "ILLNESS",
+      "count": 25
+    },
+    {
+      "term": "ERUCTATION",
+      "count": 19
+    },
+    {
+      "term": "FLATULENCE",
+      "count": 19
+    },
+    {
+      "term": "FEELING ABNORMAL",
+      "count": 16
+    },
+    {
+      "term": "ASTHENIA",
+      "count": 15
+    },
+    {
+      "term": "GASTROOESOPHAGEAL REFLUX DISEASE",
+      "count": 15
+    },
+    {
+      "term": "MALAISE",
+      "count": 14
+    },
+    {
+      "term": "ABDOMINAL PAIN",
+      "count": 13
+    },
+    {
+      "term": "DECREASED APPETITE",
+      "count": 13
+    },
+    {
+      "term": "DRY MOUTH",
+      "count": 12
+    },
+    {
+      "term": "FOOD CRAVING",
+      "count": 12
+    },
+    {
+      "term": "HYPERSENSITIVITY",
+      "count": 10
+    },
+    {
+      "term": "INCORRECT DOSE ADMINISTERED",
+      "count": 10
+    },
+    {
+      "term": "INSOMNIA",
+      "count": 9
+    },
+    {
+      "term": "OFF LABEL USE",
+      "count": 9
+    },
+    {
+      "term": "PAIN",
+      "count": 9
+    },
+    {
+      "term": "ALOPECIA",
+      "count": 8
+    },
+    {
+      "term": "APPETITE DISORDER",
+      "count": 8
+    },
+    {
+      "term": "GASTROINTESTINAL DISORDER",
+      "count": 8
+    },
+    {
+      "term": "RASH",
+      "count": 8
+    },
+    {
+      "term": "THERAPEUTIC RESPONSE DECREASED",
+      "count": 8
+    },
+    {
+      "term": "VISION BLURRED",
+      "count": 7
+    },
+    {
+      "term": "HUNGER",
+      "count": 6
+    },
+    {
+      "term": "HYPERHIDROSIS",
+      "count": 6
+    },
+    {
+      "term": "INTENTIONAL PRODUCT MISUSE",
+      "count": 6
+    },
+    {
+      "term": "PRURITUS",
+      "count": 6
+    },
+    {
+      "term": "SOMNOLENCE",
+      "count": 6
+    },
+    {
+      "term": "ANXIETY",
+      "count": 5
+    },
+    {
+      "term": "BLOOD PRESSURE INCREASED",
+      "count": 5
+    },
+    {
+      "term": "DEHYDRATION",
+      "count": 5
+    },
+    {
+      "term": "DRUG INTOLERANCE",
+      "count": 5
+    },
+    {
+      "term": "FEEDING DISORDER",
+      "count": 5
+    },
+    {
+      "term": "HYPOTENSION",
+      "count": 5
+    },
+    {
+      "term": "PALPITATIONS",
+      "count": 5
+    },
+    {
+      "term": "WRONG TECHNIQUE IN PRODUCT USAGE PROCESS",
+      "count": 5
+    },
+    {
+      "term": "ABNORMAL LOSS OF WEIGHT",
+      "count": 4
+    },
+    {
+      "term": "ARTHRALGIA",
+      "count": 4
+    },
+    {
+      "term": "BRAIN FOG",
+      "count": 4
+    },
+    {
+      "term": "CHILLS",
+      "count": 4
+    },
+    {
+      "term": "DISCOMFORT",
+      "count": 4
+    },
+    {
+      "term": "DYSGEUSIA",
+      "count": 4
+    },
+    {
+      "term": "FEELING HOT",
+      "count": 4
+    },
+    {
+      "term": "GASTROINTESTINAL PAIN",
+      "count": 4
+    },
+    {
+      "term": "GASTROINTESTINAL SOUNDS ABNORMAL",
+      "count": 4
+    },
+    {
+      "term": "INCREASED APPETITE",
+      "count": 4
+    },
+    {
+      "term": "MUSCLE SPASMS",
+      "count": 4
+    },
+    {
+      "term": "MYALGIA",
+      "count": 4
+    },
+    {
+      "term": "PRODUCT DISPENSING ISSUE",
+      "count": 4
+    },
+    {
+      "term": "CHEST DISCOMFORT",
+      "count": 3
+    },
+    {
+      "term": "CHEST PAIN",
+      "count": 3
+    },
+    {
+      "term": "COUGH",
+      "count": 3
+    },
+    {
+      "term": "DEPRESSION",
+      "count": 3
+    },
+    {
+      "term": "DRUG INTERACTION",
+      "count": 3
+    },
+    {
+      "term": "DYSPNOEA",
+      "count": 3
+    },
+    {
+      "term": "FAECES DISCOLOURED",
+      "count": 3
+    },
+    {
+      "term": "FEELING JITTERY",
+      "count": 3
+    },
+    {
+      "term": "FLUSHING",
+      "count": 3
+    },
+    {
+      "term": "HYPOAESTHESIA",
+      "count": 3
+    },
+    {
+      "term": "LETHARGY",
+      "count": 3
+    },
+    {
+      "term": "NASOPHARYNGITIS",
+      "count": 3
+    },
+    {
+      "term": "NIGHTMARE",
+      "count": 3
+    },
+    {
+      "term": "POLLAKIURIA",
+      "count": 3
+    },
+    {
+      "term": "THERAPEUTIC PRODUCT EFFECT DECREASED",
+      "count": 3
+    },
+    {
+      "term": "ABNORMAL DREAMS",
+      "count": 2
+    },
+    {
+      "term": "ARTHRITIS",
+      "count": 2
+    },
+    {
+      "term": "BACK PAIN",
+      "count": 2
+    },
+    {
+      "term": "BALANCE DISORDER",
+      "count": 2
+    },
+    {
+      "term": "BLOOD GLUCOSE DECREASED",
+      "count": 2
+    },
+    {
+      "term": "BOWEL MOVEMENT IRREGULARITY",
+      "count": 2
+    },
+    {
+      "term": "CONFUSIONAL STATE",
+      "count": 2
+    },
+    {
+      "term": "DISTURBANCE IN ATTENTION",
+      "count": 2
+    },
+    {
+      "term": "DIZZINESS POSTURAL",
+      "count": 2
+    },
+    {
+      "term": "DRUG HYPERSENSITIVITY",
+      "count": 2
+    },
+    {
+      "term": "DYSSTASIA",
+      "count": 2
+    },
+    {
+      "term": "ERYTHEMA",
+      "count": 2
+    },
+    {
+      "term": "FREQUENT BOWEL MOVEMENTS",
+      "count": 2
+    },
+    {
+      "term": "GASTROENTERITIS VIRAL",
+      "count": 2
+    },
+    {
+      "term": "HEAD DISCOMFORT",
+      "count": 2
+    },
+    {
+      "term": "HYPERPHAGIA",
+      "count": 2
+    },
+    {
+      "term": "HYPOGLYCAEMIA",
+      "count": 2
+    },
+    {
+      "term": "INFLAMMATION",
+      "count": 2
+    },
+    {
+      "term": "INFLUENZA LIKE ILLNESS",
+      "count": 2
+    },
+    {
+      "term": "INTERCEPTED PRODUCT SELECTION ERROR",
+      "count": 2
+    },
+    {
+      "term": "LOSS OF CONSCIOUSNESS",
+      "count": 2
+    },
+    {
+      "term": "MIGRAINE",
+      "count": 2
+    },
+    {
+      "term": "NIGHT SWEATS",
+      "count": 2
+    },
+    {
+      "term": "PAIN IN EXTREMITY",
+      "count": 2
+    },
+    {
+      "term": "PANCREATITIS",
+      "count": 2
+    },
+    {
+      "term": "PARAESTHESIA",
+      "count": 2
+    },
+    {
+      "term": "PARAESTHESIA ORAL",
+      "count": 2
+    },
+    {
+      "term": "PRODUCT DOSE OMISSION ISSUE",
+      "count": 2
+    },
+    {
+      "term": "REGURGITATION",
+      "count": 2
+    },
+    {
+      "term": "THROAT IRRITATION",
+      "count": 2
+    },
+    {
+      "term": "URINARY TRACT INFECTION",
+      "count": 2
+    },
+    {
+      "term": "VISUAL IMPAIRMENT",
+      "count": 2
+    },
+    {
+      "term": "VOMITING PROJECTILE",
+      "count": 2
+    },
+    {
+      "term": "ABDOMINAL PAIN LOWER",
+      "count": 1
+    },
+    {
+      "term": "AMMONIA INCREASED",
+      "count": 1
+    },
+    {
+      "term": "ANAPHYLACTIC REACTION",
+      "count": 1
+    },
+    {
+      "term": "ANGER",
+      "count": 1
+    },
+    {
+      "term": "APATHY",
+      "count": 1
+    },
+    {
+      "term": "APHONIA",
+      "count": 1
+    },
+    {
+      "term": "ASPIRATION",
+      "count": 1
+    },
+    {
+      "term": "ATRIAL FIBRILLATION",
+      "count": 1
+    },
+    {
+      "term": "BINGE EATING",
+      "count": 1
+    },
+    {
+      "term": "BLADDER DISORDER",
+      "count": 1
+    },
+    {
+      "term": "BLOOD GLUCOSE INCREASED",
+      "count": 1
+    },
+    {
+      "term": "BLOOD PRESSURE DECREASED",
+      "count": 1
+    },
+    {
+      "term": "BLOOD TEST ABNORMAL",
+      "count": 1
+    },
+    {
+      "term": "BREAST SWELLING",
+      "count": 1
+    },
+    {
+      "term": "BREAST TENDERNESS",
+      "count": 1
+    },
+    {
+      "term": "CHOLELITHIASIS",
+      "count": 1
+    },
+    {
+      "term": "COLITIS",
+      "count": 1
+    },
+    {
+      "term": "CONCUSSION",
+      "count": 1
+    },
+    {
+      "term": "CONTRAINDICATED PRODUCT ADMINISTERED",
+      "count": 1
+    },
+    {
+      "term": "CONTUSION",
+      "count": 1
+    },
+    {
+      "term": "COORDINATION ABNORMAL",
+      "count": 1
+    },
+    {
+      "term": "DEFAECATION URGENCY",
+      "count": 1
+    },
+    {
+      "term": "DIARRHOEA HAEMORRHAGIC",
+      "count": 1
+    },
+    {
+      "term": "DRUG RESISTANCE",
+      "count": 1
+    },
+    {
+      "term": "DRUG WITHDRAWAL SYNDROME",
+      "count": 1
+    },
+    {
+      "term": "DRY THROAT",
+      "count": 1
+    },
+    {
+      "term": "DYSPHONIA",
+      "count": 1
+    },
+    {
+      "term": "EATING DISORDER",
+      "count": 1
+    },
+    {
+      "term": "EMOTIONAL DISTRESS",
+      "count": 1
+    },
+    {
+      "term": "ENCEPHALOPATHY",
+      "count": 1
+    },
+    {
+      "term": "EPISTAXIS",
+      "count": 1
+    },
+    {
+      "term": "EXTRA DOSE ADMINISTERED",
+      "count": 1
+    },
+    {
+      "term": "EYE DISORDER",
+      "count": 1
+    },
+    {
+      "term": "FALL",
+      "count": 1
+    },
+    {
+      "term": "FEELING COLD",
+      "count": 1
+    },
+    {
+      "term": "FEELING DRUNK",
+      "count": 1
+    },
+    {
+      "term": "FLUID RETENTION",
+      "count": 1
+    },
+    {
+      "term": "FOOD AVERSION",
+      "count": 1
+    },
+    {
+      "term": "FUNGAL INFECTION",
+      "count": 1
+    },
+    {
+      "term": "GAIT DISTURBANCE",
+      "count": 1
+    },
+    {
+      "term": "GASTRITIS",
+      "count": 1
+    },
+    {
+      "term": "GASTROENTERITIS",
+      "count": 1
+    },
+    {
+      "term": "GASTROINTESTINAL INFLAMMATION",
+      "count": 1
+    },
+    {
+      "term": "GASTROINTESTINAL MOTILITY DISORDER",
+      "count": 1
+    },
+    {
+      "term": "HAEMATOCHEZIA",
+      "count": 1
+    },
+    {
+      "term": "HAEMORRHOIDS",
+      "count": 1
+    },
+    {
+      "term": "HEART RATE INCREASED",
+      "count": 1
+    },
+    {
+      "term": "HEPATIC ENZYME INCREASED",
+      "count": 1
+    },
+    {
+      "term": "HEPATIC FAILURE",
+      "count": 1
+    },
+    {
+      "term": "HYPERSOMNIA",
+      "count": 1
+    },
+    {
+      "term": "HYPERTENSION",
+      "count": 1
+    },
+    {
+      "term": "HYPOAESTHESIA ORAL",
+      "count": 1
+    },
+    {
+      "term": "HYPOVOLAEMIA",
+      "count": 1
+    },
+    {
+      "term": "IMPAIRED GASTRIC EMPTYING",
+      "count": 1
+    },
+    {
+      "term": "INAPPROPRIATE SCHEDULE OF PRODUCT ADMINISTRATION",
+      "count": 1
+    },
+    {
+      "term": "INITIAL INSOMNIA",
+      "count": 1
+    },
+    {
+      "term": "INTENTIONAL DOSE OMISSION",
+      "count": 1
+    },
+    {
+      "term": "INTENTIONAL OVERDOSE",
+      "count": 1
+    },
+    {
+      "term": "INTERCEPTED PRODUCT DISPENSING ERROR",
+      "count": 1
+    },
+    {
+      "term": "JOINT EFFUSION",
+      "count": 1
+    },
+    {
+      "term": "JOINT INJURY",
+      "count": 1
+    },
+    {
+      "term": "LAZINESS",
+      "count": 1
+    },
+    {
+      "term": "LOSS OF PERSONAL INDEPENDENCE IN DAILY ACTIVITIES",
+      "count": 1
+    },
+    {
+      "term": "MALNUTRITION",
+      "count": 1
+    },
+    {
+      "term": "MELAENA",
+      "count": 1
+    },
+    {
+      "term": "MENTAL STATUS CHANGES",
+      "count": 1
+    },
+    {
+      "term": "MOUTH HAEMORRHAGE",
+      "count": 1
+    },
+    {
+      "term": "NERVOUSNESS",
+      "count": 1
+    },
+    {
+      "term": "NIPPLE PAIN",
+      "count": 1
+    },
+    {
+      "term": "NOCTURIA",
+      "count": 1
+    },
+    {
+      "term": "OEDEMA PERIPHERAL",
+      "count": 1
+    },
+    {
+      "term": "OESOPHAGEAL PAIN",
+      "count": 1
+    },
+    {
+      "term": "ORAL CANDIDIASIS",
+      "count": 1
+    },
+    {
+      "term": "ORAL HERPES",
+      "count": 1
+    },
+    {
+      "term": "ORAL PAIN",
+      "count": 1
+    },
+    {
+      "term": "OROPHARYNGEAL PAIN",
+      "count": 1
+    },
+    {
+      "term": "OVERDOSE",
+      "count": 1
+    },
+    {
+      "term": "PANIC ATTACK",
+      "count": 1
+    },
+    {
+      "term": "PARANASAL SINUS DISCOMFORT",
+      "count": 1
+    },
+    {
+      "term": "PAROSMIA",
+      "count": 1
+    },
+    {
+      "term": "PEMPHIGOID",
+      "count": 1
+    },
+    {
+      "term": "PHARYNGEAL HYPOAESTHESIA",
+      "count": 1
+    },
+    {
+      "term": "PHOTOPHOBIA",
+      "count": 1
+    },
+    {
+      "term": "PNEUMONIA",
+      "count": 1
+    },
+    {
+      "term": "PRESCRIBED OVERDOSE",
+      "count": 1
+    },
+    {
+      "term": "PRESYNCOPE",
+      "count": 1
+    },
+    {
+      "term": "PRODUCT DOSE OMISSION IN ERROR",
+      "count": 1
+    },
+    {
+      "term": "PRODUCT PRESCRIBING ERROR",
+      "count": 1
+    },
+    {
+      "term": "PRODUCT USE ISSUE",
+      "count": 1
+    },
+    {
+      "term": "PYREXIA",
+      "count": 1
+    },
+    {
+      "term": "RASH PRURITIC",
+      "count": 1
+    },
+    {
+      "term": "RECTAL HAEMORRHAGE",
+      "count": 1
+    },
+    {
+      "term": "SEIZURE",
+      "count": 1
+    },
+    {
+      "term": "SKIN BURNING SENSATION",
+      "count": 1
+    },
+    {
+      "term": "SKIN WARM",
+      "count": 1
+    },
+    {
+      "term": "SKIN WEEPING",
+      "count": 1
+    },
+    {
+      "term": "SLEEP DEFICIT",
+      "count": 1
+    },
+    {
+      "term": "SLEEP DISORDER",
+      "count": 1
+    },
+    {
+      "term": "SPEECH DISORDER",
+      "count": 1
+    },
+    {
+      "term": "STARVATION",
+      "count": 1
+    },
+    {
+      "term": "STREPTOCOCCAL INFECTION",
+      "count": 1
+    },
+    {
+      "term": "SWELLING FACE",
+      "count": 1
+    },
+    {
+      "term": "SYNCOPE",
+      "count": 1
+    },
+    {
+      "term": "TACHYCARDIA",
+      "count": 1
+    },
+    {
+      "term": "TASTE DISORDER",
+      "count": 1
+    },
+    {
+      "term": "THERAPY CESSATION",
+      "count": 1
+    },
+    {
+      "term": "THIRST DECREASED",
+      "count": 1
+    },
+    {
+      "term": "THROAT TIGHTNESS",
+      "count": 1
+    },
+    {
+      "term": "TREATMENT FAILURE",
+      "count": 1
+    },
+    {
+      "term": "TREMOR",
+      "count": 1
+    },
+    {
+      "term": "ULCER",
+      "count": 1
+    },
+    {
+      "term": "UPPER RESPIRATORY TRACT INFECTION",
+      "count": 1
+    },
+    {
+      "term": "URINARY TRACT INFECTION ENTEROCOCCAL",
+      "count": 1
+    },
+    {
+      "term": "URTICARIA",
+      "count": 1
+    },
+    {
+      "term": "VERTIGO",
+      "count": 1
+    },
+    {
+      "term": "VULVOVAGINAL EXFOLIATION",
+      "count": 1
+    }
+  ]
+}

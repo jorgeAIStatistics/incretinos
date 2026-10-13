@@ -1,0 +1,310 @@
+# Drug identity, mechanism, regulatory status and formulations.
+# Rules enforced by the loader:
+#   * status APPROVED must cite FDA labeling or an FDA review (never a press release);
+#   * the pharmacologic class shown in the product is derived from `mechanisms`, not typed by hand;
+#   * exposure equivalences exist only where a cited source documents them.
+drugs:
+  - slug: dulaglutide
+    name: Dulaglutide
+    code_name: LY2189265
+    brand_names: [Trulicity]
+    sponsor: Eli Lilly and Company
+    modality: Fc-fusion peptide (biologic)
+    route: Subcutaneous injection, once weekly
+    tier_group: CORE
+    faers_generic: DULAGLUTIDE
+    label_brands: [Trulicity]
+    regulatory:
+      status: APPROVED
+      as_of: "2026-10-13"
+      summary: "FDA-approved (Trulicity) for glycemic control in adults and pediatric patients aged 10 years and older with type 2 diabetes, and for reduction of major adverse cardiovascular events in adults with type 2 diabetes and established cardiovascular disease or multiple cardiovascular risk factors."
+      source: openfda-label:trulicity
+      quote: "To reduce the risk of major adverse cardiovascular events (cardiovascular death, non-fatal myocardial infarction, or non-fatal stroke) in adults with type 2 diabetes mellitus"
+    mechanisms:
+      - {target: GLP1R, action: AGONIST, source: "openfda-label:trulicity", quote: "TRULICITY contains dulaglutide, which is a human GLP-1 receptor agonist"}
+    indications:
+      - brand: Trulicity
+        status: APPROVED
+        text: "Adjunct to diet and exercise to improve glycemic control in adults and pediatric patients 10 years of age and older with type 2 diabetes mellitus."
+        source: openfda-label:trulicity
+        quote: "As an adjunct to diet and exercise to improve glycemic control in adults and pediatric patients 10 years of age and older with type 2 diabetes mellitus"
+      - brand: Trulicity
+        status: APPROVED
+        text: "Reduce the risk of major adverse cardiovascular events in adults with type 2 diabetes mellitus who have established cardiovascular disease or multiple cardiovascular risk factors."
+        source: openfda-label:trulicity
+        quote: "in adults with type 2 diabetes mellitus who have established cardiovascular disease or multiple cardiovascular risk factors"
+
+  - slug: tirzepatide
+    name: Tirzepatide
+    code_name: LY3298176
+    brand_names: [Mounjaro, Zepbound]
+    sponsor: Eli Lilly and Company
+    modality: Peptide (biologic)
+    route: Subcutaneous injection, once weekly
+    tier_group: CORE
+    faers_generic: TIRZEPATIDE
+    label_brands: [Zepbound, Mounjaro]
+    regulatory:
+      status: APPROVED
+      as_of: "2026-10-13"
+      summary: "FDA-approved as Zepbound (chronic weight management; moderate to severe obstructive sleep apnea in adults with obesity) and as Mounjaro (glycemic control in type 2 diabetes from age 10; reduction of major adverse cardiovascular events in adults with type 2 diabetes at high risk)."
+      source: openfda-label:zepbound
+      quote: "to reduce excess body weight and maintain weight reduction long term in adults with obesity or adults with overweight in the presence of at least one weight-related comorbid condition"
+    mechanisms:
+      - {target: GIPR, action: AGONIST, source: "openfda-label:zepbound", quote: "Tirzepatide is a GIP receptor and GLP-1 receptor agonist"}
+      - {target: GLP1R, action: AGONIST, source: "openfda-label:zepbound", quote: "Tirzepatide is a GIP receptor and GLP-1 receptor agonist"}
+    indications:
+      - brand: Zepbound
+        status: APPROVED
+        text: "With a reduced-calorie diet and increased physical activity: reduce excess body weight and maintain weight reduction long term in adults with obesity, or overweight with at least one weight-related comorbid condition."
+        source: openfda-label:zepbound
+        quote: "to reduce excess body weight and maintain weight reduction long term in adults with obesity or adults with overweight in the presence of at least one weight-related comorbid condition"
+      - brand: Zepbound
+        status: APPROVED
+        text: "Treat moderate to severe obstructive sleep apnea (OSA) in adults with obesity."
+        source: openfda-label:zepbound
+        quote: "to treat moderate to severe obstructive sleep apnea (OSA) in adults with obesity"
+      - brand: Mounjaro
+        status: APPROVED
+        text: "Adjunct to diet and exercise to improve glycemic control in adults and pediatric patients 10 years of age and older with type 2 diabetes mellitus."
+        source: openfda-label:mounjaro
+        quote: "as an adjunct to diet and exercise to improve glycemic control in adults and pediatric patients 10 years of age and older with type 2 diabetes mellitus"
+      - brand: Mounjaro
+        status: APPROVED
+        text: "Reduce the risk of major adverse cardiovascular events (CV death, non-fatal myocardial infarction, non-fatal stroke) in adults with type 2 diabetes mellitus who are at high risk for these events."
+        source: openfda-label:mounjaro
+        quote: "to reduce the risk of major adverse cardiovascular (CV) events (CV death, non-fatal myocardial infarction (MI), or non-fatal stroke) in adults with type 2 diabetes mellitus who are at high risk for these events"
+
+  - slug: orforglipron
+    name: Orforglipron
+    code_name: LY3502970
+    brand_names: [Foundayo]
+    sponsor: Eli Lilly and Company
+    modality: Non-peptide small molecule
+    route: Oral tablet, once daily
+    tier_group: CORE
+    faers_generic: ORFORGLIPRON
+    label_brands: [Foundayo]
+    regulatory:
+      status: APPROVED
+      as_of: "2026-10-13"
+      summary: "FDA-approved as Foundayo tablets (NDA 220934; Drugs@FDA lists the original approval on 2026-04-01) for chronic weight management in adults with obesity, or overweight with at least one weight-related comorbid condition. No type 2 diabetes indication appears in the current label; Lilly's pipeline page (data as of 2026-08-05) lists the diabetes indication as under regulatory review."
+      source: openfda-label:foundayo
+      quote: "to reduce excess body weight and maintain weight reduction long term in adults with obesity or adults with overweight in the presence of at least one weight-related comorbid condition"
+    mechanisms:
+      - {target: GLP1R, action: AGONIST, source: "openfda-label:foundayo", quote: "FOUNDAYO is a GLP-1 receptor agonist that binds to and activates the human GLP-1 receptor"}
+    indications:
+      - brand: Foundayo
+        status: APPROVED
+        text: "With a reduced-calorie diet and increased physical activity: reduce excess body weight and maintain weight reduction long term in adults with obesity, or overweight with at least one weight-related comorbid condition."
+        source: openfda-label:foundayo
+        quote: "to reduce excess body weight and maintain weight reduction long term in adults with obesity or adults with overweight in the presence of at least one weight-related comorbid condition"
+      - status: SUBMITTED
+        text: "Type 2 diabetes — listed as 'Regulatory Review' on Lilly's pipeline page (data as of 2026-08-05); not an approved indication."
+        source: web:lilly-pipeline
+        locator: "Pipeline table entry — Phase: Regulatory Review; Molecule: Orforglipron; Indication: Diabetes"
+    formulations:
+      - key: orforglipron-capsule
+        name: "Investigational orforglipron capsule (formulation used in the Phase 3 trials)"
+        dosage_form: Capsule
+        route: Oral, once daily
+        stage: INVESTIGATIONAL
+        notes: "Dose labels 6, 12 and 36 mg are those of the ClinicalTrials.gov records for ATTAIN-1 and ATTAIN-2; the full capsule series is as stated in the bioequivalence publication."
+        doses:
+          - {key: orfo-cap-1, amount: 1, frequency: once daily, role: STARTING}
+          - {key: orfo-cap-3, amount: 3, frequency: once daily, role: ESCALATION}
+          - {key: orfo-cap-6, amount: 6, frequency: once daily, role: MAINTENANCE}
+          - {key: orfo-cap-12, amount: 12, frequency: once daily, role: MAINTENANCE}
+          - {key: orfo-cap-24, amount: 24, frequency: once daily, role: MAINTENANCE}
+          - {key: orfo-cap-36, amount: 36, frequency: once daily, role: MAINTENANCE}
+      - key: foundayo-tablet
+        name: "Foundayo (orforglipron) tablets — marketed formulation"
+        dosage_form: Film-coated tablet
+        route: Oral, once daily
+        stage: MARKETED
+        doses:
+          - {key: foundayo-0.8, amount: 0.8, frequency: once daily, role: STARTING}
+          - {key: foundayo-2.5, amount: 2.5, frequency: once daily, role: ESCALATION}
+          - {key: foundayo-5.5, amount: 5.5, frequency: once daily, role: MAINTENANCE}
+          - {key: foundayo-9, amount: 9, frequency: once daily, role: MAINTENANCE}
+          - {key: foundayo-14.5, amount: 14.5, frequency: once daily, role: MAINTENANCE}
+          - {key: foundayo-17.2, amount: 17.2, frequency: once daily, role: MAINTENANCE}
+    # Each pair below is a DOCUMENTED correspondence from the pharmacokinetic bioequivalence study
+    # (NCT06440980; PMID 41994902), which FDA's multidisciplinary review relied on. The pairs are not
+    # related by a constant ratio and no conversion factor may be derived from them.
+    equivalences:
+      - a: orfo-cap-1
+        b: foundayo-0.8
+        basis: DOCUMENTED_BIOEQUIVALENCE
+        statement: "The 1 mg investigational capsule and the 0.8 mg Foundayo tablet are a documented bioequivalent dose pair (steady-state AUC and Cmax) in the tablet-versus-capsule pharmacokinetic study; FDA's review of the tablet NDA relied on this bioequivalence. Applies to this dose pair only."
+        source: pubmed:41994902
+        quote: "capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding tablet doses of 0.8, 2.5, 5.5, 9, 14.5, and 17.2 mg"
+      - a: orfo-cap-3
+        b: foundayo-2.5
+        basis: DOCUMENTED_BIOEQUIVALENCE
+        statement: "The 3 mg investigational capsule and the 2.5 mg Foundayo tablet are a documented bioequivalent dose pair (steady-state AUC and Cmax) in the tablet-versus-capsule pharmacokinetic study; FDA's review of the tablet NDA relied on this bioequivalence. Applies to this dose pair only."
+        source: pubmed:41994902
+        quote: "capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding tablet doses of 0.8, 2.5, 5.5, 9, 14.5, and 17.2 mg"
+      - a: orfo-cap-6
+        b: foundayo-5.5
+        basis: DOCUMENTED_BIOEQUIVALENCE
+        statement: "The 6 mg investigational capsule and the 5.5 mg Foundayo tablet are a documented bioequivalent dose pair (steady-state AUC and Cmax) in the tablet-versus-capsule pharmacokinetic study; FDA's review of the tablet NDA relied on this bioequivalence. Applies to this dose pair only."
+        source: pubmed:41994902
+        quote: "capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding tablet doses of 0.8, 2.5, 5.5, 9, 14.5, and 17.2 mg"
+      - a: orfo-cap-12
+        b: foundayo-9
+        basis: DOCUMENTED_BIOEQUIVALENCE
+        statement: "The 12 mg investigational capsule and the 9 mg Foundayo tablet are a documented bioequivalent dose pair (steady-state AUC and Cmax) in the tablet-versus-capsule pharmacokinetic study; FDA's review of the tablet NDA relied on this bioequivalence. Applies to this dose pair only."
+        source: pubmed:41994902
+        quote: "capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding tablet doses of 0.8, 2.5, 5.5, 9, 14.5, and 17.2 mg"
+      - a: orfo-cap-24
+        b: foundayo-14.5
+        basis: DOCUMENTED_BIOEQUIVALENCE
+        statement: "The 24 mg investigational capsule and the 14.5 mg Foundayo tablet are a documented bioequivalent dose pair (steady-state AUC and Cmax) in the tablet-versus-capsule pharmacokinetic study; FDA's review of the tablet NDA relied on this bioequivalence. Applies to this dose pair only."
+        source: pubmed:41994902
+        quote: "capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding tablet doses of 0.8, 2.5, 5.5, 9, 14.5, and 17.2 mg"
+      - a: orfo-cap-36
+        b: foundayo-17.2
+        basis: DOCUMENTED_BIOEQUIVALENCE
+        statement: "The 36 mg investigational capsule and the 17.2 mg Foundayo tablet are a documented bioequivalent dose pair (steady-state AUC and Cmax) in the tablet-versus-capsule pharmacokinetic study; FDA's review of the tablet NDA relied on this bioequivalence. Applies to this dose pair only."
+        source: pubmed:41994902
+        quote: "capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding tablet doses of 0.8, 2.5, 5.5, 9, 14.5, and 17.2 mg"
+
+  - slug: retatrutide
+    name: Retatrutide
+    code_name: LY3437943
+    sponsor: Eli Lilly and Company
+    modality: Peptide (biologic)
+    route: Subcutaneous injection, once weekly
+    tier_group: CORE
+    label_watch_generic: RETATRUTIDE
+    regulatory:
+      status: INVESTIGATIONAL
+      as_of: "2026-10-13"
+      summary: "Investigational. Listed in Phase 3 on Lilly's pipeline page (data as of 2026-08-05); no FDA-approved labeling exists in the openFDA label database as of the last check. Not approved for any indication."
+      source: web:lilly-pipeline
+      quote: "acts as a triagonist for the gastric inhibitory polypeptide (GIP) receptor, the glucagon-like peptide-1 (GLP-1) receptor and the glucagon receptor"
+    mechanisms:
+      - {target: GIPR, action: AGONIST, source: "web:lilly-pipeline", quote: "acts as a triagonist for the gastric inhibitory polypeptide (GIP) receptor, the glucagon-like peptide-1 (GLP-1) receptor and the glucagon receptor"}
+      - {target: GLP1R, action: AGONIST, source: "web:lilly-pipeline", quote: "acts as a triagonist for the gastric inhibitory polypeptide (GIP) receptor, the glucagon-like peptide-1 (GLP-1) receptor and the glucagon receptor"}
+      - {target: GCGR, action: AGONIST, source: "web:lilly-pipeline", quote: "acts as a triagonist for the gastric inhibitory polypeptide (GIP) receptor, the glucagon-like peptide-1 (GLP-1) receptor and the glucagon receptor"}
+
+  - slug: eloralintide
+    name: Eloralintide
+    code_name: LY3841136
+    sponsor: Eli Lilly and Company
+    modality: Peptide (biologic)
+    route: Subcutaneous injection, once weekly
+    tier_group: CORE
+    label_watch_generic: ELORALINTIDE
+    regulatory:
+      status: INVESTIGATIONAL
+      as_of: "2026-10-13"
+      summary: "Investigational. Listed in Phase 3 (obesity, obstructive sleep apnea, osteoarthritis pain, incretin add-on) on Lilly's pipeline page (data as of 2026-08-05). Not approved for any indication."
+      source: web:lilly-pipeline
+      quote: "LY3841136 (eloralintide) is a biologic entity that acts as a selective amylin receptor agonist. It is being studied for the treatment of obesity."
+    mechanisms:
+      - target: AMYR
+        action: AGONIST
+        description: "Selective amylin receptor agonist. It is not a GLP-1 receptor agonist."
+        source: web:lilly-pipeline
+        quote: "LY3841136 (eloralintide) is a biologic entity that acts as a selective amylin receptor agonist."
+
+  - slug: eloralintide-tirzepatide
+    name: "Eloralintide + tirzepatide (EloraTZP)"
+    sponsor: Eli Lilly and Company
+    modality: Combination of two peptides
+    route: Subcutaneous injection, once weekly (separate injections in Phase 2b)
+    tier_group: CORE
+    is_combination: true
+    component_slugs: [eloralintide, tirzepatide]
+    regulatory:
+      status: INVESTIGATIONAL
+      as_of: "2026-10-13"
+      summary: "Investigational combination. Phase 2b topline results were disclosed by press release on 2026-09-30; no Phase 3 study of the combination was registered as of 2026-10-13. Not approved."
+      source: web:lilly-pr-2026-09-30-eloratzp
+      quote: "EloraTZP, an investigational combination of eloralintide, a selective amylin receptor agonist, and tirzepatide, a dual GIP and GLP-1 receptor agonist"
+    mechanisms:
+      - {target: AMYR, action: AGONIST, description: "Via the eloralintide component.", source: "web:lilly-pr-2026-09-30-eloratzp", quote: "EloraTZP, an investigational combination of eloralintide, a selective amylin receptor agonist, and tirzepatide, a dual GIP and GLP-1 receptor agonist"}
+      - {target: GIPR, action: AGONIST, description: "Via the tirzepatide component.", source: "web:lilly-pr-2026-09-30-eloratzp", quote: "EloraTZP, an investigational combination of eloralintide, a selective amylin receptor agonist, and tirzepatide, a dual GIP and GLP-1 receptor agonist"}
+      - {target: GLP1R, action: AGONIST, description: "Via the tirzepatide component.", source: "web:lilly-pr-2026-09-30-eloratzp", quote: "EloraTZP, an investigational combination of eloralintide, a selective amylin receptor agonist, and tirzepatide, a dual GIP and GLP-1 receptor agonist"}
+
+  - slug: brenipatide
+    name: Brenipatide
+    code_name: LY3537031
+    sponsor: Eli Lilly and Company
+    modality: Peptide (biologic)
+    tier_group: ADJACENT
+    label_watch_generic: BRENIPATIDE
+    notes: "Developed mainly outside metabolic indications (alcohol use disorder, major depressive disorder and others)."
+    regulatory:
+      status: INVESTIGATIONAL
+      as_of: "2026-10-13"
+      summary: "Investigational. Lilly's pipeline page (data as of 2026-08-05) lists Phase 3 in alcohol use disorder and major depressive disorder. Not approved."
+      source: web:lilly-pipeline
+      quote: "LY3537031 (Brenipatide) is a biologic entity that acts as an agonist of both glucose-dependent insulinotropic polypeptide (GIP) receptor and the glucagon-like peptide (GLP-1) receptor"
+    mechanisms:
+      - {target: GIPR, action: AGONIST, source: "web:lilly-pipeline", quote: "LY3537031 (Brenipatide) is a biologic entity that acts as an agonist of both glucose-dependent insulinotropic polypeptide (GIP) receptor and the glucagon-like peptide (GLP-1) receptor"}
+      - {target: GLP1R, action: AGONIST, source: "web:lilly-pipeline", quote: "LY3537031 (Brenipatide) is a biologic entity that acts as an agonist of both glucose-dependent insulinotropic polypeptide (GIP) receptor and the glucagon-like peptide (GLP-1) receptor"}
+
+  - slug: macupatide
+    name: Macupatide
+    code_name: LY3532226
+    sponsor: Eli Lilly and Company
+    modality: Peptide (biologic)
+    tier_group: ADJACENT
+    label_watch_generic: MACUPATIDE
+    regulatory:
+      status: INVESTIGATIONAL
+      as_of: "2026-10-13"
+      summary: "Investigational. Lilly's pipeline page (data as of 2026-08-05) lists Phase 2 for obesity. Not approved."
+      source: web:lilly-pipeline
+      quote: "LY3532226 (Macupatide) is a biologic entity that acts as a long-acting agonist of the glucose-dependent insulinotropic polypeptide (GIP) receptor."
+    mechanisms:
+      - target: GIPR
+        action: AGONIST
+        description: "Long-acting GIP receptor agonist. No GLP-1 receptor activity is stated by the source; it is not a GLP-1 receptor agonist."
+        source: web:lilly-pipeline
+        quote: "LY3532226 (Macupatide) is a biologic entity that acts as a long-acting agonist of the glucose-dependent insulinotropic polypeptide (GIP) receptor."
+
+  - slug: bimagrumab
+    name: Bimagrumab
+    code_name: LY3985863
+    sponsor: Eli Lilly and Company
+    modality: Monoclonal antibody
+    tier_group: ADJACENT
+    label_watch_generic: BIMAGRUMAB
+    regulatory:
+      status: INVESTIGATIONAL
+      as_of: "2026-10-13"
+      summary: "Investigational. Lilly's pipeline page (data as of 2026-08-05) lists Phase 2 for obesity. Not approved."
+      source: web:lilly-pipeline
+      quote: "LY3985863 (Bimagrumab) is a monoclonal antibody that binds the activin/myostatin type II receptors ActRIIA and ActRIIB and blocks ligand binding."
+    mechanisms:
+      - {target: ACTRII, action: ANTIBODY_BLOCKADE, source: "web:lilly-pipeline", quote: "LY3985863 (Bimagrumab) is a monoclonal antibody that binds the activin/myostatin type II receptors ActRIIA and ActRIIB and blocks ligand binding."}
+
+  - slug: semaglutide
+    name: Semaglutide
+    brand_names: [Wegovy, Ozempic, Rybelsus]
+    sponsor: Novo Nordisk
+    modality: Peptide (biologic)
+    tier_group: COMPARATOR
+    notes: "Tracked only as an active comparator in Lilly-sponsored trials; its labeling is not ingested."
+    regulatory:
+      status: UNKNOWN
+      as_of: "2026-10-13"
+      summary: "Active comparator in SURMOUNT-5, SURPASS-2 and ACHIEVE-3; regulatory status and indications are not tracked by this platform."
+      source: ctgov:NCT05822830
+    mechanisms:
+      - {target: GLP1R, action: AGONIST, description: "Comparator; mechanism entered without an ingested label source.", source: "ctgov:NCT05822830"}
+
+  - slug: insulin-glargine
+    name: Insulin glargine
+    modality: Insulin analogue
+    tier_group: COMPARATOR
+    notes: "Tracked only as the active comparator in ACHIEVE-4."
+    regulatory:
+      status: UNKNOWN
+      as_of: "2026-10-13"
+      summary: "Comparator in ACHIEVE-4; regulatory status is not tracked by this platform."
+      source: ctgov:NCT05803421

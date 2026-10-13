@@ -1,0 +1,35 @@
+{
+ "pmid": "41284285",
+ "title": "Cardiometabolic Parameter Change by Weight Regain on Tirzepatide Withdrawal in Adults With Obesity: A Post Hoc Analysis of the SURMOUNT-4 Trial.",
+ "journal": "JAMA internal medicine",
+ "pub_date": "2026 Feb 01",
+ "year": 2026,
+ "doi": "10.1001/jamainternmed.2025.6112",
+ "authors": [
+  "Horn DB",
+  "Linetzky B",
+  "Davies MJ",
+  "Laffin LJ",
+  "Wang H",
+  "Murphy MA",
+  "Zimner-Rapuch S",
+  "Lau E",
+  "Arad AD",
+  "Lee CJ"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT04660643"
+ ],
+ "abstract_sha256": "09b5067e7977ed37d83006eb52e468cb8b7727eda3e4d048f8f07cdec06341c1",
+ "abstract_chars": 3467,
+ "abstract_ncts": [
+  "NCT04660643"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

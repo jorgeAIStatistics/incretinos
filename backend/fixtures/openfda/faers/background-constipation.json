@@ -1,0 +1,201 @@
+{
+  "meta": {
+    "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+    "terms": "https://open.fda.gov/terms/",
+    "license": "https://open.fda.gov/license/",
+    "last_updated": "2026-07-30",
+    "results": {
+      "skip": 0,
+      "limit": 1,
+      "total": 213547
+    }
+  },
+  "results": [
+    {
+      "safetyreportversion": "2",
+      "safetyreportid": "10003612",
+      "primarysourcecountry": "CA",
+      "occurcountry": "CA",
+      "transmissiondateformat": "102",
+      "transmissiondate": "20141002",
+      "reporttype": "2",
+      "serious": "1",
+      "seriousnessdeath": "1",
+      "seriousnessother": "1",
+      "receivedateformat": "102",
+      "receivedate": "20140312",
+      "receiptdateformat": "102",
+      "receiptdate": "20140312",
+      "fulfillexpeditecriteria": "1",
+      "companynumb": "PHHY2013CA006477",
+      "duplicate": "1",
+      "reportduplicate": {
+        "duplicatesource": "NOVARTIS",
+        "duplicatenumb": "PHHY2013CA006477"
+      },
+      "primarysource": {
+        "reportercountry": "COUNTRY NOT SPECIFIED",
+        "qualification": "5"
+      },
+      "sender": {
+        "sendertype": "2",
+        "senderorganization": "FDA-Public Use"
+      },
+      "receiver": {
+        "receivertype": "6",
+        "receiverorganization": "FDA"
+      },
+      "patient": {
+        "patientsex": "2",
+        "reaction": [
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Death",
+            "reactionoutcome": "5"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Pleural effusion",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Blister",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Hypothyroidism",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Blood potassium decreased",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Anaemia",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Nausea",
+            "reactionoutcome": "1"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Vomiting",
+            "reactionoutcome": "1"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Constipation",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Blood pressure increased",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Fluid retention",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Pollakiuria",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Local swelling",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Joint swelling",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "17.0",
+            "reactionmeddrapt": "Swelling",
+            "reactionoutcome": "6"
+          }
+        ],
+        "drug": [
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "GLEEVEC",
+            "drugauthorizationnumb": "021588",
+            "drugstructuredosagenumb": "400",
+            "drugstructuredosageunit": "003",
+            "drugseparatedosagenumb": "1",
+            "drugintervaldosageunitnumb": "1",
+            "drugintervaldosagedefinition": "804",
+            "drugdosagetext": "400 MG, QD",
+            "drugdosageform": "TABLET",
+            "drugadministrationroute": "048",
+            "drugindication": "GASTROINTESTINAL STROMAL TUMOUR",
+            "drugstartdateformat": "610",
+            "drugstartdate": "201208",
+            "actiondrug": "5",
+            "drugrecurreadministration": "3",
+            "openfda": {
+              "application_number": [
+                "NDA021588"
+              ],
+              "brand_name": [
+                "GLEEVEC"
+              ],
+              "generic_name": [
+                "IMATINIB MESYLATE"
+              ],
+              "manufacturer_name": [
+                "Novartis Pharmaceuticals Corporation"
+              ],
+              "product_ndc": [
+                "0078-0401",
+                "0078-0649",
+                "0078-1490"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "ORAL"
+              ],
+              "substance_name": [
+                "IMATINIB MESYLATE"
+              ],
+              "rxcui": [
+                "403878",
+                "403879",
+                "404588",
+                "404589"
+              ],
+              "spl_id": [
+                "2b30c65b-bf6e-4a30-9754-585d500d59f3"
+              ],
+              "spl_set_id": [
+                "211ef2da-2868-4a77-8055-1cb2cd78e24b"
+              ],
+              "package_ndc": [
+                "0078-0401-34",
+                "0078-0649-30",
+                "0078-0649-26",
+                "0078-0649-13",
+                "0078-1490-26",
+                "0078-1490-13"
+              ],
+              "unii": [
+                "8A1O1M485B"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

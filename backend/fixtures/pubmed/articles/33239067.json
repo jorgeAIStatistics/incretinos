@@ -1,0 +1,51 @@
+{
+ "pmid": "33239067",
+ "title": "Total cardiovascular or fatal events in people with type 2 diabetes and cardiovascular risk factors treated with dulaglutide in the REWIND trail: a post hoc analysis.",
+ "journal": "Cardiovascular diabetology",
+ "pub_date": "2020 Nov 25",
+ "year": 2020,
+ "doi": "10.1186/s12933-020-01179-1",
+ "authors": [
+  "Dagenais GR",
+  "Rydén L",
+  "Leiter LA",
+  "Lakshmanan M",
+  "Dyal L",
+  "Probstfield JL",
+  "Atisso CM",
+  "Shaw JE",
+  "Conget I",
+  "Cushman WC",
+  "Lopez-Jaramillo P",
+  "Lanas F",
+  "Munoz EGC",
+  "Pirags V",
+  "Pogosova N",
+  "Basile J",
+  "Sheu WHH",
+  "Temelkova-Kurktschiev T",
+  "Raubenheimer PJ",
+  "Keltai M",
+  "Hall S",
+  "Pais P",
+  "Colhoun HM",
+  "Riddle MC",
+  "Gerstein HC"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Multicenter Study",
+  "Randomized Controlled Trial",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT01394952"
+ ],
+ "abstract_sha256": "7854049f86f51e536d62455e28c907118cf67023acd5a85a80b30f4a2c2e3783",
+ "abstract_chars": 2407,
+ "abstract_ncts": [
+  "NCT01394952"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

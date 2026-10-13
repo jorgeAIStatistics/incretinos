@@ -1,0 +1,39 @@
+{
+ "pmid": "38912654",
+ "title": "Tirzepatide for the Treatment of Obstructive Sleep Apnea and Obesity.",
+ "journal": "The New England journal of medicine",
+ "pub_date": "2024 Oct 03",
+ "year": 2024,
+ "doi": "10.1056/nejmoa2404881",
+ "authors": [
+  "Malhotra A",
+  "Grunstein RR",
+  "Fietze I",
+  "Weaver TE",
+  "Redline S",
+  "Azarbarzin A",
+  "Sands SA",
+  "Schwab RJ",
+  "Dunn JP",
+  "Chakladar S",
+  "Bunck MC",
+  "Bednarik J",
+  "SURMOUNT-OSA Investigators"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase III",
+  "Multicenter Study"
+ ],
+ "databank_ncts": [
+  "NCT05412004"
+ ],
+ "abstract_sha256": "1af218ae96a617824204869a3b56491ffef63e329f9d81fdf626fe4141314b9e",
+ "abstract_chars": 2583,
+ "abstract_ncts": [
+  "NCT05412004"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

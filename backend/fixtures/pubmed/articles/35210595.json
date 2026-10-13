@@ -1,0 +1,36 @@
+{
+ "pmid": "35210595",
+ "title": "Tirzepatide cardiovascular event risk assessment: a pre-specified meta-analysis.",
+ "journal": "Nature medicine",
+ "pub_date": "2022 Mar",
+ "year": 2022,
+ "doi": "10.1038/s41591-022-01707-4",
+ "authors": [
+  "Sattar N",
+  "McGuire DK",
+  "Pavo I",
+  "Weerakkody GJ",
+  "Nishiyama H",
+  "Wiese RJ",
+  "Zoungas S"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Meta-Analysis",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT03131687",
+  "NCT03730662",
+  "NCT03861052",
+  "NCT03882970",
+  "NCT03954834",
+  "NCT03987919",
+  "NCT04039503"
+ ],
+ "abstract_sha256": "a45ef0570db46b1e04e310561cc98e3d2f3bce09aabc4471b6612425383846e1",
+ "abstract_chars": 1711,
+ "abstract_ncts": [],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

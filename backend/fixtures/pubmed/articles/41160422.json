@@ -1,0 +1,34 @@
+{
+ "pmid": "41160422",
+ "title": "Rationale, design and baseline characteristics of the TRANSCEND-CKD trial of retatrutide in patients with chronic kidney disease.",
+ "journal": "Nephrology, dialysis, transplantation : official publication of the European Dialysis and Transplant Association - European Renal Association",
+ "pub_date": "2026 May 29",
+ "year": 2026,
+ "doi": "10.1093/ndt/gfaf230",
+ "authors": [
+  "Heerspink HJL",
+  "van Raalte DH",
+  "Bjornstad P",
+  "Bunck MC",
+  "Wu P",
+  "Tunali I",
+  "Milicevic Z",
+  "Koeneman L"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Clinical Trial Protocol"
+ ],
+ "databank_ncts": [
+  "NCT05936151",
+  "NCT06383390"
+ ],
+ "abstract_sha256": "9d2a6aba0f188976eb4c2828ae480555f1f3d688f74536f4562b135c5744d9d5",
+ "abstract_chars": 2212,
+ "abstract_ncts": [
+  "NCT05936151",
+  "NCT06383390"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

@@ -1,0 +1,33 @@
+{
+ "pmid": "42434924",
+ "title": "Tirzepatide compared with semaglutide in obesity disease: a subpopulation analysis applying Japan Society for the Study of Obesity criteria in the global SURMOUNT-5 trial.",
+ "journal": "Current medical research and opinion",
+ "pub_date": "2026 Jun",
+ "year": 2026,
+ "doi": "10.1080/03007995.2026.2695047",
+ "authors": [
+  "Kitamoto T",
+  "Yoshino M",
+  "Shingaki T",
+  "Oura T",
+  "Gomez Valderas E",
+  "Dunn JP"
+ ],
+ "pub_types": [
+  "Clinical Trial, Phase III",
+  "Comparative Study",
+  "Journal Article",
+  "Multicenter Study",
+  "Randomized Controlled Trial"
+ ],
+ "databank_ncts": [
+  "NCT05822830"
+ ],
+ "abstract_sha256": "31ab46224afc207251c614e5b05d6e12cdada378e88d85b57f420eddd4a5bc49",
+ "abstract_chars": 1915,
+ "abstract_ncts": [
+  "NCT05822830"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

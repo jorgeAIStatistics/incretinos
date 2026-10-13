@@ -1,0 +1,40 @@
+{
+ "pmid": "37385275",
+ "title": "Tirzepatide once weekly for the treatment of obesity in people with type 2 diabetes (SURMOUNT-2): a double-blind, randomised, multicentre, placebo-controlled, phase 3 trial.",
+ "journal": "Lancet (London, England)",
+ "pub_date": "2023 Aug 19",
+ "year": 2023,
+ "doi": "10.1016/s0140-6736(23)01200-x",
+ "authors": [
+  "Garvey WT",
+  "Frias JP",
+  "Jastreboff AM",
+  "le Roux CW",
+  "Sattar N",
+  "Aizenberg D",
+  "Mao H",
+  "Zhang S",
+  "Ahmad NN",
+  "Bunck MC",
+  "Benabbad I",
+  "Zhang XM",
+  "SURMOUNT-2 investigators"
+ ],
+ "pub_types": [
+  "Randomized Controlled Trial",
+  "Multicenter Study",
+  "Clinical Trial, Phase III",
+  "Journal Article",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT04657003"
+ ],
+ "abstract_sha256": "d1ec91c4b50cd443ad9dfd852ceb0cdf292997a732a96816e2923074699e4465",
+ "abstract_chars": 3097,
+ "abstract_ncts": [
+  "NCT04657003"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

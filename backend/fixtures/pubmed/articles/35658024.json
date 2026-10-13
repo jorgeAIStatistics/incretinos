@@ -1,0 +1,44 @@
+{
+ "pmid": "35658024",
+ "title": "Tirzepatide Once Weekly for the Treatment of Obesity.",
+ "journal": "The New England journal of medicine",
+ "pub_date": "2022 Jul 21",
+ "year": 2022,
+ "doi": "10.1056/nejmoa2206038",
+ "authors": [
+  "Jastreboff AM",
+  "Aronne LJ",
+  "Ahmad NN",
+  "Wharton S",
+  "Connery L",
+  "Alves B",
+  "Kiyosue A",
+  "Zhang S",
+  "Liu B",
+  "Bunck MC",
+  "Stefanski A",
+  "SURMOUNT-1 Investigators"
+ ],
+ "pub_types": [
+  "Clinical Trial, Phase III",
+  "Journal Article",
+  "Randomized Controlled Trial"
+ ],
+ "databank_ncts": [
+  "NCT04184622"
+ ],
+ "abstract_sha256": "2e2c0a6b52ee66969794893eb7ec53d33b8965b4d3c44e45dfad9a7ee587f7d3",
+ "abstract_chars": 2601,
+ "abstract_ncts": [
+  "NCT04184622"
+ ],
+ "excerpts": [
+  "Coprimary end points were the percentage change in weight from baseline and a weight reduction of 5% or more.",
+  "The treatment-regimen estimand assessed effects regardless of treatment discontinuation in the intention-to-treat population.",
+  "-15.0% (95% confidence interval [CI], -15.9 to -14.2) with 5-mg weekly doses of tirzepatide",
+  "-19.5% (95% CI, -20.4 to -18.5) with 10-mg doses",
+  "-20.9% (95% CI, -21.8 to -19.9) with 15-mg doses and -3.1% (95% CI, -4.3 to -1.9) with placebo",
+  "Adverse events caused treatment discontinuation in 4.3%, 7.1%, 6.2%, and 2.6% of participants receiving 5-mg, 10-mg, and 15-mg tirzepatide doses and placebo, respectively."
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

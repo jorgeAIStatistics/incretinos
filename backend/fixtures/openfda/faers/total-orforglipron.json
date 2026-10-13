@@ -1,0 +1,880 @@
+{
+  "meta": {
+    "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+    "terms": "https://open.fda.gov/terms/",
+    "license": "https://open.fda.gov/license/",
+    "last_updated": "2026-07-30",
+    "results": {
+      "skip": 0,
+      "limit": 1,
+      "total": 726
+    }
+  },
+  "results": [
+    {
+      "safetyreportversion": "1",
+      "safetyreportid": "25508623",
+      "primarysourcecountry": "US",
+      "occurcountry": "US",
+      "transmissiondateformat": "102",
+      "transmissiondate": "20251021",
+      "reporttype": "1",
+      "serious": "2",
+      "seriousnessdeath": "2",
+      "seriousnesslifethreatening": "2",
+      "seriousnesshospitalization": "2",
+      "seriousnessdisabling": "2",
+      "seriousnesscongenitalanomali": "2",
+      "seriousnessother": "2",
+      "receivedateformat": "102",
+      "receivedate": "20250703",
+      "receiptdateformat": "102",
+      "receiptdate": "20250703",
+      "fulfillexpeditecriteria": "2",
+      "companynumb": "US-ELI_LILLY_AND_COMPANY-US202506023280",
+      "primarysource": {
+        "reportercountry": "US",
+        "qualification": "5"
+      },
+      "sender": {
+        "sendertype": "6",
+        "senderorganization": "ELI LILLY AND COMPANY"
+      },
+      "receiver": {
+        "receivertype": "6",
+        "receiverorganization": "FDA"
+      },
+      "patient": {
+        "patientonsetage": "76",
+        "patientonsetageunit": "801",
+        "patientagegroup": "6",
+        "patientsex": "1",
+        "reaction": [
+          {
+            "reactionmeddraversionpt": "28.0",
+            "reactionmeddrapt": "Nausea",
+            "reactionoutcome": "6"
+          },
+          {
+            "reactionmeddraversionpt": "28.0",
+            "reactionmeddrapt": "Dyspepsia",
+            "reactionoutcome": "6"
+          }
+        ],
+        "drug": [
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "MOUNJARO",
+            "drugauthorizationnumb": "215866",
+            "drugstructuredosagenumb": "5",
+            "drugstructuredosageunit": "003",
+            "drugdosageform": "Solution for injection in pre-filled pen",
+            "drugadministrationroute": "065",
+            "drugindication": "Type 2 diabetes mellitus",
+            "drugstartdateformat": "610",
+            "drugstartdate": "202503",
+            "actiondrug": "4",
+            "activesubstance": {
+              "activesubstancename": "TIRZEPATIDE"
+            },
+            "openfda": {
+              "application_number": [
+                "NDA215866"
+              ],
+              "brand_name": [
+                "MOUNJARO",
+                "MOUNJARO KWIKPEN"
+              ],
+              "generic_name": [
+                "TIRZEPATIDE"
+              ],
+              "manufacturer_name": [
+                "Eli Lilly and Company"
+              ],
+              "product_ndc": [
+                "0002-3002",
+                "0002-1506",
+                "0002-1495",
+                "0002-1484",
+                "0002-1471",
+                "0002-1460",
+                "0002-1457",
+                "0002-1152",
+                "0002-1243",
+                "0002-2214",
+                "0002-2340",
+                "0002-2423",
+                "0002-4052",
+                "0002-4103",
+                "0002-4210",
+                "0002-4304",
+                "0002-4523",
+                "0002-4612",
+                "0002-3466",
+                "0002-3455",
+                "0002-3444",
+                "0002-3433",
+                "0002-3422",
+                "0002-3411"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "SUBCUTANEOUS"
+              ],
+              "substance_name": [
+                "TIRZEPATIDE"
+              ],
+              "rxcui": [
+                "2601743",
+                "2601746",
+                "2601755",
+                "2601758",
+                "2601761",
+                "2601764",
+                "2601767",
+                "2601770",
+                "2601773",
+                "2601776",
+                "2601784",
+                "2601785",
+                "2644396",
+                "2644399",
+                "2644401",
+                "2644403",
+                "2644405",
+                "2644407",
+                "2644409",
+                "2644411",
+                "2644413",
+                "2644415",
+                "2644417",
+                "2644419",
+                "2732437",
+                "2732442",
+                "2732446",
+                "2732449",
+                "2732452",
+                "2732456",
+                "2733666",
+                "2733668",
+                "2733670",
+                "2733671",
+                "2733673",
+                "2733675",
+                "2734623",
+                "2734628",
+                "2734632",
+                "2734636",
+                "2734640",
+                "2734644",
+                "2735286",
+                "2735288",
+                "2735290",
+                "2735292",
+                "2735294",
+                "2735297"
+              ],
+              "spl_id": [
+                "8f6367b6-bf0d-46e1-ba7d-0417523474e5"
+              ],
+              "spl_set_id": [
+                "d2d7da5d-ad07-4228-955f-cf7e355c8cc0"
+              ],
+              "package_ndc": [
+                "0002-1506-01",
+                "0002-1506-80",
+                "0002-1506-61",
+                "0002-1495-01",
+                "0002-1495-80",
+                "0002-1484-01",
+                "0002-1484-80",
+                "0002-1471-01",
+                "0002-1471-80",
+                "0002-1460-01",
+                "0002-1460-80",
+                "0002-1457-01",
+                "0002-1457-80",
+                "0002-1152-01",
+                "0002-1243-01",
+                "0002-2214-01",
+                "0002-2340-01",
+                "0002-2423-01",
+                "0002-3002-01",
+                "0002-4052-01",
+                "0002-4052-11",
+                "0002-4103-01",
+                "0002-4103-11",
+                "0002-4210-01",
+                "0002-4210-11",
+                "0002-4304-01",
+                "0002-4304-11",
+                "0002-4523-01",
+                "0002-4523-11",
+                "0002-4612-01",
+                "0002-4612-11",
+                "0002-3466-01",
+                "0002-3466-11",
+                "0002-3455-01",
+                "0002-3455-11",
+                "0002-3444-01",
+                "0002-3444-11",
+                "0002-3433-01",
+                "0002-3433-11",
+                "0002-3422-01",
+                "0002-3422-11",
+                "0002-3411-01",
+                "0002-3411-11"
+              ],
+              "nui": [
+                "N0000194015",
+                "N0000000152",
+                "N0000178480",
+                "N0000020058"
+              ],
+              "pharm_class_epc": [
+                "Glucose-dependent Insulinotropic Polypeptide Receptor Agonist [EPC]",
+                "GLP-1 Receptor Agonist [EPC]"
+              ],
+              "pharm_class_moa": [
+                "G-Protein-linked Receptor Interactions [MoA]",
+                "Glucagon-like Peptide-1 (GLP-1) Agonists [MoA]"
+              ],
+              "unii": [
+                "OYN3CCI6QE"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "MOUNJARO",
+            "drugauthorizationnumb": "215866",
+            "drugstructuredosagenumb": "5",
+            "drugstructuredosageunit": "003",
+            "drugdosageform": "Solution for injection in pre-filled pen",
+            "drugadministrationroute": "065",
+            "drugindication": "Type 2 diabetes mellitus",
+            "drugstartdateformat": "610",
+            "drugstartdate": "202503",
+            "actiondrug": "4",
+            "activesubstance": {
+              "activesubstancename": "TIRZEPATIDE"
+            },
+            "openfda": {
+              "application_number": [
+                "NDA215866"
+              ],
+              "brand_name": [
+                "MOUNJARO",
+                "MOUNJARO KWIKPEN"
+              ],
+              "generic_name": [
+                "TIRZEPATIDE"
+              ],
+              "manufacturer_name": [
+                "Eli Lilly and Company"
+              ],
+              "product_ndc": [
+                "0002-3002",
+                "0002-1506",
+                "0002-1495",
+                "0002-1484",
+                "0002-1471",
+                "0002-1460",
+                "0002-1457",
+                "0002-1152",
+                "0002-1243",
+                "0002-2214",
+                "0002-2340",
+                "0002-2423",
+                "0002-4052",
+                "0002-4103",
+                "0002-4210",
+                "0002-4304",
+                "0002-4523",
+                "0002-4612",
+                "0002-3466",
+                "0002-3455",
+                "0002-3444",
+                "0002-3433",
+                "0002-3422",
+                "0002-3411"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "SUBCUTANEOUS"
+              ],
+              "substance_name": [
+                "TIRZEPATIDE"
+              ],
+              "rxcui": [
+                "2601743",
+                "2601746",
+                "2601755",
+                "2601758",
+                "2601761",
+                "2601764",
+                "2601767",
+                "2601770",
+                "2601773",
+                "2601776",
+                "2601784",
+                "2601785",
+                "2644396",
+                "2644399",
+                "2644401",
+                "2644403",
+                "2644405",
+                "2644407",
+                "2644409",
+                "2644411",
+                "2644413",
+                "2644415",
+                "2644417",
+                "2644419",
+                "2732437",
+                "2732442",
+                "2732446",
+                "2732449",
+                "2732452",
+                "2732456",
+                "2733666",
+                "2733668",
+                "2733670",
+                "2733671",
+                "2733673",
+                "2733675",
+                "2734623",
+                "2734628",
+                "2734632",
+                "2734636",
+                "2734640",
+                "2734644",
+                "2735286",
+                "2735288",
+                "2735290",
+                "2735292",
+                "2735294",
+                "2735297"
+              ],
+              "spl_id": [
+                "8f6367b6-bf0d-46e1-ba7d-0417523474e5"
+              ],
+              "spl_set_id": [
+                "d2d7da5d-ad07-4228-955f-cf7e355c8cc0"
+              ],
+              "package_ndc": [
+                "0002-1506-01",
+                "0002-1506-80",
+                "0002-1506-61",
+                "0002-1495-01",
+                "0002-1495-80",
+                "0002-1484-01",
+                "0002-1484-80",
+                "0002-1471-01",
+                "0002-1471-80",
+                "0002-1460-01",
+                "0002-1460-80",
+                "0002-1457-01",
+                "0002-1457-80",
+                "0002-1152-01",
+                "0002-1243-01",
+                "0002-2214-01",
+                "0002-2340-01",
+                "0002-2423-01",
+                "0002-3002-01",
+                "0002-4052-01",
+                "0002-4052-11",
+                "0002-4103-01",
+                "0002-4103-11",
+                "0002-4210-01",
+                "0002-4210-11",
+                "0002-4304-01",
+                "0002-4304-11",
+                "0002-4523-01",
+                "0002-4523-11",
+                "0002-4612-01",
+                "0002-4612-11",
+                "0002-3466-01",
+                "0002-3466-11",
+                "0002-3455-01",
+                "0002-3455-11",
+                "0002-3444-01",
+                "0002-3444-11",
+                "0002-3433-01",
+                "0002-3433-11",
+                "0002-3422-01",
+                "0002-3422-11",
+                "0002-3411-01",
+                "0002-3411-11"
+              ],
+              "nui": [
+                "N0000194015",
+                "N0000000152",
+                "N0000178480",
+                "N0000020058"
+              ],
+              "pharm_class_epc": [
+                "Glucose-dependent Insulinotropic Polypeptide Receptor Agonist [EPC]",
+                "GLP-1 Receptor Agonist [EPC]"
+              ],
+              "pharm_class_moa": [
+                "G-Protein-linked Receptor Interactions [MoA]",
+                "Glucagon-like Peptide-1 (GLP-1) Agonists [MoA]"
+              ],
+              "unii": [
+                "OYN3CCI6QE"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "MOUNJARO",
+            "drugauthorizationnumb": "215866",
+            "drugstructuredosagenumb": "5",
+            "drugstructuredosageunit": "003",
+            "drugdosageform": "Solution for injection in pre-filled pen",
+            "drugadministrationroute": "065",
+            "drugindication": "Type 2 diabetes mellitus",
+            "drugstartdateformat": "610",
+            "drugstartdate": "202503",
+            "actiondrug": "4",
+            "activesubstance": {
+              "activesubstancename": "TIRZEPATIDE"
+            },
+            "openfda": {
+              "application_number": [
+                "NDA215866"
+              ],
+              "brand_name": [
+                "MOUNJARO",
+                "MOUNJARO KWIKPEN"
+              ],
+              "generic_name": [
+                "TIRZEPATIDE"
+              ],
+              "manufacturer_name": [
+                "Eli Lilly and Company"
+              ],
+              "product_ndc": [
+                "0002-3002",
+                "0002-1506",
+                "0002-1495",
+                "0002-1484",
+                "0002-1471",
+                "0002-1460",
+                "0002-1457",
+                "0002-1152",
+                "0002-1243",
+                "0002-2214",
+                "0002-2340",
+                "0002-2423",
+                "0002-4052",
+                "0002-4103",
+                "0002-4210",
+                "0002-4304",
+                "0002-4523",
+                "0002-4612",
+                "0002-3466",
+                "0002-3455",
+                "0002-3444",
+                "0002-3433",
+                "0002-3422",
+                "0002-3411"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "SUBCUTANEOUS"
+              ],
+              "substance_name": [
+                "TIRZEPATIDE"
+              ],
+              "rxcui": [
+                "2601743",
+                "2601746",
+                "2601755",
+                "2601758",
+                "2601761",
+                "2601764",
+                "2601767",
+                "2601770",
+                "2601773",
+                "2601776",
+                "2601784",
+                "2601785",
+                "2644396",
+                "2644399",
+                "2644401",
+                "2644403",
+                "2644405",
+                "2644407",
+                "2644409",
+                "2644411",
+                "2644413",
+                "2644415",
+                "2644417",
+                "2644419",
+                "2732437",
+                "2732442",
+                "2732446",
+                "2732449",
+                "2732452",
+                "2732456",
+                "2733666",
+                "2733668",
+                "2733670",
+                "2733671",
+                "2733673",
+                "2733675",
+                "2734623",
+                "2734628",
+                "2734632",
+                "2734636",
+                "2734640",
+                "2734644",
+                "2735286",
+                "2735288",
+                "2735290",
+                "2735292",
+                "2735294",
+                "2735297"
+              ],
+              "spl_id": [
+                "8f6367b6-bf0d-46e1-ba7d-0417523474e5"
+              ],
+              "spl_set_id": [
+                "d2d7da5d-ad07-4228-955f-cf7e355c8cc0"
+              ],
+              "package_ndc": [
+                "0002-1506-01",
+                "0002-1506-80",
+                "0002-1506-61",
+                "0002-1495-01",
+                "0002-1495-80",
+                "0002-1484-01",
+                "0002-1484-80",
+                "0002-1471-01",
+                "0002-1471-80",
+                "0002-1460-01",
+                "0002-1460-80",
+                "0002-1457-01",
+                "0002-1457-80",
+                "0002-1152-01",
+                "0002-1243-01",
+                "0002-2214-01",
+                "0002-2340-01",
+                "0002-2423-01",
+                "0002-3002-01",
+                "0002-4052-01",
+                "0002-4052-11",
+                "0002-4103-01",
+                "0002-4103-11",
+                "0002-4210-01",
+                "0002-4210-11",
+                "0002-4304-01",
+                "0002-4304-11",
+                "0002-4523-01",
+                "0002-4523-11",
+                "0002-4612-01",
+                "0002-4612-11",
+                "0002-3466-01",
+                "0002-3466-11",
+                "0002-3455-01",
+                "0002-3455-11",
+                "0002-3444-01",
+                "0002-3444-11",
+                "0002-3433-01",
+                "0002-3433-11",
+                "0002-3422-01",
+                "0002-3422-11",
+                "0002-3411-01",
+                "0002-3411-11"
+              ],
+              "nui": [
+                "N0000194015",
+                "N0000000152",
+                "N0000178480",
+                "N0000020058"
+              ],
+              "pharm_class_epc": [
+                "Glucose-dependent Insulinotropic Polypeptide Receptor Agonist [EPC]",
+                "GLP-1 Receptor Agonist [EPC]"
+              ],
+              "pharm_class_moa": [
+                "G-Protein-linked Receptor Interactions [MoA]",
+                "Glucagon-like Peptide-1 (GLP-1) Agonists [MoA]"
+              ],
+              "unii": [
+                "OYN3CCI6QE"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "MOUNJARO",
+            "drugauthorizationnumb": "215866",
+            "drugstructuredosagenumb": "5",
+            "drugstructuredosageunit": "003",
+            "drugdosageform": "Solution for injection in pre-filled pen",
+            "drugadministrationroute": "065",
+            "drugindication": "Type 2 diabetes mellitus",
+            "drugstartdateformat": "610",
+            "drugstartdate": "202503",
+            "actiondrug": "4",
+            "activesubstance": {
+              "activesubstancename": "TIRZEPATIDE"
+            },
+            "openfda": {
+              "application_number": [
+                "NDA215866"
+              ],
+              "brand_name": [
+                "MOUNJARO",
+                "MOUNJARO KWIKPEN"
+              ],
+              "generic_name": [
+                "TIRZEPATIDE"
+              ],
+              "manufacturer_name": [
+                "Eli Lilly and Company"
+              ],
+              "product_ndc": [
+                "0002-3002",
+                "0002-1506",
+                "0002-1495",
+                "0002-1484",
+                "0002-1471",
+                "0002-1460",
+                "0002-1457",
+                "0002-1152",
+                "0002-1243",
+                "0002-2214",
+                "0002-2340",
+                "0002-2423",
+                "0002-4052",
+                "0002-4103",
+                "0002-4210",
+                "0002-4304",
+                "0002-4523",
+                "0002-4612",
+                "0002-3466",
+                "0002-3455",
+                "0002-3444",
+                "0002-3433",
+                "0002-3422",
+                "0002-3411"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "SUBCUTANEOUS"
+              ],
+              "substance_name": [
+                "TIRZEPATIDE"
+              ],
+              "rxcui": [
+                "2601743",
+                "2601746",
+                "2601755",
+                "2601758",
+                "2601761",
+                "2601764",
+                "2601767",
+                "2601770",
+                "2601773",
+                "2601776",
+                "2601784",
+                "2601785",
+                "2644396",
+                "2644399",
+                "2644401",
+                "2644403",
+                "2644405",
+                "2644407",
+                "2644409",
+                "2644411",
+                "2644413",
+                "2644415",
+                "2644417",
+                "2644419",
+                "2732437",
+                "2732442",
+                "2732446",
+                "2732449",
+                "2732452",
+                "2732456",
+                "2733666",
+                "2733668",
+                "2733670",
+                "2733671",
+                "2733673",
+                "2733675",
+                "2734623",
+                "2734628",
+                "2734632",
+                "2734636",
+                "2734640",
+                "2734644",
+                "2735286",
+                "2735288",
+                "2735290",
+                "2735292",
+                "2735294",
+                "2735297"
+              ],
+              "spl_id": [
+                "8f6367b6-bf0d-46e1-ba7d-0417523474e5"
+              ],
+              "spl_set_id": [
+                "d2d7da5d-ad07-4228-955f-cf7e355c8cc0"
+              ],
+              "package_ndc": [
+                "0002-1506-01",
+                "0002-1506-80",
+                "0002-1506-61",
+                "0002-1495-01",
+                "0002-1495-80",
+                "0002-1484-01",
+                "0002-1484-80",
+                "0002-1471-01",
+                "0002-1471-80",
+                "0002-1460-01",
+                "0002-1460-80",
+                "0002-1457-01",
+                "0002-1457-80",
+                "0002-1152-01",
+                "0002-1243-01",
+                "0002-2214-01",
+                "0002-2340-01",
+                "0002-2423-01",
+                "0002-3002-01",
+                "0002-4052-01",
+                "0002-4052-11",
+                "0002-4103-01",
+                "0002-4103-11",
+                "0002-4210-01",
+                "0002-4210-11",
+                "0002-4304-01",
+                "0002-4304-11",
+                "0002-4523-01",
+                "0002-4523-11",
+                "0002-4612-01",
+                "0002-4612-11",
+                "0002-3466-01",
+                "0002-3466-11",
+                "0002-3455-01",
+                "0002-3455-11",
+                "0002-3444-01",
+                "0002-3444-11",
+                "0002-3433-01",
+                "0002-3433-11",
+                "0002-3422-01",
+                "0002-3422-11",
+                "0002-3411-01",
+                "0002-3411-11"
+              ],
+              "nui": [
+                "N0000194015",
+                "N0000000152",
+                "N0000178480",
+                "N0000020058"
+              ],
+              "pharm_class_epc": [
+                "Glucose-dependent Insulinotropic Polypeptide Receptor Agonist [EPC]",
+                "GLP-1 Receptor Agonist [EPC]"
+              ],
+              "pharm_class_moa": [
+                "G-Protein-linked Receptor Interactions [MoA]",
+                "Glucagon-like Peptide-1 (GLP-1) Agonists [MoA]"
+              ],
+              "unii": [
+                "OYN3CCI6QE"
+              ]
+            }
+          },
+          {
+            "drugcharacterization": "2",
+            "medicinalproduct": "ORFORGLIPRON",
+            "drugadministrationroute": "048",
+            "drugindication": "Type 2 diabetes mellitus",
+            "openfda": {
+              "application_number": [
+                "NDA220934"
+              ],
+              "brand_name": [
+                "FOUNDAYO"
+              ],
+              "generic_name": [
+                "ORFORGLIPRON"
+              ],
+              "manufacturer_name": [
+                "Eli Lilly and Company"
+              ],
+              "product_ndc": [
+                "0002-4178",
+                "0002-4503",
+                "0002-4794",
+                "0002-4803",
+                "0002-4839",
+                "0002-4953"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "ORAL"
+              ],
+              "substance_name": [
+                "ORFORGLIPRON CALCIUM"
+              ],
+              "rxcui": [
+                "2739844",
+                "2739850",
+                "2739852",
+                "2739854",
+                "2739856",
+                "2739858",
+                "2739860",
+                "2739862",
+                "2739864",
+                "2739866",
+                "2739868",
+                "2739870"
+              ],
+              "spl_id": [
+                "ebe44919-a00d-4ea1-a511-18e6a87da34c"
+              ],
+              "spl_set_id": [
+                "8ac446c5-feba-474f-a103-23facb9b5c62"
+              ],
+              "package_ndc": [
+                "0002-4178-01",
+                "0002-4178-31",
+                "0002-4178-62",
+                "0002-4503-01",
+                "0002-4503-31",
+                "0002-4794-01",
+                "0002-4794-31",
+                "0002-4803-01",
+                "0002-4803-31",
+                "0002-4839-01",
+                "0002-4839-31",
+                "0002-4953-01",
+                "0002-4953-31"
+              ],
+              "unii": [
+                "VI5M9OZV2X"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+ "pmid": "38547961",
+ "title": "Tirzepatide for the treatment of obstructive sleep apnea: Rationale, design, and sample baseline characteristics of the SURMOUNT -OSA phase 3 trial.",
+ "journal": "Contemporary clinical trials",
+ "pub_date": "2024 Jun",
+ "year": 2024,
+ "doi": "10.1016/j.cct.2024.107516",
+ "authors": [
+  "Malhotra A",
+  "Bednarik J",
+  "Chakladar S",
+  "Dunn JP",
+  "Weaver T",
+  "Grunstein R",
+  "Fietze I",
+  "Redline S",
+  "Azarbarzin A",
+  "Sands SA",
+  "Schwab RJ",
+  "Bunck MC"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Research Support, Non-U.S. Gov't",
+  "Clinical Trial Protocol"
+ ],
+ "databank_ncts": [
+  "NCT05412004"
+ ],
+ "abstract_sha256": "20a850cd4eb6c7bba47911f095fafdd2d65dc7a258c91394f86591a821b16857",
+ "abstract_chars": 1914,
+ "abstract_ncts": [
+  "NCT05412004"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

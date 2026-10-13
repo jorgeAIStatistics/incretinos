@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+# Runtime state (databases, caches of fetched source text)
+backend/var/
+# Node
+node_modules/
+.next/
+out/
+playwright-report/
+test-results/
+# Env / secrets
+.env
+.env.local
+# OS
+.DS_Store
+# Raw research scratch (large registry dumps are reproduced by the fixture recorder)
+research/raw/

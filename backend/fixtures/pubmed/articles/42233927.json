@@ -1,0 +1,36 @@
+{
+ "pmid": "42233927",
+ "title": "Comprehensive Long-Term Changes in Cardiovascular Risk Biomarkers With Tirzepatide: A SURMOUNT-1 Post Hoc Analysis.",
+ "journal": "Journal of the American College of Cardiology",
+ "pub_date": "2026 Aug 11",
+ "year": 2026,
+ "doi": "10.1016/j.jacc.2026.04.044",
+ "authors": [
+  "Sattar N",
+  "Linetzky B",
+  "Ruotolo G",
+  "Verma S",
+  "Sourij H",
+  "Wang H",
+  "Vanderman K",
+  "Wilson JM",
+  "Griffin RM",
+  "Stefanski A",
+  "Ridker PM"
+ ],
+ "pub_types": [
+  "Clinical Trial, Phase III",
+  "Journal Article",
+  "Randomized Controlled Trial"
+ ],
+ "databank_ncts": [
+  "NCT04184622"
+ ],
+ "abstract_sha256": "1e0c0ad0d2dd25681bd746e41d320bf11d9e7063eac83d3111ccb394e0ef299f",
+ "abstract_chars": 3259,
+ "abstract_ncts": [
+  "NCT04184622"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

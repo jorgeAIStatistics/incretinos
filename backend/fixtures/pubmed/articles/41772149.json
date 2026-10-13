@@ -1,0 +1,39 @@
+{
+ "pmid": "41772149",
+ "title": "Bimagrumab plus semaglutide alone or in combination for the treatment of obesity: a randomized phase 2 trial.",
+ "journal": "Nature medicine",
+ "pub_date": "2026 Mar",
+ "year": 2026,
+ "doi": "10.1038/s41591-026-04204-0",
+ "authors": [
+  "Heymsfield SB",
+  "Aronne LJ",
+  "Montgomery P",
+  "Klickstein LB",
+  "Coleman LA",
+  "Dole K",
+  "Mindeholm L",
+  "Spruill S",
+  "Li X",
+  "Attie KM",
+  "BELIEVE trial investigators"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase II"
+ ],
+ "databank_ncts": [
+  "NCT05616013"
+ ],
+ "abstract_sha256": "42dfb391c89ab80801592d3210b1dc227849dac84a1ee604c97a518a3eb66dc2",
+ "abstract_chars": 1541,
+ "abstract_ncts": [
+  "NCT05616013"
+ ],
+ "excerpts": [
+  "were randomized to nine groups (1:1:1:1:1:1:1:1:1 ratio) to receive treatment for 48 weeks",
+  "versus -3.3 kg (placebo) (all P < 0.001 versus placebo)"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

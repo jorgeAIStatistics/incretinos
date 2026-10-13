@@ -1,0 +1,45 @@
+{
+ "pmid": "37366315",
+ "title": "Triple-Hormone-Receptor Agonist Retatrutide for Obesity - A Phase 2 Trial.",
+ "journal": "The New England journal of medicine",
+ "pub_date": "2023 Aug 10",
+ "year": 2023,
+ "doi": "10.1056/nejmoa2301972",
+ "authors": [
+  "Jastreboff AM",
+  "Kaplan LM",
+  "Frías JP",
+  "Wu Q",
+  "Du Y",
+  "Gurbuz S",
+  "Coskun T",
+  "Haupt A",
+  "Milicevic Z",
+  "Hartman ML",
+  "Retatrutide Phase 2 Obesity Trial Investigators"
+ ],
+ "pub_types": [
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase II",
+  "Journal Article"
+ ],
+ "databank_ncts": [
+  "NCT04881760"
+ ],
+ "abstract_sha256": "e414c019f7b2d8c312510480be2367a031cd5c2bac961124db69c7b759a4ec3c",
+ "abstract_chars": 2540,
+ "abstract_ncts": [
+  "NCT04881760"
+ ],
+ "excerpts": [
+  "Retatrutide (LY3437943) is an agonist of the glucose-dependent insulinotropic polypeptide, glucagon-like peptide 1, and glucagon receptors.",
+  "We enrolled 338 adults, 51.8% of whom were men.",
+  "The primary end point was the percentage change in body weight from baseline to 24 weeks.",
+  "Dose-dependent increases in heart rate peaked at 24 weeks and declined thereafter.",
+  "-7.2% in the 1-mg group, -12.9% in the combined 4-mg group, -17.3% in the combined 8-mg group, and -17.5% in the 12-mg group",
+  "as compared with -1.6% in the placebo group",
+  "-8.7% in the 1-mg group, -17.1% in the combined 4-mg group, -22.8% in the combined 8-mg group, and -24.2% in the 12-mg group",
+  "as compared with -2.1% in the placebo group"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

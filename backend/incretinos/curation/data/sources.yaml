@@ -1,0 +1,46 @@
+# Non-API sources. Their text is NOT stored or redistributed: only URL, dates and short locator
+# quotes. Quotes are checked against the live page by `incretinos anchor-web` where the
+# publisher permits automated retrieval; otherwise they stay CURATED_PENDING_REVIEW.
+sources:
+  - key: web:lilly-pipeline
+    tier: SPONSOR_PIPELINE
+    title: "Clinical Development Pipeline (data as of 2026-08-05)"
+    publisher: Eli Lilly and Company
+    url: https://www.lilly.com/science/research-development/pipeline
+    published_date: "2026-08-05"
+    retrieved_date: "2026-10-13"
+
+  - key: web:lilly-pr-2026-09-30-eloratzp
+    tier: PRESS_RELEASE
+    title: "Lilly's EloraTZP (combination of eloralintide and tirzepatide) delivered greater weight loss and A1C reduction vs. tirzepatide 15 mg in adults with obesity and type 2 diabetes"
+    publisher: Eli Lilly and Company (via PR Newswire)
+    url: https://www.prnewswire.com/news-releases/lillys-eloratzp-combination-of-eloralintide-and-tirzepatide-delivered-greater-weight-loss-and-a1c-reduction-vs-tirzepatide-15-mg-in-adults-with-obesity-and-type-2-diabetes-302894480.html
+    published_date: "2026-09-30"
+    retrieved_date: "2026-10-13"
+
+  - key: web:lilly-pr-2025-11-06-eloralintide-ph2
+    tier: PRESS_RELEASE
+    title: "Lilly's selective amylin agonist, eloralintide, demonstrated meaningful weight loss and favorable tolerability in a Phase 2 study of adults with obesity or overweight"
+    publisher: Eli Lilly and Company (via PR Newswire)
+    url: https://www.prnewswire.com/news-releases/lillys-selective-amylin-agonist-eloralintide-demonstrated-meaningful-weight-loss-and-favorable-tolerability-in-a-phase-2-study-of-adults-with-obesity-or-overweight-302607061.html
+    published_date: "2025-11-06"
+    retrieved_date: "2026-10-13"
+
+  - key: guidance:ich-e9-r1
+    tier: GUIDANCE
+    source_type: GUIDANCE
+    title: "ICH E9(R1) Addendum on Estimands and Sensitivity Analysis in Clinical Trials to the Guideline on Statistical Principles for Clinical Trials (Step 4, 20 November 2019)"
+    publisher: International Council for Harmonisation (ICH)
+    url: https://database.ich.org/sites/default/files/E9-R1_Step4_Guideline_2019_1203.pdf
+    published_date: "2019-11-20"
+    retrieved_date: "2026-10-13"
+    license_note: "ICH guideline; cited by reference only."
+
+  - key: guidance:openfda-faers-caveats
+    tier: GUIDANCE
+    source_type: GUIDANCE
+    title: "openFDA Drug Adverse Event API — overview and data limitations"
+    publisher: U.S. Food and Drug Administration (openFDA)
+    url: https://open.fda.gov/apis/drug/event/
+    retrieved_date: "2026-10-13"
+    license_note: "U.S. Government work; cited by reference only."

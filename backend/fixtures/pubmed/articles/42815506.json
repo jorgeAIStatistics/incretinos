@@ -1,0 +1,52 @@
+{
+ "pmid": "42815506",
+ "title": "Cardiovascular safety of orforglipron versus insulin glargine in adults with type 2 diabetes at increased cardiovascular risk (ACHIEVE-4): a phase 3, event-driven, randomised, open-label, non-inferiority, active comparator trial.",
+ "journal": "Lancet (London, England)",
+ "pub_date": "2026 Sep 30",
+ "year": 2026,
+ "doi": "10.1016/s0140-6736(26)01865-9",
+ "authors": [
+  "Klein KR",
+  "Wysham C",
+  "Tuttle KR",
+  "Davies MJ",
+  "Cox D",
+  "Chen J",
+  "Wu WS",
+  "Denning M",
+  "Liu R",
+  "Ludwig L",
+  "Meskimen ER"
+ ],
+ "pub_types": [
+  "Journal Article"
+ ],
+ "databank_ncts": [
+  "NCT05803421"
+ ],
+ "abstract_sha256": "e8020950340767995cd0789c92e0e1fe514c0750946d063893afeac2f72c4231",
+ "abstract_chars": 3945,
+ "abstract_ncts": [
+  "NCT05803421"
+ ],
+ "excerpts": [
+  "up to 36 mg capsule [equivalent to 17·2 mg tablet]",
+  "This trial was registered on ClinicalTrials.gov (NCT05803421) and is completed.",
+  "event-driven, phase 3, multicentre, randomised, open-label, active comparator, parallel-group study was conducted in 317 sites across 16 countries and territories",
+  "All participants had established cardiovascular or chronic kidney disease.",
+  "time to occurrence of four-component major adverse cardiovascular events (MACE-4), including cardiovascular death, non-fatal myocardial infarction, non-fatal stroke, or hospitalisation for unstable angina",
+  "assessed in all participants who took at least one dose of assigned treatment",
+  "was confirmed by demonstrating non-inferiority to insulin glargine for MACE-4",
+  "57 (4·2%) of 1358 orforglipron participants",
+  "67 (5·0%) of 1343 insulin glargine participants",
+  "19 (1·4%) of 1371 participants receiving orforglipron",
+  "43 (3·2%) of 1355 participants receiving insulin glargine",
+  "93 (6·8%) of 1371 orforglipron participants",
+  "260 (19·2%) of 1355 insulin glargine participants",
+  "851 (62·1%) of 1371 orforglipron participants",
+  "193 (14·2%) of 1355 insulin glargine participants",
+  "if the upper limit of the two-sided 95% CI for the hazard ratio (HR; orforglipron vs insulin glargine) was less than 1·8",
+  "(HR 0·84; 95% CI 0·59-1·20; p<0·0001 for non-inferiority)"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

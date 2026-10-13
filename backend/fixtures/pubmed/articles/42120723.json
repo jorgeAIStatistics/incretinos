@@ -1,0 +1,41 @@
+{
+ "pmid": "42120723",
+ "title": "Orforglipron for maintenance of body weight reduction: the double-blind, randomized phase 3b ATTAIN-MAINTAIN trial.",
+ "journal": "Nature medicine",
+ "pub_date": "2026 Jul",
+ "year": 2026,
+ "doi": "10.1038/s41591-026-04386-7",
+ "authors": [
+  "Aronne LJ",
+  "Horn DB",
+  "le Roux CW",
+  "Chao AM",
+  "Ho W",
+  "Halpern B",
+  "Griffin R",
+  "Xie C",
+  "Valderas EG",
+  "Lee CJ",
+  "Ribeiro A",
+  "Hyman DM",
+  "Glass L",
+  "Xavier N"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase III"
+ ],
+ "databank_ncts": [
+  "NCT06584916"
+ ],
+ "abstract_sha256": "909f28386837d05898696483e3c00ded862cd8253e4130693b948d7ad861d290",
+ "abstract_chars": 1860,
+ "abstract_ncts": [
+  "NCT06584916"
+ ],
+ "excerpts": [
+  "74.7% (s.e.m. 4.05) of body weight reduction with orforglipron compared with an MBE of 49.2% (s.e.m. 3.92) with placebo"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

@@ -1,0 +1,2010 @@
+{
+  "meta": {
+    "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+    "terms": "https://open.fda.gov/terms/",
+    "license": "https://open.fda.gov/license/",
+    "last_updated": "2026-07-30"
+  },
+  "results": [
+    {
+      "term": "INCORRECT DOSE ADMINISTERED",
+      "count": 29672
+    },
+    {
+      "term": "NAUSEA",
+      "count": 17092
+    },
+    {
+      "term": "INJECTION SITE PAIN",
+      "count": 13906
+    },
+    {
+      "term": "DIARRHOEA",
+      "count": 10006
+    },
+    {
+      "term": "EXTRA DOSE ADMINISTERED",
+      "count": 9608
+    },
+    {
+      "term": "OFF LABEL USE",
+      "count": 8941
+    },
+    {
+      "term": "VOMITING",
+      "count": 8267
+    },
+    {
+      "term": "DRUG INEFFECTIVE",
+      "count": 6965
+    },
+    {
+      "term": "CONSTIPATION",
+      "count": 6502
+    },
+    {
+      "term": "INJECTION SITE HAEMORRHAGE",
+      "count": 5281
+    },
+    {
+      "term": "INJECTION SITE ERYTHEMA",
+      "count": 5210
+    },
+    {
+      "term": "FATIGUE",
+      "count": 4771
+    },
+    {
+      "term": "ACCIDENTAL UNDERDOSE",
+      "count": 4609
+    },
+    {
+      "term": "PRODUCT DOSE OMISSION ISSUE",
+      "count": 4474
+    },
+    {
+      "term": "ABDOMINAL PAIN UPPER",
+      "count": 3709
+    },
+    {
+      "term": "INJECTION SITE BRUISING",
+      "count": 3569
+    },
+    {
+      "term": "HEADACHE",
+      "count": 3430
+    },
+    {
+      "term": "WEIGHT INCREASED",
+      "count": 3409
+    },
+    {
+      "term": "DECREASED APPETITE",
+      "count": 3087
+    },
+    {
+      "term": "DIZZINESS",
+      "count": 3027
+    },
+    {
+      "term": "ILLNESS",
+      "count": 3024
+    },
+    {
+      "term": "BLOOD GLUCOSE INCREASED",
+      "count": 2980
+    },
+    {
+      "term": "INJECTION SITE PRURITUS",
+      "count": 2950
+    },
+    {
+      "term": "ERUCTATION",
+      "count": 2913
+    },
+    {
+      "term": "DYSPEPSIA",
+      "count": 2652
+    },
+    {
+      "term": "ALOPECIA",
+      "count": 2635
+    },
+    {
+      "term": "ABDOMINAL PAIN",
+      "count": 2584
+    },
+    {
+      "term": "ABDOMINAL DISCOMFORT",
+      "count": 2361
+    },
+    {
+      "term": "WEIGHT DECREASED",
+      "count": 2359
+    },
+    {
+      "term": "INJECTION SITE REACTION",
+      "count": 2237
+    },
+    {
+      "term": "THERAPEUTIC RESPONSE CHANGED",
+      "count": 2231
+    },
+    {
+      "term": "ACCIDENTAL OVERDOSE",
+      "count": 2060
+    },
+    {
+      "term": "DEHYDRATION",
+      "count": 2044
+    },
+    {
+      "term": "INJECTION SITE MASS",
+      "count": 1888
+    },
+    {
+      "term": "PAIN",
+      "count": 1860
+    },
+    {
+      "term": "MALAISE",
+      "count": 1856
+    },
+    {
+      "term": "HUNGER",
+      "count": 1772
+    },
+    {
+      "term": "ABDOMINAL DISTENSION",
+      "count": 1748
+    },
+    {
+      "term": "INJECTION SITE RASH",
+      "count": 1728
+    },
+    {
+      "term": "GASTROINTESTINAL DISORDER",
+      "count": 1723
+    },
+    {
+      "term": "ASTHENIA",
+      "count": 1683
+    },
+    {
+      "term": "IMPAIRED GASTRIC EMPTYING",
+      "count": 1678
+    },
+    {
+      "term": "INJECTION SITE SWELLING",
+      "count": 1668
+    },
+    {
+      "term": "INAPPROPRIATE SCHEDULE OF PRODUCT ADMINISTRATION",
+      "count": 1644
+    },
+    {
+      "term": "FLATULENCE",
+      "count": 1575
+    },
+    {
+      "term": "GASTROOESOPHAGEAL REFLUX DISEASE",
+      "count": 1568
+    },
+    {
+      "term": "ANXIETY",
+      "count": 1542
+    },
+    {
+      "term": "FEELING ABNORMAL",
+      "count": 1492
+    },
+    {
+      "term": "INJECTION SITE INJURY",
+      "count": 1463
+    },
+    {
+      "term": "WRONG TECHNIQUE IN PRODUCT USAGE PROCESS",
+      "count": 1352
+    },
+    {
+      "term": "PANCREATITIS",
+      "count": 1334
+    },
+    {
+      "term": "RASH",
+      "count": 1294
+    },
+    {
+      "term": "PRODUCT ADMINISTERED AT INAPPROPRIATE SITE",
+      "count": 1256
+    },
+    {
+      "term": "PRURITUS",
+      "count": 1234
+    },
+    {
+      "term": "INJECTION SITE URTICARIA",
+      "count": 1202
+    },
+    {
+      "term": "VISUAL IMPAIRMENT",
+      "count": 1151
+    },
+    {
+      "term": "ARTHRALGIA",
+      "count": 1145
+    },
+    {
+      "term": "BLOOD GLUCOSE DECREASED",
+      "count": 1142
+    },
+    {
+      "term": "INJURY ASSOCIATED WITH DEVICE",
+      "count": 1133
+    },
+    {
+      "term": "INCREASED APPETITE",
+      "count": 1113
+    },
+    {
+      "term": "INSOMNIA",
+      "count": 1077
+    },
+    {
+      "term": "HYPERSENSITIVITY",
+      "count": 1049
+    },
+    {
+      "term": "FEEDING DISORDER",
+      "count": 1020
+    },
+    {
+      "term": "PRODUCT STORAGE ERROR",
+      "count": 1012
+    },
+    {
+      "term": "DEPRESSION",
+      "count": 999
+    },
+    {
+      "term": "DYSPNOEA",
+      "count": 962
+    },
+    {
+      "term": "DEPRESSED MOOD",
+      "count": 959
+    },
+    {
+      "term": "COUGH",
+      "count": 921
+    },
+    {
+      "term": "VISION BLURRED",
+      "count": 878
+    },
+    {
+      "term": "MATERNAL EXPOSURE DURING PREGNANCY",
+      "count": 842
+    },
+    {
+      "term": "BACK PAIN",
+      "count": 827
+    },
+    {
+      "term": "NASOPHARYNGITIS",
+      "count": 813
+    },
+    {
+      "term": "MYALGIA",
+      "count": 812
+    },
+    {
+      "term": "URTICARIA",
+      "count": 783
+    },
+    {
+      "term": "GLYCOSYLATED HAEMOGLOBIN INCREASED",
+      "count": 764
+    },
+    {
+      "term": "HYPOGLYCAEMIA",
+      "count": 747
+    },
+    {
+      "term": "PALPITATIONS",
+      "count": 743
+    },
+    {
+      "term": "OVERDOSE",
+      "count": 732
+    },
+    {
+      "term": "MUSCLE SPASMS",
+      "count": 726
+    },
+    {
+      "term": "CHOLELITHIASIS",
+      "count": 716
+    },
+    {
+      "term": "PAIN IN EXTREMITY",
+      "count": 691
+    },
+    {
+      "term": "FALL",
+      "count": 653
+    },
+    {
+      "term": "DRUG INTERACTION",
+      "count": 649
+    },
+    {
+      "term": "FOOD CRAVING",
+      "count": 638
+    },
+    {
+      "term": "COVID-19",
+      "count": 632
+    },
+    {
+      "term": "HEART RATE INCREASED",
+      "count": 631
+    },
+    {
+      "term": "TREMOR",
+      "count": 599
+    },
+    {
+      "term": "INTESTINAL OBSTRUCTION",
+      "count": 594
+    },
+    {
+      "term": "DRUG HYPERSENSITIVITY",
+      "count": 577
+    },
+    {
+      "term": "INFLUENZA",
+      "count": 571
+    },
+    {
+      "term": "INTERCEPTED PRODUCT DISPENSING ERROR",
+      "count": 563
+    },
+    {
+      "term": "UNDERDOSE",
+      "count": 559
+    },
+    {
+      "term": "INTERCEPTED PRODUCT SELECTION ERROR",
+      "count": 553
+    },
+    {
+      "term": "INTENTIONAL PRODUCT MISUSE",
+      "count": 549
+    },
+    {
+      "term": "INJECTION SITE HYPERSENSITIVITY",
+      "count": 548
+    },
+    {
+      "term": "INJECTION SITE IRRITATION",
+      "count": 535
+    },
+    {
+      "term": "DRY MOUTH",
+      "count": 534
+    },
+    {
+      "term": "CHILLS",
+      "count": 530
+    },
+    {
+      "term": "PARAESTHESIA",
+      "count": 519
+    },
+    {
+      "term": "SOMNOLENCE",
+      "count": 518
+    },
+    {
+      "term": "MIGRAINE",
+      "count": 514
+    },
+    {
+      "term": "HYPOTENSION",
+      "count": 508
+    },
+    {
+      "term": "BLOOD PRESSURE INCREASED",
+      "count": 504
+    },
+    {
+      "term": "ACUTE KIDNEY INJURY",
+      "count": 491
+    },
+    {
+      "term": "NO ADVERSE EVENT",
+      "count": 487
+    },
+    {
+      "term": "HYPOPHAGIA",
+      "count": 482
+    },
+    {
+      "term": "SYNCOPE",
+      "count": 482
+    },
+    {
+      "term": "PRODUCT DISPENSING ERROR",
+      "count": 478
+    },
+    {
+      "term": "URINARY TRACT INFECTION",
+      "count": 473
+    },
+    {
+      "term": "CHEST PAIN",
+      "count": 469
+    },
+    {
+      "term": "PRODUCT TAMPERING",
+      "count": 465
+    },
+    {
+      "term": "SUICIDAL IDEATION",
+      "count": 462
+    },
+    {
+      "term": "PYREXIA",
+      "count": 454
+    },
+    {
+      "term": "INJECTION SITE DISCOMFORT",
+      "count": 445
+    },
+    {
+      "term": "DRUG INTOLERANCE",
+      "count": 432
+    },
+    {
+      "term": "HYPERHIDROSIS",
+      "count": 426
+    },
+    {
+      "term": "LOSS OF CONSCIOUSNESS",
+      "count": 425
+    },
+    {
+      "term": "HYPOAESTHESIA",
+      "count": 418
+    },
+    {
+      "term": "LETHARGY",
+      "count": 397
+    },
+    {
+      "term": "DEATH",
+      "count": 394
+    },
+    {
+      "term": "GAIT DISTURBANCE",
+      "count": 388
+    },
+    {
+      "term": "PERIPHERAL SWELLING",
+      "count": 381
+    },
+    {
+      "term": "PANIC ATTACK",
+      "count": 379
+    },
+    {
+      "term": "PRODUCT USE ISSUE",
+      "count": 379
+    },
+    {
+      "term": "BLOOD PRESSURE DECREASED",
+      "count": 378
+    },
+    {
+      "term": "GASTROINTESTINAL HYPOMOTILITY",
+      "count": 367
+    },
+    {
+      "term": "BLOOD GLUCOSE ABNORMAL",
+      "count": 358
+    },
+    {
+      "term": "DYSGEUSIA",
+      "count": 358
+    },
+    {
+      "term": "NECK PAIN",
+      "count": 354
+    },
+    {
+      "term": "BRAIN FOG",
+      "count": 352
+    },
+    {
+      "term": "TACHYCARDIA",
+      "count": 352
+    },
+    {
+      "term": "SLEEP DISORDER DUE TO GENERAL MEDICAL CONDITION, INSOMNIA TYPE",
+      "count": 344
+    },
+    {
+      "term": "INFLUENZA LIKE ILLNESS",
+      "count": 341
+    },
+    {
+      "term": "ERYTHEMA",
+      "count": 324
+    },
+    {
+      "term": "PANCREATITIS ACUTE",
+      "count": 324
+    },
+    {
+      "term": "HYPERTENSION",
+      "count": 316
+    },
+    {
+      "term": "INJECTION SITE WARMTH",
+      "count": 316
+    },
+    {
+      "term": "NEPHROLITHIASIS",
+      "count": 312
+    },
+    {
+      "term": "PNEUMONIA",
+      "count": 309
+    },
+    {
+      "term": "CONTUSION",
+      "count": 308
+    },
+    {
+      "term": "ATRIAL FIBRILLATION",
+      "count": 307
+    },
+    {
+      "term": "DISCOMFORT",
+      "count": 306
+    },
+    {
+      "term": "INJECTION SITE COLDNESS",
+      "count": 303
+    },
+    {
+      "term": "CEREBROVASCULAR ACCIDENT",
+      "count": 292
+    },
+    {
+      "term": "MOBILITY DECREASED",
+      "count": 292
+    },
+    {
+      "term": "ILEUS",
+      "count": 291
+    },
+    {
+      "term": "MEMORY IMPAIRMENT",
+      "count": 288
+    },
+    {
+      "term": "SINUSITIS",
+      "count": 288
+    },
+    {
+      "term": "GALLBLADDER DISORDER",
+      "count": 287
+    },
+    {
+      "term": "TASTE DISORDER",
+      "count": 287
+    },
+    {
+      "term": "DYSPHAGIA",
+      "count": 284
+    },
+    {
+      "term": "INJECTION SITE VESICLES",
+      "count": 282
+    },
+    {
+      "term": "LIPASE INCREASED",
+      "count": 281
+    },
+    {
+      "term": "OROPHARYNGEAL PAIN",
+      "count": 281
+    },
+    {
+      "term": "MUSCULAR WEAKNESS",
+      "count": 280
+    },
+    {
+      "term": "GASTRITIS",
+      "count": 277
+    },
+    {
+      "term": "VERTIGO",
+      "count": 277
+    },
+    {
+      "term": "HYPOACUSIS",
+      "count": 274
+    },
+    {
+      "term": "CATARACT",
+      "count": 272
+    },
+    {
+      "term": "ANAPHYLACTIC REACTION",
+      "count": 270
+    },
+    {
+      "term": "DYSPHONIA",
+      "count": 270
+    },
+    {
+      "term": "HEPATIC ENZYME INCREASED",
+      "count": 268
+    },
+    {
+      "term": "FEELING COLD",
+      "count": 263
+    },
+    {
+      "term": "GASTROENTERITIS VIRAL",
+      "count": 263
+    },
+    {
+      "term": "RENAL IMPAIRMENT",
+      "count": 262
+    },
+    {
+      "term": "MYOCARDIAL INFARCTION",
+      "count": 260
+    },
+    {
+      "term": "CHEST DISCOMFORT",
+      "count": 258
+    },
+    {
+      "term": "SWELLING",
+      "count": 258
+    },
+    {
+      "term": "HOT FLUSH",
+      "count": 256
+    },
+    {
+      "term": "NEUROPATHY PERIPHERAL",
+      "count": 253
+    },
+    {
+      "term": "RASH PRURITIC",
+      "count": 253
+    },
+    {
+      "term": "LYMPHADENOPATHY",
+      "count": 252
+    },
+    {
+      "term": "BURNING SENSATION",
+      "count": 249
+    },
+    {
+      "term": "PRODUCT USE IN UNAPPROVED INDICATION",
+      "count": 249
+    },
+    {
+      "term": "MUSCLE ATROPHY",
+      "count": 246
+    },
+    {
+      "term": "SENSITIVE SKIN",
+      "count": 240
+    },
+    {
+      "term": "CONDITION AGGRAVATED",
+      "count": 239
+    },
+    {
+      "term": "CHOLECYSTITIS",
+      "count": 238
+    },
+    {
+      "term": "ALANINE AMINOTRANSFERASE INCREASED",
+      "count": 234
+    },
+    {
+      "term": "SLEEP DISORDER DUE TO A GENERAL MEDICAL CONDITION",
+      "count": 231
+    },
+    {
+      "term": "TREATMENT FAILURE",
+      "count": 230
+    },
+    {
+      "term": "GASTROINTESTINAL SOUNDS ABNORMAL",
+      "count": 229
+    },
+    {
+      "term": "RETCHING",
+      "count": 228
+    },
+    {
+      "term": "STRESS",
+      "count": 228
+    },
+    {
+      "term": "ACCIDENTAL EXPOSURE TO PRODUCT",
+      "count": 226
+    },
+    {
+      "term": "ASTHMA",
+      "count": 226
+    },
+    {
+      "term": "INCORRECT ROUTE OF PRODUCT ADMINISTRATION",
+      "count": 225
+    },
+    {
+      "term": "PAIN OF SKIN",
+      "count": 225
+    },
+    {
+      "term": "CONFUSIONAL STATE",
+      "count": 223
+    },
+    {
+      "term": "DRY SKIN",
+      "count": 223
+    },
+    {
+      "term": "SLEEP DISORDER",
+      "count": 223
+    },
+    {
+      "term": "RENAL FAILURE",
+      "count": 221
+    },
+    {
+      "term": "VAGINAL HAEMORRHAGE",
+      "count": 214
+    },
+    {
+      "term": "FLUID INTAKE REDUCED",
+      "count": 213
+    },
+    {
+      "term": "INFECTION",
+      "count": 213
+    },
+    {
+      "term": "DIABETIC KETOACIDOSIS",
+      "count": 209
+    },
+    {
+      "term": "PRODUCT PRESCRIBING ERROR",
+      "count": 207
+    },
+    {
+      "term": "COLITIS",
+      "count": 205
+    },
+    {
+      "term": "PULMONARY EMBOLISM",
+      "count": 204
+    },
+    {
+      "term": "SEPSIS",
+      "count": 200
+    },
+    {
+      "term": "POLLAKIURIA",
+      "count": 199
+    },
+    {
+      "term": "GASTROINTESTINAL PAIN",
+      "count": 196
+    },
+    {
+      "term": "APPENDICITIS",
+      "count": 194
+    },
+    {
+      "term": "CARDIAC DISORDER",
+      "count": 193
+    },
+    {
+      "term": "SEIZURE",
+      "count": 192
+    },
+    {
+      "term": "INSURANCE ISSUE",
+      "count": 191
+    },
+    {
+      "term": "ARTHRITIS",
+      "count": 189
+    },
+    {
+      "term": "RENAL DISORDER",
+      "count": 186
+    },
+    {
+      "term": "DIVERTICULITIS",
+      "count": 183
+    },
+    {
+      "term": "INJECTION SITE DISCOLOURATION",
+      "count": 183
+    },
+    {
+      "term": "LIP SWELLING",
+      "count": 181
+    },
+    {
+      "term": "BLINDNESS",
+      "count": 177
+    },
+    {
+      "term": "FEELING HOT",
+      "count": 177
+    },
+    {
+      "term": "PRESYNCOPE",
+      "count": 176
+    },
+    {
+      "term": "SKIN BURNING SENSATION",
+      "count": 175
+    },
+    {
+      "term": "INTENTIONAL DOSE OMISSION",
+      "count": 171
+    },
+    {
+      "term": "MALNUTRITION",
+      "count": 171
+    },
+    {
+      "term": "DRY EYE",
+      "count": 170
+    },
+    {
+      "term": "INTERCEPTED PRODUCT PRESCRIBING ERROR",
+      "count": 170
+    },
+    {
+      "term": "THIRST",
+      "count": 170
+    },
+    {
+      "term": "THROAT IRRITATION",
+      "count": 170
+    },
+    {
+      "term": "ABORTION SPONTANEOUS",
+      "count": 168
+    },
+    {
+      "term": "SMALL INTESTINAL OBSTRUCTION",
+      "count": 167
+    },
+    {
+      "term": "JOINT SWELLING",
+      "count": 166
+    },
+    {
+      "term": "INJECTION SITE PARAESTHESIA",
+      "count": 165
+    },
+    {
+      "term": "IRRITABILITY",
+      "count": 164
+    },
+    {
+      "term": "SWELLING FACE",
+      "count": 163
+    },
+    {
+      "term": "INJECTION SITE INDURATION",
+      "count": 162
+    },
+    {
+      "term": "VIRAL INFECTION",
+      "count": 161
+    },
+    {
+      "term": "VOMITING PROJECTILE",
+      "count": 161
+    },
+    {
+      "term": "INFLAMMATION",
+      "count": 159
+    },
+    {
+      "term": "NEOPLASM MALIGNANT",
+      "count": 159
+    },
+    {
+      "term": "PSORIASIS",
+      "count": 159
+    },
+    {
+      "term": "RHINORRHOEA",
+      "count": 159
+    },
+    {
+      "term": "FOOD POISONING",
+      "count": 158
+    },
+    {
+      "term": "BALANCE DISORDER",
+      "count": 157
+    },
+    {
+      "term": "BLOOD POTASSIUM DECREASED",
+      "count": 157
+    },
+    {
+      "term": "BLOOD CREATININE INCREASED",
+      "count": 156
+    },
+    {
+      "term": "HERPES ZOSTER",
+      "count": 156
+    },
+    {
+      "term": "ALLODYNIA",
+      "count": 154
+    },
+    {
+      "term": "EYE PAIN",
+      "count": 154
+    },
+    {
+      "term": "GASTROENTERITIS",
+      "count": 154
+    },
+    {
+      "term": "HAEMATOCHEZIA",
+      "count": 154
+    },
+    {
+      "term": "THERAPY NON-RESPONDER",
+      "count": 154
+    },
+    {
+      "term": "MUSCULOSKELETAL STIFFNESS",
+      "count": 153
+    },
+    {
+      "term": "ANGIOEDEMA",
+      "count": 152
+    },
+    {
+      "term": "BLOOD CHOLESTEROL INCREASED",
+      "count": 151
+    },
+    {
+      "term": "OPTIC ISCHAEMIC NEUROPATHY",
+      "count": 150
+    },
+    {
+      "term": "BREAST CANCER",
+      "count": 149
+    },
+    {
+      "term": "DEEP VEIN THROMBOSIS",
+      "count": 149
+    },
+    {
+      "term": "HAEMORRHAGE",
+      "count": 149
+    },
+    {
+      "term": "BLOOD GLUCOSE FLUCTUATION",
+      "count": 148
+    },
+    {
+      "term": "FLUSHING",
+      "count": 147
+    },
+    {
+      "term": "FREQUENT BOWEL MOVEMENTS",
+      "count": 147
+    },
+    {
+      "term": "WEIGHT FLUCTUATION",
+      "count": 145
+    },
+    {
+      "term": "TINNITUS",
+      "count": 144
+    },
+    {
+      "term": "ASPARTATE AMINOTRANSFERASE INCREASED",
+      "count": 142
+    },
+    {
+      "term": "GLOMERULAR FILTRATION RATE DECREASED",
+      "count": 142
+    },
+    {
+      "term": "MEDICATION ERROR",
+      "count": 142
+    },
+    {
+      "term": "NASAL CONGESTION",
+      "count": 142
+    },
+    {
+      "term": "THERAPEUTIC PRODUCT EFFECT DECREASED",
+      "count": 142
+    },
+    {
+      "term": "INJECTION SITE INFLAMMATION",
+      "count": 141
+    },
+    {
+      "term": "RASH ERYTHEMATOUS",
+      "count": 140
+    },
+    {
+      "term": "EMOTIONAL DISTRESS",
+      "count": 139
+    },
+    {
+      "term": "THROMBOSIS",
+      "count": 139
+    },
+    {
+      "term": "DIABETES MELLITUS",
+      "count": 137
+    },
+    {
+      "term": "THERAPY INTERRUPTED",
+      "count": 136
+    },
+    {
+      "term": "ECZEMA",
+      "count": 135
+    },
+    {
+      "term": "HAEMATEMESIS",
+      "count": 135
+    },
+    {
+      "term": "MENTAL DISORDER",
+      "count": 134
+    },
+    {
+      "term": "EYE IRRITATION",
+      "count": 133
+    },
+    {
+      "term": "ROAD TRAFFIC ACCIDENT",
+      "count": 133
+    },
+    {
+      "term": "COLD SWEAT",
+      "count": 132
+    },
+    {
+      "term": "MOOD ALTERED",
+      "count": 131
+    },
+    {
+      "term": "SKIN EXFOLIATION",
+      "count": 130
+    },
+    {
+      "term": "THERAPY CESSATION",
+      "count": 130
+    },
+    {
+      "term": "WRONG PATIENT RECEIVED PRODUCT",
+      "count": 129
+    },
+    {
+      "term": "KETOACIDOSIS",
+      "count": 128
+    },
+    {
+      "term": "NEURALGIA",
+      "count": 128
+    },
+    {
+      "term": "POSTMENOPAUSAL HAEMORRHAGE",
+      "count": 128
+    },
+    {
+      "term": "NERVOUSNESS",
+      "count": 126
+    },
+    {
+      "term": "BRONCHITIS",
+      "count": 125
+    },
+    {
+      "term": "DERMATITIS ATOPIC",
+      "count": 125
+    },
+    {
+      "term": "DEVICE DIFFICULT TO USE",
+      "count": 125
+    },
+    {
+      "term": "EYE DISORDER",
+      "count": 125
+    },
+    {
+      "term": "BOWEL MOVEMENT IRREGULARITY",
+      "count": 124
+    },
+    {
+      "term": "THYROID MASS",
+      "count": 124
+    },
+    {
+      "term": "SLEEP APNOEA SYNDROME",
+      "count": 123
+    },
+    {
+      "term": "POOR QUALITY SLEEP",
+      "count": 122
+    },
+    {
+      "term": "ANAEMIA",
+      "count": 120
+    },
+    {
+      "term": "HEAVY MENSTRUAL BLEEDING",
+      "count": 120
+    },
+    {
+      "term": "BONE PAIN",
+      "count": 119
+    },
+    {
+      "term": "HYPOKALAEMIA",
+      "count": 119
+    },
+    {
+      "term": "JAUNDICE",
+      "count": 119
+    },
+    {
+      "term": "PANCREATIC CARCINOMA",
+      "count": 119
+    },
+    {
+      "term": "OBSTRUCTIVE PANCREATITIS",
+      "count": 118
+    },
+    {
+      "term": "FEELING JITTERY",
+      "count": 117
+    },
+    {
+      "term": "IRRITABLE BOWEL SYNDROME",
+      "count": 117
+    },
+    {
+      "term": "RECTAL HAEMORRHAGE",
+      "count": 117
+    },
+    {
+      "term": "FLUID RETENTION",
+      "count": 115
+    },
+    {
+      "term": "AMYLASE INCREASED",
+      "count": 114
+    },
+    {
+      "term": "HEPATIC STEATOSIS",
+      "count": 114
+    },
+    {
+      "term": "DRUG TITRATION ERROR",
+      "count": 113
+    },
+    {
+      "term": "BILIARY COLIC",
+      "count": 111
+    },
+    {
+      "term": "GAIT INABILITY",
+      "count": 111
+    },
+    {
+      "term": "RHEUMATOID ARTHRITIS",
+      "count": 111
+    },
+    {
+      "term": "EPISTAXIS",
+      "count": 110
+    },
+    {
+      "term": "ANAPHYLACTIC SHOCK",
+      "count": 109
+    },
+    {
+      "term": "DISTURBANCE IN ATTENTION",
+      "count": 109
+    },
+    {
+      "term": "HEAD INJURY",
+      "count": 109
+    },
+    {
+      "term": "DRUG DOSE OMISSION BY DEVICE",
+      "count": 108
+    },
+    {
+      "term": "OEDEMA PERIPHERAL",
+      "count": 107
+    },
+    {
+      "term": "FUNGAL INFECTION",
+      "count": 106
+    },
+    {
+      "term": "HICCUPS",
+      "count": 106
+    },
+    {
+      "term": "AGEUSIA",
+      "count": 105
+    },
+    {
+      "term": "COLITIS ISCHAEMIC",
+      "count": 105
+    },
+    {
+      "term": "HERNIA",
+      "count": 104
+    },
+    {
+      "term": "MUSCULOSKELETAL CHEST PAIN",
+      "count": 103
+    },
+    {
+      "term": "SEASONAL ALLERGY",
+      "count": 103
+    },
+    {
+      "term": "HYPERSOMNIA",
+      "count": 102
+    },
+    {
+      "term": "ABDOMINAL PAIN LOWER",
+      "count": 101
+    },
+    {
+      "term": "OCULAR HYPERAEMIA",
+      "count": 100
+    },
+    {
+      "term": "SURGERY",
+      "count": 100
+    },
+    {
+      "term": "WEIGHT LOSS POOR",
+      "count": 100
+    },
+    {
+      "term": "CHOLECYSTITIS ACUTE",
+      "count": 99
+    },
+    {
+      "term": "EATING DISORDER",
+      "count": 99
+    },
+    {
+      "term": "THERAPEUTIC RESPONSE SHORTENED",
+      "count": 99
+    },
+    {
+      "term": "NIGHT SWEATS",
+      "count": 98
+    },
+    {
+      "term": "SKIN DISCOLOURATION",
+      "count": 98
+    },
+    {
+      "term": "SWOLLEN TONGUE",
+      "count": 98
+    },
+    {
+      "term": "CHROMATURIA",
+      "count": 97
+    },
+    {
+      "term": "THYROID CANCER",
+      "count": 97
+    },
+    {
+      "term": "FAECES DISCOLOURED",
+      "count": 96
+    },
+    {
+      "term": "RENAL PAIN",
+      "count": 96
+    },
+    {
+      "term": "SPEECH DISORDER",
+      "count": 96
+    },
+    {
+      "term": "METABOLIC ACIDOSIS",
+      "count": 95
+    },
+    {
+      "term": "PRODUCT STORAGE ISSUE",
+      "count": 95
+    },
+    {
+      "term": "UPPER RESPIRATORY TRACT INFECTION",
+      "count": 95
+    },
+    {
+      "term": "CARDIAC ARREST",
+      "count": 94
+    },
+    {
+      "term": "HEPATITIS",
+      "count": 94
+    },
+    {
+      "term": "LIMB INJURY",
+      "count": 94
+    },
+    {
+      "term": "LOSS OF PERSONAL INDEPENDENCE IN DAILY ACTIVITIES",
+      "count": 94
+    },
+    {
+      "term": "THERAPY CHANGE",
+      "count": 93
+    },
+    {
+      "term": "ARRHYTHMIA",
+      "count": 92
+    },
+    {
+      "term": "DRUG EFFECT LESS THAN EXPECTED",
+      "count": 92
+    },
+    {
+      "term": "EUGLYCAEMIC DIABETIC KETOACIDOSIS",
+      "count": 92
+    },
+    {
+      "term": "EYE PRURITUS",
+      "count": 92
+    },
+    {
+      "term": "EYE SWELLING",
+      "count": 92
+    },
+    {
+      "term": "GOUT",
+      "count": 92
+    },
+    {
+      "term": "LIVER FUNCTION TEST ABNORMAL",
+      "count": 92
+    },
+    {
+      "term": "SKIN IRRITATION",
+      "count": 92
+    },
+    {
+      "term": "THROAT TIGHTNESS",
+      "count": 92
+    },
+    {
+      "term": "PARAESTHESIA ORAL",
+      "count": 91
+    },
+    {
+      "term": "PRODUCT DOSE OMISSION IN ERROR",
+      "count": 91
+    },
+    {
+      "term": "THERAPEUTIC PRODUCT EFFECT INCOMPLETE",
+      "count": 91
+    },
+    {
+      "term": "AMNESIA",
+      "count": 90
+    },
+    {
+      "term": "EXPOSURE VIA SKIN CONTACT",
+      "count": 90
+    },
+    {
+      "term": "PANCREATIC DISORDER",
+      "count": 89
+    },
+    {
+      "term": "THYROID DISORDER",
+      "count": 89
+    },
+    {
+      "term": "BLOOD PRESSURE ABNORMAL",
+      "count": 88
+    },
+    {
+      "term": "LIVER INJURY",
+      "count": 87
+    },
+    {
+      "term": "SNEEZING",
+      "count": 87
+    },
+    {
+      "term": "WHITE BLOOD CELL COUNT INCREASED",
+      "count": 87
+    },
+    {
+      "term": "LIMB DISCOMFORT",
+      "count": 86
+    },
+    {
+      "term": "ADVERSE DRUG REACTION",
+      "count": 85
+    },
+    {
+      "term": "APPETITE DISORDER",
+      "count": 85
+    },
+    {
+      "term": "ARTHROPATHY",
+      "count": 85
+    },
+    {
+      "term": "OROPHARYNGEAL DISCOMFORT",
+      "count": 85
+    },
+    {
+      "term": "AGITATION",
+      "count": 84
+    },
+    {
+      "term": "BLINDNESS UNILATERAL",
+      "count": 84
+    },
+    {
+      "term": "CARDIAC FAILURE",
+      "count": 84
+    },
+    {
+      "term": "INTERMENSTRUAL BLEEDING",
+      "count": 84
+    },
+    {
+      "term": "LIVER DISORDER",
+      "count": 84
+    },
+    {
+      "term": "ELECTROLYTE IMBALANCE",
+      "count": 83
+    },
+    {
+      "term": "FOOD AVERSION",
+      "count": 83
+    },
+    {
+      "term": "KIDNEY INFECTION",
+      "count": 82
+    },
+    {
+      "term": "MOOD SWINGS",
+      "count": 82
+    },
+    {
+      "term": "SKIN REACTION",
+      "count": 82
+    },
+    {
+      "term": "THERAPEUTIC RESPONSE DECREASED",
+      "count": 82
+    },
+    {
+      "term": "CHRONIC KIDNEY DISEASE",
+      "count": 81
+    },
+    {
+      "term": "PHARYNGEAL SWELLING",
+      "count": 81
+    },
+    {
+      "term": "GENERAL PHYSICAL HEALTH DETERIORATION",
+      "count": 80
+    },
+    {
+      "term": "INJECTION SITE INDENTATION",
+      "count": 80
+    },
+    {
+      "term": "PRODUCTIVE COUGH",
+      "count": 80
+    },
+    {
+      "term": "WRONG PRODUCT ADMINISTERED",
+      "count": 80
+    },
+    {
+      "term": "ANGER",
+      "count": 79
+    },
+    {
+      "term": "CELLULITIS",
+      "count": 79
+    },
+    {
+      "term": "DIABETES MELLITUS INADEQUATE CONTROL",
+      "count": 79
+    },
+    {
+      "term": "INJECTION SITE HYPOAESTHESIA",
+      "count": 79
+    },
+    {
+      "term": "PSORIATIC ARTHROPATHY",
+      "count": 79
+    },
+    {
+      "term": "SLUGGISHNESS",
+      "count": 79
+    },
+    {
+      "term": "COGNITIVE DISORDER",
+      "count": 78
+    },
+    {
+      "term": "DIZZINESS POSTURAL",
+      "count": 78
+    },
+    {
+      "term": "HYPERPHAGIA",
+      "count": 78
+    },
+    {
+      "term": "VITREOUS FLOATERS",
+      "count": 78
+    },
+    {
+      "term": "DIPLOPIA",
+      "count": 77
+    },
+    {
+      "term": "HYPOAESTHESIA ORAL",
+      "count": 77
+    },
+    {
+      "term": "MENSTRUATION IRREGULAR",
+      "count": 77
+    },
+    {
+      "term": "MUSCULOSKELETAL DISCOMFORT",
+      "count": 77
+    },
+    {
+      "term": "ORTHOSTATIC HYPOTENSION",
+      "count": 77
+    },
+    {
+      "term": "DISORIENTATION",
+      "count": 76
+    },
+    {
+      "term": "RASH MACULAR",
+      "count": 76
+    },
+    {
+      "term": "TRANSIENT ISCHAEMIC ATTACK",
+      "count": 76
+    },
+    {
+      "term": "BLISTER",
+      "count": 75
+    },
+    {
+      "term": "DYSSTASIA",
+      "count": 75
+    },
+    {
+      "term": "SENSATION OF FOREIGN BODY",
+      "count": 75
+    },
+    {
+      "term": "HYPERTHYROIDISM",
+      "count": 74
+    },
+    {
+      "term": "LIVER FUNCTION TEST INCREASED",
+      "count": 74
+    },
+    {
+      "term": "PAIN IN JAW",
+      "count": 74
+    },
+    {
+      "term": "PERIPHERAL COLDNESS",
+      "count": 74
+    },
+    {
+      "term": "GLYCOSYLATED HAEMOGLOBIN DECREASED",
+      "count": 73
+    },
+    {
+      "term": "HYPERKALAEMIA",
+      "count": 72
+    },
+    {
+      "term": "ILEUS PARALYTIC",
+      "count": 72
+    },
+    {
+      "term": "NIGHTMARE",
+      "count": 72
+    },
+    {
+      "term": "ABNORMAL DREAMS",
+      "count": 71
+    },
+    {
+      "term": "BLOOD TRIGLYCERIDES INCREASED",
+      "count": 71
+    },
+    {
+      "term": "EAR INFECTION",
+      "count": 71
+    },
+    {
+      "term": "HAEMORRHOIDS",
+      "count": 71
+    },
+    {
+      "term": "PAROSMIA",
+      "count": 71
+    },
+    {
+      "term": "ACNE",
+      "count": 70
+    },
+    {
+      "term": "DIABETIC RETINOPATHY",
+      "count": 70
+    },
+    {
+      "term": "INJECTION SITE SCAR",
+      "count": 70
+    },
+    {
+      "term": "OSTEOARTHRITIS",
+      "count": 70
+    },
+    {
+      "term": "PANCREATIC ENZYMES INCREASED",
+      "count": 69
+    },
+    {
+      "term": "MIDDLE INSOMNIA",
+      "count": 68
+    },
+    {
+      "term": "INJURY",
+      "count": 67
+    },
+    {
+      "term": "MASS",
+      "count": 67
+    },
+    {
+      "term": "WHEEZING",
+      "count": 67
+    },
+    {
+      "term": "GAMMA-GLUTAMYLTRANSFERASE INCREASED",
+      "count": 66
+    },
+    {
+      "term": "HEAD DISCOMFORT",
+      "count": 66
+    },
+    {
+      "term": "HYPONATRAEMIA",
+      "count": 66
+    },
+    {
+      "term": "DECREASED ACTIVITY",
+      "count": 65
+    },
+    {
+      "term": "GLYCOSYLATED HAEMOGLOBIN ABNORMAL",
+      "count": 65
+    },
+    {
+      "term": "PROCEDURAL PAIN",
+      "count": 65
+    },
+    {
+      "term": "CRYING",
+      "count": 64
+    },
+    {
+      "term": "HEART RATE DECREASED",
+      "count": 64
+    },
+    {
+      "term": "INTESTINAL ISCHAEMIA",
+      "count": 64
+    },
+    {
+      "term": "MENSTRUATION DELAYED",
+      "count": 64
+    },
+    {
+      "term": "NECK MASS",
+      "count": 64
+    },
+    {
+      "term": "REGURGITATION",
+      "count": 64
+    },
+    {
+      "term": "URINARY RETENTION",
+      "count": 64
+    },
+    {
+      "term": "BLOOD URINE PRESENT",
+      "count": 63
+    },
+    {
+      "term": "DRUG-INDUCED LIVER INJURY",
+      "count": 63
+    },
+    {
+      "term": "DYSURIA",
+      "count": 63
+    },
+    {
+      "term": "GASTROINTESTINAL HAEMORRHAGE",
+      "count": 63
+    },
+    {
+      "term": "HYPERGLYCAEMIA",
+      "count": 63
+    },
+    {
+      "term": "PRODUCT COMMUNICATION ISSUE",
+      "count": 63
+    },
+    {
+      "term": "TOXICITY TO VARIOUS AGENTS",
+      "count": 63
+    },
+    {
+      "term": "ANAL INCONTINENCE",
+      "count": 62
+    },
+    {
+      "term": "BLOOD BILIRUBIN INCREASED",
+      "count": 62
+    },
+    {
+      "term": "FIBROMYALGIA",
+      "count": 62
+    },
+    {
+      "term": "FOETAL EXPOSURE DURING PREGNANCY",
+      "count": 62
+    },
+    {
+      "term": "GASTROINTESTINAL MOTILITY DISORDER",
+      "count": 62
+    },
+    {
+      "term": "APATHY",
+      "count": 61
+    },
+    {
+      "term": "BLOOD SODIUM DECREASED",
+      "count": 61
+    },
+    {
+      "term": "DEVICE ISSUE",
+      "count": 61
+    },
+    {
+      "term": "ERECTILE DYSFUNCTION",
+      "count": 61
+    },
+    {
+      "term": "HIATUS HERNIA",
+      "count": 61
+    },
+    {
+      "term": "HOSPITALISATION",
+      "count": 61
+    },
+    {
+      "term": "HYPERAESTHESIA",
+      "count": 61
+    },
+    {
+      "term": "WRONG TECHNIQUE IN DEVICE USAGE PROCESS",
+      "count": 61
+    },
+    {
+      "term": "LACRIMATION INCREASED",
+      "count": 60
+    },
+    {
+      "term": "OXYGEN SATURATION DECREASED",
+      "count": 60
+    },
+    {
+      "term": "RESTLESSNESS",
+      "count": 60
+    },
+    {
+      "term": "BLOOD ALKALINE PHOSPHATASE INCREASED",
+      "count": 59
+    },
+    {
+      "term": "OEDEMA",
+      "count": 59
+    },
+    {
+      "term": "PAPILLARY THYROID CANCER",
+      "count": 59
+    },
+    {
+      "term": "RHABDOMYOLYSIS",
+      "count": 59
+    },
+    {
+      "term": "DEPRESSION SUICIDAL",
+      "count": 58
+    },
+    {
+      "term": "EARLY SATIETY",
+      "count": 58
+    },
+    {
+      "term": "MULTIPLE ORGAN DYSFUNCTION SYNDROME",
+      "count": 58
+    },
+    {
+      "term": "SCIATICA",
+      "count": 58
+    },
+    {
+      "term": "CHOLANGITIS",
+      "count": 57
+    },
+    {
+      "term": "FAECES HARD",
+      "count": 57
+    },
+    {
+      "term": "FOOT FRACTURE",
+      "count": 57
+    },
+    {
+      "term": "GASTRIC HYPOMOTILITY",
+      "count": 57
+    },
+    {
+      "term": "LYMPH NODE PAIN",
+      "count": 57
+    },
+    {
+      "term": "SINUS DISORDER",
+      "count": 57
+    },
+    {
+      "term": "ABNORMAL LOSS OF WEIGHT",
+      "count": 56
+    },
+    {
+      "term": "DERMATITIS ALLERGIC",
+      "count": 56
+    },
+    {
+      "term": "MENSTRUAL DISORDER",
+      "count": 56
+    },
+    {
+      "term": "MUSCLE TWITCHING",
+      "count": 56
+    },
+    {
+      "term": "CARPAL TUNNEL SYNDROME",
+      "count": 55
+    },
+    {
+      "term": "HEPATIC CIRRHOSIS",
+      "count": 55
+    },
+    {
+      "term": "NOCTURIA",
+      "count": 55
+    },
+    {
+      "term": "RETINAL DETACHMENT",
+      "count": 55
+    },
+    {
+      "term": "CHOLECYSTITIS INFECTIVE",
+      "count": 54
+    },
+    {
+      "term": "FAECALOMA",
+      "count": 54
+    },
+    {
+      "term": "PANCREATITIS NECROTISING",
+      "count": 54
+    },
+    {
+      "term": "STARVATION KETOACIDOSIS",
+      "count": 54
+    },
+    {
+      "term": "STOMATITIS",
+      "count": 54
+    },
+    {
+      "term": "EXPIRED PRODUCT ADMINISTERED",
+      "count": 53
+    },
+    {
+      "term": "JOINT INJURY",
+      "count": 53
+    },
+    {
+      "term": "LARYNGITIS",
+      "count": 53
+    },
+    {
+      "term": "LIBIDO DECREASED",
+      "count": 53
+    },
+    {
+      "term": "MUSCULOSKELETAL PAIN",
+      "count": 53
+    },
+    {
+      "term": "POST PROCEDURAL COMPLICATION",
+      "count": 53
+    },
+    {
+      "term": "APHONIA",
+      "count": 52
+    },
+    {
+      "term": "BLOOD IRON DECREASED",
+      "count": 52
+    },
+    {
+      "term": "DRUG TITRATION ISSUE",
+      "count": 52
+    }
+  ]
+}

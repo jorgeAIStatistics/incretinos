@@ -1,0 +1,54 @@
+{
+ "pmid": "31924562",
+ "title": "The effect of dulaglutide on stroke: an exploratory analysis of the REWIND trial.",
+ "journal": "The lancet. Diabetes & endocrinology",
+ "pub_date": "2020 Feb",
+ "year": 2020,
+ "doi": "10.1016/s2213-8587(19)30423-1",
+ "authors": [
+  "Gerstein HC",
+  "Hart R",
+  "Colhoun HM",
+  "Diaz R",
+  "Lakshmanan M",
+  "Botros FT",
+  "Probstfield J",
+  "Riddle MC",
+  "Rydén L",
+  "Atisso CM",
+  "Dyal L",
+  "Hall S",
+  "Avezum A",
+  "Basile J",
+  "Conget I",
+  "Cushman WC",
+  "Hancu N",
+  "Hanefeld M",
+  "Jansky P",
+  "Keltai M",
+  "Lanas F",
+  "Leiter LA",
+  "Lopez-Jaramillo P",
+  "Muñoz EGC",
+  "Pogosova N",
+  "Raubenheimer PJ",
+  "Shaw JE",
+  "Sheu WH",
+  "Temelkova-Kurktschiev T"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Multicenter Study",
+  "Randomized Controlled Trial"
+ ],
+ "databank_ncts": [
+  "NCT01394952"
+ ],
+ "abstract_sha256": "4481ae100909bb20208b25a25406b923f06b09055c0bbb186d5ec22a1fc68456",
+ "abstract_chars": 3233,
+ "abstract_ncts": [
+  "NCT01394952"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

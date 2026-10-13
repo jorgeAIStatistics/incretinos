@@ -1,0 +1,44 @@
+{
+ "pmid": "35996147",
+ "title": "A novel kidney disease index reflecting both the albumin-to-creatinine ratio and estimated glomerular filtration rate, predicted cardiovascular and kidney outcomes in type 2 diabetes.",
+ "journal": "Cardiovascular diabetology",
+ "pub_date": "2022 Aug 22",
+ "year": 2022,
+ "doi": "10.1186/s12933-022-01594-6",
+ "authors": [
+  "Gerstein HC",
+  "Ramasundarahettige C",
+  "Avezum A",
+  "Basile J",
+  "Conget I",
+  "Cushman WC",
+  "Dagenais GR",
+  "Franek E",
+  "Lakshmanan M",
+  "Lanas F",
+  "Leiter LA",
+  "Pogosova N",
+  "Probstfield J",
+  "Raubenheimer PJ",
+  "Riddle M",
+  "Shaw J",
+  "Sheu WH",
+  "Temelkova-Kurktschiev T",
+  "Turfanda I",
+  "Xavier D"
+ ],
+ "pub_types": [
+  "Clinical Trial",
+  "Journal Article"
+ ],
+ "databank_ncts": [
+  "NCT01394952"
+ ],
+ "abstract_sha256": "1d9d4a7de8467685990ab00137577d8b7daf76fe949213b0fda1055eb068a3df",
+ "abstract_chars": 1648,
+ "abstract_ncts": [
+  "NCT01394952"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

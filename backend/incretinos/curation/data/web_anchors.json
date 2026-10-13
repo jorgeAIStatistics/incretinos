@@ -1,0 +1,422 @@
+{
+ "web:eli-lilly-an-2022-06-04-lilly-s-surmount-1-results-published-in": {
+  "checked_at": "2026-10-13T19:40:53.002554+00:00",
+  "content_sha256": "769a0a02b13696f189c4fd945503c19eda49e5c7da30b7e1964fc1b2e72a160a",
+  "fetch_status": "ok",
+  "text_chars": 31084,
+  "unverified_quote_count": 0,
+  "url": "https://www.prnewswire.com/news-releases/lillys-surmount-1-results-published-in-the-new-england-journal-of-medicine-show-tirzepatide-achieved-between-16-0-and-22-5-weight-loss-in-adults-with-obesity-or-overweight-301561327.html",
+  "verified_quotes": [
+   "33.9% fat mass reduction compared to a 10.9% lean mass reduction"
+  ]
+ },
+ "web:eli-lilly-an-2023-12-11-lilly-s-zepbound-tirzepatide-achieved-ad": {
+  "checked_at": "2026-10-13T19:40:54.077853+00:00",
+  "content_sha256": "e36a93ddaaead4c7ac428f779252768a390e9992f6eec9c7796a6f02b5b5f496",
+  "fetch_status": "ok",
+  "text_chars": 27836,
+  "unverified_quote_count": 0,
+  "url": "https://www.prnewswire.com/news-releases/lillys-zepbound-tirzepatide-achieved-additional-6-7-weight-loss-following-a-36-week-open-label-lead-in-period-for-a-total-mean-weight-loss-of-26-0-from-study-entry-over-88-weeks-302011535.html",
+  "verified_quotes": [
+   "treatment discontinuation rates due to adverse events were 1.8% (Zepbound) and 0.9% (placebo)",
+   "-6.7 % 14.8 % -5.5 % 14.0 %",
+   "Percent change in body weight from week 0 -26.0 % -9.5 % -25.3 % -9.9 %"
+  ]
+ },
+ "web:eli-lilly-an-2025-05-11-zepbound-tirzepatide-showed-superior-wei": {
+  "checked_at": "2026-10-13T19:40:55.140597+00:00",
+  "content_sha256": "8a99f7d9c2480ed9511b9e550712d00633cc6daad357f6fd16fe9c41f312ab40",
+  "fetch_status": "ok",
+  "text_chars": 35559,
+  "unverified_quote_count": 0,
+  "url": "https://www.prnewswire.com/news-releases/zepbound-tirzepatide-showed-superior-weight-loss-over-wegovy-semaglutide-in-complete-surmount-5-results-published-in-the-new-england-journal-of-medicine-302451241.html",
+  "verified_quotes": [
+   "achieved an average weight reduction of 20.2% compared to 13.7% with Wegovy at 72 weeks using the treatment-regimen estimand",
+   "6.1% of participants taking Zepbound discontinued treatment due to adverse events, compared to 8.0% of participants taking Wegovy"
+  ]
+ },
+ "web:eli-lilly-an-2025-08-07-lilly-s-oral-glp-1-orforglipron-delivers": {
+  "checked_at": "2026-10-13T19:40:56.214240+00:00",
+  "content_sha256": "fa1aaf3b32ebb6a7b332f5ce06e103be0e2eb18000191ee1bf1cc6c84cf8c4bf",
+  "fetch_status": "ok",
+  "text_chars": 23072,
+  "unverified_quote_count": 0,
+  "url": "https://www.prnewswire.com/news-releases/lillys-oral-glp-1--orforglipron-delivers-weight-loss-of-up-to-an-average-of-27-3-lbs-in-first-of-two-pivotal-phase-3-trials-in-adults-with-obesity-302523649.html",
+  "verified_quotes": [
+   "21.9% (6 mg), 22.5% (12 mg) and 24.4% (36 mg) for orforglipron vs. 29.9% with placebo",
+   "dyspepsia (13.0%, 16.2% and 14.1%) vs. 5.0% with placebo"
+  ]
+ },
+ "web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe": {
+  "checked_at": "2026-10-13T19:40:57.291267+00:00",
+  "content_sha256": "5ee51a91dacf3385660302a4ad7e38bdd7c707dc6542cdfe5d8247f1617982d1",
+  "fetch_status": "ok",
+  "text_chars": 24285,
+  "unverified_quote_count": 2,
+  "url": "https://www.prnewswire.com/news-releases/lillys-oral-glp-1-orforglipron-is-successful-in-third-phase-3-trial-triggering-global-regulatory-submissions-this-year-for-the-treatment-of-obesity-302538028.html",
+  "verified_quotes": [
+   "-5.5% (-5.5 kg; -12.1 lbs)",
+   "-7.8% (-7.9 kg; -17.4 lbs)",
+   "-10.5% (-10.4 kg; -22.9 lbs)",
+   "-2.2% (-2.3 kg; -5.1 lbs)",
+   "22.6% (6 mg), 31.2% (12 mg), 45.6% (36 mg), 9.0% (placebo)",
+   "6.8% (6 mg), 14.4% (12 mg), 26.0% (36 mg), 3.0% (placebo)",
+   "6.1% (6 mg), 10.6% (12 mg) and 10.6% (36 mg) for orforglipron vs. 4.6% with placebo",
+   "19.1% (6 mg), 22.3% (12 mg) and 20.5% (36 mg) for orforglipron vs. 20.0% with placebo",
+   "nausea (20.1%, 31.1% and 36.4%) vs. 8.4% with placebo",
+   "vomiting (12.8%, 20.2% and 23.1%) vs. 3.8% with placebo",
+   "diarrhea (21.3%, 24.8% and 27.4%) vs. 15.0% with placebo",
+   "constipation (17.7%, 21.1% and 22.4%) vs. 7.8% with placebo",
+   "dyspepsia (9.1%, 15.4% and 10.9%) vs. 3.5% with placebo"
+  ]
+ },
+ "web:eli-lilly-an-2025-09-16-lilly-s-oral-glp-1-orforglipron-demonstr": {
+  "checked_at": "2026-10-13T19:40:58.367914+00:00",
+  "content_sha256": "afd40c2d12d5d57de1289d85fa6ef30619df93e3cb58c51772f4d8e693901927",
+  "fetch_status": "ok",
+  "text_chars": 25086,
+  "unverified_quote_count": 12,
+  "url": "https://www.prnewswire.com/news-releases/lillys-oral-glp-1-orforglipron-demonstrated-meaningful-weight-loss-and-cardiometabolic-improvements-in-complete-attain-1-results-published-in-the-new-england-journal-of-medicine-302558087.html",
+  "verified_quotes": [
+   "5.3% (6 mg), 7.9% (12 mg) and 10.3% (36 mg) for orforglipron vs. 2.7% with placebo",
+   "nausea (28.9%, 35.9% and 33.7%) vs. 10.4% with placebo",
+   "constipation (21.7%, 29.8% and 25.4%) vs. 9.3% with placebo",
+   "diarrhea (21.0%, 22.8% and 23.1%) vs. 9.6% with placebo",
+   "vomiting (13.0%, 21.4% and 24.0%) vs. 3.5% with placebo"
+  ]
+ },
+ "web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior": {
+  "checked_at": "2026-10-13T19:40:59.434127+00:00",
+  "content_sha256": "54fa4529a4e142d3b436a0a863584719745fa35a8b6e63787c890d827353df21",
+  "fetch_status": "ok",
+  "text_chars": 23494,
+  "unverified_quote_count": 4,
+  "url": "https://www.prnewswire.com/news-releases/lillys-oral-glp-1-orforglipron-superior-to-oral-semaglutide-in-head-to-head-trial-302559090.html",
+  "verified_quotes": [
+   "the study was not powered to compare the safety and tolerability of orforglipron and oral semaglutide",
+   "14.6 lbs (6.7%; 12 mg) and 19.7 lbs (9.2%; 36 mg) compared to 7.9 lbs (3.7%; 7 mg) and 11.0 lbs (5.3%; 14 mg)",
+   "-6.1% (12 mg) and -8.2% (36 mg) with orforglipron vs. -3.9% (7 mg) and -5.3% (14 mg) with oral semaglutide"
+  ]
+ },
+ "web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv": {
+  "checked_at": "2026-10-13T19:41:00.515144+00:00",
+  "content_sha256": "0a02d4be6de39683f9293c45baae19697f95b32036b0507ba7c0418dff47c229",
+  "fetch_status": "ok",
+  "text_chars": 23866,
+  "unverified_quote_count": 0,
+  "url": "https://www.prnewswire.com/news-releases/lillys-triple-agonist-retatrutide-delivered-weight-loss-of-up-to-an-average-of-71-2-lbs-along-with-substantial-relief-from-osteoarthritis-pain-in-first-successful-phase-3-trial-302638804.html",
+  "verified_quotes": [
+   "The study randomized 445 participants in a 1:1:1 ratio to receive either retatrutide 9 mg or 12 mg, or placebo.",
+   "TRIUMPH-4 (NCT05869903) is a Phase 3, 68-week, randomized, double-blind, placebo-controlled study",
+   "Change in WOMAC pain subscale score: -4.0 points (-67.2%; 9 mg), -3.7 points (-62.6%; 12 mg) and -2.1 points (-35.1%; placebo)",
+   "Percent change in the WOMAC pain subscale score and percent change in the WOMAC physical function subscale score were not pre-specified",
+   "-26.4% (-29.1 kg; -64.2 lbs)",
+   "change in body weight: -20.0% (-22.9 kg; -50.5 lbs; 9 mg); -23.7% (-27.2 kg; -60.0 lbs; 12 mg) and -4.6% (-5.3 kg; -11.7 lbs; placebo)",
+   "-28.7% (-32.3 kg; -71.2 lbs)",
+   "-2.1% (-2.1 kg; -4.6 lbs)",
+   "Discontinuation rates due to adverse events were 12.2% and 18.2% with retatrutide 9 mg and 12 mg, respectively, compared to 4.0% with placebo.",
+   "Dysesthesia occurred in 8.8% and 20.9% (9 mg and 12 mg, respectively) of patients treated with retatrutide, compared to 0.7% with placebo."
+  ]
+ },
+ "web:eli-lilly-an-2026-03-19-lilly-s-triple-agonist-retatrutide-demon": {
+  "checked_at": "2026-10-13T19:41:01.567847+00:00",
+  "content_sha256": "da93a7bb9938104e987c126a893517d69bef0b12be60c21f30873e6693278238",
+  "fetch_status": "ok",
+  "text_chars": 20963,
+  "unverified_quote_count": 0,
+  "url": "https://www.prnewswire.com/news-releases/lillys-triple-agonist-retatrutide-demonstrated-significant-reductions-in-a1c-and-weight-in-first-phase-3-trial-for-treatment-of-type-2-diabetes-302718589.html",
+  "verified_quotes": [
+   "Incidence of dysesthesia occurred in 4.5%, 2.3% and 4.4% (4 mg, 9 mg and 12 mg, respectively) of patients treated with retatrutide, compared to 0.0%",
+   "-11.5% (-11.1 kg; -24.5 lbs)",
+   "-15.5% (-15.1 kg; -33.3 lbs)",
+   "participants taking retatrutide lost up to an average of 36.6 lbs (16.8%), using the efficacy estimand",
+   "-2.5% (-2.8 kg; -6.2 lbs)",
+   "Discontinuation rates due to adverse events were 2.2%, 4.5% and 5.1% with retatrutide 4 mg, 9 mg and 12 mg, respectively, compared to 0.0%"
+  ]
+ },
+ "web:eli-lilly-an-2026-04-01-fda-approves-lilly-s-foundayo-orforglipr": {
+  "checked_at": "2026-10-13T19:41:02.631041+00:00",
+  "content_sha256": "cf25b9ad7fee639f7b8dec043fcd43b9e64c88a19c2933edf5ea2028284bdab3",
+  "fetch_status": "ok",
+  "text_chars": 29061,
+  "unverified_quote_count": 0,
+  "url": "https://www.prnewswire.com/news-releases/fda-approves-lillys-foundayo-orforglipron-the-only-glp-1-pill-for-weight-loss-that-can-be-taken-any-time-of-day-without-food-or-water-restrictions-302731485.html",
+  "verified_quotes": [
+   "submitted orforglipron for weight management and/or type 2 diabetes in more than 40 countries",
+   "today announced the U.S. Food and Drug Administration (FDA) approved"
+  ]
+ },
+ "web:eli-lilly-an-2026-04-01-lilly-medical-information-response-in-at": {
+  "checked_at": "2026-10-13T19:41:03.721433+00:00",
+  "fetch_status": "unreachable: HTTPStatusError"
+ },
+ "web:eli-lilly-an-2026-04-16-achieve-4-the-longest-phase-3-study-of-l": {
+  "checked_at": "2026-10-13T19:41:03.788242+00:00",
+  "content_sha256": "9e4e0baa22e885e8c05d27fd919a1a44f5b99a226ea174b51d08c01db7dcb362",
+  "fetch_status": "ok",
+  "text_chars": 29555,
+  "unverified_quote_count": 0,
+  "url": "https://www.prnewswire.com/news-releases/achieve-4-the-longest-phase-3-study-of-lillys-foundayo-orforglipron-to-date-reaffirmed-its-cardiovascular-and-overall-safety-profile-as-well-as-consistent-improvements-across-key-measures-of-cardiometabolic-health-302744289.html",
+  "verified_quotes": [
+   "1 mg capsule (corresponds to 0.8 mg tablets)",
+   "While not controlled for multiplicity, the risk of all-cause death was significantly lower for Foundayo vs. insulin glargine.",
+   "Lilly will submit Foundayo for the treatment of type 2 diabetes to the U.S. FDA by the end of the second quarter"
+  ]
+ },
+ "web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv": {
+  "checked_at": "2026-10-13T19:41:04.876953+00:00",
+  "content_sha256": "6b3cd760e3efa327e660ce5f7d3ee2870c9ed2e1eca3254f56d3b5e686168325",
+  "fetch_status": "ok",
+  "text_chars": 40512,
+  "unverified_quote_count": 1,
+  "url": "https://www.prnewswire.com/news-releases/lillys-triple-agonist-retatrutide-delivered-powerful-weight-loss-in-pivotal-phase-3-obesity-trial-302778859.html",
+  "verified_quotes": [
+   "The study randomized 2,339 participants in a 1:1:1:1 ratio to receive either retatrutide 4 mg, 9 mg, 12 mg, or placebo.",
+   "The proportion of participants achieving BMI <30 was a pre-specified analysis not controlled for multiplicity",
+   "Those taking the 4 mg dose of retatrutide, with just a single dose escalation step, lost an average of 47.2 lbs (19.0%).",
+   "For the primary endpoint, participants taking retatrutide 9 mg and 12 mg lost an average of 64.4 lbs (25.9%) and 70.3 lbs (28.3%), respectively.",
+   "-2.2% (-2.5 kg; -5.5 lbs)",
+   "-25.0% (-28.2 kg; -62.1 lbs; 12 mg) and -3.9% (-4.4 kg; -9.7 lbs; placebo)",
+   "-27.9% (-33.2 kg; -73.3 lbs)",
+   "body weight at 104 weeks: -25.7% (-30.6 kg; -67.5 lbs; 4 mg to MTD); -28.7% (-35.6 kg; -78.4 lbs; 9 mg to MTD)",
+   "-29.5% (-36.6 kg; -80.7 lbs)",
+   "-30.3% (-38.5 kg; -85.0 lbs)",
+   "-29.9% (-38.1 kg; -83.9 lbs; 12 mg to MTD) and -18.9% (-22.3 kg; -49.1 lbs; placebo to MTD)",
+   "-19.2% (-22.6 kg; -49.9 lbs)",
+   "Discontinuation rates due to adverse events were 4.1%, 6.9%, 11.3%, with retatrutide 4 mg, 9 mg, and 12 mg, respectively, compared with 4.9% with placebo.",
+   "Incidences of dysesthesia occurred in 5.1%, 12.3%, and 12.5% of patients treated with retatrutide 4 mg, 9 mg, and 12 mg, respectively, compared with 0.9%"
+  ]
+ },
+ "web:eli-lilly-an-2026-06-06-lilly-s-triple-agonist-retatrutide-drove": {
+  "checked_at": "2026-10-13T19:41:05.952564+00:00",
+  "content_sha256": "6d1fd944ddaa75d4139a6ca01e45ac17b0047b2a3732055f8916521d78f516ea",
+  "fetch_status": "ok",
+  "text_chars": 41137,
+  "unverified_quote_count": 0,
+  "url": "https://www.prnewswire.com/news-releases/lillys-triple-agonist-retatrutide-drove-substantial-improvements-in-weight-a1c-knee-osteoarthritis-pain-and-obstructive-sleep-apnea-demonstrating-its-remarkable-potential-to-treat-obesity-and-its-complications-302793169.html",
+  "verified_quotes": [
+   "Data in this press release are based on the efficacy estimand."
+  ]
+ },
+ "web:eli-lilly-an-2026-06-08-lilly-s-oral-glp-1-foundayo-orforglipron": {
+  "checked_at": "2026-10-13T19:41:07.019140+00:00",
+  "content_sha256": "d4368dbc71e231e6fb528166b5d9bcb5c51e99e6a15ba572c0e517d3f9ed4be8",
+  "fetch_status": "ok",
+  "text_chars": 40077,
+  "unverified_quote_count": 0,
+  "url": "https://www.prnewswire.com/news-releases/lillys-oral-glp-1-foundayo-orforglipron-delivered-superior-a1c-control-and-weight-loss-in-three-pivotal-type-2-diabetes-trials-302793407.html",
+  "verified_quotes": [
+   "conducted using an investigational formulation of Foundayo at dosages equivalent to Foundayo tablets"
+  ]
+ },
+ "web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe": {
+  "checked_at": "2026-10-13T19:41:08.095845+00:00",
+  "content_sha256": "c2711b8cc35c4e08602a670c54a68fe96faca6c8808621f67d29cdbd46ad79e5",
+  "fetch_status": "ok",
+  "text_chars": 38381,
+  "unverified_quote_count": 0,
+  "url": "https://www.prnewswire.com/news-releases/lillys-triple-agonist-retatrutide-successful-in-two-additional-phase-3-obesity-trials-delivering-significant-improvements-in-weight-and-a1c-302832674.html",
+  "verified_quotes": [
+   "The study randomized 1,949 participants in a 1:1:2 ratio to receive retatrutide 9 mg, 12 mg, or placebo.",
+   "while on-treatment analysis (not pre-specified) excludes events which occurred more than 35 days after discontinuing retatrutide or placebo",
+   "In TRIUMPH-3, the incidence of dysesthesia and urinary tract infections were 6.4%, 6.4% vs. 1.3% and 6.1%, 7.0% vs. 5.3%",
+   "-21.6% (-23.9 kg; -52.7 lbs)",
+   "-22.6% (-25.3 kg; -55.8 lbs)",
+   "-3.2% (-3.5 kg; -7.7 lbs)",
+   "resulting in a hazard ratio of 0.82 (95.0% CI: 0.55 to 1.22)",
+   "resulting in a hazard ratio of 1.12 (95.0% CI: 0.64 to 1.96)",
+   "Discontinuation rates due to adverse events in TRIUMPH-3 were 9.8% (9 mg) and 13.5% (12 mg) with retatrutide, compared with 4.8% for placebo.",
+   "-12.7% (-13.5 kg; -29.8 lbs)",
+   "-19.1% (-20.6 kg; -45.4 lbs)",
+   "-20.8% (-22.5 kg; -49.6 lbs)",
+   "-4.0% (-4.2 kg; -9.3 lbs)",
+   "Discontinuation rates due to adverse events in TRIUMPH-2 were 3.8% (4 mg), 11.6% (9 mg), and 7.7% (12 mg) with retatrutide, compared with 4.9%",
+   "plans to subsequently submit retatrutide in Q1 2027 for U.S. approval",
+   "we now have the clinical data package to support global submissions for retatrutide"
+  ]
+ },
+ "web:eli-lilly-an-2026-08-05-lilly-reports-second-quarter-2026-financ": {
+  "checked_at": "2026-10-13T19:41:09.163542+00:00",
+  "content_sha256": "289d1018677557fd0e72bd52894566a3a3a784afb2fba3203eb0d1d7fdaa6365",
+  "fetch_status": "ok",
+  "text_chars": 37764,
+  "unverified_quote_count": 0,
+  "url": "https://www.prnewswire.com/news-releases/lilly-reports-second-quarter-2026-financial-results-raises-full-year-guidance-and-highlights-continued-growth-and-pipeline-progress-302843165.html",
+  "verified_quotes": [
+   "the submission for orforglipron for type 2 diabetes in the U.S.",
+   "with plans to submit a Biologics License Application to the U.S. FDA in the first quarter of 2027"
+  ]
+ },
+ "web:eli-lilly-an-2026-08-12-lilly-calls-on-online-platforms-payment": {
+  "checked_at": "2026-10-13T19:41:10.222182+00:00",
+  "content_sha256": "2e19f1926da3ec28466b38863e94461b091cf19e808e51e25ed8aa92fcff46c0",
+  "fetch_status": "ok",
+  "text_chars": 16219,
+  "unverified_quote_count": 0,
+  "url": "https://www.prnewswire.com/news-releases/lilly-calls-on-online-platforms-payment-companies-and-regulators-to-shut-down-the-illegal-retatrutide-black-market-302849551.html",
+  "verified_quotes": [
+   "No medicine containing retatrutide has yet been approved for human use by any regulatory agency in the world."
+  ]
+ },
+ "web:eli-lilly-an-2026-08-28-fda-approves-lilly-s-mounjaro-tirzepatid": {
+  "checked_at": "2026-10-13T19:41:11.276663+00:00",
+  "content_sha256": "5a490698e975fabb6137d55b66c56d041e36aa4d3c08d3dd970be57312fe1938",
+  "fetch_status": "ok",
+  "text_chars": 33278,
+  "unverified_quote_count": 0,
+  "url": "https://www.prnewswire.com/news-releases/fda-approves-lillys-mounjaro-tirzepatide-to-reduce-cardiovascular-risk-in-adults-with-type-2-diabetes-302862415.html",
+  "verified_quotes": [
+   "today announced that the U.S. Food and Drug Administration (FDA) approved Mounjaro (tirzepatide)"
+  ]
+ },
+ "web:eli-lilly-an-2026-09-15-lilly-to-present-new-data-on-foundayo-re": {
+  "checked_at": "2026-10-13T19:41:12.334916+00:00",
+  "content_sha256": "2bb464979481b3fc8eaad45f98c99e78aa5da73973e6898c75f9a5f1f42edd3d",
+  "fetch_status": "ok",
+  "text_chars": 52394,
+  "unverified_quote_count": 0,
+  "url": "https://www.prnewswire.com/news-releases/lilly-to-present-new-data-on-foundayo-retatrutide-and-eloratzp-at-easd-2026-as-it-strives-to-change-the-course-of-cardiometabolic-health-302878341.html",
+  "verified_quotes": [
+   "This EASD-sponsored symposium on amylins in diabetes will feature Phase 2 results for eloraTZP, an investigational combination of eloralintide and tirzepatide",
+   "Adding eloralintide 3 mg to tirzepatide 5 mg led to 17% weight loss over 16 weeks versus 10% with tirzepatide 5 mg alone"
+  ]
+ },
+ "web:eli-lilly-an-2026-09-29-lilly-s-triple-agonist-retatrutide-deliv": {
+  "checked_at": "2026-10-13T19:41:13.398880+00:00",
+  "content_sha256": "ff0d0b17151822ddc2147a26b4e814ecd3326f94550fef21ee99952441179396",
+  "fetch_status": "ok",
+  "text_chars": 37195,
+  "unverified_quote_count": 0,
+  "url": "https://www.prnewswire.com/news-releases/lillys-triple-agonist-retatrutide-delivered-substantial-weight-loss-and-a1c-reduction-underscoring-its-potential-promise-for-people-with-obesity-and-type-2-diabetes-302891798.html",
+  "verified_quotes": [
+   "Lilly plans to submit a Biologics License Application (BLA) in Q1 2027 to the U.S. Food and Drug Administration.",
+   "Not controlled for family-wise type 1 error.",
+   "presented at the 62nd Annual Meeting of the European Association for the Study of Diabetes (EASD) in Milan, Italy, and simultaneously published in The Lancet"
+  ]
+ },
+ "web:eli-lilly-an-2026-09-30-lilly-s-oral-glp-1-foundayo-orforglipron": {
+  "checked_at": "2026-10-13T19:41:14.477098+00:00",
+  "content_sha256": "8e74c48699c7625ddc368b505f377c1363e516fd57025089ce6a070efb5ddfca",
+  "fetch_status": "ok",
+  "text_chars": 38376,
+  "unverified_quote_count": 5,
+  "url": "https://www.prnewswire.com/news-releases/lillys-oral-glp-1-foundayo-orforglipron-demonstrated-cardiovascular-safety-alongside-sustained-a1c-reduction-and-weight-loss-in-its-largest-and-longest-type-2-diabetes-study-302891823.html",
+  "verified_quotes": [
+   "All-cause death, waist circumference, serum lipids, blood pressure, hsCRP, cardiovascular death and kidney function endpoints were not controlled for family-wise type 1 error.",
+   "10.6% of participants taking Foundayo discontinued treatment due to adverse events",
+   "(hazard ratio: 0.77; 95.0% CI: 0.52 to 1.13)",
+   "(hazard ratio: 0.47; 95.0% CI: 0.25 to 0.90)"
+  ]
+ },
+ "web:eli-lilly-an-undated-lilly-medical-information-response-what": {
+  "checked_at": "2026-10-13T19:41:15.544943+00:00",
+  "fetch_status": "unreachable: HTTPStatusError"
+ },
+ "web:eli-lilly-an-undated-what-to-know-about-eloralintide-frequent": {
+  "checked_at": "2026-10-13T19:41:15.619292+00:00",
+  "fetch_status": "unreachable: HTTPStatusError"
+ },
+ "web:lilly-pipeline": {
+  "checked_at": "2026-10-13T19:41:15.682610+00:00",
+  "fetch_status": "unreachable: HTTPStatusError"
+ },
+ "web:lilly-pr-2025-11-06-eloralintide-ph2": {
+  "checked_at": "2026-10-13T19:41:15.741278+00:00",
+  "content_sha256": "d35e00de02b46c4788c2c9ab3aae36b368446b458f2fa7f49b4368c95304d713",
+  "fetch_status": "ok",
+  "text_chars": 19704,
+  "unverified_quote_count": 7,
+  "url": "https://www.prnewswire.com/news-releases/lillys-selective-amylin-agonist-eloralintide-demonstrated-meaningful-weight-loss-and-favorable-tolerability-in-a-phase-2-study-of-adults-with-obesity-or-overweight-302607061.html",
+  "verified_quotes": [
+   "The efficacy estimand represents efficacy had all randomized participants remained on study intervention (with possible dose interruptions and/or dose modifications) for 48 weeks.",
+   "The most common adverse events were mild to moderate gastrointestinal symptoms and fatigue, which were seen more frequently in the higher dose arms.",
+   "Treatment with eloralintide was also associated with improvements across cardiometabolic risk factors including waist circumference, blood pressure, lipid profiles, glycemic control and markers of inflammation."
+  ]
+ },
+ "web:lilly-pr-2026-09-30-eloratzp": {
+  "checked_at": "2026-10-13T19:41:16.837257+00:00",
+  "content_sha256": "f6558ce409d8df163f5105cfc45a7dc32b2271452705ee4626b19cd7e1061ac3",
+  "fetch_status": "ok",
+  "text_chars": 45581,
+  "unverified_quote_count": 10,
+  "url": "https://www.prnewswire.com/news-releases/lillys-eloratzp-combination-of-eloralintide-and-tirzepatide-delivered-greater-weight-loss-and-a1c-reduction-vs-tirzepatide-15-mg-in-adults-with-obesity-and-type-2-diabetes-302894480.html",
+  "verified_quotes": [
+   "EloraTZP, an investigational combination of eloralintide, a selective amylin receptor agonist, and tirzepatide, a dual GIP and GLP-1 receptor agonist",
+   "Results from the trial were presented at the 62nd Annual Meeting of the European Association for the Study of Diabetes (EASD) in Milan, Italy.",
+   "The trial randomized 367 participants in the U.S. and Argentina in a 1:1:1:1:1:1:1:1:1:1 ratio to placebo, eloralintide, tirzepatide or EloraTZP.",
+   "to demonstrate that eloralintide in combination with Zepbound is superior to placebo in percent change in body weight from baseline at 48 weeks",
+   "The efficacy estimand represents efficacy had all randomized participants remained on study intervention (with possible dose interruptions and/or dose modifications) for 48 weeks.",
+   "eloralintide and tirzepatide were administered as separate injections in adults with obesity or overweight and type 2 diabetes",
+   "started the study at eloralintide 1 mg or 3 mg and tirzepatide 2.5 mg and escalated every four weeks until reaching their target dose",
+   "Change in body weight from an avg. baseline of 232.4 lbs (105.4 kg)",
+   "At 48 weeks, all combinations of EloraTZP met the primary and secondary endpoints, delivering substantial weight loss and A1C reduction.",
+   "These events were seen more frequently in the combination arms than with eloralintide or tirzepatide alone.",
+   "Primary endpoint was percent change in body weight for EloraTZP vs. placebo. All other comparisons were secondary endpoints.",
+   "Lilly plans to initiate Phase 3 studies of an EloraTZP co-formulation product by the end of 2026 using an optimized escalation schedule.",
+   "Treatment discontinuation rates due to adverse events were 10.8% to 27.0% with EloraTZP, 0% to 10.8% with eloralintide, 2.9% with tirzepatide and 16.7% with placebo.",
+   "Eloralintide is an investigational once-weekly, selective amylin receptor agonist previously known as LY3841136."
+  ]
+ },
+ "web:medicines-an-2026-08-10-uk-first-in-europe-to-authorise-orforgli": {
+  "checked_at": "2026-10-13T19:41:18.726519+00:00",
+  "content_sha256": "4ea59d376e3eb29f1715b2f108496d6e026ab440c7e403c5e6af4ab5330c54e1",
+  "fetch_status": "ok",
+  "text_chars": 7314,
+  "unverified_quote_count": 0,
+  "url": "https://www.gov.uk/government/news/uk-first-in-europe-to-authorise-orforglipron-for-weight-management-and-type-2-diabetes",
+  "verified_quotes": [
+   "has today (10, August, 2026) authorised orforglipron (Foundayo)"
+  ]
+ },
+ "web:u-s-fda-2026-05-15-drugs-fda-application-record-nda220934-o": {
+  "checked_at": "2026-10-13T19:41:19.878772+00:00",
+  "content_sha256": "20ea8e574cb6c6338512386a9f02a25fa4c097f90656cf14ae29c7ba475c5292",
+  "fetch_status": "ok",
+  "text_chars": 528,
+  "unverified_quote_count": 1,
+  "url": "https://www.accessdata.fda.gov/drugsatfda_docs/nda/2026/220934Orig1s000TOC.html",
+  "verified_quotes": []
+ },
+ "web:u-s-food-an-2026-10-01-fda-s-concerns-with-unapproved-glp-1-dru": {
+  "checked_at": "2026-10-13T19:41:21.018266+00:00",
+  "content_sha256": "f90511bdf7ed4c96ba90aec9328c091c8bdadfc0862cb51c8a606ba4a1c0f6ed",
+  "fetch_status": "ok",
+  "text_chars": 12856,
+  "unverified_quote_count": 0,
+  "url": "https://www.fda.gov/drugs/drug-alerts-and-statements/fdas-concerns-unapproved-glp-1-drugs-used-weight-loss",
+  "verified_quotes": [
+   "these are not components of FDA-approved drugs and have not been found safe and effective for any condition"
+  ]
+ },
+ "web:u-s-food-an-2026-10-13-drugs-fda-submission-history-for-bla1254": {
+  "checked_at": "2026-10-13T19:41:22.810790+00:00",
+  "content_sha256": "e295070e9952b3999cf6f2df9b624dd05d1819ee35ef1a20ca651b99aa0c67d9",
+  "fetch_status": "ok",
+  "text_chars": 14765,
+  "unverified_quote_count": 0,
+  "url": "https://api.fda.gov/drug/drugsfda.json?search=application_number:%22BLA125469%22&limit=1",
+  "verified_quotes": []
+ },
+ "web:u-s-food-an-2026-10-13-drugs-fda-submission-history-for-nda2158": {
+  "checked_at": "2026-10-13T19:41:24.222574+00:00",
+  "content_sha256": "d2eac6804147dd2f7a5216eb78613f9130d0b8974c4617d8e974580c108bd443",
+  "fetch_status": "ok",
+  "text_chars": 18881,
+  "unverified_quote_count": 0,
+  "url": "https://api.fda.gov/drug/drugsfda.json?search=application_number:%22NDA215866%22&limit=1",
+  "verified_quotes": []
+ },
+ "web:u-s-food-an-2026-10-13-drugs-fda-submission-history-for-nda2178": {
+  "checked_at": "2026-10-13T19:41:25.408692+00:00",
+  "content_sha256": "459b7950fc854c350ebe086c9afaadb516d629334bcdc7674a5a0392ed31447d",
+  "fetch_status": "ok",
+  "text_chars": 20027,
+  "unverified_quote_count": 0,
+  "url": "https://api.fda.gov/drug/drugsfda.json?search=application_number:%22NDA217806%22&limit=1",
+  "verified_quotes": []
+ },
+ "web:u-s-food-an-2026-10-13-openfda-queries-for-retatrutide-drug-lab": {
+  "checked_at": "2026-10-13T19:41:26.586997+00:00",
+  "fetch_status": "unreachable: HTTPStatusError"
+ }
+}

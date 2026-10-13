@@ -1,0 +1,65 @@
+{
+ "pmid": "31189511",
+ "title": "Dulaglutide and cardiovascular outcomes in type 2 diabetes (REWIND): a double-blind, randomised placebo-controlled trial.",
+ "journal": "Lancet (London, England)",
+ "pub_date": "2019 Jul 13",
+ "year": 2019,
+ "doi": "10.1016/s0140-6736(19)31149-3",
+ "authors": [
+  "Gerstein HC",
+  "Colhoun HM",
+  "Dagenais GR",
+  "Diaz R",
+  "Lakshmanan M",
+  "Pais P",
+  "Probstfield J",
+  "Riesmeyer JS",
+  "Riddle MC",
+  "Rydén L",
+  "Xavier D",
+  "Atisso CM",
+  "Dyal L",
+  "Hall S",
+  "Rao-Melacini P",
+  "Wong G",
+  "Avezum A",
+  "Basile J",
+  "Chung N",
+  "Conget I",
+  "Cushman WC",
+  "Franek E",
+  "Hancu N",
+  "Hanefeld M",
+  "Holt S",
+  "Jansky P",
+  "Keltai M",
+  "Lanas F",
+  "Leiter LA",
+  "Lopez-Jaramillo P",
+  "Cardona Munoz EG",
+  "Pirags V",
+  "Pogosova N",
+  "Raubenheimer PJ",
+  "Shaw JE",
+  "Sheu WH",
+  "Temelkova-Kurktschiev T",
+  "REWIND Investigators"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Multicenter Study",
+  "Randomized Controlled Trial"
+ ],
+ "databank_ncts": [
+  "NCT01394952"
+ ],
+ "abstract_sha256": "84dcca43260715d79b202fc84b962d8ce9158fb321e7198a00014a1d66ad2fa1",
+ "abstract_chars": 2645,
+ "abstract_ncts": [
+  "NCT01394952"
+ ],
+ "excerpts": [
+  "(hazard ratio [HR] 0·88, 95% CI 0·79-0·99; p=0·026)"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

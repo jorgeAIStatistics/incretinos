@@ -1,0 +1,53 @@
+{
+ "pmid": "32562683",
+ "title": "Effect of dulaglutide on cognitive impairment in type 2 diabetes: an exploratory analysis of the REWIND trial.",
+ "journal": "The Lancet. Neurology",
+ "pub_date": "2020 Jul",
+ "year": 2020,
+ "doi": "10.1016/s1474-4422(20)30173-3",
+ "authors": [
+  "Cukierman-Yaffe T",
+  "Gerstein HC",
+  "Colhoun HM",
+  "Diaz R",
+  "García-Pérez LE",
+  "Lakshmanan M",
+  "Bethel A",
+  "Xavier D",
+  "Probstfield J",
+  "Riddle MC",
+  "Rydén L",
+  "Atisso CM",
+  "Hall S",
+  "Rao-Melacini P",
+  "Basile J",
+  "Cushman WC",
+  "Franek E",
+  "Keltai M",
+  "Lanas F",
+  "Leiter LA",
+  "Lopez-Jaramillo P",
+  "Pirags V",
+  "Pogosova N",
+  "Raubenheimer PJ",
+  "Shaw JE",
+  "Sheu WH",
+  "Temelkova-Kurktschiev T"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Multicenter Study",
+  "Randomized Controlled Trial",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT01394952"
+ ],
+ "abstract_sha256": "b22f178e958938148929da8f749f737083f935e5af4c01f7bb00debd36ba8a2b",
+ "abstract_chars": 2775,
+ "abstract_ncts": [
+  "NCT01394952"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

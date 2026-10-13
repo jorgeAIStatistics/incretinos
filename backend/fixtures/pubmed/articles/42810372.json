@@ -1,0 +1,46 @@
+{
+ "pmid": "42810372",
+ "title": "Retatrutide in adults with obesity and type 2 diabetes (TRIUMPH-2): a double-blind, parallel-group, randomised, placebo-controlled, phase 3 trial.",
+ "journal": "Lancet (London, England)",
+ "pub_date": "2026 Oct 10",
+ "year": 2026,
+ "doi": "10.1016/s0140-6736(26)01861-1",
+ "authors": [
+  "Bellido V",
+  "le Roux CW",
+  "Ekinci EI",
+  "Bjornstad P",
+  "Frias JP",
+  "Giblin K",
+  "Eyde S",
+  "Park SY",
+  "Ferro J",
+  "Johnson C",
+  "Taylor A"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase III",
+  "Multicenter Study"
+ ],
+ "databank_ncts": [
+  "NCT05929079"
+ ],
+ "abstract_sha256": "3785a04db97d2e13e54e5d3c4570b44f0514cb8b0fa41e95cdf0a4869ed5d80c",
+ "abstract_chars": 4497,
+ "abstract_ncts": [
+  "NCT05929079"
+ ],
+ "excerpts": [
+  "with missing data imputed with a primary multiple imputation strategy for the treatment regimen estimand",
+  "treatment discontinuation due to adverse events or death was more frequent in participants treated with retatrutide 9 mg (33 [12%]) and 12 mg (22 [8%])",
+  "13 [4%], 16 [6%], and 21 [7%] vs two [1%] in the placebo group with dysesthesia",
+  "the mean percentage change from baseline in bodyweight at week 80 was -11·9% (SE 0·6) with retatrutide 4 mg, -16·8% (0·7) with retatrutide 9 mg",
+  "-18·8% (0·7) with retatrutide 12 mg, and -5·1% (0·7) with placebo",
+  "-6·9% (95% CI -8·7 to -5·1) with retatrutide 4 mg",
+  "-11·8% (-13·7 to -9·8) with retatrutide 9 mg",
+  "-13·8% (-15·8 to -11·8) with retatrutide 12 mg (p<0·0001 for all)"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

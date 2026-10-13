@@ -1,0 +1,45 @@
+{
+ "pmid": "35489606",
+ "title": "Bacillus Calmette-Guérin vaccine to reduce healthcare worker absenteeism in COVID-19 pandemic, a randomized controlled trial.",
+ "journal": "Clinical microbiology and infection : the official publication of the European Society of Clinical Microbiology and Infectious Diseases",
+ "pub_date": "2022 Sep",
+ "year": 2022,
+ "doi": "10.1016/j.cmi.2022.04.009",
+ "authors": [
+  "Ten Doesschate T",
+  "van der Vaart TW",
+  "Debisarun PA",
+  "Taks E",
+  "Moorlag SJCFM",
+  "Paternotte N",
+  "Boersma WG",
+  "Kuiper VP",
+  "Roukens AHE",
+  "Rijnders BJA",
+  "Voss A",
+  "Veerman KM",
+  "Kerckhoffs APM",
+  "Oever JT",
+  "van Crevel R",
+  "van Nieuwkoop C",
+  "Lalmohamed A",
+  "van de Wijgert JHHM",
+  "Netea MG",
+  "Bonten MJM",
+  "van Werkhoven CH"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial"
+ ],
+ "databank_ncts": [
+  "NCT03987919"
+ ],
+ "abstract_sha256": "bf2a69bc84d5fad3bef34be8244a0cf19d06ef28337cd04b0c69aacce6b0b3e7",
+ "abstract_chars": 1753,
+ "abstract_ncts": [
+  "NCT03987919"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

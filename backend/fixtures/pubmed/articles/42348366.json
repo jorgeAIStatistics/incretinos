@@ -1,0 +1,36 @@
+{
+ "pmid": "42348366",
+ "title": "Tirzepatide Efficacy and Tolerability According to Early Weight Response: A Post Hoc Analysis of the SURMOUNT-1 and SURMOUNT-2 Trials.",
+ "journal": "Diabetes, obesity & metabolism",
+ "pub_date": "2026 Sep",
+ "year": 2026,
+ "doi": "10.1111/dom.71009",
+ "authors": [
+  "Kokkinos A",
+  "Thethi T",
+  "Lee CJ",
+  "Neff LM",
+  "Stefanski A",
+  "Cao D",
+  "Rodriguez A",
+  "Bartee A"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Multicenter Study",
+  "Clinical Trial, Phase III"
+ ],
+ "databank_ncts": [
+  "NCT04184622",
+  "NCT04657003"
+ ],
+ "abstract_sha256": "580ac537a97efdad6a0676da8a9bd32d4b36dc2c369a7298ed5a3128ec73a738",
+ "abstract_chars": 2200,
+ "abstract_ncts": [
+  "NCT04184622",
+  "NCT04657003"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

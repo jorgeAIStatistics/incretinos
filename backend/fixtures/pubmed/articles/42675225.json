@@ -1,0 +1,38 @@
+{
+ "pmid": "42675225",
+ "title": "Association of tirzepatide with changes in OSA-related measures based on baseline characteristics - post hoc analyses of SURMOUNT-OSA.",
+ "journal": "Journal of clinical sleep medicine : JCSM : official publication of the American Academy of Sleep Medicine",
+ "pub_date": "2026 Aug 31",
+ "year": 2026,
+ "doi": "10.1007/s44470-026-00162-z",
+ "authors": [
+  "Falcon B",
+  "Xie CC",
+  "Redline S",
+  "Grunstein R",
+  "Turnbull CD",
+  "Rapoport DM",
+  "Wang H",
+  "Chakladar S",
+  "Dimitriadis GK",
+  "Lau E",
+  "Bednarik J",
+  "Liao B",
+  "Malhotra A"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase III"
+ ],
+ "databank_ncts": [
+  "NCT05412004"
+ ],
+ "abstract_sha256": "26ea238baa247620f3fdd70fa55dfaa3e9b59d20ce186986012a42b13ee55320",
+ "abstract_chars": 2914,
+ "abstract_ncts": [
+  "NCT05412004"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

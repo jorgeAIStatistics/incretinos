@@ -1,0 +1,34 @@
+{
+ "pmid": "42229460",
+ "title": "Insulin Sensitivity and Beta Cell Function With Macupatide Alone or With Dulaglutide in Type 2 Diabetes: A Phase 1b, Randomised Controlled Trial.",
+ "journal": "Diabetes, obesity & metabolism",
+ "pub_date": "2026 Aug",
+ "year": 2026,
+ "doi": "10.1111/dom.70863",
+ "authors": [
+  "Heise T",
+  "Zijlstra E",
+  "Mari A",
+  "Roell WC",
+  "Mather KJ",
+  "Haupt A",
+  "Flevaris P",
+  "Liao R",
+  "Chua L",
+  "Harris C",
+  "Pratt EJ"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase I"
+ ],
+ "databank_ncts": [],
+ "abstract_sha256": "dffb6b5a7bc27bb4a9ce2445e8b598dc1a2075e24228486e9d72c72311571667",
+ "abstract_chars": 1679,
+ "abstract_ncts": [],
+ "excerpts": [
+  "Participants were randomised to receive the long-acting GIP receptor agonist macupatide, dulaglutide or both combined."
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

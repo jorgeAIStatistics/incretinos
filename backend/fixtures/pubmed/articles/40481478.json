@@ -1,0 +1,38 @@
+{
+ "pmid": "40481478",
+ "title": "Treatment with orforglipron, an oral glucagon like peptide-1 receptor agonist, is associated with improvements of CV risk biomarkers in participants with type 2 diabetes or obesity without diabetes.",
+ "journal": "Cardiovascular diabetology",
+ "pub_date": "2025 Jun 06",
+ "year": 2025,
+ "doi": "10.1186/s12933-025-02781-x",
+ "authors": [
+  "Wharton S",
+  "Rosenstock J",
+  "Konige M",
+  "Lin Y",
+  "Duffin K",
+  "Wilson J",
+  "Banerjee H",
+  "Pirro V",
+  "Kazda C",
+  "Mather K"
+ ],
+ "pub_types": [
+  "Clinical Trial, Phase II",
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT05048719",
+  "NCT05051579"
+ ],
+ "abstract_sha256": "a5528dc83cf89c53e0e7f00660a9db87c01c20586c3508462cdacb404a2b7e75",
+ "abstract_chars": 2284,
+ "abstract_ncts": [
+  "NCT05048719",
+  "NCT05051579"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

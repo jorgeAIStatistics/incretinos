@@ -1,0 +1,45 @@
+{
+ "pmid": "38078870",
+ "title": "Continued Treatment With Tirzepatide for Maintenance of Weight Reduction in Adults With Obesity: The SURMOUNT-4 Randomized Clinical Trial.",
+ "journal": "JAMA",
+ "pub_date": "2024 Jan 02",
+ "year": 2024,
+ "doi": "10.1001/jama.2023.24945",
+ "authors": [
+  "Aronne LJ",
+  "Sattar N",
+  "Horn DB",
+  "Bays HE",
+  "Wharton S",
+  "Lin WY",
+  "Ahmad NN",
+  "Zhang S",
+  "Liao R",
+  "Bunck MC",
+  "Jouravskaya I",
+  "Murphy MA",
+  "SURMOUNT-4 Investigators"
+ ],
+ "pub_types": [
+  "Clinical Trial, Phase III",
+  "Journal Article",
+  "Multicenter Study",
+  "Randomized Controlled Trial",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT04660643"
+ ],
+ "abstract_sha256": "7842cdf18ab98af270c10c042a02fcccca6a3a8c3db9dd8e268d3f976635aead",
+ "abstract_chars": 2289,
+ "abstract_ncts": [
+  "NCT04660643"
+ ],
+ "excerpts": [
+  "At week 36, a total of 670 participants were randomized (1:1) to continue receiving tirzepatide (n = 335) or switch to placebo (n = 335)",
+  "The primary end point was the mean percent change in weight from week 36 (randomization) to week 88.",
+  "300 participants (89.5%) receiving tirzepatide at 88 weeks maintained at least 80% of the weight loss during the lead-in period compared with 16.6% receiving placebo",
+  "from week 36 to week 88 was -5.5% with tirzepatide vs 14.0% with placebo (difference, -19.4% [95% CI, -21.2% to -17.7%]; P < .001)"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

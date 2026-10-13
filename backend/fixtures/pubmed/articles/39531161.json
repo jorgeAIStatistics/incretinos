@@ -1,0 +1,41 @@
+{
+ "pmid": "39531161",
+ "title": "Post Hoc Analysis of SURPASS-1 to -5: Efficacy and Safety of Tirzepatide in Adults with Type 2 Diabetes are Independent of Baseline Characteristics.",
+ "journal": "Diabetes therapy : research, treatment and education of diabetes and related disorders",
+ "pub_date": "2025 Jan",
+ "year": 2025,
+ "doi": "10.1007/s13300-024-01660-0",
+ "authors": [
+  "De Block C",
+  "Peleshok J",
+  "Wilding JPH",
+  "Kwan AYM",
+  "Rasouli N",
+  "Maldonado JM",
+  "Wysham C",
+  "Liu M",
+  "Aleppo G",
+  "Benneyworth BD"
+ ],
+ "pub_types": [
+  "Journal Article"
+ ],
+ "databank_ncts": [
+  "NCT03730662",
+  "NCT03882970",
+  "NCT03954834",
+  "NCT03987919",
+  "NCT04039503"
+ ],
+ "abstract_sha256": "8f447f9809bf351107818ee9aab64372599633aa32c782f5b4ac6850000bb2a8",
+ "abstract_chars": 1770,
+ "abstract_ncts": [
+  "NCT03730662",
+  "NCT03882970",
+  "NCT03954834",
+  "NCT03987919",
+  "NCT04039503"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

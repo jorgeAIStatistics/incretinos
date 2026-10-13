@@ -1,0 +1,107 @@
+# Trials ingested in depth from ClinicalTrials.gov. `primary_pmid` is the curated primary-results
+# publication; it is only accepted when PubMed's own record or the registry independently links
+# the PMID to the NCT number (see reconciliation).
+studies:
+  # ---- tirzepatide
+  - {nct: NCT04184622, display_name: SURMOUNT-1, program: SURMOUNT, drugs: [{slug: tirzepatide}], primary_pmid: "35658024",
+     design_features: {comparator_type: PLACEBO, treatment_weeks: 72}}
+  - {nct: NCT04657003, display_name: SURMOUNT-2, program: SURMOUNT, drugs: [{slug: tirzepatide}],
+     design_features: {comparator_type: PLACEBO, treatment_weeks: 72}}
+  - {nct: NCT04657016, display_name: SURMOUNT-3, program: SURMOUNT, drugs: [{slug: tirzepatide}],
+     design_features: {comparator_type: PLACEBO, treatment_weeks: 72, lead_in: "12-week intensive lifestyle intervention before randomization"}}
+  - {nct: NCT04660643, display_name: SURMOUNT-4, program: SURMOUNT, drugs: [{slug: tirzepatide}], primary_pmid: "38078870",
+     design_features: {comparator_type: PLACEBO, treatment_weeks: 52, randomized_withdrawal: true, lead_in: "36-week open-label tirzepatide lead-in; randomization at week 36"}}
+  - {nct: NCT05822830, display_name: SURMOUNT-5, program: SURMOUNT, drugs: [{slug: tirzepatide}, {slug: semaglutide, role: COMPARATOR}], primary_pmid: "40353578",
+     design_features: {comparator_type: ACTIVE, treatment_weeks: 72, open_label: true}}
+  - {nct: NCT05412004, display_name: SURMOUNT-OSA, program: SURMOUNT, drugs: [{slug: tirzepatide}],
+     design_features: {comparator_type: PLACEBO, treatment_weeks: 52}}
+  - {nct: NCT05556512, display_name: SURMOUNT-MMO, program: SURMOUNT, drugs: [{slug: tirzepatide}],
+     design_features: {comparator_type: PLACEBO, outcomes_trial: true}}
+  - {nct: NCT03987919, display_name: SURPASS-2, program: SURPASS, drugs: [{slug: tirzepatide}, {slug: semaglutide, role: COMPARATOR}],
+     design_features: {comparator_type: ACTIVE, treatment_weeks: 40, open_label: true}}
+  - {nct: NCT04255433, display_name: SURPASS-CVOT, program: SURPASS, drugs: [{slug: tirzepatide}, {slug: dulaglutide, role: COMPARATOR}], primary_pmid: "41406444",
+     design_features: {comparator_type: ACTIVE, outcomes_trial: true}}
+  # ---- dulaglutide
+  - {nct: NCT01394952, display_name: REWIND, program: REWIND, drugs: [{slug: dulaglutide}], primary_pmid: "31189511",
+     design_features: {comparator_type: PLACEBO, outcomes_trial: true}}
+  - {nct: NCT03495102, display_name: AWARD-11, program: AWARD, drugs: [{slug: dulaglutide}],
+     design_features: {comparator_type: ACTIVE_DOSE, treatment_weeks: 52}}
+  # ---- orforglipron
+  - {nct: NCT05051579, display_name: Orforglipron Phase 2 (obesity), program: ATTAIN, drugs: [{slug: orforglipron}],
+     design_features: {comparator_type: PLACEBO, treatment_weeks: 36}}
+  - {nct: NCT06440980, display_name: Orforglipron tablet–capsule bioequivalence study, program: ATTAIN, drugs: [{slug: orforglipron}], primary_pmid: "41994902",
+     design_features: {pharmacokinetic_study: true}}
+  - {nct: NCT05869903, display_name: ATTAIN-1, program: ATTAIN, drugs: [{slug: orforglipron}], primary_pmid: "40960239",
+     design_features: {comparator_type: PLACEBO, treatment_weeks: 72}}
+  - {nct: NCT05872620, display_name: ATTAIN-2, program: ATTAIN, drugs: [{slug: orforglipron}], primary_pmid: "41275875",
+     design_features: {comparator_type: PLACEBO, treatment_weeks: 72}}
+  - {nct: NCT06584916, display_name: ATTAIN-MAINTAIN, program: ATTAIN, drugs: [{slug: orforglipron}],
+     design_features: {comparator_type: PLACEBO, maintenance_after_incretin: true}}
+  - {nct: NCT05971940, display_name: ACHIEVE-1, program: ACHIEVE, drugs: [{slug: orforglipron}],
+     design_features: {comparator_type: PLACEBO, treatment_weeks: 40}}
+  - {nct: NCT06192108, display_name: ACHIEVE-2, program: ACHIEVE, drugs: [{slug: orforglipron}],
+     design_features: {comparator_type: ACTIVE}}
+  - {nct: NCT06045221, display_name: ACHIEVE-3, program: ACHIEVE, drugs: [{slug: orforglipron}, {slug: semaglutide, role: COMPARATOR}], primary_pmid: "41765029",
+     design_features: {comparator_type: ACTIVE, treatment_weeks: 52, open_label: true}}
+  - {nct: NCT05803421, display_name: ACHIEVE-4, program: ACHIEVE, drugs: [{slug: orforglipron}, {slug: insulin-glargine, role: COMPARATOR}], primary_pmid: "42815506",
+     design_features: {comparator_type: ACTIVE, open_label: true, cv_safety_assessment: true}}
+  - {nct: NCT06109311, display_name: ACHIEVE-5, program: ACHIEVE, drugs: [{slug: orforglipron}],
+     design_features: {comparator_type: PLACEBO, treatment_weeks: 40}}
+  - {nct: NCT07241390, display_name: Orforglipron CV outcomes trial, program: ATTAIN, drugs: [{slug: orforglipron}],
+     design_features: {outcomes_trial: true}}
+  # ---- retatrutide
+  - {nct: NCT04881760, display_name: Retatrutide Phase 2 (obesity), program: TRIUMPH, drugs: [{slug: retatrutide}], primary_pmid: "37366315",
+     design_features: {comparator_type: PLACEBO, treatment_weeks: 48}}
+  - {nct: NCT04867785, display_name: Retatrutide Phase 2 (T2D), program: TRANSCEND-T2D, drugs: [{slug: retatrutide}, {slug: dulaglutide, role: COMPARATOR}], primary_pmid: "37385280",
+     design_features: {comparator_type: PLACEBO_AND_ACTIVE, treatment_weeks: 36}}
+  - {nct: NCT05929066, display_name: TRIUMPH-1, program: TRIUMPH, drugs: [{slug: retatrutide}], primary_pmid: "42814954",
+     design_features: {comparator_type: PLACEBO}}
+  - {nct: NCT05929079, display_name: TRIUMPH-2, program: TRIUMPH, drugs: [{slug: retatrutide}], primary_pmid: "42810372",
+     design_features: {comparator_type: PLACEBO}}
+  - {nct: NCT05882045, display_name: TRIUMPH-3, program: TRIUMPH, drugs: [{slug: retatrutide}],
+     design_features: {comparator_type: PLACEBO}}
+  - {nct: NCT05931367, display_name: TRIUMPH-4, program: TRIUMPH, drugs: [{slug: retatrutide}],
+     design_features: {comparator_type: PLACEBO}}
+  - {nct: NCT06662383, display_name: TRIUMPH-5, program: TRIUMPH, drugs: [{slug: retatrutide}, {slug: tirzepatide, role: COMPARATOR}],
+     design_features: {comparator_type: ACTIVE, head_to_head: "retatrutide vs tirzepatide"}}
+  - {nct: NCT06859268, display_name: TRIUMPH-6, program: TRIUMPH, drugs: [{slug: retatrutide}],
+     design_features: {maintenance: true}}
+  - {nct: NCT06383390, display_name: TRIUMPH-Outcomes, program: TRIUMPH, drugs: [{slug: retatrutide}],
+     design_features: {comparator_type: PLACEBO, outcomes_trial: true}}
+  - {nct: NCT06354660, display_name: TRANSCEND-T2D-1, program: TRANSCEND-T2D, drugs: [{slug: retatrutide}], primary_pmid: "42250575",
+     design_features: {comparator_type: PLACEBO}}
+  - {nct: NCT06260722, display_name: TRANSCEND-T2D-2, program: TRANSCEND-T2D, drugs: [{slug: retatrutide}, {slug: semaglutide, role: COMPARATOR}],
+     design_features: {comparator_type: ACTIVE}}
+  - {nct: NCT06297603, display_name: TRANSCEND-T2D-3, program: TRANSCEND-T2D, drugs: [{slug: retatrutide}],
+     design_features: {comparator_type: PLACEBO}}
+  # ---- eloralintide and combination
+  - {nct: NCT06230523, display_name: Eloralintide Phase 2, program: ENLIGHTEN, drugs: [{slug: eloralintide}], primary_pmid: "41207310",
+     design_features: {comparator_type: PLACEBO, treatment_weeks: 48}}
+  - {nct: NCT06603571, display_name: EloraTZP Phase 2b, program: EloraTZP, drugs: [{slug: eloralintide-tirzepatide}, {slug: eloralintide}, {slug: tirzepatide}],
+     design_features: {comparator_type: PLACEBO_AND_ACTIVE, treatment_weeks: 48, administration: "eloralintide and tirzepatide given as separate injections"}}
+  - {nct: NCT07321886, display_name: ENLIGHTEN-1, program: ENLIGHTEN, drugs: [{slug: eloralintide}], design_features: {comparator_type: PLACEBO}}
+  - {nct: NCT07282600, display_name: ENLIGHTEN-2, program: ENLIGHTEN, drugs: [{slug: eloralintide}], design_features: {comparator_type: PLACEBO}}
+  - {nct: NCT07369011, display_name: ENLIGHTEN-3, program: ENLIGHTEN, drugs: [{slug: eloralintide}], design_features: {comparator_type: PLACEBO}}
+  - {nct: NCT07353931, display_name: ENLIGHTEN-4, program: ENLIGHTEN, drugs: [{slug: eloralintide}], design_features: {comparator_type: PLACEBO}}
+  - {nct: NCT07392190, display_name: ENLIGHTEN-6, program: ENLIGHTEN, drugs: [{slug: eloralintide}],
+     design_features: {comparator_type: PLACEBO, add_on_to: "weekly injectable incretin"}}
+  # ---- adjacent pipeline
+  - {nct: NCT07589608, display_name: Macupatide + eloralintide Phase 2b, program: Adjacent, drugs: [{slug: macupatide}, {slug: eloralintide}],
+     design_features: {comparator_type: PLACEBO}}
+  - {nct: NCT05616013, display_name: BELIEVE, program: Adjacent, drugs: [{slug: bimagrumab}, {slug: semaglutide, role: COMPARATOR}], primary_pmid: "41772149",
+     design_features: {comparator_type: PLACEBO_AND_ACTIVE}}
+  - {nct: NCT06643728, display_name: Bimagrumab + tirzepatide Phase 2, program: Adjacent, drugs: [{slug: bimagrumab}, {slug: tirzepatide}],
+     design_features: {comparator_type: PLACEBO_AND_ACTIVE}}
+  - {nct: NCT07219966, display_name: RENEW-ALC-1, program: Adjacent, drugs: [{slug: brenipatide}],
+     design_features: {comparator_type: PLACEBO, non_metabolic_indication: "alcohol use disorder"}}
+
+# Registry discovery index (summary fields only) — every Lilly-led trial matching these intervention terms.
+discovery_terms:
+  tirzepatide: [tirzepatide]
+  dulaglutide: [dulaglutide]
+  orforglipron: [orforglipron]
+  retatrutide: [retatrutide]
+  eloralintide: [eloralintide, LY3841136]
+  brenipatide: [brenipatide, LY3537031]
+  macupatide: [macupatide, LY3532226]
+  bimagrumab: [bimagrumab]

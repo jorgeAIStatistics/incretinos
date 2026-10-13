@@ -1,0 +1,52 @@
+{
+ "pmid": "41275875",
+ "title": "Orforglipron, an oral small-molecule GLP-1 receptor agonist, for the treatment of obesity in people with type 2 diabetes (ATTAIN-2): a phase 3, double-blind, randomised, multicentre, placebo-controlled trial.",
+ "journal": "Lancet (London, England)",
+ "pub_date": "2026 Dec 20",
+ "year": 2026,
+ "doi": "10.1016/s0140-6736(25)02165-8",
+ "authors": [
+  "Horn DB",
+  "Ryan DH",
+  "Kis SG",
+  "Alves B",
+  "Mu Y",
+  "Kim SG",
+  "Aberle J",
+  "Bain SC",
+  "Allen S",
+  "Sarker E",
+  "Wu Q",
+  "Stefanski A",
+  "Jouravskaya I",
+  "ATTAIN-2 Trial Investigators"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Multicenter Study",
+  "Clinical Trial, Phase III",
+  "Research Support, Non-U.S. Gov't"
+ ],
+ "databank_ncts": [
+  "NCT05872620"
+ ],
+ "abstract_sha256": "0a0e97403303251920108737c42241853684e20293508ec9c653b77201328bd4",
+ "abstract_chars": 2997,
+ "abstract_ncts": [
+  "NCT05872620"
+ ],
+ "excerpts": [
+  "This trial was registered at ClinicalTrials.gov (NCT05872620) and is completed.",
+  "was the primary estimand, with the efficacy estimand considered supportive",
+  "were higher for orforglipron (6·1-9·9%) versus placebo (4·1%)",
+  "-5·1% (95% CI -6·0 to -4·2) with 6 mg",
+  "-7·0% (-7·8 to -6·2) with 12 mg",
+  "-9·6% (-10·5 to -8·7) with 36 mg orforglipron",
+  "versus -2·5% (-3·0 to -1·9) with placebo",
+  "ETD] -2·7 [95% CI -3·7 to -1·6]; p<0·0001",
+  "(ETD -4·5 [-5·5 to -3·6]; p<0·0001)",
+  "(ETD -7·1 [-8·2 to -6·1]; p<0·0001)"
+ ],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

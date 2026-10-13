@@ -1,0 +1,37 @@
+{
+ "pmid": "38858523",
+ "title": "Triple hormone receptor agonist retatrutide for metabolic dysfunction-associated steatotic liver disease: a randomized phase 2a trial.",
+ "journal": "Nature medicine",
+ "pub_date": "2024 Jul",
+ "year": 2024,
+ "doi": "10.1038/s41591-024-03018-2",
+ "authors": [
+  "Sanyal AJ",
+  "Kaplan LM",
+  "Frias JP",
+  "Brouwers B",
+  "Wu Q",
+  "Thomas MK",
+  "Harris C",
+  "Schloot NC",
+  "Du Y",
+  "Mather KJ",
+  "Haupt A",
+  "Hartman ML"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase II"
+ ],
+ "databank_ncts": [
+  "NCT04881760"
+ ],
+ "abstract_sha256": "6f35030ac8723e9d8f8cd620732a5dc47f55d139839c8b819ad20cddfec0e08c",
+ "abstract_chars": 1216,
+ "abstract_ncts": [
+  "NCT04881760"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

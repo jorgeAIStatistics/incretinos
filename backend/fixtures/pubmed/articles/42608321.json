@@ -1,0 +1,41 @@
+{
+ "pmid": "42608321",
+ "title": "Retatrutide-Associated Improvements in Cardiovascular Risk Biomarkers in Adults With Obesity With or Without Type 2 Diabetes.",
+ "journal": "Diabetes, obesity & metabolism",
+ "pub_date": "2026 Nov",
+ "year": 2026,
+ "doi": "10.1111/dom.71200",
+ "authors": [
+  "Ruotolo G",
+  "Harris C",
+  "Lin Y",
+  "Wilson JM",
+  "Pirro V",
+  "Duffin KL",
+  "Thomas MK",
+  "Hartman ML",
+  "Neill CO",
+  "Coskun T",
+  "Milicevic Z",
+  "Haupt A",
+  "Sattar N",
+  "Nicholls SJ"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Clinical Trial, Phase II"
+ ],
+ "databank_ncts": [
+  "NCT04867785",
+  "NCT04881760"
+ ],
+ "abstract_sha256": "cbe04dbdd1a113c2f2e2005c3e9407829b0bf0add40978b06fe99ff9b69574c9",
+ "abstract_chars": 1977,
+ "abstract_ncts": [
+  "NCT04867785",
+  "NCT04881760"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}

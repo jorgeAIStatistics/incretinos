@@ -1,0 +1,144 @@
+{
+  "meta": {
+    "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+    "terms": "https://open.fda.gov/terms/",
+    "license": "https://open.fda.gov/license/",
+    "last_updated": "2026-07-30",
+    "results": {
+      "skip": 0,
+      "limit": 1,
+      "total": 778556
+    }
+  },
+  "results": [
+    {
+      "safetyreportversion": "2",
+      "safetyreportid": "10003372",
+      "primarysourcecountry": "US",
+      "occurcountry": "US",
+      "transmissiondateformat": "102",
+      "transmissiondate": "20151125",
+      "reporttype": "1",
+      "serious": "2",
+      "receivedateformat": "102",
+      "receivedate": "20140312",
+      "receiptdateformat": "102",
+      "receiptdate": "20150812",
+      "fulfillexpeditecriteria": "2",
+      "companynumb": "US-GILEAD-2012-0061187",
+      "duplicate": "1",
+      "reportduplicate": {
+        "duplicatesource": "GILEAD",
+        "duplicatenumb": "US-GILEAD-2012-0061187"
+      },
+      "primarysource": {
+        "reportercountry": "US",
+        "qualification": "5"
+      },
+      "sender": {
+        "sendertype": "2",
+        "senderorganization": "FDA-Public Use"
+      },
+      "receiver": {
+        "receivertype": "6",
+        "receiverorganization": "FDA"
+      },
+      "patient": {
+        "patientonsetage": "49",
+        "patientonsetageunit": "801",
+        "patientagegroup": "5",
+        "patientsex": "1",
+        "reaction": [
+          {
+            "reactionmeddraversionpt": "18.1",
+            "reactionmeddrapt": "Nausea",
+            "reactionoutcome": "6"
+          }
+        ],
+        "drug": [
+          {
+            "drugcharacterization": "1",
+            "medicinalproduct": "LETAIRIS",
+            "drugauthorizationnumb": "022081",
+            "drugstructuredosagenumb": "10",
+            "drugstructuredosageunit": "003",
+            "drugdosagetext": "10 MG, UNK",
+            "drugdosageform": "TABLET",
+            "drugadministrationroute": "048",
+            "drugindication": "PRODUCT USED FOR UNKNOWN INDICATION",
+            "drugstartdateformat": "102",
+            "drugstartdate": "20120820",
+            "actiondrug": "4",
+            "activesubstance": {
+              "activesubstancename": "AMBRISENTAN"
+            },
+            "openfda": {
+              "application_number": [
+                "NDA022081"
+              ],
+              "brand_name": [
+                "LETAIRIS"
+              ],
+              "generic_name": [
+                "AMBRISENTAN"
+              ],
+              "manufacturer_name": [
+                "Gilead Sciences, Inc."
+              ],
+              "product_ndc": [
+                "61958-0801",
+                "61958-0802"
+              ],
+              "product_type": [
+                "HUMAN PRESCRIPTION DRUG"
+              ],
+              "route": [
+                "ORAL"
+              ],
+              "substance_name": [
+                "AMBRISENTAN"
+              ],
+              "rxcui": [
+                "722116",
+                "722120",
+                "722122",
+                "722124"
+              ],
+              "spl_id": [
+                "2808f55e-aed5-40c7-832b-630e1408951c"
+              ],
+              "spl_set_id": [
+                "725d4e73-6c83-477a-adc6-0ae4a133a844"
+              ],
+              "package_ndc": [
+                "61958-0801-2",
+                "61958-0801-3",
+                "61958-0801-1",
+                "61958-0801-5",
+                "61958-0801-4",
+                "61958-0801-6",
+                "61958-0802-2",
+                "61958-0802-3",
+                "61958-0802-1",
+                "61958-0802-5"
+              ],
+              "nui": [
+                "N0000175581",
+                "N0000175364"
+              ],
+              "pharm_class_epc": [
+                "Endothelin Receptor Antagonist [EPC]"
+              ],
+              "pharm_class_moa": [
+                "Endothelin Receptor Antagonists [MoA]"
+              ],
+              "unii": [
+                "HW6NV07QEC"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

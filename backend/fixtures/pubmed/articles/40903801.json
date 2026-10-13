@@ -1,0 +1,31 @@
+{
+ "pmid": "40903801",
+ "title": "Tirzepatide Associated With Improved Health-Related Quality of Life in Adults With Obesity or Overweight in SURMOUNT-4.",
+ "journal": "Obesity (Silver Spring, Md.)",
+ "pub_date": "2025 Nov",
+ "year": 2025,
+ "doi": "10.1002/oby.70011",
+ "authors": [
+  "Gibble TH",
+  "Cao D",
+  "Murphy M",
+  "Jouravskaya I",
+  "Liao B",
+  "Bays HE"
+ ],
+ "pub_types": [
+  "Journal Article",
+  "Randomized Controlled Trial",
+  "Multicenter Study"
+ ],
+ "databank_ncts": [
+  "NCT04660643"
+ ],
+ "abstract_sha256": "abc626fd62b29c5e3e0422fdf138773e594986c1a65098dfdb5a1f0adbd27620",
+ "abstract_chars": 1611,
+ "abstract_ncts": [
+  "NCT04660643"
+ ],
+ "excerpts": [],
+ "_note": "Abstract text intentionally omitted; see abstract_sha256 and excerpts."
+}
