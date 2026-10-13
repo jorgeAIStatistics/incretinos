@@ -333,7 +333,14 @@ def _find_or_create_arm(session: Session, study: Study, label: str) -> StudyArm:
     arm = session.scalar(select(StudyArm).where(StudyArm.study_id == study.id, StudyArm.norm_label == norm))
     if arm is None:
         drug_slug, is_placebo = arm_drug_slug(label)
-        dose = parse_single_dose_mg(label) if drug_slug and "+" not in drug_slug and drug_slug not in COMBINATION_SLUGS.values() else None
+        formulation_key = None
+        if drug_slug == "orforglipron":
+            # Sources name the formulation in the arm description; nothing is assumed when they do not.
+            if re.search(r"foundayo|tablet|label dosage", label, re.IGNORECASE):
+                formulation_key = "foundayo-tablet"
+            elif re.search(r"capsule|investigational", label, re.IGNORECASE):
+                formulation_key = "orforglipron-capsule"
+        dose =parse_single_dose_mg(label) if drug_slug and "+" not in drug_slug and drug_slug not in COMBINATION_SLUGS.values() else None
         arm = StudyArm(
             study_id=study.id,
             origin=Origin.CURATED.value,
@@ -345,6 +352,7 @@ def _find_or_create_arm(session: Session, study: Study, label: str) -> StudyArm:
             dose_amount=dose,
             dose_unit="mg" if dose is not None else None,
             dose_text=label if drug_slug in COMBINATION_SLUGS.values() else None,
+            formulation_key=formulation_key,
             is_pooled=bool(re.search(r"pooled|all doses|combined", label, re.IGNORECASE)),
         )
         session.add(arm)

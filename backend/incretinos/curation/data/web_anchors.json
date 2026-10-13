@@ -1,6 +1,6 @@
 {
  "web:eli-lilly-an-2022-06-04-lilly-s-surmount-1-results-published-in": {
-  "checked_at": "2026-10-13T19:40:53.002554+00:00",
+  "checked_at": "2026-10-13T19:47:52.083063+00:00",
   "content_sha256": "769a0a02b13696f189c4fd945503c19eda49e5c7da30b7e1964fc1b2e72a160a",
   "fetch_status": "ok",
   "text_chars": 31084,
@@ -11,7 +11,7 @@
   ]
  },
  "web:eli-lilly-an-2023-12-11-lilly-s-zepbound-tirzepatide-achieved-ad": {
-  "checked_at": "2026-10-13T19:40:54.077853+00:00",
+  "checked_at": "2026-10-13T19:47:53.151865+00:00",
   "content_sha256": "e36a93ddaaead4c7ac428f779252768a390e9992f6eec9c7796a6f02b5b5f496",
   "fetch_status": "ok",
   "text_chars": 27836,
@@ -24,7 +24,7 @@
   ]
  },
  "web:eli-lilly-an-2025-05-11-zepbound-tirzepatide-showed-superior-wei": {
-  "checked_at": "2026-10-13T19:40:55.140597+00:00",
+  "checked_at": "2026-10-13T19:47:54.212006+00:00",
   "content_sha256": "8a99f7d9c2480ed9511b9e550712d00633cc6daad357f6fd16fe9c41f312ab40",
   "fetch_status": "ok",
   "text_chars": 35559,
@@ -36,7 +36,7 @@
   ]
  },
  "web:eli-lilly-an-2025-08-07-lilly-s-oral-glp-1-orforglipron-delivers": {
-  "checked_at": "2026-10-13T19:40:56.214240+00:00",
+  "checked_at": "2026-10-13T19:47:55.271182+00:00",
   "content_sha256": "fa1aaf3b32ebb6a7b332f5ce06e103be0e2eb18000191ee1bf1cc6c84cf8c4bf",
   "fetch_status": "ok",
   "text_chars": 23072,
@@ -48,7 +48,7 @@
   ]
  },
  "web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe": {
-  "checked_at": "2026-10-13T19:40:57.291267+00:00",
+  "checked_at": "2026-10-13T19:47:56.342860+00:00",
   "content_sha256": "5ee51a91dacf3385660302a4ad7e38bdd7c707dc6542cdfe5d8247f1617982d1",
   "fetch_status": "ok",
   "text_chars": 24285,
@@ -71,7 +71,7 @@
   ]
  },
  "web:eli-lilly-an-2025-09-16-lilly-s-oral-glp-1-orforglipron-demonstr": {
-  "checked_at": "2026-10-13T19:40:58.367914+00:00",
+  "checked_at": "2026-10-13T19:47:57.430810+00:00",
   "content_sha256": "afd40c2d12d5d57de1289d85fa6ef30619df93e3cb58c51772f4d8e693901927",
   "fetch_status": "ok",
   "text_chars": 25086,
@@ -86,7 +86,7 @@
   ]
  },
  "web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior": {
-  "checked_at": "2026-10-13T19:40:59.434127+00:00",
+  "checked_at": "2026-10-13T19:47:58.501348+00:00",
   "content_sha256": "54fa4529a4e142d3b436a0a863584719745fa35a8b6e63787c890d827353df21",
   "fetch_status": "ok",
   "text_chars": 23494,
@@ -99,7 +99,7 @@
   ]
  },
  "web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv": {
-  "checked_at": "2026-10-13T19:41:00.515144+00:00",
+  "checked_at": "2026-10-13T19:47:59.576634+00:00",
   "content_sha256": "0a02d4be6de39683f9293c45baae19697f95b32036b0507ba7c0418dff47c229",
   "fetch_status": "ok",
   "text_chars": 23866,
@@ -119,7 +119,7 @@
   ]
  },
  "web:eli-lilly-an-2026-03-19-lilly-s-triple-agonist-retatrutide-demon": {
-  "checked_at": "2026-10-13T19:41:01.567847+00:00",
+  "checked_at": "2026-10-13T19:48:00.641620+00:00",
   "content_sha256": "da93a7bb9938104e987c126a893517d69bef0b12be60c21f30873e6693278238",
   "fetch_status": "ok",
   "text_chars": 20963,
@@ -135,7 +135,7 @@
   ]
  },
  "web:eli-lilly-an-2026-04-01-fda-approves-lilly-s-foundayo-orforglipr": {
-  "checked_at": "2026-10-13T19:41:02.631041+00:00",
+  "checked_at": "2026-10-13T19:48:01.714696+00:00",
   "content_sha256": "cf25b9ad7fee639f7b8dec043fcd43b9e64c88a19c2933edf5ea2028284bdab3",
   "fetch_status": "ok",
   "text_chars": 29061,
@@ -147,11 +147,11 @@
   ]
  },
  "web:eli-lilly-an-2026-04-01-lilly-medical-information-response-in-at": {
-  "checked_at": "2026-10-13T19:41:03.721433+00:00",
+  "checked_at": "2026-10-13T19:48:02.845112+00:00",
   "fetch_status": "unreachable: HTTPStatusError"
  },
  "web:eli-lilly-an-2026-04-16-achieve-4-the-longest-phase-3-study-of-l": {
-  "checked_at": "2026-10-13T19:41:03.788242+00:00",
+  "checked_at": "2026-10-13T19:48:02.905647+00:00",
   "content_sha256": "9e4e0baa22e885e8c05d27fd919a1a44f5b99a226ea174b51d08c01db7dcb362",
   "fetch_status": "ok",
   "text_chars": 29555,
@@ -164,7 +164,7 @@
   ]
  },
  "web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv": {
-  "checked_at": "2026-10-13T19:41:04.876953+00:00",
+  "checked_at": "2026-10-13T19:48:03.983206+00:00",
   "content_sha256": "6b3cd760e3efa327e660ce5f7d3ee2870c9ed2e1eca3254f56d3b5e686168325",
   "fetch_status": "ok",
   "text_chars": 40512,
@@ -188,7 +188,7 @@
   ]
  },
  "web:eli-lilly-an-2026-06-06-lilly-s-triple-agonist-retatrutide-drove": {
-  "checked_at": "2026-10-13T19:41:05.952564+00:00",
+  "checked_at": "2026-10-13T19:48:05.053060+00:00",
   "content_sha256": "6d1fd944ddaa75d4139a6ca01e45ac17b0047b2a3732055f8916521d78f516ea",
   "fetch_status": "ok",
   "text_chars": 41137,
@@ -199,7 +199,7 @@
   ]
  },
  "web:eli-lilly-an-2026-06-08-lilly-s-oral-glp-1-foundayo-orforglipron": {
-  "checked_at": "2026-10-13T19:41:07.019140+00:00",
+  "checked_at": "2026-10-13T19:48:06.108972+00:00",
   "content_sha256": "d4368dbc71e231e6fb528166b5d9bcb5c51e99e6a15ba572c0e517d3f9ed4be8",
   "fetch_status": "ok",
   "text_chars": 40077,
@@ -210,7 +210,7 @@
   ]
  },
  "web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe": {
-  "checked_at": "2026-10-13T19:41:08.095845+00:00",
+  "checked_at": "2026-10-13T19:48:07.186732+00:00",
   "content_sha256": "c2711b8cc35c4e08602a670c54a68fe96faca6c8808621f67d29cdbd46ad79e5",
   "fetch_status": "ok",
   "text_chars": 38381,
@@ -236,7 +236,7 @@
   ]
  },
  "web:eli-lilly-an-2026-08-05-lilly-reports-second-quarter-2026-financ": {
-  "checked_at": "2026-10-13T19:41:09.163542+00:00",
+  "checked_at": "2026-10-13T19:48:08.281992+00:00",
   "content_sha256": "289d1018677557fd0e72bd52894566a3a3a784afb2fba3203eb0d1d7fdaa6365",
   "fetch_status": "ok",
   "text_chars": 37764,
@@ -248,7 +248,7 @@
   ]
  },
  "web:eli-lilly-an-2026-08-12-lilly-calls-on-online-platforms-payment": {
-  "checked_at": "2026-10-13T19:41:10.222182+00:00",
+  "checked_at": "2026-10-13T19:48:09.335620+00:00",
   "content_sha256": "2e19f1926da3ec28466b38863e94461b091cf19e808e51e25ed8aa92fcff46c0",
   "fetch_status": "ok",
   "text_chars": 16219,
@@ -259,7 +259,7 @@
   ]
  },
  "web:eli-lilly-an-2026-08-28-fda-approves-lilly-s-mounjaro-tirzepatid": {
-  "checked_at": "2026-10-13T19:41:11.276663+00:00",
+  "checked_at": "2026-10-13T19:48:10.405280+00:00",
   "content_sha256": "5a490698e975fabb6137d55b66c56d041e36aa4d3c08d3dd970be57312fe1938",
   "fetch_status": "ok",
   "text_chars": 33278,
@@ -270,7 +270,7 @@
   ]
  },
  "web:eli-lilly-an-2026-09-15-lilly-to-present-new-data-on-foundayo-re": {
-  "checked_at": "2026-10-13T19:41:12.334916+00:00",
+  "checked_at": "2026-10-13T19:48:11.471871+00:00",
   "content_sha256": "2bb464979481b3fc8eaad45f98c99e78aa5da73973e6898c75f9a5f1f42edd3d",
   "fetch_status": "ok",
   "text_chars": 52394,
@@ -282,7 +282,7 @@
   ]
  },
  "web:eli-lilly-an-2026-09-29-lilly-s-triple-agonist-retatrutide-deliv": {
-  "checked_at": "2026-10-13T19:41:13.398880+00:00",
+  "checked_at": "2026-10-13T19:48:12.541729+00:00",
   "content_sha256": "ff0d0b17151822ddc2147a26b4e814ecd3326f94550fef21ee99952441179396",
   "fetch_status": "ok",
   "text_chars": 37195,
@@ -295,7 +295,7 @@
   ]
  },
  "web:eli-lilly-an-2026-09-30-lilly-s-oral-glp-1-foundayo-orforglipron": {
-  "checked_at": "2026-10-13T19:41:14.477098+00:00",
+  "checked_at": "2026-10-13T19:48:13.618419+00:00",
   "content_sha256": "8e74c48699c7625ddc368b505f377c1363e516fd57025089ce6a070efb5ddfca",
   "fetch_status": "ok",
   "text_chars": 38376,
@@ -309,19 +309,19 @@
   ]
  },
  "web:eli-lilly-an-undated-lilly-medical-information-response-what": {
-  "checked_at": "2026-10-13T19:41:15.544943+00:00",
+  "checked_at": "2026-10-13T19:48:14.675933+00:00",
   "fetch_status": "unreachable: HTTPStatusError"
  },
  "web:eli-lilly-an-undated-what-to-know-about-eloralintide-frequent": {
-  "checked_at": "2026-10-13T19:41:15.619292+00:00",
+  "checked_at": "2026-10-13T19:48:14.755933+00:00",
   "fetch_status": "unreachable: HTTPStatusError"
  },
  "web:lilly-pipeline": {
-  "checked_at": "2026-10-13T19:41:15.682610+00:00",
+  "checked_at": "2026-10-13T19:48:14.815963+00:00",
   "fetch_status": "unreachable: HTTPStatusError"
  },
  "web:lilly-pr-2025-11-06-eloralintide-ph2": {
-  "checked_at": "2026-10-13T19:41:15.741278+00:00",
+  "checked_at": "2026-10-13T19:48:14.873841+00:00",
   "content_sha256": "d35e00de02b46c4788c2c9ab3aae36b368446b458f2fa7f49b4368c95304d713",
   "fetch_status": "ok",
   "text_chars": 19704,
@@ -334,7 +334,7 @@
   ]
  },
  "web:lilly-pr-2026-09-30-eloratzp": {
-  "checked_at": "2026-10-13T19:41:16.837257+00:00",
+  "checked_at": "2026-10-13T19:48:15.971333+00:00",
   "content_sha256": "f6558ce409d8df163f5105cfc45a7dc32b2271452705ee4626b19cd7e1061ac3",
   "fetch_status": "ok",
   "text_chars": 45581,
@@ -358,7 +358,7 @@
   ]
  },
  "web:medicines-an-2026-08-10-uk-first-in-europe-to-authorise-orforgli": {
-  "checked_at": "2026-10-13T19:41:18.726519+00:00",
+  "checked_at": "2026-10-13T19:48:17.634117+00:00",
   "content_sha256": "4ea59d376e3eb29f1715b2f108496d6e026ab440c7e403c5e6af4ab5330c54e1",
   "fetch_status": "ok",
   "text_chars": 7314,
@@ -369,7 +369,7 @@
   ]
  },
  "web:u-s-fda-2026-05-15-drugs-fda-application-record-nda220934-o": {
-  "checked_at": "2026-10-13T19:41:19.878772+00:00",
+  "checked_at": "2026-10-13T19:48:18.774487+00:00",
   "content_sha256": "20ea8e574cb6c6338512386a9f02a25fa4c097f90656cf14ae29c7ba475c5292",
   "fetch_status": "ok",
   "text_chars": 528,
@@ -378,7 +378,7 @@
   "verified_quotes": []
  },
  "web:u-s-food-an-2026-10-01-fda-s-concerns-with-unapproved-glp-1-dru": {
-  "checked_at": "2026-10-13T19:41:21.018266+00:00",
+  "checked_at": "2026-10-13T19:48:19.933448+00:00",
   "content_sha256": "f90511bdf7ed4c96ba90aec9328c091c8bdadfc0862cb51c8a606ba4a1c0f6ed",
   "fetch_status": "ok",
   "text_chars": 12856,
@@ -389,7 +389,7 @@
   ]
  },
  "web:u-s-food-an-2026-10-13-drugs-fda-submission-history-for-bla1254": {
-  "checked_at": "2026-10-13T19:41:22.810790+00:00",
+  "checked_at": "2026-10-13T19:48:21.658131+00:00",
   "content_sha256": "e295070e9952b3999cf6f2df9b624dd05d1819ee35ef1a20ca651b99aa0c67d9",
   "fetch_status": "ok",
   "text_chars": 14765,
@@ -398,7 +398,7 @@
   "verified_quotes": []
  },
  "web:u-s-food-an-2026-10-13-drugs-fda-submission-history-for-nda2158": {
-  "checked_at": "2026-10-13T19:41:24.222574+00:00",
+  "checked_at": "2026-10-13T19:48:22.838787+00:00",
   "content_sha256": "d2eac6804147dd2f7a5216eb78613f9130d0b8974c4617d8e974580c108bd443",
   "fetch_status": "ok",
   "text_chars": 18881,
@@ -407,7 +407,7 @@
   "verified_quotes": []
  },
  "web:u-s-food-an-2026-10-13-drugs-fda-submission-history-for-nda2178": {
-  "checked_at": "2026-10-13T19:41:25.408692+00:00",
+  "checked_at": "2026-10-13T19:48:24.202940+00:00",
   "content_sha256": "459b7950fc854c350ebe086c9afaadb516d629334bcdc7674a5a0392ed31447d",
   "fetch_status": "ok",
   "text_chars": 20027,
@@ -416,7 +416,7 @@
   "verified_quotes": []
  },
  "web:u-s-food-an-2026-10-13-openfda-queries-for-retatrutide-drug-lab": {
-  "checked_at": "2026-10-13T19:41:26.586997+00:00",
+  "checked_at": "2026-10-13T19:48:26.198074+00:00",
   "fetch_status": "unreachable: HTTPStatusError"
  }
 }

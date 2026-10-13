@@ -81,48 +81,6 @@ results:
   source: pubmed:42810372
   quote: -18·8% (0·7) with retatrutide 12 mg, and -5·1% (0·7) with placebo
   notes: SE given in source (4 mg 0.6; 9 mg 0.7; 12 mg 0.7; placebo 0.7); per-arm CI not given. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w80-estimated-treatment-differen
-  estimand: treatment_regimen
-  arm: retatrutide 4 mg minus placebo
-  scope: ARM
-  value: -6.9
-  unit: percentage points
-  ci_low: -8.7
-  ci_high: -5.1
-  ci_level: 95
-  baseline_definition: baseline (week 0, pre-treatment; source says "from baseline")
-  timepoint_weeks: 80
-  source: pubmed:42810372
-  quote: -6·9% (95% CI -8·7 to -5·1) with retatrutide 4 mg
-  notes: ''
-- endpoint: weight-pct-change-w80-estimated-treatment-differen
-  estimand: treatment_regimen
-  arm: retatrutide 9 mg minus placebo
-  scope: ARM
-  value: -11.8
-  unit: percentage points
-  ci_low: -13.7
-  ci_high: -9.8
-  ci_level: 95
-  baseline_definition: baseline (week 0, pre-treatment; source says "from baseline")
-  timepoint_weeks: 80
-  source: pubmed:42810372
-  quote: -11·8% (-13·7 to -9·8) with retatrutide 9 mg
-  notes: ''
-- endpoint: weight-pct-change-w80-estimated-treatment-differen
-  estimand: treatment_regimen
-  arm: retatrutide 12 mg minus placebo
-  scope: ARM
-  value: -13.8
-  unit: percentage points
-  ci_low: -15.8
-  ci_high: -11.8
-  ci_level: 95
-  baseline_definition: baseline (week 0, pre-treatment; source says "from baseline")
-  timepoint_weeks: 80
-  source: pubmed:42810372
-  quote: -13·8% (-15·8 to -11·8) with retatrutide 12 mg (p<0·0001 for all)
-  notes: ''
 - endpoint: weight-pct-change-w80-percent-change-in-body-weigh
   estimand: efficacy
   arm: retatrutide 4 mg
@@ -171,7 +129,58 @@ results:
   quote: -4.0% (-4.2 kg; -9.3 lbs)
   notes: 'Efficacy estimand per source: efficacy had all randomized participants remained on study intervention without initiating prohibited weight management treatments. Table header: "TRIUMPH-2 Efficacy
     Estimand Results". The Lancet abstract (S2) reports the treatment regimen estimand (-11.9/-16.8/-18.8 vs -5.1) - different estimand, not a conflict. ci_not_reported_in_this_source'
-analyses: []
+analyses:
+- endpoint: weight-pct-change-w80-estimated-treatment-differen
+  estimand: treatment_regimen
+  treatment: retatrutide 4 mg
+  comparator: placebo
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: -6.9
+  unit: percentage points
+  ci_low: -8.7
+  ci_high: -5.1
+  ci_level: 95
+  p_value_text: <0.0001
+  multiplicity_controlled: NOT_STATED
+  timepoint_weeks: 80
+  source: pubmed:42810372
+  quote: -6·9% (95% CI -8·7 to -5·1) with retatrutide 4 mg
+  notes: ''
+- endpoint: weight-pct-change-w80-estimated-treatment-differen
+  estimand: treatment_regimen
+  treatment: retatrutide 9 mg
+  comparator: placebo
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: -11.8
+  unit: percentage points
+  ci_low: -13.7
+  ci_high: -9.8
+  ci_level: 95
+  p_value_text: <0.0001
+  multiplicity_controlled: NOT_STATED
+  timepoint_weeks: 80
+  source: pubmed:42810372
+  quote: -11·8% (-13·7 to -9·8) with retatrutide 9 mg
+  notes: ''
+- endpoint: weight-pct-change-w80-estimated-treatment-differen
+  estimand: treatment_regimen
+  treatment: retatrutide 12 mg
+  comparator: placebo
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: -13.8
+  unit: percentage points
+  ci_low: -15.8
+  ci_high: -11.8
+  ci_level: 95
+  p_value_text: <0.0001
+  multiplicity_controlled: NOT_STATED
+  timepoint_weeks: 80
+  source: pubmed:42810372
+  quote: -13·8% (-15·8 to -11·8) with retatrutide 12 mg (p<0·0001 for all)
+  notes: ''
 adverse_events:
 - arm: retatrutide 4 mg
   scope: ARM

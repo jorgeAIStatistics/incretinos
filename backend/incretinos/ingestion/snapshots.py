@@ -34,6 +34,9 @@ def normalize_ws(text: str) -> str:
     text = text.replace(" ", " ").replace(" ", " ").replace(" ", " ")
     text = text.replace("−", "-").replace("–", "-").replace("—", "-")
     text = text.replace("’", "'").replace("“", '"').replace("”", '"')
+    text = text.replace("·", ".")
+    # Table rows are quoted with "|" between cells; cell borders are not part of the source text.
+    text = text.replace("|", " ")
     return re.sub(r"\s+", " ", text).strip()
 
 

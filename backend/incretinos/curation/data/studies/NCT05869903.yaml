@@ -1,0 +1,7 @@
+# Arm annotations only: the registry labels these arms by investigational-capsule dose.
+# Formulation per FDA labeling ("investigational orforglipron formulation") and the bioequivalence publication.
+study: NCT05869903
+arms:
+  - {label: "6 mg Orforglipron", drug: orforglipron, dose_amount: 6, formulation: orforglipron-capsule}
+  - {label: "12 mg Orforglipron", drug: orforglipron, dose_amount: 12, formulation: orforglipron-capsule}
+  - {label: "36 mg Orforglipron", drug: orforglipron, dose_amount: 36, formulation: orforglipron-capsule}

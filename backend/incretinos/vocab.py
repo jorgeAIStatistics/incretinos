@@ -114,7 +114,7 @@ def categorize_endpoint(title: str, unit: str | None = None) -> tuple[EndpointCa
     if re.search(r"fat mass|lean mass|fat[- ]free mass|body composition|\bdxa\b|visceral adipose|body fat", t):
         return EndpointCategory.BODY_COMPOSITION, None
     responder = _RESPONDER.search(title)
-    if responder or re.search(r"(percentage|proportion|number) of participants.*(body )?weight (reduction|loss)", t):
+    if responder or re.search(r"(percentage|proportion|number) of participants.*(body )?weight (reduction|loss|lost)", t):
         return EndpointCategory.WEIGHT_RESPONDER, float(responder.group(1)) if responder else None
     if re.search(r"onset of type 2 diabetes|progression to type 2 diabetes", t):
         return EndpointCategory.DIABETES_ONSET, None

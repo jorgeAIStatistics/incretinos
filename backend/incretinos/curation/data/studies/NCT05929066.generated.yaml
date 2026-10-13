@@ -88,28 +88,6 @@ results:
   quote: The mean percent change in body weight in the retatrutide groups was -17.6% (4-mg dose), -23.7% (9-mg dose), and -25.0% (12-mg dose) versus -3.9%
   notes: Abstract states primary outcomes were evaluated in the 9-mg and 12-mg groups each vs placebo; 4 mg vs placebo was a key secondary per S8. Per-arm CI not in abstract; NEJM full text not accessible.
     ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w80-difference-in-percent-change
-  estimand: treatment_regimen
-  arm: retatrutide 9 mg minus placebo
-  scope: ARM
-  value: -19.8
-  unit: percentage points
-  baseline_definition: baseline (week 0, pre-treatment; source says "from baseline")
-  timepoint_weeks: 80
-  source: pubmed:42814954
-  quote: (differences, -19.8 and -21.0 percentage points, respectively; P<0.001 for both comparisons)
-  notes: Abstract gives differences for two comparisons (primary 9-mg and 12-mg comparisons). ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w80-difference-in-percent-change
-  estimand: treatment_regimen
-  arm: retatrutide 12 mg minus placebo
-  scope: ARM
-  value: -21.0
-  unit: percentage points
-  baseline_definition: baseline (week 0, pre-treatment; source says "from baseline")
-  timepoint_weeks: 80
-  source: pubmed:42814954
-  quote: (differences, -19.8 and -21.0 percentage points, respectively; P<0.001 for both comparisons)
-  notes: Abstract gives differences for two comparisons (primary 9-mg and 12-mg comparisons). ci_not_reported_in_this_source
 - endpoint: weight-pct-change-w80-percent-change-in-body-weigh
   estimand: efficacy
   arm: retatrutide 4 mg
@@ -273,7 +251,35 @@ results:
   notes: 'Extension subset only: 532 participants with baseline BMI >=35 who completed 80 weeks on study drug; all arms escalated (blinded) to retatrutide MTD (9 or 12 mg) for 24 more weeks. Baseline is
     week 0 (subset mean 121.7 kg). Source calls it a "pre-specified extension"; multiplicity control not stated. Registry lists week-104 weight in the extension subset among primary outcomes. Selected (completer)
     population - not comparable to the 80-week randomized comparison. ci_not_reported_in_this_source'
-analyses: []
+analyses:
+- endpoint: weight-pct-change-w80-difference-in-percent-change
+  estimand: treatment_regimen
+  treatment: retatrutide 9 mg
+  comparator: placebo
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: -19.8
+  unit: percentage points
+  p_value_text: <0.001
+  multiplicity_controlled: NOT_STATED
+  timepoint_weeks: 80
+  source: pubmed:42814954
+  quote: (differences, -19.8 and -21.0 percentage points, respectively; P<0.001 for both comparisons)
+  notes: Abstract gives differences for two comparisons (primary 9-mg and 12-mg comparisons). ci_not_reported_in_this_source
+- endpoint: weight-pct-change-w80-difference-in-percent-change
+  estimand: treatment_regimen
+  treatment: retatrutide 12 mg
+  comparator: placebo
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: -21.0
+  unit: percentage points
+  p_value_text: <0.001
+  multiplicity_controlled: NOT_STATED
+  timepoint_weeks: 80
+  source: pubmed:42814954
+  quote: (differences, -19.8 and -21.0 percentage points, respectively; P<0.001 for both comparisons)
+  notes: Abstract gives differences for two comparisons (primary 9-mg and 12-mg comparisons). ci_not_reported_in_this_source
 adverse_events:
 - arm: retatrutide 4 mg
   scope: ARM

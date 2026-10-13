@@ -33,20 +33,6 @@ endpoints:
   timepoint_weeks: 40
   multiplicity_controlled: NOT_STATED
 results:
-- endpoint: hba1c-change-w40-estimated-treatment-differen
-  estimand: treatment_regimen
-  arm: retatrutide 12 mg minus placebo
-  scope: ARM
-  value: -1.12
-  unit: HbA1c percentage points
-  ci_low: -1.39
-  ci_high: -0.85
-  ci_level: 95
-  baseline_definition: baseline (week 0, pre-treatment; source says "from baseline")
-  timepoint_weeks: 40
-  source: pubmed:42250575
-  quote: -0·88% (95% CI -1·18 to -0·59) with retatrutide 4 mg, -1·04% (-1·32 to -0·76) with 9 mg, and -1·12% (-1·39 to -0·85) with 12 mg
-  notes: value/CI fields carry the 12 mg comparison; 4 mg and 9 mg comparisons are in the statement.
 - endpoint: weight-pct-change-w40-percent-change-in-body-weigh
   estimand: treatment_regimen
   arm: retatrutide 4 mg
@@ -147,7 +133,24 @@ results:
   quote: -2.5% (-2.8 kg; -6.2 lbs)
   notes: Efficacy estimand here = had all randomized participants remained on study intervention for 40 weeks without initiating additional antihyperglycemic medications. For 4 mg the efficacy and treatment-regimen
     rows show the same value (-11.5%). ci_not_reported_in_this_source
-analyses: []
+analyses:
+- endpoint: hba1c-change-w40-estimated-treatment-differen
+  estimand: treatment_regimen
+  treatment: retatrutide 12 mg
+  comparator: placebo
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: -1.12
+  unit: HbA1c percentage points
+  ci_low: -1.39
+  ci_high: -0.85
+  ci_level: 95
+  p_value_text: <0.0001
+  multiplicity_controlled: NOT_STATED
+  timepoint_weeks: 40
+  source: pubmed:42250575
+  quote: -0·88% (95% CI -1·18 to -0·59) with retatrutide 4 mg, -1·04% (-1·32 to -0·76) with 9 mg, and -1·12% (-1·39 to -0·85) with 12 mg
+  notes: value/CI fields carry the 12 mg comparison; 4 mg and 9 mg comparisons are in the statement.
 adverse_events:
 - arm: retatrutide 4 mg
   scope: ARM

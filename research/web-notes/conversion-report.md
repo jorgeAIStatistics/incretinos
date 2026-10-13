@@ -1,6 +1,6 @@
 # Notes → curated conversion report (2026-10-13)
 
-Kept 674 findings; rejected or skipped 21.
+Kept 653 findings; rejected or skipped 21.
 
 - eloralintide-pipeline:F16: skipped (value restated as a positive reduction; signed value kept elsewhere) — all eloralintide arms (range across arms)
 - eloralintide-pipeline:F131: skipped (value restated as a positive reduction; signed value kept elsewhere) — eloralintide 3 mg + tirzepatide 5 mg

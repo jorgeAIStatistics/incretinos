@@ -96,81 +96,91 @@ results:
   source: pubmed:35658024
   quote: -20.9% (95% CI, -21.8 to -19.9) with 15-mg doses and -3.1% (95% CI, -4.3 to -1.9) with placebo
   notes: Coprimary end point. P<0.001 for all comparisons with placebo.
+analyses:
 - endpoint: weight-pct-change-w72-difference-from-placebo-in-p
-  arm: tirzepatide 5 mg minus placebo
-  scope: ARM
-  value: -11.9
+  treatment: tirzepatide 5 mg
+  comparator: placebo
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: -11.9
   unit: percentage points
   ci_low: -13.4
   ci_high: -10.4
   ci_level: 95
-  n_analyzed: 630
-  baseline_definition: baseline (week 0)
+  p_value_text: <0.001
+  multiplicity_controlled: 'YES'
   timepoint_weeks: 72
   source: openfda-label:zepbound
   quote: '% Difference from placebo b (95% CI) -11.9 (-13.4, -10.4) d -16.4 (-17.9, -14.8) d -17.8 (-19.3, -16.3) d'
   notes: 'Label does not use the word "estimand"; describes ITT population with missing data imputed by a hybrid approach (corresponds to the treatment-regimen analysis: label % change values -15.0/-19.5/-20.9
     vs -3.1 equal the NEJM treatment-regimen values). n = tirzepatide arm N (placebo N=643).'
 - endpoint: weight-pct-change-w72-difference-from-placebo-in-p
-  arm: tirzepatide 10 mg minus placebo
-  scope: ARM
-  value: -16.4
+  treatment: tirzepatide 10 mg
+  comparator: placebo
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: -16.4
   unit: percentage points
   ci_low: -17.9
   ci_high: -14.8
   ci_level: 95
-  n_analyzed: 636
-  baseline_definition: baseline (week 0)
+  p_value_text: <0.001
+  multiplicity_controlled: 'YES'
   timepoint_weeks: 72
   source: openfda-label:zepbound
   quote: '% Difference from placebo b (95% CI) -11.9 (-13.4, -10.4) d -16.4 (-17.9, -14.8) d -17.8 (-19.3, -16.3) d'
   notes: 'Label does not use the word "estimand"; describes ITT population with missing data imputed by a hybrid approach (corresponds to the treatment-regimen analysis: label % change values -15.0/-19.5/-20.9
     vs -3.1 equal the NEJM treatment-regimen values). n = tirzepatide arm N (placebo N=643).'
 - endpoint: weight-pct-change-w72-difference-from-placebo-in-p
-  arm: tirzepatide 15 mg minus placebo
-  scope: ARM
-  value: -17.8
+  treatment: tirzepatide 15 mg
+  comparator: placebo
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: -17.8
   unit: percentage points
   ci_low: -19.3
   ci_high: -16.3
   ci_level: 95
-  n_analyzed: 630
-  baseline_definition: baseline (week 0)
+  p_value_text: <0.001
+  multiplicity_controlled: 'YES'
   timepoint_weeks: 72
   source: openfda-label:zepbound
   quote: '% Difference from placebo b (95% CI) -11.9 (-13.4, -10.4) d -16.4 (-17.9, -14.8) d -17.8 (-19.3, -16.3) d'
   notes: 'Label does not use the word "estimand"; describes ITT population with missing data imputed by a hybrid approach (corresponds to the treatment-regimen analysis: label % change values -15.0/-19.5/-20.9
     vs -3.1 equal the NEJM treatment-regimen values). n = tirzepatide arm N (placebo N=643).'
 - endpoint: body-composition-w72-percent-change-in-dxa-fat-ma
-  arm: pooled tirzepatide (5/10/15 mg) minus placebo
-  scope: ARM
-  value: -25.7
+  treatment: pooled tirzepatide (5/10/15 mg)
+  comparator: placebo
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: -25.7
   unit: percentage points
   ci_low: -31.4
   ci_high: -20.0
   ci_level: 95
-  n_analyzed: 160
-  baseline_definition: baseline (randomization) DXA
+  p_value_text: <0.001
+  multiplicity_controlled: 'NO'
   timepoint_weeks: 72
   source: pubmed:39996356
   quote: 'for an estimated treatment difference (ETD) relative to placebo of -25.7% (95% confidence interval [CI]: -31.4, -20.0; p < 0.001'
   notes: 'Primary endpoint of the substudy (not of SURMOUNT-1). Source: "There was no multiplicity adjustment." Arm means: -33.9% (tirzepatide) and -8.2% (placebo). Analysis set = participants with baseline
     and post-baseline DXA (160 of 255 enrolled in substudy).'
 - endpoint: body-composition-w72-percent-change-in-dxa-lean-m
-  arm: pooled tirzepatide (5/10/15 mg) minus placebo
-  scope: ARM
-  value: -8.3
+  treatment: pooled tirzepatide (5/10/15 mg)
+  comparator: placebo
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: -8.3
   unit: percentage points
   ci_low: -10.6
   ci_high: -6.1
   ci_level: 95
-  n_analyzed: 160
-  baseline_definition: baseline (randomization) DXA
+  p_value_text: <0.001
+  multiplicity_controlled: 'NO'
   timepoint_weeks: 72
   source: pubmed:39996356
   quote: 'Mean change in lean mass was -10.9% with tirzepatide, compared with -2.6% with placebo (ETD: -8.3 [95% CI: -10.6, -6.1] p < 0.001)'
   notes: Key secondary endpoint of the substudy; no multiplicity adjustment. DXA lean mass is not skeletal muscle mass.
-analyses: []
 adverse_events:
 - arm: tirzepatide 5 mg
   scope: ARM

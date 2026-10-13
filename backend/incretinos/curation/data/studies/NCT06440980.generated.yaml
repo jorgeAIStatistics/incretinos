@@ -10,15 +10,19 @@ endpoints:
   category: PHARMACOKINETICS
   unit: ratio
   multiplicity_controlled: NOT_STATED
-results:
+results: []
+analyses:
 - endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means
-  arm: tablet 0.8 mg vs capsule 1 mg
-  scope: ARM
-  value: 0.97
+  treatment: tablet 0.8 mg
+  comparator: capsule 1 mg
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: 0.97
   unit: ratio
   ci_low: 0.9419
   ci_high: 0.9892
   ci_level: 90
+  multiplicity_controlled: NOT_STATED
   source: web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul
   quote: 1 mg 0.8 mg 0.97 (0.9419, 0.9892) 0.97 (0.9438, 1.0003)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
@@ -26,26 +30,32 @@ results:
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role (primary at capsule doses 3, 6, 12, 36 mg; secondary at 1 and 24 mg) is taken
     from the bioequivalence publication (S9).
 - endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means
-  arm: tablet 0.8 mg vs capsule 1 mg
-  scope: ARM
-  value: 0.97
+  treatment: tablet 0.8 mg
+  comparator: capsule 1 mg
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: 0.97
   unit: ratio
   ci_low: 0.9438
   ci_high: 1.0003
   ci_level: 90
+  multiplicity_controlled: NOT_STATED
   source: web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul
   quote: 1 mg 0.8 mg 0.97 (0.9419, 0.9892) 0.97 (0.9438, 1.0003)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 0.973 (0.9505, 0.9957) and Cmax,ss 0.980 (0.9540, 1.0077). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9).
 - endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means
-  arm: tablet 2.5 mg vs capsule 3 mg
-  scope: ARM
-  value: 1.0
+  treatment: tablet 2.5 mg
+  comparator: capsule 3 mg
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: 1.0
   unit: ratio
   ci_low: 0.9728
   ci_high: 1.0254
   ci_level: 90
+  multiplicity_controlled: NOT_STATED
   source: web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul
   quote: 3 mg 2.5 mg 1.00 (0.9728, 1.0254) 1.01 (0.9802, 1.0427)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
@@ -53,26 +63,32 @@ results:
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role (primary at capsule doses 3, 6, 12, 36 mg; secondary at 1 and 24 mg) is taken
     from the bioequivalence publication (S9).
 - endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means
-  arm: tablet 2.5 mg vs capsule 3 mg
-  scope: ARM
-  value: 1.01
+  treatment: tablet 2.5 mg
+  comparator: capsule 3 mg
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: 1.01
   unit: ratio
   ci_low: 0.9802
   ci_high: 1.0427
   ci_level: 90
+  multiplicity_controlled: NOT_STATED
   source: web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul
   quote: 3 mg 2.5 mg 1.00 (0.9728, 1.0254) 1.01 (0.9802, 1.0427)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 1.004 (0.9789, 1.0295) and Cmax,ss 1.014 (0.9849, 1.0448). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9).
 - endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means
-  arm: tablet 5.5 mg vs capsule 6 mg
-  scope: ARM
-  value: 0.99
+  treatment: tablet 5.5 mg
+  comparator: capsule 6 mg
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: 0.99
   unit: ratio
   ci_low: 0.9514
   ci_high: 1.0207
   ci_level: 90
+  multiplicity_controlled: NOT_STATED
   source: web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul
   quote: 6 mg 5.5 mg 0.99 (0.9514, 1.0207) 0.97 (0.9269, 1.0169)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
@@ -80,26 +96,32 @@ results:
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role (primary at capsule doses 3, 6, 12, 36 mg; secondary at 1 and 24 mg) is taken
     from the bioequivalence publication (S9).
 - endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means
-  arm: tablet 5.5 mg vs capsule 6 mg
-  scope: ARM
-  value: 0.97
+  treatment: tablet 5.5 mg
+  comparator: capsule 6 mg
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: 0.97
   unit: ratio
   ci_low: 0.9269
   ci_high: 1.0169
   ci_level: 90
+  multiplicity_controlled: NOT_STATED
   source: web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul
   quote: 6 mg 5.5 mg 0.99 (0.9514, 1.0207) 0.97 (0.9269, 1.0169)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 0.980 (0.9483, 1.0136) and Cmax,ss 0.973 (0.9283, 1.0201). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9).
 - endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means
-  arm: tablet 9 mg vs capsule 12 mg
-  scope: ARM
-  value: 0.95
+  treatment: tablet 9 mg
+  comparator: capsule 12 mg
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: 0.95
   unit: ratio
   ci_low: 0.9201
   ci_high: 0.9777
   ci_level: 90
+  multiplicity_controlled: NOT_STATED
   source: web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul
   quote: 12 mg 9 mg 0.95 (0.9201, 0.9777) 0.97 (0.9321, 1.0133)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
@@ -107,26 +129,32 @@ results:
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role (primary at capsule doses 3, 6, 12, 36 mg; secondary at 1 and 24 mg) is taken
     from the bioequivalence publication (S9).
 - endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means
-  arm: tablet 9 mg vs capsule 12 mg
-  scope: ARM
-  value: 0.97
+  treatment: tablet 9 mg
+  comparator: capsule 12 mg
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: 0.97
   unit: ratio
   ci_low: 0.9321
   ci_high: 1.0133
   ci_level: 90
+  multiplicity_controlled: NOT_STATED
   source: web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul
   quote: 12 mg 9 mg 0.95 (0.9201, 0.9777) 0.97 (0.9321, 1.0133)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 0.948 (0.9199, 0.9780) and Cmax,ss 0.976 (0.9344, 1.0200). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9).
 - endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means
-  arm: tablet 14.5 mg vs capsule 24 mg
-  scope: ARM
-  value: 0.98
+  treatment: tablet 14.5 mg
+  comparator: capsule 24 mg
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: 0.98
   unit: ratio
   ci_low: 0.9316
   ci_high: 1.0217
   ci_level: 90
+  multiplicity_controlled: NOT_STATED
   source: web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul
   quote: 24 mg 14.5 mg 0.98 (0.9316, 1.0217) 1.01 (0.9560, 1.0705)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
@@ -134,10 +162,13 @@ results:
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role (primary at capsule doses 3, 6, 12, 36 mg; secondary at 1 and 24 mg) is taken
     from the bioequivalence publication (S9).
 - endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means
-  arm: tablet 14.5 mg vs capsule 24 mg
-  scope: ARM
-  value: 1.01
+  treatment: tablet 14.5 mg
+  comparator: capsule 24 mg
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: 1.01
   unit: ratio
+  multiplicity_controlled: NOT_STATED
   source: web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul
   quote: 24 mg 14.5 mg 0.98 (0.9316, 1.0217) 1.01 (0.9560, 1.0705)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
@@ -145,13 +176,16 @@ results:
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9). Confidence interval reported
     by the source but not contained in the locator quote; not entered.
 - endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means
-  arm: tablet 17.2 mg vs capsule 36 mg
-  scope: ARM
-  value: 1.0
+  treatment: tablet 17.2 mg
+  comparator: capsule 36 mg
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: 1.0
   unit: ratio
   ci_low: 0.9495
   ci_high: 1.0455
   ci_level: 90
+  multiplicity_controlled: NOT_STATED
   source: web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul
   quote: 36 mg 17.2 mg 1.00 (0.9495, 1.0455) 1.07 (1.0093, 1.1305)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
@@ -159,19 +193,21 @@ results:
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role (primary at capsule doses 3, 6, 12, 36 mg; secondary at 1 and 24 mg) is taken
     from the bioequivalence publication (S9).
 - endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means
-  arm: tablet 17.2 mg vs capsule 36 mg
-  scope: ARM
-  value: 1.07
+  treatment: tablet 17.2 mg
+  comparator: capsule 36 mg
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: 1.07
   unit: ratio
   ci_low: 1.0093
   ci_high: 1.1305
   ci_level: 90
+  multiplicity_controlled: NOT_STATED
   source: web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul
   quote: 36 mg 17.2 mg 1.00 (0.9495, 1.0455) 1.07 (1.0093, 1.1305)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 0.995 (0.9484, 1.0442) and Cmax,ss 1.068 (1.0082, 1.1304). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9).
-analyses: []
 adverse_events: []
 claims:
 - key: note:orforglipron:F49

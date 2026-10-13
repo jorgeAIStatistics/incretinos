@@ -68,34 +68,6 @@ results:
   quote: from week 36 to week 88 was -5.5% with tirzepatide vs 14.0% with placebo (difference, -19.4% [95% CI, -21.2% to -17.7%]; P < .001)
   notes: JAMA abstract does not name the estimand; Lilly release S33 places these values (-5.5%, 14.0%) in the "Treatment-Regimen Estimand" columns and the label S28 reports them for the ITT population
     with hybrid imputation. Per-arm CI not given. Positive placebo value = weight regain. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w88-difference-in-percent-change
-  arm: tirzepatide MTD minus placebo
-  scope: ARM
-  value: -19.4
-  unit: percentage points
-  ci_low: -21.2
-  ci_high: -17.7
-  ci_level: 95
-  n_analyzed: 670
-  baseline_definition: week 36 (randomization)
-  timepoint_weeks: 88
-  source: pubmed:38078870
-  quote: from week 36 to week 88 was -5.5% with tirzepatide vs 14.0% with placebo (difference, -19.4% [95% CI, -21.2% to -17.7%]; P < .001)
-  notes: Estimand not named in abstract; corresponds to treatment-regimen estimand per S33.
-- endpoint: weight-pct-change-w88-difference-in-percent-change
-  arm: tirzepatide MTD minus placebo
-  scope: ARM
-  value: -19.4
-  unit: percentage points
-  ci_low: -21.2
-  ci_high: -17.7
-  ci_level: 95
-  n_analyzed: 670
-  baseline_definition: week 36 (randomization)
-  timepoint_weeks: 88
-  source: openfda-label:zepbound
-  quote: '% change from Week 36 at Week 88 b 14.0 -5.5 % difference from placebo at Week 88 (95% CI) b -19.4 (-21.2, -17.7) c'
-  notes: 'Label wording: ITT population, hybrid imputation; the word estimand is not used.'
 - endpoint: weight-pct-change-w88-percent-change-in-body-weigh
   estimand: efficacy
   arm: tirzepatide MTD (continued)
@@ -146,7 +118,39 @@ results:
   quote: Percent change in body weight from week 0 -26.0 % -9.5 % -25.3 % -9.9 %
   notes: 'Row sits under the source heading "Additional Secondary and Exploratory Endpoints" and lacks the type-1-error asterisk; role recorded as exploratory/additional secondary. Registry S34: -26.0 (SE
     0.39) vs -9.5 (SE 0.40); LS mean difference -16.4 (95% CI -17.5 to -15.4), p<.001 (listed as a secondary outcome). ci_not_reported_in_this_source'
-analyses: []
+analyses:
+- endpoint: weight-pct-change-w88-difference-in-percent-change
+  treatment: tirzepatide MTD
+  comparator: placebo
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: -19.4
+  unit: percentage points
+  ci_low: -21.2
+  ci_high: -17.7
+  ci_level: 95
+  p_value_text: <.001
+  multiplicity_controlled: NOT_STATED
+  timepoint_weeks: 88
+  source: pubmed:38078870
+  quote: from week 36 to week 88 was -5.5% with tirzepatide vs 14.0% with placebo (difference, -19.4% [95% CI, -21.2% to -17.7%]; P < .001)
+  notes: Estimand not named in abstract; corresponds to treatment-regimen estimand per S33.
+- endpoint: weight-pct-change-w88-difference-in-percent-change
+  treatment: tirzepatide MTD
+  comparator: placebo
+  hypothesis_type: NOT_STATED
+  param_type: Estimated treatment difference
+  estimate: -19.4
+  unit: percentage points
+  ci_low: -21.2
+  ci_high: -17.7
+  ci_level: 95
+  p_value_text: <0.001
+  multiplicity_controlled: 'YES'
+  timepoint_weeks: 88
+  source: openfda-label:zepbound
+  quote: '% change from Week 36 at Week 88 b 14.0 -5.5 % difference from placebo at Week 88 (95% CI) b -19.4 (-21.2, -17.7) c'
+  notes: 'Label wording: ITT population, hybrid imputation; the word estimand is not used.'
 adverse_events:
 - arm: open-label tirzepatide lead-in
   scope: ARM

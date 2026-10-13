@@ -267,11 +267,16 @@ def main() -> None:
                     },
                 )
 
-            is_contrast = "hazard ratio" in unit_raw.lower() or re.search(r"difference|hazard ratio|time to first|\bvs\b|versus", lower) is not None and " vs " in f" {arm} ".replace("versus", "vs")
+            arm_is_contrast = re.search(r"\s(?:vs\.?|versus|minus)\s", arm) is not None
+            says_contrast = "hazard ratio" in unit_raw.lower() or re.search(r"difference|hazard ratio|time to first|ratio of geometric", lower) is not None
+            if says_contrast and not arm_is_contrast:
+                rejected.append(f"{fid}: between-arm quantity without an explicit 'A vs B' arm label — not entered ({arm}; {endpoint_text[:50]})")
+                continue
+            is_contrast = says_contrast and arm_is_contrast
             if is_contrast and nct in manual_studies:
                 continue
             if is_contrast:
-                parts = re.split(r"\s+(?:vs\.?|versus)\s+", arm, maxsplit=1)
+                parts = re.split(r"\s+(?:vs\.?|versus|minus)\s+", arm, maxsplit=1)
                 treatment, comparator = parts[0].strip(), (parts[1].strip() if len(parts) > 1 else None)
                 statement = (f.get("statement") or "") + " " + (f.get("notes") or "")
                 hypothesis = "NON_INFERIORITY" if re.search(r"non-?inferior", statement, re.IGNORECASE) else "SUPERIORITY" if re.search(r"superior", statement, re.IGNORECASE) else "NOT_STATED"
