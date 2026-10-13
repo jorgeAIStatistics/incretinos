@@ -29,7 +29,14 @@ from ..enums import (
     RegulatoryStatus,
     VerificationStatus,
 )
-from ..ingestion.snapshots import enqueue_review, normalize_ws, quote_in_text, record_snapshot, sha256_text, source_text_for_anchoring
+from ..ingestion.snapshots import (
+    enqueue_review,
+    normalize_ws,
+    quote_in_text,
+    record_snapshot,
+    sha256_text,
+    source_text_for_anchoring,
+)
 from ..models import (
     AdverseEvent,
     Dose,

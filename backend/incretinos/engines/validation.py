@@ -15,7 +15,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..curation.loader import AUTHORITATIVE_APPROVAL_TIERS
-from ..enums import DISCONTINUATION_KINDS, EndpointRole, EquivalenceBasis, EstimandLabel, RegulatoryStatus, TriState
+from ..enums import (
+    DISCONTINUATION_KINDS,
+    EndpointRole,
+    EquivalenceBasis,
+    EstimandLabel,
+    RegulatoryStatus,
+    TriState,
+)
 from ..models import (
     AdverseEvent,
     Drug,
@@ -29,7 +36,13 @@ from ..models import (
 from .comparability import compare_findings, harmonize_dose
 from .findings import analysis_dto, build_finding
 from .interpretation import classify_drug, guard_statement, interpret_analysis
-from .safety import InvalidInferenceError, assert_single_data_family, assert_single_measure_kind, incidence_from_spontaneous_reports, spontaneous_overview
+from .safety import (
+    InvalidInferenceError,
+    assert_single_data_family,
+    assert_single_measure_kind,
+    incidence_from_spontaneous_reports,
+    spontaneous_overview,
+)
 
 
 @dataclass

@@ -195,7 +195,9 @@ class Finding:
 def _fmt(value: float | None, digits: int = 2) -> str:
     if value is None:
         return "not reported"
-    text = f"{value:.{digits}f}".rstrip("0").rstrip(".")
+    text = f"{value:.{digits}f}"
+    if "." in text:  # trim trailing decimal zeros only — never the zeros of a whole number (80 must stay 80)
+        text = text.rstrip("0").rstrip(".")
     return text if text not in ("-0", "") else "0"
 
 

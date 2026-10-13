@@ -20,7 +20,14 @@ from sqlalchemy.orm import Session
 
 from ..enums import EvidenceTier
 from ..models import Drug, LabelRecord, SpontaneousReportSeries
-from .snapshots import SnapshotOutcome, canonical_json, enqueue_review, record_change_event, record_snapshot, sha256_text
+from .snapshots import (
+    SnapshotOutcome,
+    canonical_json,
+    enqueue_review,
+    record_change_event,
+    record_snapshot,
+    sha256_text,
+)
 from .transport import FixtureMissing, ResourceNotFound, Transport
 
 LABEL_LICENSE = "FDA-approved prescribing information via openFDA (U.S. Government work / CC0); stored in full."

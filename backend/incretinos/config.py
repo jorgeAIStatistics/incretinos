@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
 
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    # Scheduled live re-ingestion interval in hours (0 disables; ignored in offline mode).
+    refresh_hours: float = 0.0
 
     http_timeout_s: float = 30.0
     http_max_retries: int = 5

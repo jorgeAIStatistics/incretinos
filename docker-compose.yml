@@ -1,0 +1,50 @@
+# IncretinOS — PostgreSQL + API + web. Runs fully offline from committed fixtures:
+#   docker compose up --build      →  http://localhost:3000
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: incretinos
+      POSTGRES_PASSWORD: incretinos   # local demo credential; override for any shared deployment
+      POSTGRES_DB: incretinos
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U incretinos -d incretinos"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    environment:
+      INCRETINOS_DATABASE_URL: postgresql+psycopg://incretinos:incretinos@db:5432/incretinos
+      INCRETINOS_OFFLINE: ${INCRETINOS_OFFLINE:-true}
+      INCRETINOS_REVIEWER_TOKEN: ${INCRETINOS_REVIEWER_TOKEN:-}
+      INCRETINOS_LLM_PROVIDER: ${INCRETINOS_LLM_PROVIDER:-none}
+      INCRETINOS_CORS_ORIGINS: http://localhost:3000
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health').status == 200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        INCRETINOS_API_URL: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:

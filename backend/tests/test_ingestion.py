@@ -12,13 +12,37 @@ from sqlalchemy import func, select
 from incretinos.db import Base, make_engine
 from incretinos.engines.estimands import classify_estimand_text
 from incretinos.enums import DiabetesStatus, EstimandBasis, EstimandLabel
-from incretinos.ingestion.ctgov import CTGovAdapter, canonical_study_hash, infer_diabetes_status, parse_study, split_eligibility, validate_nct
+from incretinos.ingestion.ctgov import (
+    CTGovAdapter,
+    canonical_study_hash,
+    infer_diabetes_status,
+    parse_study,
+    split_eligibility,
+    validate_nct,
+)
 from incretinos.ingestion.ctgov_diff import diff_studies, overall_significance
 from incretinos.ingestion.pipeline import Pipeline, make_synthetic_prior_version
 from incretinos.ingestion.pubmed import parse_efetch_xml
 from incretinos.ingestion.snapshots import quote_in_text, record_snapshot, sha256_text
-from incretinos.ingestion.transport import FixtureMissing, FixtureTransport, LiveTransport, RateLimiter, ResourceNotFound, TransportError, backoff_delay
-from incretinos.models import ChangeEvent, EvidenceSource, IngestionRun, OutcomeResult, ReviewQueueItem, SourceSnapshot, Study, StudyPublication
+from incretinos.ingestion.transport import (
+    FixtureMissing,
+    FixtureTransport,
+    LiveTransport,
+    RateLimiter,
+    ResourceNotFound,
+    TransportError,
+    backoff_delay,
+)
+from incretinos.models import (
+    ChangeEvent,
+    EvidenceSource,
+    IngestionRun,
+    OutcomeResult,
+    ReviewQueueItem,
+    SourceSnapshot,
+    Study,
+    StudyPublication,
+)
 from incretinos.vocab import categorize_endpoint, parse_timeframe, to_float
 
 from .conftest import FIXTURES

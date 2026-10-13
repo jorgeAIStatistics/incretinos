@@ -14,7 +14,15 @@ from sqlalchemy.orm import Session
 
 from .. import __version__
 from ..engines.comparability import compare_findings
-from ..engines.findings import Finding, _fmt, analysis_dto, build_finding, format_ci, format_value, get_finding
+from ..engines.findings import (
+    Finding,
+    _fmt,
+    analysis_dto,
+    build_finding,
+    format_ci,
+    format_value,
+    get_finding,
+)
 from ..engines.interpretation import interpret_analysis, interpret_finding
 from ..models import Study
 

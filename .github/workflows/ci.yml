@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: ruff check incretinos tests scripts
+      - name: Unit and integration tests (offline fixtures, no network)
+        run: pytest -q --cov=incretinos --cov-report=term-missing:skip-covered
+      - name: Migration creates the full schema
+        run: INCRETINOS_DATABASE_URL=sqlite:///./var/ci-migrate.db alembic upgrade head
+      - name: Scientific validation rules on a freshly seeded database
+        run: |
+          incretinos seed --reset
+          incretinos validate
+
+  frontend:
+    runs-on: ubuntu-latest
+    needs: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Seed the offline evidence database
+        working-directory: backend
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e .
+          .venv/bin/incretinos seed --reset
+      - working-directory: frontend
+        run: npm ci --no-audit --no-fund
+      - working-directory: frontend
+        run: npm run typecheck && npm run build
+      - working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Browser tests of the principal workflows
+        working-directory: frontend
+        run: npx playwright test

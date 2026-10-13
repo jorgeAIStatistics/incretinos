@@ -12,7 +12,16 @@ from incretinos.assistant.providers import SYSTEM_PROMPT, NullProvider, build_us
 from incretinos.config import get_settings
 from incretinos.curation.schema import number_in_quote
 from incretinos.engines.gaps import priority
-from incretinos.models import AuditEvent, EvidenceClaim, EvidenceGap, EvidenceSource, OutcomeResult, ReviewDecision, ReviewQueueItem, StatisticalAnalysis
+from incretinos.models import (
+    AuditEvent,
+    EvidenceClaim,
+    EvidenceGap,
+    EvidenceSource,
+    OutcomeResult,
+    ReviewDecision,
+    ReviewQueueItem,
+    StatisticalAnalysis,
+)
 
 from .conftest import result_id
 

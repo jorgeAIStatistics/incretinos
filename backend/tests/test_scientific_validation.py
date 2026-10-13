@@ -16,10 +16,31 @@ from incretinos.curation.schema import AdverseEventDef, DrugsFile, ResultDef
 from incretinos.engines import validation as v
 from incretinos.engines.comparability import compare_findings, harmonize_dose
 from incretinos.engines.findings import analysis_dto, build_finding, get_finding
-from incretinos.engines.interpretation import classify_drug, describe_adverse_event, guard_statement, interpret_analysis, interpret_finding
-from incretinos.engines.safety import InvalidInferenceError, assert_single_data_family, assert_single_measure_kind, causality_from_spontaneous_reports, incidence_from_spontaneous_reports
+from incretinos.engines.interpretation import (
+    classify_drug,
+    describe_adverse_event,
+    guard_statement,
+    interpret_analysis,
+    interpret_finding,
+)
+from incretinos.engines.safety import (
+    InvalidInferenceError,
+    assert_single_data_family,
+    assert_single_measure_kind,
+    causality_from_spontaneous_reports,
+    incidence_from_spontaneous_reports,
+)
 from incretinos.engines.stats import ci_from_se
-from incretinos.models import AdverseEvent, Drug, DrugMechanism, ExposureEquivalence, LabelRecord, OutcomeResult, StatisticalAnalysis, Study
+from incretinos.models import (
+    AdverseEvent,
+    Drug,
+    DrugMechanism,
+    ExposureEquivalence,
+    LabelRecord,
+    OutcomeResult,
+    StatisticalAnalysis,
+    Study,
+)
 
 from .conftest import result_id
 
@@ -432,3 +453,28 @@ def test_every_classification_gives_reasons_not_just_a_label(db, client):
         assert all(f["explanation"] for f in body["factors"])
     classes = {p["classification"] for p in client.get("/api/compare/presets").json()}
     assert {"DIRECT RANDOMIZED COMPARISON", "PARTIALLY COMPARABLE", "DESCRIPTIVE CROSS-STUDY COMPARISON", "NOT SUITABLE FOR EFFICACY COMPARISON"} <= classes
+
+
+# ---- Number formatting must never alter a value
+
+
+def test_formatting_never_drops_significant_zeros():
+    from incretinos.engines.findings import _fmt
+
+    assert _fmt(80.0, 0) == "80" and _fmt(100.0, 0) == "100" and _fmt(40, 0) == "40" and _fmt(0.0) == "0"
+    assert _fmt(-20.0) == "-20" and _fmt(-20.9) == "-20.9" and _fmt(1.20) == "1.2" and _fmt(0.84) == "0.84" and _fmt(630.0, 0) == "630"
+    assert _fmt(None) == "not reported"
+
+
+def test_statement_time_points_match_stored_values(db):
+    """Every rendered statement names exactly the stored assessment week."""
+    from incretinos.models import OutcomeResult
+
+    checked = 0
+    for row in db.scalars(select(OutcomeResult).where(OutcomeResult.timepoint_weeks.is_not(None)).limit(600)):
+        statement = build_finding(db, row).statement
+        assert f"at week {row.timepoint_weeks:.0f} " in statement, (row.id, row.timepoint_weeks, statement[:160])
+        checked += 1
+    assert checked > 300
+    triumph = get_finding(db, result_id(db, "NCT05929066", "12 mg", estimand="TREATMENT_REGIMEN", tier="PEER_REVIEWED", weeks=80))
+    assert "at week 80 " in triumph.statement and "-25%" in triumph.statement

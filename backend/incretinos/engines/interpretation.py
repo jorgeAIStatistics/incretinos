@@ -14,9 +14,27 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from ..enums import AE_KIND_LABEL, DISCONTINUATION_KINDS, EndpointRole, EstimandLabel, EvidenceTier, MechanismAction, ReceptorTarget, TriState
+from ..enums import (
+    AE_KIND_LABEL,
+    DISCONTINUATION_KINDS,
+    EndpointRole,
+    EstimandLabel,
+    EvidenceTier,
+    MechanismAction,
+    ReceptorTarget,
+    TriState,
+)
 from .estimands import ESTIMAND_EXPLAINER
-from .findings import CATEGORY_LABEL, EFFICACY_CATEGORIES, LEAN_MASS_CAVEAT, Finding, _fmt, format_ci, format_value, population_phrase
+from .findings import (
+    CATEGORY_LABEL,
+    EFFICACY_CATEGORIES,
+    LEAN_MASS_CAVEAT,
+    Finding,
+    _fmt,
+    format_ci,
+    format_value,
+    population_phrase,
+)
 from .stats import ci_from_se
 
 # --------------------------------------------------------------------------- pharmacologic class

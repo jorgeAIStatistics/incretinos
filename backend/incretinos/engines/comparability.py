@@ -27,7 +27,14 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..enums import ComparabilityClass, EquivalenceBasis, EstimandLabel, EvidenceTier, FactorAssessment, TriState
+from ..enums import (
+    ComparabilityClass,
+    EquivalenceBasis,
+    EstimandLabel,
+    EvidenceTier,
+    FactorAssessment,
+    TriState,
+)
 from ..models import Dose, ExposureEquivalence, StatisticalAnalysis, Study, StudyDrug
 from .findings import EFFICACY_CATEGORIES, Finding, _fmt, analysis_dto
 

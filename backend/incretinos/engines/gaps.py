@@ -20,7 +20,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..enums import GapNature, ReviewStatus
-from ..models import ChangeEvent, Drug, EvidenceGap, ExposureEquivalence, SpontaneousReportSeries, Study, StudyDrug
+from ..models import (
+    ChangeEvent,
+    Drug,
+    EvidenceGap,
+    ExposureEquivalence,
+    SpontaneousReportSeries,
+    Study,
+    StudyDrug,
+)
 from .findings import baseline_class
 
 DEFAULT_WEIGHTS = {"clinical_importance": 0.4, "uncertainty": 0.3, "tractability": 0.15, "actionability": 0.15}

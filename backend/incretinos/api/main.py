@@ -10,6 +10,7 @@ from __future__ import annotations
 import hmac
 import re
 from collections import Counter
+from contextlib import asynccontextmanager
 from typing import Annotated, Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
@@ -27,13 +28,35 @@ from ..db import get_db
 from ..engines import benefit_risk, design, stats
 from ..engines.comparability import compare_findings, harmonize_dose
 from ..engines.estimands import ESTIMAND_EXPLAINER
-from ..engines.findings import AE_KIND_LABEL, CATEGORY_LABEL, ae_dto, analysis_dto, baseline_class, build_finding, get_finding, source_ref, study_brief
+from ..engines.findings import (
+    AE_KIND_LABEL,
+    CATEGORY_LABEL,
+    ae_dto,
+    analysis_dto,
+    baseline_class,
+    build_finding,
+    get_finding,
+    source_ref,
+    study_brief,
+)
 from ..engines.gaps import DEFAULT_WEIGHTS, NATURE_LABEL, priority
-from ..engines.interpretation import classify_drug, describe_adverse_event, interpret_analysis, interpret_finding
-from ..engines.safety import InvalidInferenceError, disproportionality, label_safety_sections, spontaneous_overview, trial_ae_table
+from ..engines.interpretation import (
+    classify_drug,
+    describe_adverse_event,
+    interpret_analysis,
+    interpret_finding,
+)
+from ..engines.safety import (
+    InvalidInferenceError,
+    disproportionality,
+    label_safety_sections,
+    spontaneous_overview,
+    trial_ae_table,
+)
 from ..engines.stats import StatsInputError
 from ..engines.validation import run_all
 from ..enums import TIER_LABEL, EvidenceTier
+from ..ingestion.scheduler import start_scheduler
 from ..ingestion.snapshots import audit
 from ..models import (
     AdverseEvent,
@@ -58,9 +81,22 @@ from ..models import (
 from ..reports.export import comparison_report_markdown, study_report_markdown
 
 settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    scheduler = start_scheduler(get_settings())
+    try:
+        yield
+    finally:
+        if scheduler is not None:
+            scheduler.shutdown(wait=False)
+
+
 app = FastAPI(
     title="IncretinOS API",
     version=__version__,
+    lifespan=lifespan,
     description="Clinical evidence and trial intelligence for incretin and amylin therapeutics. Public data only. Not medical advice.",
 )
 app.add_middleware(
@@ -109,6 +145,10 @@ def _compact(f) -> dict[str, Any]:
     data = f.as_dict()
     for key in ("analysis_population", "analysis_method", "design_features", "population_summary", "conditions", "diabetes_basis"):
         data.pop(key, None)
+    # An interval derived here from a reported standard error is returned separately and flagged as an inference.
+    data["derived_interval"] = None
+    if f.ci_low is None and f.value is not None and f.dispersion_value is not None and f.dispersion_type and "standard error" in f.dispersion_type.lower():
+        data["derived_interval"] = stats.ci_from_se(f.value, f.dispersion_value)
     return data
 
 
