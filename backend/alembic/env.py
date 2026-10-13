@@ -1,8 +1,5 @@
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
 from alembic import context
 
 # this is the Alembic Config object, which provides
@@ -20,7 +17,7 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 from incretinos import models  # noqa: E402,F401  (register mappers)
 from incretinos.config import get_settings  # noqa: E402
-from incretinos.db import Base  # noqa: E402
+from incretinos.db import Base, make_engine  # noqa: E402
 
 config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))
 target_metadata = Base.metadata
@@ -62,11 +59,9 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    # The application's own engine factory: for SQLite it also creates the database's parent
+    # directory, which does not exist on a fresh checkout (backend/var is not tracked).
+    connectable = make_engine(get_settings().database_url)
 
     with connectable.connect() as connection:
         context.configure(
@@ -75,6 +70,7 @@ def run_migrations_online() -> None:
 
         with context.begin_transaction():
             context.run_migrations()
+    connectable.dispose()
 
 
 if context.is_offline_mode():

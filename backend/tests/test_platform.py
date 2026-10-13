@@ -409,6 +409,28 @@ def test_no_analysis_claims_significance_without_a_reported_test(db):
         assert analysis.source_id is not None and (analysis.origin == "REGISTRY" or analysis.locator_quote)
 
 
+def test_migration_builds_the_full_schema_on_a_fresh_checkout(tmp_path):
+    """`alembic upgrade head` must work where the SQLite directory does not exist yet (a fresh clone, CI)."""
+    import os
+    import sqlite3
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    from incretinos.db import Base
+
+    target = tmp_path / "not-yet-created" / "migrate.db"
+    backend = Path(__file__).resolve().parents[1]
+    run = subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=backend, env={**os.environ, "INCRETINOS_DATABASE_URL": f"sqlite:///{target}"}, capture_output=True, text=True,
+    )
+    assert run.returncode == 0, run.stderr[-800:]
+    with sqlite3.connect(target) as conn:
+        tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    assert set(Base.metadata.tables) <= tables
+
+
 def test_stored_text_fits_declared_column_lengths(db):
     """PostgreSQL enforces VARCHAR lengths that SQLite ignores; no stored value may exceed its column."""
     from sqlalchemy import String, func
