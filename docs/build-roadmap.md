@@ -17,7 +17,7 @@ Status as of 2026-10-13. "Verified" means demonstrated by an automated test or a
 | 8 Grounded assistant | Retrieval, six question types, refusals, typed answer blocks, pluggable provider, citation-fidelity check, prompt-injection hardening | `tests/test_platform.py` with stand-in providers |
 | 9 Interface | Eleven pages, custom interval charts with table views and provenance footers | 11 Playwright tests; screenshots in `docs/screenshots` |
 | 10 Engineering | FastAPI, SQLAlchemy, Alembic, Next.js, Docker Compose with PostgreSQL, CI workflow, reviewer-token permission boundary | API and web images built; Compose stack started and checked |
-| 11 Verification | 157 backend tests and 11 browser tests, all offline | Test runs recorded in this session |
+| 11 Verification | 158 backend tests and 11 browser tests, all offline | Test runs recorded in this session |
 
 ## Defects found by the verification work (and fixed)
 

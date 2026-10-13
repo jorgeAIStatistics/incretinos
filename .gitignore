@@ -27,3 +27,4 @@ research/raw/
 .claude/
 frontend/next-env.d.ts
 frontend/tsconfig.tsbuildinfo
+frontend/AGENTS.md

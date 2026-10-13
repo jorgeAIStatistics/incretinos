@@ -14,6 +14,9 @@ const MEASURES: [string, string][] = [
 ];
 const group = (a: any): ChartRow["group"] => (a.is_placebo ? "control" : ["semaglutide", "insulin-glargine"].includes(a.drug_slug) ? "comparator" : "active");
 
+// Stable empty list: a fresh [] per render would re-trigger the effects that depend on the arm list.
+const NO_ARMS: any[] = [];
+
 function Workbench() {
   const params = useSearchParams();
   const router = useRouter();
@@ -22,7 +25,7 @@ function Workbench() {
   const [measure, setMeasure] = useState("treatment_discontinuation_ae");
   const { data: studies } = useApi<any[]>("/studies");
   const { data, error, loading } = useApi(`/benefit-risk/${nct}${estimand ? `?estimand=${estimand}` : ""}`);
-  const arms: any[] = data?.arms ?? [];
+  const arms: any[] = data?.arms ?? NO_ARMS;
   const eff: ChartRow[] = arms.filter((a) => a.efficacy.weight_pct).map((a) => {
     const e = a.efficacy.weight_pct; const lo = e.ci_low ?? (e.se != null ? e.value - 1.959964 * e.se : null); const hi = e.ci_high ?? (e.se != null ? e.value + 1.959964 * e.se : null);
     return { key: a.key, label: a.label, value: e.value, lo, hi, intervalKind: e.ci_low != null ? "reported" : e.se != null ? "derived" : undefined, group: group(a), href: `/compare?a=${e.result_id}`,

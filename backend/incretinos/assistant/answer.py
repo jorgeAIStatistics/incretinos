@@ -175,7 +175,7 @@ class _Composer:
         self.source_ids: list[int] = []
 
     def cite(self, *source_ids: int | None) -> list[int]:
-        ids = [s for s in source_ids if s]
+        ids = list(dict.fromkeys(s for s in source_ids if s))  # one marker per source, first-cited order
         for s in ids:
             if s not in self.source_ids:
                 self.source_ids.append(s)

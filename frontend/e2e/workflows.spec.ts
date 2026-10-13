@@ -1,7 +1,23 @@
 import { expect, test } from "@playwright/test";
 
 const SHOTS = "../docs/screenshots";
-const shot = (page: import("@playwright/test").Page, name: string) => page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
+// Animations are fast-forwarded and the dev-server badge hidden so captures are complete and repeatable.
+const shot = (page: import("@playwright/test").Page, name: string) =>
+  page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true, animations: "disabled", style: "nextjs-portal { display: none !important; }" });
+
+// Every workflow must run without script errors or React warnings (render loops, duplicate keys) in the browser console.
+// Failed-request lines are excluded: several workflows exercise refusals that the API answers with a 4xx by design.
+let consoleProblems: string[] = [];
+test.beforeEach(({ page }) => {
+  consoleProblems = [];
+  page.on("pageerror", (error) => consoleProblems.push(`pageerror: ${error.message}`));
+  page.on("console", (message) => {
+    if (message.type() === "error" && !message.text().startsWith("Failed to load resource")) consoleProblems.push(message.text().slice(0, 300));
+  });
+});
+test.afterEach(() => {
+  expect(consoleProblems, "browser console errors").toEqual([]);
+});
 
 test("command center shows portfolio status and validation", async ({ page }) => {
   await page.goto("/");

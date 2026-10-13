@@ -162,6 +162,17 @@ def test_assistant_example_questions(db, question, intent, must_contain):
     assert answer.sources
 
 
+def test_assistant_cites_each_source_once_per_block(db):
+    from incretinos.api.main import assistant_examples
+
+    for question in assistant_examples():
+        answer = ask(db, question)
+        listed = {s["id"] for s in answer.sources}
+        for block in answer.blocks:
+            assert len(block.citations) == len(set(block.citations)), (question, block.citations)
+            assert set(block.citations) <= listed, (question, block.citations)
+
+
 def test_assistant_lists_all_registered_enlighten_trials(db):
     answer = ask(db, "Which clinical questions are still unresolved for eloralintide? Which Phase 3 trials are running?")
     text = " ".join(b.text for b in answer.blocks)
