@@ -33,6 +33,7 @@ from sqlalchemy.orm import Session
 
 from ..engines.estimands import (
     _HYPOTHETICAL,
+    _RESCUE_HYPOTHETICAL,
     _TREATMENT_POLICY,
     EstimandClassification,
     classify_estimand_text,
@@ -46,6 +47,7 @@ from ..enums import (
     EstimandLabel,
     EvidenceTier,
     HypothesisType,
+    IceEvent,
     LinkBasis,
     Origin,
     TriState,
@@ -183,15 +185,18 @@ def analysis_class(group_description: str | None, class_titles: list[str]) -> st
     return best
 
 
-def estimand_support(cls: EstimandClassification, *texts: str | None) -> str | None:
-    """The phrase in THIS outcome's own text on which the estimand label rests (the classifier's match, no context)."""
-    patterns = {EstimandLabel.EFFICACY: _HYPOTHETICAL, EstimandLabel.TREATMENT_REGIMEN: _TREATMENT_POLICY}.get(cls.label)
+def _matched_phrase(patterns: list[str] | None, *texts: str | None) -> str | None:
     text = " ".join(t for t in texts if t)
     for pattern in patterns or []:
         match = re.search(pattern, text, flags=re.IGNORECASE)
         if match:
             return match.group(0)
     return None
+
+
+def estimand_support(cls: EstimandClassification, *texts: str | None) -> str | None:
+    """The phrase in THIS outcome's own text on which the estimand label rests (the classifier's match, no context)."""
+    return _matched_phrase({EstimandLabel.EFFICACY: _HYPOTHETICAL, EstimandLabel.TREATMENT_REGIMEN: _TREATMENT_POLICY}.get(cls.label), *texts)
 
 
 def study_fixture_key(nct_id: str) -> str:
@@ -418,9 +423,12 @@ class _StudyArms:
         # A label that names no drug (e.g. "Dose 1") is characterised by the arm's interventions instead.
         drug_slug, is_placebo = arm_drug_slug(label if named else " + ".join(interventions))
         dose = parse_single_dose(label) if _single_drug(drug_slug) else None
+        sequence_text = None
         if arm_type == "PLACEBO_COMPARATOR":
             # The registry classifies the arm as the placebo comparator. A drug also named in its label
             # ("Placebo/30 mg/kg Bimagrumab": placebo, later switched) does not make it an arm of that drug.
+            if not is_placebo:
+                sequence_text = f"placebo-comparator arm as registered; arm label: {label}"  # keep the sequence visible
             drug_slug, is_placebo, dose = "placebo", True, None
         arm.origin = Origin.REGISTRY.value
         arm.norm_label = norm_arm_label(label)
@@ -431,7 +439,7 @@ class _StudyArms:
         arm.is_placebo = is_placebo
         arm.is_pooled = bool(re.search(r"pooled|all (tirzepatide|orforglipron|retatrutide|eloralintide)|overall", label, re.IGNORECASE))
         arm.dose_amount, arm.dose_unit = dose if dose is not None else (None, None)
-        arm.dose_text = "maximum tolerated dose" if re.search(r"\bMTD\b", label) else None
+        arm.dose_text = sequence_text or ("maximum tolerated dose" if re.search(r"\bMTD\b", label) else None)
         arm.n_randomized = None  # set again from participant flow, if the record posts one
 
     def registered(self, label: str, *, arm_type: str | None, description: str | None, interventions: list[str] | None) -> StudyArm:
@@ -771,7 +779,9 @@ class CTGovAdapter:
         """
         cls = classify_estimand_text(*texts)
         support = estimand_support(cls, *texts)
-        key = (cls.label.value, cls.basis.value, (support or "").lower())
+        rescue = _matched_phrase(_RESCUE_HYPOTHETICAL, *texts)
+        strategies = tuple(sorted((f.event.value, f.strategy.value) for f in cls.strategies))
+        key = (cls.label.value, cls.basis.value, (support or "").lower(), strategies, (rescue or "").lower() if strategies else "")
         estimand = cache.get(key)
         if estimand is None:
             estimand = Estimand(
@@ -792,7 +802,8 @@ class CTGovAdapter:
                         event=finding.event.value,
                         strategy=finding.strategy.value,
                         basis=cls.basis.value,
-                        quote=finding.quote,
+                        # the matched phrase itself, so it holds for every outcome that shares this record
+                        quote=(rescue if finding.event == IceEvent.PROHIBITED_OR_RESCUE_THERAPY else support) or finding.quote,
                     )
                 )
         cache[key] = estimand

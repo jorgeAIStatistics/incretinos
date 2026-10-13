@@ -303,6 +303,17 @@ def test_sign_must_be_the_sign_the_quote_prints():
         AnalysisDef.model_validate({"endpoint": "e", "treatment": "a", "comparator": "b", "param_type": "Hazard ratio", "estimate": -0.84, "source": "pubmed:1", "quote": "HR -0.84"})
 
 
+def test_a_confidence_interval_must_be_the_interval_of_its_value():
+    quote = "-5.5% (95% CI, -6.1 to -4.9) with 5 mg and -9.0% (95% CI, -10.0 to -8.1) with 15 mg"
+    ResultDef.model_validate({**BASE_RESULT, "value": -9.0, "ci_low": -10.0, "ci_high": -8.1, "quote": quote})
+    with pytest.raises(ValidationError, match="lies outside its confidence interval"):  # the other arm's interval
+        ResultDef.model_validate({**BASE_RESULT, "value": -9.0, "ci_low": -6.1, "ci_high": -4.9, "quote": quote})
+    with pytest.raises(ValidationError, match="out of order"):
+        ResultDef.model_validate({**BASE_RESULT, "value": -9.0, "ci_low": -8.1, "ci_high": -10.0, "quote": quote})
+    with pytest.raises(ValidationError, match="lies outside its confidence interval"):
+        AnalysisDef.model_validate({"endpoint": "e", "treatment": "a", "comparator": "b", "param_type": "Hazard ratio", "estimate": 0.43, "ci_low": 0.59, "ci_high": 1.20, "source": "pubmed:1", "quote": "HR 0.84 (0.59 to 1.20); HR 0.43 (0.25 to 0.75)"})
+
+
 def test_adverse_event_measure_kind_must_agree_with_its_term():
     assert ae_kind_for_term("incidence of dysesthesia (adverse event incidence; NOT discontinuation)").value == "PARTICIPANTS_WITH_EVENT"
     assert ae_kind_for_term("discontinuation of study treatment for any reason (NOT an adverse-event incidence)").value == "TREATMENT_DISCONTINUATION_ANY_REASON"
@@ -435,10 +446,12 @@ def test_registry_estimand_quote_occurs_in_the_result_it_is_attached_to(db):
     checked = 0
     for r in db.scalars(select(OutcomeResult).where(OutcomeResult.origin == "REGISTRY")):
         assert r.estimand is not None and r.estimand.origin == "REGISTRY"
+        own_text = f"{r.analysis_population or ''} {r.analysis_method or ''}".lower()
         if r.estimand.quote:
-            own_text = f"{r.analysis_population or ''} {r.analysis_method or ''}".lower()
             assert r.estimand.quote.lower() in own_text, (r.id, r.estimand.quote)
             checked += 1
+        for strategy in r.estimand.strategies:  # e.g. the rescue-therapy strategy: only on outcomes whose text states it
+            assert strategy.quote and strategy.quote.lower() in own_text, (r.id, strategy.event, strategy.quote)
     assert checked >= 400
 
 

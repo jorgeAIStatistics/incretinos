@@ -142,6 +142,17 @@ def sign_problem(name: str, value: float | None, quote: str, sign_basis: str | N
     return None
 
 
+def interval_problem(name: str, value: float | None, low: float | None, high: float | None) -> str | None:
+    """Why a confidence interval cannot be the interval of this value, or None."""
+    if low is None or high is None:
+        return None
+    if low > high:
+        return f"confidence interval limits are out of order ({low:g} to {high:g})"
+    if value is not None and not low <= value <= high:
+        return f"{name}={value:g} lies outside its confidence interval ({low:g} to {high:g}); that interval belongs to another value"
+    return None
+
+
 SIGN_FROM_WORDING = "DIRECTION_WORDING"
 SIGN_BASES = {None, "AS_PRINTED", SIGN_FROM_WORDING}
 
@@ -479,6 +490,9 @@ class ResultDef(Cited):
             raise ValueError(f"result for arm '{self.arm}' ({self.endpoint}) has no value; omit it instead of entering an empty row")
         if (self.ci_low is None) != (self.ci_high is None):
             raise ValueError("confidence interval needs both limits or neither")
+        problem = interval_problem("value", self.value, self.ci_low, self.ci_high)
+        if problem:
+            raise ValueError(f"{problem} — arm '{self.arm}' ({self.endpoint})")
         return self
 
 
@@ -528,6 +542,9 @@ class AnalysisDef(Cited):
                 raise ValueError(f"{name}={number} cannot be a {self.param_type}: a ratio is positive")
         if (self.ci_low is None) != (self.ci_high is None):
             raise ValueError("confidence interval needs both limits or neither")
+        problem = interval_problem("estimate", self.estimate, self.ci_low, self.ci_high)
+        if problem:
+            raise ValueError(f"{problem} — analysis '{self.treatment}' ({self.endpoint})")
         return self
 
 
