@@ -1,6 +1,6 @@
 # Comparison report: ATTAIN-1 — 36 mg Orforglipron versus ATTAIN-1 — orforglipron 36 mg once daily (investigational capsule dose as reported)
 
-Generated 2026-10-13 20:41 UTC by IncretinOS 0.1.0 from stored public evidence.
+Generated 2026-10-13 20:52 UTC by IncretinOS 0.1.0 from stored public evidence.
 
 > **Scope.** Research summary of public evidence for qualified researchers. It is not medical advice, not a treatment recommendation, and not a regulatory submission. Verification statuses are mechanical (machine extraction or quote anchoring); no entry has been human-verified unless a review decision says so.
 

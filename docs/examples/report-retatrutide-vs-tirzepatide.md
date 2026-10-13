@@ -1,6 +1,6 @@
 # Comparison report: TRIUMPH-1 — retatrutide 12 mg versus SURMOUNT-1 — tirzepatide 15 mg
 
-Generated 2026-10-13 20:41 UTC by IncretinOS 0.1.0 from stored public evidence.
+Generated 2026-10-13 20:52 UTC by IncretinOS 0.1.0 from stored public evidence.
 
 > **Scope.** Research summary of public evidence for qualified researchers. It is not medical advice, not a treatment recommendation, and not a regulatory submission. Verification statuses are mechanical (machine extraction or quote anchoring); no entry has been human-verified unless a review decision says so.
 

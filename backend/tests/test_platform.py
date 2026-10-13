@@ -396,3 +396,19 @@ def test_no_analysis_claims_significance_without_a_reported_test(db):
     """A stored p-value always comes with the source's own text; none is computed by the platform."""
     for analysis in db.scalars(select(StatisticalAnalysis).where(StatisticalAnalysis.p_value_text.is_not(None))):
         assert analysis.source_id is not None and (analysis.origin == "REGISTRY" or analysis.locator_quote)
+
+
+def test_stored_text_fits_declared_column_lengths(db):
+    """PostgreSQL enforces VARCHAR lengths that SQLite ignores; no stored value may exceed its column."""
+    from sqlalchemy import String, func
+
+    from incretinos.db import Base
+
+    too_long = []
+    for table in Base.metadata.sorted_tables:
+        for column in table.columns:
+            if isinstance(column.type, String) and column.type.length:
+                longest = db.scalar(select(func.max(func.length(column))))
+                if longest is not None and longest > column.type.length:
+                    too_long.append(f"{table.name}.{column.name}: {longest} > {column.type.length}")
+    assert not too_long, too_long

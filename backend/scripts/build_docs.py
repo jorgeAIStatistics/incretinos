@@ -25,9 +25,23 @@ from incretinos.engines import benefit_risk  # noqa: E402
 from incretinos.engines.comparability import compare_findings, harmonize_dose  # noqa: E402
 from incretinos.engines.findings import _fmt, analysis_dto, build_finding, get_finding  # noqa: E402
 from incretinos.engines.interpretation import classify_drug, interpret_analysis  # noqa: E402
-from incretinos.engines.safety import SPONTANEOUS_REPORT_CAVEATS, InvalidInferenceError, incidence_from_spontaneous_reports, spontaneous_overview  # noqa: E402
+from incretinos.engines.safety import (  # noqa: E402
+    SPONTANEOUS_REPORT_CAVEATS,
+    InvalidInferenceError,
+    incidence_from_spontaneous_reports,
+    spontaneous_overview,
+)
 from incretinos.enums import TIER_LABEL, EvidenceTier  # noqa: E402
-from incretinos.models import ChangeEvent, Drug, EvidenceGap, EvidenceSource, ExposureEquivalence, OutcomeResult, StatisticalAnalysis, Study  # noqa: E402
+from incretinos.models import (  # noqa: E402
+    ChangeEvent,
+    Drug,
+    EvidenceGap,
+    EvidenceSource,
+    ExposureEquivalence,
+    OutcomeResult,
+    StatisticalAnalysis,
+    Study,
+)
 from incretinos.reports.export import comparison_report_markdown, study_report_markdown  # noqa: E402
 
 DOCS = BACKEND.parent / "docs"
