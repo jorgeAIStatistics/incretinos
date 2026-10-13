@@ -70,10 +70,12 @@ class ClaimKind(StrEnum):
 class VerificationStatus(StrEnum):
     MACHINE_EXTRACTED = "MACHINE_EXTRACTED"  # parsed from a structured API payload whose snapshot hash is stored
     QUOTE_ANCHORED = "QUOTE_ANCHORED"  # curated value whose locator quote was found in the source text
-    CURATED_PENDING_REVIEW = "CURATED_PENDING_REVIEW"  # curated; not automatically anchorable; awaits human review
-    HUMAN_VERIFIED = "HUMAN_VERIFIED"  # approved through a ReviewDecision
-    CONFLICT = "CONFLICT"  # disagrees with another source
-    REJECTED = "REJECTED"
+    PENDING_HUMAN_REVIEW = "PENDING_HUMAN_REVIEW"  # no mechanical support could be established; awaits a human decision
+    CURATED_PENDING_REVIEW = "CURATED_PENDING_REVIEW"  # legacy name of PENDING_HUMAN_REVIEW (stored values are migrated)
+    HUMAN_VERIFIED = "HUMAN_VERIFIED"  # approved by an explicit, authorized human decision on this exact evidence version
+    REJECTED = "REJECTED"  # rejected by a human decision; excluded from comparisons, summaries and reports
+    SOURCE_CHANGED_RECHECK_REQUIRED = "SOURCE_CHANGED_RECHECK_REQUIRED"  # reviewed earlier, but the evidence or its source has changed since
+    CONFLICT = "CONFLICT"  # unused legacy value; cross-source disagreement is tracked by the conflict engine, not as a status
 
 
 class Origin(StrEnum):

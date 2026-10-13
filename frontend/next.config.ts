@@ -5,6 +5,8 @@ const API_URL = process.env.INCRETINOS_API_URL ?? "http://127.0.0.1:8000";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Browser tests set NEXT_DIST_DIR so their dev server can run next to a developer's own `next dev`.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${API_URL}/api/:path*` }];
   },
