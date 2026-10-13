@@ -78,6 +78,24 @@ class VerificationStatus(StrEnum):
     CONFLICT = "CONFLICT"  # unused legacy value; cross-source disagreement is tracked by the conflict engine, not as a status
 
 
+class ReviewDecisionKind(StrEnum):
+    """What a reviewer can record about one exact evidence version."""
+
+    APPROVE = "APPROVE"  # the stored evidence matches the source: value, arm, endpoint, estimand, population
+    REJECT = "REJECT"  # the stored evidence is wrong or unsupported; it must not be used
+    REQUEST_INFO = "REQUEST_INFO"  # more information is needed; the verification status does not change
+    FLAG_WRONG_ATTRIBUTION = "FLAG_WRONG_ATTRIBUTION"  # the number exists but belongs to another arm / endpoint / estimand; treated as a rejection
+    PROPOSE_CORRECTION = "PROPOSE_CORRECTION"  # a correction for a person to act on; never applied automatically
+
+
+class ActorKind(StrEnum):
+    """Who recorded a decision. Only HUMAN decisions with the attestation flag can verify or reject evidence."""
+
+    HUMAN = "HUMAN"
+    AUTOMATION = "AUTOMATION"
+    SYSTEM = "SYSTEM"
+
+
 class Origin(StrEnum):
     REGISTRY = "REGISTRY"  # produced by an ingestion adapter
     CURATED = "CURATED"  # produced from the curated evidence files
@@ -285,6 +303,7 @@ class ReviewStatus(StrEnum):
     CONFIRMED = "CONFIRMED"
     DISMISSED = "DISMISSED"
     RESOLVED = "RESOLVED"
+    RETIRED = "RETIRED"  # legacy queue items superseded by evidence-level review; kept as history, never decided
 
 
 class LinkBasis(StrEnum):

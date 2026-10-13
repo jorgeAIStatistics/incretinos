@@ -7,6 +7,13 @@ is implemented with ordinary relational tables. Two conventions hold everywhere:
   ``missing_fields`` so the UI can say "not reported" instead of guessing.
 * Every evidence-bearing row points at an ``EvidenceSource`` and carries an evidence
   tier and a verification status.
+
+Reviewable evidence rows (results, analyses, adverse events, claims, mechanisms, indications,
+exposure equivalences) are rebuilt by every load, so their primary keys are not an identity.
+``ReviewableMixin`` gives each of them a stable ``evidence_key``, a content ``fingerprint`` and the
+mechanical status beside the effective one; ``incretinos.review.lifecycle.reconcile`` fills these in
+after every load. Human-authored state (``ReviewDecision``, ``EvidenceVersion``, ``AuditEvent``) is
+keyed by evidence key and fingerprint, never by primary key, and survives a rebuild.
 """
 
 from __future__ import annotations
@@ -14,11 +21,24 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    event,
+)
+from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
 
 from .db import Base
 from .enums import (
+    ActorKind,
     ClaimKind,
     DataClassification,
     EstimandBasis,
@@ -33,6 +53,31 @@ from .enums import (
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
+
+
+class ReviewableMixin:
+    """Columns the review lifecycle maintains on every reviewable evidence row.
+
+    All are NULL on a freshly inserted row and are filled by ``review.lifecycle.reconcile``:
+
+    * ``evidence_key``             stable identity (hash of the natural key; never the value, never a primary key)
+    * ``fingerprint``              hash of the content a reviewer signs off on
+    * ``base_verification_status`` the mechanical status, kept beside the effective ``verification_status``
+    * ``source_snapshot_id``       the source snapshot the row was extracted from or anchored against
+    * ``check_flags`` / ``risk_level``  automated findings about the row (explanations, never corrections)
+    """
+
+    evidence_key: Mapped[str | None] = mapped_column(String(64), unique=True, index=True)
+    fingerprint: Mapped[str | None] = mapped_column(String(64))
+    base_verification_status: Mapped[str | None] = mapped_column(String(40))
+    check_flags: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    risk_level: Mapped[str | None] = mapped_column(String(10))
+
+    @declared_attr
+    def source_snapshot_id(cls) -> Mapped[int | None]:  # noqa: N805 - SQLAlchemy declared attribute
+        return mapped_column(
+            ForeignKey("source_snapshot.id", name=f"fk_{cls.__tablename__}_source_snapshot", ondelete="SET NULL"), index=True
+        )
 
 
 # --------------------------------------------------------------------------- provenance
@@ -116,16 +161,100 @@ class ReviewQueueItem(Base):
 
 
 class ReviewDecision(Base):
+    """One recorded decision. Append-only: a later decision supersedes an earlier one, nothing is edited.
+
+    Three kinds of row share this table. Gap triage and review-queue decisions fill only the first
+    block. An evidence decision also names the exact evidence object and version it was made on
+    (``evidence_type``, ``evidence_key``, ``fingerprint``) and the source version the reviewer saw, so
+    it can be re-applied after the evidence rows are rebuilt and can be recognised as out of date when
+    the evidence or its source changes. ``target_id`` on an evidence decision is the primary key at
+    decision time and is informational only.
+    """
+
     __tablename__ = "review_decision"
+    __table_args__ = (Index("ix_review_decision_evidence", "evidence_type", "evidence_key"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     queue_item_id: Mapped[int | None] = mapped_column(ForeignKey("review_queue_item.id"))
     target_type: Mapped[str] = mapped_column(String(40))
     target_id: Mapped[int | None] = mapped_column(Integer)
-    decision: Mapped[str] = mapped_column(String(20))  # APPROVE | REJECT | NEEDS_INFO
+    # Evidence: APPROVE | REJECT | REQUEST_INFO | FLAG_WRONG_ATTRIBUTION | PROPOSE_CORRECTION.
+    # Queue: APPROVE | REJECT | NEEDS_INFO | REOPEN. Gap triage: the gap's new review status.
+    decision: Mapped[str] = mapped_column(String(30))
     reviewer: Mapped[str] = mapped_column(Text)
     rationale: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    # -- evidence decisions only (NULL for gap and queue decisions)
+    uid: Mapped[str | None] = mapped_column(String(36), unique=True, index=True)  # stable across databases (ledger export / import)
+    evidence_type: Mapped[str | None] = mapped_column(String(20))
+    evidence_key: Mapped[str | None] = mapped_column(String(64))
+    natural_key: Mapped[str | None] = mapped_column(String(64), index=True)
+    fingerprint: Mapped[str | None] = mapped_column(String(64))
+    evidence_version_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_version.id", name="fk_review_decision_evidence_version"))
+    source_key: Mapped[str | None] = mapped_column(String(300))
+    source_content_hash: Mapped[str | None] = mapped_column(String(64))
+    source_snapshot_version: Mapped[int | None] = mapped_column(Integer)
+    proposed_correction: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    actor_kind: Mapped[str | None] = mapped_column(String(20), default=ActorKind.HUMAN.value)
+    attested: Mapped[bool | None] = mapped_column(Boolean, default=False)
+    status_before: Mapped[str | None] = mapped_column(String(40))
+    status_after: Mapped[str | None] = mapped_column(String(40))
+    imported_from: Mapped[str | None] = mapped_column(String(80))  # ledger file hash when restored by `review import`
+
+
+class EvidenceVersion(Base):
+    """Every (evidence_type, evidence_key, fingerprint) ever seen, with what it said.
+
+    Evidence rows are deleted and re-inserted by every load, so "what did this row say when it was
+    reviewed?" cannot be answered from the evidence tables. This table can: it keeps the full field
+    snapshot of every version, the source version it was seen with, and when. It is never rebuilt
+    (``seed --reset`` preserves it) and rows are never deleted. The rows with ``is_current`` are also
+    the index the review list is served from, so they carry a few denormalised filter columns.
+    """
+
+    __tablename__ = "evidence_version"
+    __table_args__ = (
+        UniqueConstraint("evidence_type", "evidence_key", "fingerprint", name="uq_evidence_version_identity"),
+        Index("ix_evidence_version_current", "is_current", "evidence_type"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    evidence_type: Mapped[str] = mapped_column(String(20))
+    evidence_key: Mapped[str] = mapped_column(String(64), index=True)
+    natural_key: Mapped[str] = mapped_column(String(64), index=True)
+    fingerprint: Mapped[str] = mapped_column(String(64))
+    is_current: Mapped[bool] = mapped_column(Boolean, default=True)
+    # The fingerprinted fields, human-readable: study, arm, endpoint, estimand, values, locator, quote, source.
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    label: Mapped[str] = mapped_column(Text)
+    search_text: Mapped[str | None] = mapped_column(Text)
+    origin: Mapped[str | None] = mapped_column(String(10))
+    study_nct: Mapped[str | None] = mapped_column(String(11), index=True)
+    study_name: Mapped[str | None] = mapped_column(Text)
+    drug_slugs: Mapped[str | None] = mapped_column(Text)  # "|slug|slug|"
+    source_key: Mapped[str | None] = mapped_column(String(300))
+    source_type: Mapped[str | None] = mapped_column(String(40))
+    tier: Mapped[str | None] = mapped_column(String(40))
+    endpoint_category: Mapped[str | None] = mapped_column(String(30))
+    missing_fields: Mapped[str | None] = mapped_column(Text)  # "|field|field|"
+    # > 0 when the natural key alone did not identify the row and a tie-breaker was needed (a data-quality finding).
+    collision_level: Mapped[int] = mapped_column(Integer, default=0)
+    # Source version this evidence version was first seen with, and the one it was most recently seen with.
+    source_content_hash: Mapped[str | None] = mapped_column(String(64))
+    source_snapshot_version: Mapped[int | None] = mapped_column(Integer)
+    last_source_content_hash: Mapped[str | None] = mapped_column(String(64))
+    last_source_snapshot_version: Mapped[int | None] = mapped_column(Integer)
+    mechanical_status: Mapped[str | None] = mapped_column(String(40))
+    effective_status: Mapped[str | None] = mapped_column(String(40))
+    risk_level: Mapped[str | None] = mapped_column(String(10))
+    check_flags: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    # The version of the same evidence key that this one replaced, and what changed (field, before, after).
+    supersedes_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_version.id", name="fk_evidence_version_supersedes"))
+    changed_fields: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    current_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class AuditEvent(Base):
@@ -182,7 +311,7 @@ class Drug(Base):
     regulatory_source: Mapped[EvidenceSource | None] = relationship()
 
 
-class DrugMechanism(Base):
+class DrugMechanism(ReviewableMixin, Base):
     __tablename__ = "drug_mechanism"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -192,13 +321,13 @@ class DrugMechanism(Base):
     description: Mapped[str | None] = mapped_column(Text)
     source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
     quote: Mapped[str | None] = mapped_column(Text)
-    verification_status: Mapped[str] = mapped_column(String(30), default=VerificationStatus.CURATED_PENDING_REVIEW.value)
+    verification_status: Mapped[str] = mapped_column(String(40), default=VerificationStatus.PENDING_HUMAN_REVIEW.value)
 
     drug: Mapped[Drug] = relationship(back_populates="mechanisms")
     source: Mapped[EvidenceSource | None] = relationship()
 
 
-class Indication(Base):
+class Indication(ReviewableMixin, Base):
     __tablename__ = "indication"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -210,7 +339,7 @@ class Indication(Base):
     approval_date: Mapped[str | None] = mapped_column(String(20))
     source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
     quote: Mapped[str | None] = mapped_column(Text)
-    verification_status: Mapped[str] = mapped_column(String(30), default=VerificationStatus.CURATED_PENDING_REVIEW.value)
+    verification_status: Mapped[str] = mapped_column(String(40), default=VerificationStatus.PENDING_HUMAN_REVIEW.value)
 
     drug: Mapped[Drug] = relationship(back_populates="indications")
     source: Mapped[EvidenceSource | None] = relationship()
@@ -248,7 +377,7 @@ class Dose(Base):
     formulation: Mapped[Formulation] = relationship(back_populates="doses")
 
 
-class ExposureEquivalence(Base):
+class ExposureEquivalence(ReviewableMixin, Base):
     """A documented exposure relationship between two doses of different formulations.
 
     Rows exist only when a source states the relationship. There is deliberately no
@@ -264,7 +393,7 @@ class ExposureEquivalence(Base):
     statement: Mapped[str] = mapped_column(Text)
     source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
     quote: Mapped[str | None] = mapped_column(Text)
-    verification_status: Mapped[str] = mapped_column(String(30), default=VerificationStatus.CURATED_PENDING_REVIEW.value)
+    verification_status: Mapped[str] = mapped_column(String(40), default=VerificationStatus.PENDING_HUMAN_REVIEW.value)
 
     dose_a: Mapped[Dose] = relationship(foreign_keys=[dose_a_id])
     dose_b: Mapped[Dose] = relationship(foreign_keys=[dose_b_id])
@@ -473,7 +602,7 @@ class IntercurrentEventStrategy(Base):
     estimand: Mapped[Estimand] = relationship(back_populates="strategies")
 
 
-class OutcomeResult(Base):
+class OutcomeResult(ReviewableMixin, Base):
     __tablename__ = "outcome_result"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -506,7 +635,7 @@ class OutcomeResult(Base):
     source_location: Mapped[str | None] = mapped_column(Text)
     locator_quote: Mapped[str | None] = mapped_column(Text)
     tier: Mapped[str] = mapped_column(String(40))
-    verification_status: Mapped[str] = mapped_column(String(30))
+    verification_status: Mapped[str] = mapped_column(String(40))
     missing_fields: Mapped[list[str]] = mapped_column(JSON, default=list)
     notes: Mapped[str | None] = mapped_column(Text)
 
@@ -517,7 +646,7 @@ class OutcomeResult(Base):
     source: Mapped[EvidenceSource | None] = relationship()
 
 
-class StatisticalAnalysis(Base):
+class StatisticalAnalysis(ReviewableMixin, Base):
     __tablename__ = "statistical_analysis"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -552,7 +681,7 @@ class StatisticalAnalysis(Base):
     source_location: Mapped[str | None] = mapped_column(Text)
     locator_quote: Mapped[str | None] = mapped_column(Text)
     tier: Mapped[str] = mapped_column(String(40))
-    verification_status: Mapped[str] = mapped_column(String(30))
+    verification_status: Mapped[str] = mapped_column(String(40))
     missing_fields: Mapped[list[str]] = mapped_column(JSON, default=list)
     notes: Mapped[str | None] = mapped_column(Text)
 
@@ -564,7 +693,7 @@ class StatisticalAnalysis(Base):
     source: Mapped[EvidenceSource | None] = relationship()
 
 
-class AdverseEvent(Base):
+class AdverseEvent(ReviewableMixin, Base):
     __tablename__ = "adverse_event"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -590,7 +719,7 @@ class AdverseEvent(Base):
     source_location: Mapped[str | None] = mapped_column(Text)
     locator_quote: Mapped[str | None] = mapped_column(Text)
     tier: Mapped[str] = mapped_column(String(40))
-    verification_status: Mapped[str] = mapped_column(String(30))
+    verification_status: Mapped[str] = mapped_column(String(40))
     missing_fields: Mapped[list[str]] = mapped_column(JSON, default=list)
     notes: Mapped[str | None] = mapped_column(Text)
 
@@ -642,7 +771,7 @@ class StudyPublication(Base):
 # --------------------------------------------------------------------------- claims & gaps
 
 
-class EvidenceClaim(Base):
+class EvidenceClaim(ReviewableMixin, Base):
     """A non-numeric assertion (mechanism, status, design fact, limitation) with its support."""
 
     __tablename__ = "evidence_claim"
@@ -658,7 +787,7 @@ class EvidenceClaim(Base):
     source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
     locator: Mapped[str | None] = mapped_column(Text)
     quote: Mapped[str | None] = mapped_column(Text)
-    verification_status: Mapped[str] = mapped_column(String(30), default=VerificationStatus.CURATED_PENDING_REVIEW.value)
+    verification_status: Mapped[str] = mapped_column(String(40), default=VerificationStatus.PENDING_HUMAN_REVIEW.value)
     origin: Mapped[str] = mapped_column(String(10), default=Origin.CURATED.value)
 
     drug: Mapped[Drug | None] = relationship()
@@ -753,3 +882,44 @@ class DiscoveredTrial(Base):
     interventions: Mapped[list[str]] = mapped_column(JSON, default=list)
     drug_slugs: Mapped[list[str]] = mapped_column(JSON, default=list)
     source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
+
+
+# --------------------------------------------------------------------------- review guard rails
+
+#: Evidence type name -> mapped class, for everything the review lifecycle can key, version and decide on.
+REVIEWABLE_MODELS: dict[str, type[Base]] = {
+    "result": OutcomeResult,
+    "analysis": StatisticalAnalysis,
+    "adverse_event": AdverseEvent,
+    "claim": EvidenceClaim,
+    "mechanism": DrugMechanism,
+    "indication": Indication,
+    "equivalence": ExposureEquivalence,
+}
+
+_HUMAN_ONLY = (VerificationStatus.HUMAN_VERIFIED.value, VerificationStatus.REJECTED.value)
+
+
+class HumanStatusWriteError(PermissionError):
+    """Raised when ordinary code tries to mark evidence human-verified or rejected."""
+
+
+def _refuse_human_status(target: Any, value: Any, oldvalue: Any, initiator: Any) -> None:
+    if value in _HUMAN_ONLY:
+        raise HumanStatusWriteError(
+            f"{type(target).__name__}.verification_status cannot be set to {value} here: that status exists only as the "
+            "result of an attested human review decision and is written by incretinos.review.lifecycle alone."
+        )
+
+
+def _refuse_change(mapper: Any, connection: Any, target: Any) -> None:
+    raise PermissionError(f"{type(target).__name__} rows are append-only: record a new row instead of changing or deleting one.")
+
+
+for _model in REVIEWABLE_MODELS.values():
+    # No loader, adapter, fixture or script can assign the two human statuses through the ORM. The review
+    # lifecycle writes them with one audited statement after deriving them from the decision history.
+    event.listen(_model.verification_status, "set", _refuse_human_status)
+for _model in (ReviewDecision, AuditEvent):
+    event.listen(_model, "before_update", _refuse_change)
+    event.listen(_model, "before_delete", _refuse_change)
