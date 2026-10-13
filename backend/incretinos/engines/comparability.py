@@ -286,7 +286,7 @@ def build_factors(session: Session, a: Finding, b: Finding) -> list[Factor]:
         else:
             inferred = "INFERRED" in a.estimand_basis or "INFERRED" in b.estimand_basis
             f.append(Factor("estimand", "Estimand", a.estimand_label, b.estimand_label, A.MATCH.value,
-                            "Same estimand." + (" For at least one finding the label was inferred from the registry's analysis description rather than stated." if inferred else "")))
+                            "Same estimand." + (" For at least one finding the label was inferred (from the registry's analysis description, or attributed by the curator without a source quote) rather than stated." if inferred else "")))
     elif is_efficacy:
         f.append(Factor("estimand", "Estimand", a.estimand_label, b.estimand_label, A.UNKNOWN.value,
                         "The estimand is not stated (and cannot be inferred) for at least one finding, so it is unknown whether both handle treatment discontinuation the same way."))
