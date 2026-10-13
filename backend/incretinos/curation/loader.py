@@ -7,6 +7,16 @@ Verification is decided here, mechanically:
                             source when fixtures were recorded (PubMed abstracts, web pages).
 * CURATED_PENDING_REVIEW  — the quote could not be checked automatically; a review-queue item
                             is opened. Nothing is ever marked human-verified by this loader.
+
+The curation schema has already rejected rows that contradict their own endpoint, term or quote
+(see ``schema.py``). The loader adds the checks that need the database:
+
+* an arm label is attached to an existing arm only when it is the same label, or when an
+  order-tolerant hint points at exactly one arm — distinct arms are never merged;
+* an estimand record belongs to one source, and a row may link only to an estimand of its own
+  source. An estimand stays STATED_BY_SOURCE only while its quote is found in that source's stored
+  text or verified excerpts; otherwise it is recorded as INFERRED_BY_CURATOR;
+* an arm annotation must name an arm the registry record contains.
 """
 
 from __future__ import annotations
@@ -57,8 +67,16 @@ from ..models import (
     StudyArm,
     StudyDrug,
 )
-from ..vocab import COMBINATION_SLUGS, arm_drug_slug, norm_arm_label, parse_single_dose_mg
+from ..vocab import (
+    COMBINATION_SLUGS,
+    DirectionBasis,
+    arm_drug_slug,
+    match_arm_label,
+    norm_arm_label,
+    parse_single_dose,
+)
 from .schema import (
+    SIGN_FROM_WORDING,
     ClaimDef,
     ClaimsFile,
     DrugsFile,
@@ -314,7 +332,7 @@ def load_drug_evidence(session: Session, curated_dir: Path) -> None:
 # --------------------------------------------------------------------------- studies
 
 
-def apply_watch_study(session: Session, study: Study, watch: WatchStudy) -> None:
+def apply_watch_study(session: Session, study: Study, watch: WatchStudy, curated_dir: Path | None = None) -> None:
     study.display_name = watch.display_name
     study.program = watch.program
     study.design_features = watch.design_features
@@ -333,11 +351,33 @@ def apply_watch_study(session: Session, study: Study, watch: WatchStudy) -> None
         population.diabetes_basis = f"Curated: {watch.population.basis}"
         session.add(population)
     session.flush()
+    # The registry adapter rewrites every registry-derived field of an arm on each ingest. Curated arm
+    # annotations (formulation, dose text ...) are therefore applied again right after it, so a scheduled
+    # re-ingest cannot leave an arm without them.
+    if curated_dir is None:
+        from ..config import get_settings
+
+        curated_dir = get_settings().curated_dir
+    folder = curated_dir / "studies"
+    for path in sorted(folder.glob(f"{study.nct_id}*.yaml")) if folder.is_dir() else []:
+        file = load_yaml(path, StudyEvidenceFile)
+        if file.study == study.nct_id and file.arms:
+            apply_arm_annotations(session, study, file)
+
+
+def _study_arms(session: Session, study: Study) -> list[StudyArm]:
+    return list(session.scalars(select(StudyArm).where(StudyArm.study_id == study.id).order_by(StudyArm.id)))
+
+
+def _find_arm(session: Session, study: Study, label: str) -> StudyArm | None:
+    """The existing arm this label names: the same label, or the single arm an order-tolerant hint points at."""
+    arms = _study_arms(session, study)
+    index = match_arm_label(label, [a.label for a in arms])
+    return None if index is None else arms[index]
 
 
 def _find_or_create_arm(session: Session, study: Study, label: str) -> StudyArm:
-    norm = norm_arm_label(label)
-    arm = session.scalar(select(StudyArm).where(StudyArm.study_id == study.id, StudyArm.norm_label == norm))
+    arm = _find_arm(session, study, label)
     if arm is None:
         drug_slug, is_placebo = arm_drug_slug(label)
         formulation_key = None
@@ -347,17 +387,18 @@ def _find_or_create_arm(session: Session, study: Study, label: str) -> StudyArm:
                 formulation_key = "foundayo-tablet"
             elif re.search(r"capsule|investigational", label, re.IGNORECASE):
                 formulation_key = "orforglipron-capsule"
-        dose =parse_single_dose_mg(label) if drug_slug and "+" not in drug_slug and drug_slug not in COMBINATION_SLUGS.values() else None
+        single_drug = bool(drug_slug) and drug_slug != "placebo" and "+" not in drug_slug and drug_slug not in COMBINATION_SLUGS.values()
+        dose = parse_single_dose(label) if single_drug else None  # (amount, unit as reported): mg/kg is not mg
         arm = StudyArm(
             study_id=study.id,
             origin=Origin.CURATED.value,
             label=label,
-            norm_label=norm,
+            norm_label=norm_arm_label(label),
             arm_type="CURATED",
             drug_slug=drug_slug,
             is_placebo=is_placebo,
-            dose_amount=dose,
-            dose_unit="mg" if dose is not None else None,
+            dose_amount=dose[0] if dose else None,
+            dose_unit=dose[1] if dose else None,
             dose_text=label if drug_slug in COMBINATION_SLUGS.values() else None,
             formulation_key=formulation_key,
             is_pooled=bool(re.search(r"pooled|all doses|combined", label, re.IGNORECASE)),
@@ -365,6 +406,50 @@ def _find_or_create_arm(session: Session, study: Study, label: str) -> StudyArm:
         session.add(arm)
         session.flush()
     return arm
+
+
+def apply_arm_annotations(session: Session, study: Study, file: StudyEvidenceFile) -> None:
+    """Curated attributes of registry arms (drug, formulation, dose text). An annotation never creates an arm."""
+    for ann in file.arms:
+        arm = _find_arm(session, study, ann.label)
+        if arm is None:
+            known = ", ".join(repr(a.label) for a in _study_arms(session, study) if a.origin == Origin.REGISTRY.value)
+            raise CurationError(
+                f"{file.study}: arm annotation '{ann.label}' does not name an arm of this study (or names more than one). "
+                f"Use the registry's own arm label. Registered arms: {known}"
+            )
+        if ann.drug is not None:
+            arm.drug_slug = ann.drug
+        if ann.dose_amount is not None:
+            arm.dose_amount, arm.dose_unit = ann.dose_amount, ann.dose_unit
+        if ann.dose_text is not None:
+            arm.dose_text = ann.dose_text
+        if ann.formulation is not None:
+            if session.scalar(select(Formulation).where(Formulation.key == ann.formulation)) is None:
+                raise CurationError(f"{file.study}: unknown formulation '{ann.formulation}'")
+            arm.formulation_key = ann.formulation
+        if ann.is_placebo is not None:
+            arm.is_placebo = ann.is_placebo
+        if ann.n_randomized is not None and arm.n_randomized is None:
+            arm.n_randomized = ann.n_randomized
+        if ann.arm_type is not None:
+            arm.arm_type = ann.arm_type
+    session.flush()
+
+
+def _quote_in_source(session: Session, source: EvidenceSource, quote: str | None) -> bool:
+    """Whether a quote is found in the source's stored text or among its verified excerpts.
+
+    The same evidence ``anchor_quote`` uses, without opening a review item: it decides only whether an estimand
+    may keep the basis STATED_BY_SOURCE.
+    """
+    if not quote:
+        return False
+    text, excerpts = source_text_for_anchoring(session, source)
+    if text and quote_in_text(quote, text):
+        return True
+    normalized = normalize_ws(quote).lower()
+    return any(normalized in normalize_ws(e).lower() for e in excerpts)
 
 
 def _upsert_claim(session: Session, claim: ClaimDef, *, drug: Drug | None = None, study: Study | None = None) -> EvidenceClaim:
@@ -392,8 +477,12 @@ def reset_curated_rows(session: Session, study: Study) -> None:
     session.execute(delete(StatisticalAnalysis).where(StatisticalAnalysis.study_id == study.id, StatisticalAnalysis.origin == curated))
     session.execute(delete(AdverseEvent).where(AdverseEvent.study_id == study.id, AdverseEvent.origin == curated))
     session.execute(delete(Endpoint).where(Endpoint.study_id == study.id, Endpoint.origin == curated))
-    for old in session.scalars(select(Estimand).where(Estimand.study_id == study.id, Estimand.basis == EstimandBasis.STATED_BY_SOURCE.value)).all():
+    # Curated estimands only: an estimand the registry adapter derived (even one the registry text names) is not ours.
+    for old in session.scalars(select(Estimand).where(Estimand.study_id == study.id, Estimand.origin == curated)).all():
         session.delete(old)
+    # Arms that exist only because a curated row named them are rebuilt with the rows (nothing else points at them).
+    for arm in session.scalars(select(StudyArm).where(StudyArm.study_id == study.id, StudyArm.origin == curated)).all():
+        session.delete(arm)
     session.flush()
 
 
@@ -406,24 +495,7 @@ def load_study_evidence(session: Session, file: StudyEvidenceFile, *, reset: boo
     if reset:
         reset_curated_rows(session, study)
 
-    for ann in file.arms:
-        arm = _find_or_create_arm(session, study, ann.label)
-        if ann.drug is not None:
-            arm.drug_slug = ann.drug
-        if ann.dose_amount is not None:
-            arm.dose_amount, arm.dose_unit = ann.dose_amount, ann.dose_unit
-        if ann.dose_text is not None:
-            arm.dose_text = ann.dose_text
-        if ann.formulation is not None:
-            if session.scalar(select(Formulation).where(Formulation.key == ann.formulation)) is None:
-                raise CurationError(f"{file.study}: unknown formulation '{ann.formulation}'")
-            arm.formulation_key = ann.formulation
-        if ann.is_placebo is not None:
-            arm.is_placebo = ann.is_placebo
-        if ann.n_randomized is not None and arm.n_randomized is None:
-            arm.n_randomized = ann.n_randomized
-        if ann.arm_type is not None:
-            arm.arm_type = ann.arm_type
+    apply_arm_annotations(session, study, file)
 
     if file.population_summary:
         population = study.population or Population(study_id=study.id)
@@ -443,30 +515,31 @@ def load_study_evidence(session: Session, file: StudyEvidenceFile, *, reset: boo
     estimands: dict[str, Estimand] = {}
     for e in file.estimands:
         source = resolve_source(session, e.source)
+        # One record per (study, label, source): an estimand label is never inherited from another source.
         existing = session.scalar(
-            select(Estimand).where(Estimand.study_id == study.id, Estimand.label == e.label.value, Estimand.basis == EstimandBasis.STATED_BY_SOURCE.value)
+            select(Estimand).where(Estimand.study_id == study.id, Estimand.origin == curated, Estimand.label == e.label.value, Estimand.source_id == source.id)
         )
         if existing is not None:
-            if e.quote and not existing.quote:
-                existing.quote, existing.source_id = e.quote, source.id
             estimands[e.key] = existing
             continue
+        basis, description = e.basis.value, e.description
+        if e.basis == EstimandBasis.STATED_BY_SOURCE and not _quote_in_source(session, source, e.quote):
+            # "Stated by the source" is kept only for a quote found in that source. This one could not be checked.
+            basis = EstimandBasis.INFERRED_BY_CURATOR.value
+            description = f"{e.description} The supporting quote could not be checked against stored text of the cited source, so the label is recorded as the curator's attribution."
         estimand = Estimand(
             study_id=study.id,
+            origin=curated,
             label=e.label.value,
-            basis=EstimandBasis.STATED_BY_SOURCE.value,
-            description=e.description,
+            basis=basis,
+            description=description,
             source_id=source.id,
             quote=e.quote,
         )
         session.add(estimand)
         session.flush()
         for s in e.strategies:
-            session.add(
-                IntercurrentEventStrategy(
-                    estimand_id=estimand.id, event=s.event.value, strategy=s.strategy.value, basis=EstimandBasis.STATED_BY_SOURCE.value, quote=s.quote
-                )
-            )
+            session.add(IntercurrentEventStrategy(estimand_id=estimand.id, event=s.event.value, strategy=s.strategy.value, basis=basis, quote=s.quote))
         estimands[e.key] = estimand
 
     endpoints: dict[str, Endpoint] = {}
@@ -495,17 +568,25 @@ def load_study_evidence(session: Session, file: StudyEvidenceFile, *, reset: boo
             raise CurationError(f"{file.study}: unknown endpoint key '{key}'")
         return endpoints[key]
 
-    def estimand_for(key: str | None) -> Estimand | None:
+    def estimand_for(key: str | None, source: EvidenceSource) -> Estimand | None:
         if key is None:
             return None
         if key not in estimands:
             raise CurationError(f"{file.study}: unknown estimand key '{key}'")
+        if estimands[key].source_id != source.id:
+            raise CurationError(f"{file.study}: a row citing {source.key} is linked to estimand '{key}', which cites another source")
         return estimands[key]
+
+    def with_sign_note(notes: str | None, sign_basis: str | None) -> str | None:
+        note = "Sign inferred from wording: the quote prints the number without a minus sign and states the loss or reduction in words."
+        if sign_basis != SIGN_FROM_WORDING or (notes and "minus sign" in notes):
+            return notes
+        return f"{notes} {note}".strip() if notes else note
 
     for i, r in enumerate(file.results):
         source = resolve_source(session, r.source)
         endpoint = endpoint_for(r.endpoint)
-        estimand = estimand_for(r.estimand)
+        estimand = estimand_for(r.estimand, source)
         arm = None if r.scope == "RANGE_ACROSS_ARMS" else _find_or_create_arm(session, study, r.arm)
         if endpoint.source_id is None:
             endpoint.source_id = source.id
@@ -547,14 +628,14 @@ def load_study_evidence(session: Session, file: StudyEvidenceFile, *, reset: boo
                     session, source, r.quote, review_key=f"{file.study}:{tag}result:{i}:{r.endpoint}:{r.arm}", title=f"{study.display_name} — {endpoint.title} — {r.arm}"
                 ),
                 missing_fields=missing,
-                notes=r.notes,
+                notes=with_sign_note(r.notes, r.sign_basis),
             )
         )
 
     for i, a in enumerate(file.analyses):
         source = resolve_source(session, a.source)
         endpoint = endpoint_for(a.endpoint)
-        estimand = estimand_for(a.estimand)
+        estimand = estimand_for(a.estimand, source)
         treatment = _find_or_create_arm(session, study, a.treatment)
         comparator = _find_or_create_arm(session, study, a.comparator) if a.comparator else None
         if endpoint.source_id is None:
@@ -572,6 +653,8 @@ def load_study_evidence(session: Session, file: StudyEvidenceFile, *, reset: boo
                 comparator_arm_id=comparator.id if comparator else None,
                 treatment_label=a.treatment,
                 comparator_label=a.comparator,
+                group_labels=[label for label in (a.treatment, a.comparator) if label],
+                direction_basis=DirectionBasis.CURATED.value,
                 hypothesis_type=a.hypothesis_type.value,
                 param_type=a.param_type,
                 estimate=a.estimate,
@@ -598,7 +681,7 @@ def load_study_evidence(session: Session, file: StudyEvidenceFile, *, reset: boo
                     session, source, a.quote, review_key=f"{file.study}:{tag}analysis:{i}:{a.endpoint}:{a.treatment}", title=f"{study.display_name} — {endpoint.title} — {a.treatment} vs {a.comparator}"
                 ),
                 missing_fields=missing,
-                notes=a.notes,
+                notes=with_sign_note(a.notes, a.sign_basis),
             )
         )
 

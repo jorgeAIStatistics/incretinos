@@ -3,29 +3,31 @@
 # Verification status is assigned by the loader (quote anchoring) — nothing here is human-verified.
 study: NCT05882045
 estimands:
-- key: efficacy
+- key: efficacy@web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe
   label: EFFICACY
-  description: 'Efficacy estimand as named by the source: the treatment effect had participants remained on study treatment (hypothetical strategy for treatment discontinuation).'
+  basis: INFERRED_BY_CURATOR
+  description: 'Efficacy estimand as recorded in the research note for this source; the note holds no verbatim quote from the source that names the estimand, so the label is the curator''s attribution:
+    the treatment effect had participants remained on study treatment (hypothetical strategy for treatment discontinuation).'
   source: web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe
   strategies:
   - event: TREATMENT_DISCONTINUATION
     strategy: HYPOTHETICAL
 endpoints:
-- key: weight-pct-change-w80-percent-change-in-body-weigh
+- key: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
   title: percent change in body weight from baseline
   role: PRIMARY
   category: WEIGHT_PCT_CHANGE
   unit: '%'
   timepoint_weeks: 80
   multiplicity_controlled: NOT_STATED
-- key: mace-w80-time-to-first-mace-5-in-stud
+- key: mace-w80-time-to-first-mace-5-in-study-analysis-dce1356e
   title: time to first MACE-5 (in-study analysis)
   role: NOT_STATED
   category: MACE
   unit: hazard ratio
   timepoint_weeks: 80
   multiplicity_controlled: NOT_STATED
-- key: mace-w80-time-to-first-mace-3-in-stud
+- key: mace-w80-time-to-first-mace-3-in-study-analysis-2b20b133
   title: time to first MACE-3 (in-study analysis)
   role: NOT_STATED
   category: MACE
@@ -33,8 +35,8 @@ endpoints:
   timepoint_weeks: 80
   multiplicity_controlled: NOT_STATED
 results:
-- endpoint: weight-pct-change-w80-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+  estimand: efficacy@web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe
   arm: retatrutide 9 mg
   scope: ARM
   value: -21.6
@@ -45,8 +47,8 @@ results:
   quote: -21.6% (-23.9 kg; -52.7 lbs)
   notes: 'Efficacy estimand per source: efficacy had all randomized participants remained on study intervention without initiating prohibited weight management treatments. Treatment-regimen estimand values
     for TRIUMPH-3 were NOT given in this release; no peer-reviewed publication found as of 2026-10-13. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w80-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+  estimand: efficacy@web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe
   arm: retatrutide 12 mg
   scope: ARM
   value: -22.6
@@ -57,8 +59,8 @@ results:
   quote: -22.6% (-25.3 kg; -55.8 lbs)
   notes: 'Efficacy estimand per source: efficacy had all randomized participants remained on study intervention without initiating prohibited weight management treatments. Treatment-regimen estimand values
     for TRIUMPH-3 were NOT given in this release; no peer-reviewed publication found as of 2026-10-13. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w80-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+  estimand: efficacy@web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe
   arm: placebo
   scope: ARM
   value: -3.2
@@ -70,7 +72,7 @@ results:
   notes: 'Efficacy estimand per source: efficacy had all randomized participants remained on study intervention without initiating prohibited weight management treatments. Treatment-regimen estimand values
     for TRIUMPH-3 were NOT given in this release; no peer-reviewed publication found as of 2026-10-13. ci_not_reported_in_this_source'
 analyses:
-- endpoint: mace-w80-time-to-first-mace-5-in-stud
+- endpoint: mace-w80-time-to-first-mace-5-in-study-analysis-dce1356e
   treatment: retatrutide pooled 9 mg + 12 mg
   comparator: placebo
   hypothesis_type: NOT_STATED
@@ -85,7 +87,7 @@ analyses:
   quote: 'resulting in a hazard ratio of 0.82 (95.0% CI: 0.55 to 1.22)'
   notes: Listed under "Additional Analyses"; described as pre-specified; CI includes 1; source says MACE occurred less frequently than anticipated. Not a powered CV outcomes result. Randomization 1:1:2
     so event counts are not directly comparable.
-- endpoint: mace-w80-time-to-first-mace-3-in-stud
+- endpoint: mace-w80-time-to-first-mace-3-in-study-analysis-2b20b133
   treatment: retatrutide pooled 9 mg + 12 mg
   comparator: placebo
   hypothesis_type: NOT_STATED

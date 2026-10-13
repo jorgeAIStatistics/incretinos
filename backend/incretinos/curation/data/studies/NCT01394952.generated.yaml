@@ -4,13 +4,13 @@
 study: NCT01394952
 estimands: []
 endpoints:
-- key: mace-wna-time-to-first-mace-3-non-fat
+- key: mace-wna-time-to-first-mace-3-non-fatal-mi-non-fatal-30919692
   title: time to first MACE-3 (non-fatal MI, non-fatal stroke, or CV death including unknown causes)
   role: PRIMARY
   category: MACE
   unit: hazard ratio
   multiplicity_controlled: NOT_STATED
-- key: mace-wna-time-to-first-mace-3-cv-deat
+- key: mace-wna-time-to-first-mace-3-cv-death-non-fatal-mi-n-e9735b8f
   title: time to first MACE-3 (CV death, non-fatal MI, non-fatal stroke)
   role: PRIMARY
   category: MACE
@@ -18,7 +18,7 @@ endpoints:
   multiplicity_controlled: 'YES'
 results: []
 analyses:
-- endpoint: mace-wna-time-to-first-mace-3-non-fat
+- endpoint: mace-wna-time-to-first-mace-3-non-fatal-mi-non-fatal-30919692
   treatment: dulaglutide 1.5 mg
   comparator: placebo
   hypothesis_type: NOT_STATED
@@ -32,7 +32,7 @@ analyses:
   source: pubmed:31189511
   quote: (hazard ratio [HR] 0·88, 95% CI 0·79-0·99; p=0·026)
   notes: Intention-to-treat population. Median follow-up 5.4 years (not expressed in weeks by the source).
-- endpoint: mace-wna-time-to-first-mace-3-cv-deat
+- endpoint: mace-wna-time-to-first-mace-3-cv-death-non-fatal-mi-n-e9735b8f
   treatment: dulaglutide 1.5 mg
   comparator: placebo
   hypothesis_type: SUPERIORITY
