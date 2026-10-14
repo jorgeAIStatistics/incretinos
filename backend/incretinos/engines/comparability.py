@@ -783,7 +783,9 @@ def compare_findings(session: Session, a: Finding, b: Finding) -> Comparison:
 
     # Descriptive arithmetic difference — only where a difference of the two values is meaningful at all.
     descriptive = None
-    difference_meaningful = matched("endpoint", "unit") and by_key["baseline"].assessment != A.BLOCKING.value
+    # The same measurement, on the same scale, from the same kind of baseline. A baseline that is not described for
+    # one of the two values is not assumed to be the same, so no difference is formed across it.
+    difference_meaningful = matched("endpoint", "unit", "baseline")
     if cls in (ComparabilityClass.DIRECT_RANDOMIZED_COMPARISON, ComparabilityClass.PARTIALLY_COMPARABLE, ComparabilityClass.DESCRIPTIVE_CROSS_STUDY) and a.value is not None and b.value is not None and difference_meaningful:
         descriptive = {
             "value": round(a.value - b.value, 4),
@@ -801,6 +803,10 @@ def compare_findings(session: Session, a: Finding, b: Finding) -> Comparison:
                 "it has no confidence interval, and it must not be described as statistically significant."
             ),
         }
+
+    elif cls in (ComparabilityClass.PARTIALLY_COMPARABLE, ComparabilityClass.DESCRIPTIVE_CROSS_STUDY) and a.value is not None and b.value is not None:
+        not_same = [by_key[k].label.lower() for k in ("endpoint", "unit", "baseline") if not matched(k)]
+        reasons.append("No arithmetic difference is given: " + ", ".join(not_same) + " could not be established as the same for the two values.")
 
     a_name, b_name = f"{a.arm_label} ({a.study_name})", f"{b.arm_label} ({b.study_name})"
     permitted: list[str] = []

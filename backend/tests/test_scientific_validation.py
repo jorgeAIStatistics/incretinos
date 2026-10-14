@@ -843,6 +843,15 @@ def test_c5_change_after_a_lead_in_is_never_differenced_with_a_change_from_study
     assert within.classification == "DIRECT RANDOMIZED COMPARISON" and _factor(within, "baseline").assessment == "MATCH"
 
 
+def test_c5_no_difference_is_formed_across_a_baseline_that_is_not_described(db):
+    orfo = _pick(db, ATTAIN1, arm="36 mg once daily", estimand="TREATMENT_REGIMEN", tier="PEER_REVIEWED", weeks=72)  # the curated row does not describe its baseline
+    tirz = _pick(db, SM1, arm="15 mg", estimand="TREATMENT_REGIMEN", tier="PEER_REVIEWED", weeks=72)
+    assert orfo.baseline_definition is None and tirz.baseline_definition is not None
+    comparison = compare_findings(db, orfo, tirz)
+    assert _factor(comparison, "baseline").assessment == "UNKNOWN" and comparison.classification == "DESCRIPTIVE CROSS-STUDY COMPARISON"
+    assert comparison.descriptive_difference is None and any(r.startswith("No arithmetic difference is given") and "baseline" in r for r in comparison.reasons)
+
+
 # ---- C6: unknown is unknown
 
 
