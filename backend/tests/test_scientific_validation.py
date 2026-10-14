@@ -478,3 +478,564 @@ def test_statement_time_points_match_stored_values(db):
     assert checked > 300
     triumph = get_finding(db, result_id(db, "NCT05929066", "12 mg", estimand="TREATMENT_REGIMEN", tier="PEER_REVIEWED", weeks=80))
     assert "at week 80 " in triumph.statement and "-25%" in triumph.statement
+
+
+# =========================================================================== Session 2: comparability audit (C1–C8, WEB-12, XS-12)
+#
+# Results are located by their scientific description (trial, arm, endpoint title, estimand, tier, week),
+# never by id. Names introduced in Session 2 are imported inside the tests, so that each test fails on its
+# own (rather than the whole module failing to import) when run against the code it was written to correct.
+
+
+def _pick(db, nct: str, *, category: str = "WEIGHT_PCT_CHANGE", arm: str | None = None, arm_is: str | None = None, title: str | None = None, cls: str | None = None,
+          estimand: str | None = None, tier: str | None = None, weeks: float | None = None, baseline: str | None = None):
+    """The finding for the first stored result matching every stated attribute (arm = substring, arm_is = exact)."""
+    study = db.scalar(select(Study).where(Study.nct_id == nct))
+    assert study is not None, f"{nct} not seeded"
+    for r in sorted(study.results, key=lambda x: x.id):
+        if r.endpoint.category != category or r.value is None:
+            continue
+        if arm is not None and arm.lower() not in r.arm_label.lower():
+            continue
+        if arm_is is not None and arm_is.lower() != r.arm_label.lower():
+            continue
+        if title is not None and title.lower() not in r.endpoint.title.lower():
+            continue
+        if cls is not None and cls.lower() != (r.class_title or "").lower():
+            continue
+        if estimand is not None and (r.estimand.label if r.estimand else "NOT_STATED") != estimand:
+            continue
+        if tier is not None and r.tier != tier:
+            continue
+        if weeks is not None and r.timepoint_weeks != weeks:
+            continue
+        if baseline is not None and baseline.lower() not in (r.baseline_definition or "").lower():
+            continue
+        return build_finding(db, r)
+    raise AssertionError(f"No result for {nct} / {category} / {arm or arm_is} / {title} / {estimand} / {tier} / {weeks}")
+
+
+def _factor(comparison, key: str):
+    return next(f for f in comparison.factors if f.key == key)
+
+
+SM1, SM3, SM4, SM_OSA, ATTAIN1, TRIUMPH1, ACHIEVE1, ACHIEVE3, ACHIEVE5, AWARD11, BELIEVE, RETA_P2, BIOEQ = (
+    "NCT04184622", "NCT04657016", "NCT04660643", "NCT05412004", "NCT05869903", "NCT05929066", "NCT05971940", "NCT06045221", "NCT06109311", "NCT03495102", "NCT05616013", "NCT04881760", "NCT06440980",
+)
+
+
+# ---- C1: "direct randomized" needs two different arms of one randomization
+
+
+def test_c1_registry_and_curated_record_of_one_arm_are_not_a_treatment_comparison(db):
+    registry = _pick(db, ATTAIN1, arm="36 mg", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72)
+    release = _pick(db, ATTAIN1, arm="36 mg", estimand="EFFICACY", tier="PRESS_RELEASE", weeks=72)
+    comparison = compare_findings(db, registry, release)
+    assert comparison.classification == "NOT SUITABLE FOR EFFICACY COMPARISON"  # was DIRECT RANDOMIZED COMPARISON with a "difference" of 0.05
+    assert registry.arm_id != release.arm_id and registry.arm_group_key == release.arm_group_key  # two arm rows, one randomized group
+    assert comparison.relationship == "SAME_ARM_TWO_REPORTS"
+    assert "not a treatment comparison" in comparison.headline and "not a treatment comparison" in _factor(comparison, "randomization").explanation
+    assert comparison.descriptive_difference is None and comparison.reported_analyses == []
+    assert not any("randomized against each other" in s for s in comparison.permitted_statements)
+    assert any("same arm" in s for s in comparison.prohibited_statements)
+
+
+def test_c1_capsule_dose_and_its_documented_tablet_equivalent_are_one_arm(db):
+    capsule = _pick(db, ATTAIN1, arm="36 mg once daily", estimand="TREATMENT_REGIMEN", weeks=72)
+    tablet = _pick(db, ATTAIN1, arm="FOUNDAYO 17.2", weeks=72)
+    comparison = compare_findings(db, capsule, tablet)
+    assert not comparison.classification.startswith("DIRECT") and comparison.descriptive_difference is None  # was DIRECT with a "difference" of −0.1
+    assert comparison.relationship == "SAME_ARM_TWO_REPORTS"
+    assert "documented exposure-equivalent pair" in _factor(comparison, "randomization").explanation
+    # A different dose of the same drug is a different arm: 36 mg capsule versus the label's 9 mg tablet (= 12 mg capsule).
+    other = _pick(db, ATTAIN1, arm="FOUNDAYO 9 mg", weeks=72)
+    assert compare_findings(db, capsule, other).relationship == "RANDOMIZED_ARMS_OF_ONE_TRIAL"
+
+
+def test_c1_surmount4_registry_arm_and_its_publication_label_are_one_arm(db):
+    registry = _pick(db, SM4, arm_is="Tirzepatide MTD", tier="REGISTRY_RESULTS", weeks=88, baseline="randomization")
+    release = _pick(db, SM4, arm="continued", tier="PRESS_RELEASE", weeks=88, baseline="week 36")
+    comparison = compare_findings(db, registry, release)
+    assert not comparison.classification.startswith("DIRECT") and comparison.relationship == "SAME_ARM_TWO_REPORTS" and comparison.descriptive_difference is None
+
+
+def test_c1_arms_of_separately_randomized_substudies_are_not_direct(db):
+    tirzepatide_no_pap = _pick(db, SM_OSA, arm="Tirzepatide MTD_GPI1")
+    placebo_pap = _pick(db, SM_OSA, arm="Placebo_GPI2")
+    placebo_no_pap = _pick(db, SM_OSA, arm="Placebo_GPI1")
+    across = compare_findings(db, tirzepatide_no_pap, placebo_pap)
+    assert across.same_study and not across.classification.startswith("DIRECT")
+    assert across.relationship == "SAME_REGISTRATION_NOT_RANDOMIZED_AGAINST_EACH_OTHER" and across.reported_analyses == []
+    assert "not randomized against each other" in _factor(across, "randomization").explanation
+    assert any("superior" in s for s in across.prohibited_statements)
+    within = compare_findings(db, tirzepatide_no_pap, placebo_no_pap)
+    assert within.classification == "DIRECT RANDOMIZED COMPARISON" and within.relationship == "RANDOMIZED_ARMS_OF_ONE_TRIAL"
+
+
+def test_c1_unresolved_arm_identity_is_not_called_direct(db):
+    # 'retatrutide 12 mg' (publication) and '12 mg LY3437943 (2 mg)' (registry) may be one arm; four registry arms could be it.
+    curated = _pick(db, RETA_P2, arm_is="retatrutide 12 mg", weeks=48)
+    registry = _pick(db, RETA_P2, arm="12 mg LY3437943", title="Mean Percent Change", weeks=48)
+    comparison = compare_findings(db, curated, registry)
+    assert comparison.classification == "INSUFFICIENT EVIDENCE" and comparison.relationship == "SAME_TRIAL_ARM_IDENTITY_UNRESOLVED"
+    assert comparison.descriptive_difference is None
+
+
+def test_c1_arm_labels_are_read_for_substudy_period_and_dose_markers():
+    from incretinos.engines.findings import arm_dose_tokens, arm_stratum
+
+    assert arm_stratum("Tirzepatide MTD_GPI1") == "SUBSTUDY GPI1" != arm_stratum("Placebo_GPI2") and arm_stratum("Eloralintide (YSA1)") == "SUBSTUDY YSA1"
+    assert arm_stratum("Tirzepatide (lead-in)") == "LEAD-IN" and arm_stratum("Retatrutide Extension Period") == "EXTENSION" and arm_stratum("LY3537031 Period 1") == "PERIOD 1"
+    for switch in ("retatrutide 4 mg to MTD", "placebo to retatrutide MTD", "Retatrutide Dose 1 to Retatrutide Dose 2", "Retatrutide Dose 1 to Placebo"):
+        assert arm_stratum(switch) == "SWITCH SEQUENCE", switch
+    for main in ("15 mg Tirzepatide", "Placebo", "Placebo to Match", "Tirzepatide titrated to MTD", "Tirzepatide (LY3298176)", "tirzepatide MTD (continued)", "placebo (switched)",
+                 "orforglipron maximum tolerated dose (up to 36 mg capsule, stated as equivalent to 17.2 mg tablet)", "4 mg LY3437943 (2 mg)"):
+        assert arm_stratum(main) == "", main  # no sub-study or period marker: the main randomization
+    assert arm_dose_tokens("3/6/9 mg Eloralintide") == (3.0, 6.0, 9.0) != arm_dose_tokens("9 mg Eloralintide") and arm_dose_tokens("eloralintide 6-9 mg (dose escalation)") == arm_dose_tokens("6/9 mg Eloralintide")
+    assert arm_dose_tokens("Retatrutide Dose 2") == () and arm_dose_tokens("12 milligram (mg) LY3502970") == arm_dose_tokens("12 mg LY3502970") == (12.0,)
+
+
+def test_c1_sweep_direct_only_for_distinct_arms_of_one_randomization_and_one_quantity(db):
+    """Every pair of stored percent-weight-change results within a trial, and a spread of pairs across trials."""
+    import itertools
+
+    from incretinos.engines.findings import unit_family
+    from incretinos.models import Endpoint
+
+    rows = list(db.scalars(select(OutcomeResult).join(Endpoint, OutcomeResult.endpoint_id == Endpoint.id).where(Endpoint.category == "WEIGHT_PCT_CHANGE").order_by(OutcomeResult.id)))
+    findings = [build_finding(db, r) for r in rows]
+    direct = same_arm = 0
+    for a, b in itertools.combinations(findings, 2):
+        if a.study_id != b.study_id:
+            continue
+        c = compare_findings(db, a, b)
+        if a.arm_group_key is not None and a.arm_group_key == b.arm_group_key:
+            same_arm += 1
+            assert not c.classification.startswith("DIRECT") and c.descriptive_difference is None, (a.result_id, b.result_id)
+        if c.classification.startswith("DIRECT"):
+            direct += 1
+            assert a.arm_group_key != b.arm_group_key and a.randomization_stratum == b.randomization_stratum, (a.result_id, b.result_id)
+            assert a.baseline_class == b.baseline_class and a.timepoint_weeks == b.timepoint_weeks, (a.result_id, b.result_id)
+            assert unit_family(a.unit) == unit_family(b.unit) and a.endpoint_definition.threshold == b.endpoint_definition.threshold, (a.result_id, b.result_id)
+            assert a.estimand_label == b.estimand_label, (a.result_id, b.result_id)
+            assert all(x["pair_orientation"]["treatment_is"] in ("A", "B") for x in c.reported_analyses)
+        if c.descriptive_difference is not None:
+            assert c.descriptive_difference["ci"] is None and c.descriptive_difference["ci_status"] == "NOT_AVAILABLE"
+    assert direct > 100 and same_arm > 100
+    cross = 0
+    sample = findings[::6]
+    for a, b in itertools.combinations(sample, 2):
+        if a.study_id == b.study_id:
+            continue
+        c = compare_findings(db, a, b)
+        cross += 1
+        assert not c.classification.startswith("DIRECT") and c.reported_analyses == [], (a.result_id, b.result_id)
+        assert c.descriptive_difference is None or c.descriptive_difference["ci"] is None
+    assert cross > 500
+
+
+# ---- C2: the endpoint category is a family, not a definition
+
+
+def test_c2_systolic_and_diastolic_pressure_are_different_endpoints(db):
+    sbp = _pick(db, SM3, category="BLOOD_PRESSURE", title="Systolic", arm="Placebo")
+    dbp = _pick(db, SM3, category="BLOOD_PRESSURE", title="Diastolic", arm="Tirzepatide")
+    comparison = compare_findings(db, sbp, dbp)
+    assert comparison.classification == "NOT SUITABLE FOR EFFICACY COMPARISON" and comparison.descriptive_difference is None
+    endpoint = _factor(comparison, "endpoint")
+    assert endpoint.assessment == "BLOCKING" and "systolic blood pressure" in endpoint.explanation and "diastolic blood pressure" in endpoint.explanation
+    assert comparison.reported_analyses == []  # the SBP analysis is not quoted for an SBP-versus-DBP pair
+
+
+@pytest.mark.parametrize(
+    ("nct", "category", "a", "b", "blocking"),
+    [
+        (AWARD11, "PHARMACOKINETICS", {"title": "Cmax"}, {"title": "AUC"}, {"endpoint", "unit"}),
+        (SM_OSA, "OTHER", {"title": "Change From Baseline in Apnea", "arm": "Tirzepatide MTD_GPI1"}, {"title": "Percent Change From Baseline in Apnea", "arm": "Placebo_GPI1"}, {"unit"}),
+        (BELIEVE, "BODY_COMPOSITION", {"title": "Total Body Fat Mass in Kilograms", "arm_is": "30 mg/kg Bimagrumab"}, {"title": "Percent Change From Baseline for Fat Mass by DXA at Week 48", "arm_is": "10/30 mg/kg Bimagrumab"}, {"unit"}),
+        (SM1, "PHYSICAL_FUNCTION", {"title": "SF-36v2", "arm": "Placebo"}, {"title": "IWQOL-Lite-CT", "arm": "15 mg"}, {"endpoint"}),
+        (SM3, "WEIGHT_RESPONDER", {"title": "5% Body Weight Reduction", "arm": "Placebo"}, {"title": "Maintain", "arm": "Tirzepatide"}, {"endpoint"}),
+    ],
+)
+def test_c2_unrelated_endpoints_of_one_category_are_never_differenced(db, nct, category, a, b, blocking):
+    fa, fb = _pick(db, nct, category=category, **a), _pick(db, nct, category=category, **b)
+    assert fa.category == fb.category == category
+    comparison = compare_findings(db, fa, fb)
+    assert comparison.classification == "NOT SUITABLE FOR EFFICACY COMPARISON", comparison.classification
+    assert comparison.descriptive_difference is None and comparison.reported_analyses == []
+    assert blocking <= {f.key for f in comparison.factors if f.assessment == "BLOCKING"}
+
+
+def test_c2_endpoint_definition_reads_measurement_threshold_and_unit():
+    from incretinos.engines.findings import endpoint_definition, unit_family
+
+    maintain = endpoint_definition("WEIGHT_RESPONDER", "Percentage of Participants Who Maintain ≥80% of the Body Weight Lost During Intensive Lifestyle Program", None, None, "percentage of participants")
+    five = endpoint_definition("WEIGHT_RESPONDER", "Percentage of Participants With Greater Than or Equal to (≥) 5% Body Weight Reduction", None, None, "Percentage of participants")
+    assert maintain.threshold == (">=80%",) and five.threshold == (">=5%",) and maintain.unit_family == five.unit_family == "PERCENT_OF_PARTICIPANTS"
+    # The class names the component of a multi-component measure; a stored threshold that contradicts it is not used.
+    classed = endpoint_definition("WEIGHT_RESPONDER", "Percentage of Participants Who Achieve ≥5%, ≥10%, ≥15%, ≥20% Body Weight Reduction From Baseline", "≥10% body weight reduction from baseline", 20.0, "percentage of participants")
+    assert classed.threshold == (">=10%",) and not classed.threshold_ambiguous
+    assert endpoint_definition("WEIGHT_RESPONDER", "Participants Who Achieve ≥5%, ≥10% Body Weight Reduction", None, None, "%").threshold_ambiguous
+    assert endpoint_definition("BLOOD_PRESSURE", "Change From Baseline in SBP, DBP", "DBP", None, "mmHg").measure == ("diastolic blood pressure",)
+    assert endpoint_definition("LIPIDS", "Percent Change From Baseline in Very Low-Density Lipoprotein (VLDL) Cholesterol", None, None, "percent change").measure == ("VLDL cholesterol",)
+    assert endpoint_definition("LIPIDS", "Percent Change From Baseline in Non-High-Density Lipoprotein (Non-HDL) Cholesterol", None, None, "percent change").measure == ("non-HDL cholesterol",)
+    assert unit_family("millimeters of mercury (mmHg)") == unit_family("mm Hg") == "MMHG" and unit_family("Kilograms (Kg)") == unit_family("kg") == "KG"
+    assert unit_family("percent change") != unit_family("percentage of participants") and unit_family("kg/m^2") != unit_family("kg") and unit_family(None) is None
+
+
+# ---- C3: the quoted between-arm analysis is the analysis of this endpoint, estimand, time point and arm pair
+
+
+def test_c3_no_analysis_is_quoted_when_none_matches_the_estimand(db):
+    high = _pick(db, SM1, arm="15 mg", estimand="TREATMENT_REGIMEN", tier="PEER_REVIEWED", weeks=72)
+    placebo = _pick(db, SM1, arm="placebo", estimand="TREATMENT_REGIMEN", tier="PEER_REVIEWED", weeks=72)
+    comparison = compare_findings(db, high, placebo)
+    assert comparison.classification == "DIRECT RANDOMIZED COMPARISON" and comparison.descriptive_difference["value"] == pytest.approx(-17.8)
+    assert comparison.reported_analyses == []  # the registry efficacy-estimand analysis (−20.1) is not the analysis of these treatment-regimen values
+    efficacy = next(x for x in comparison.other_analyses if x["estimate"] == -20.1)
+    assert any("estimand" in reason for reason in efficacy["mismatch"])
+    assert any("no between-arm analysis of this endpoint, estimand and time point is stored" in s for s in comparison.permitted_statements)
+    assert not any("-20.1" in s for s in comparison.permitted_statements)
+    assert any("statistically significant" in s for s in comparison.prohibited_statements)
+
+
+def test_c3_analysis_matches_baseline_and_responder_threshold(db):
+    # SURMOUNT-4 change from study entry (week 0): the from-randomization analysis (−21.4) is a different quantity.
+    a = _pick(db, SM4, arm_is="Tirzepatide MTD", tier="REGISTRY_RESULTS", weeks=88, baseline="Baseline (Week 0)")
+    b = _pick(db, SM4, arm_is="Placebo", tier="REGISTRY_RESULTS", weeks=88, baseline="Baseline (Week 0)")
+    comparison = compare_findings(db, a, b)
+    assert [x["estimate"] for x in comparison.reported_analyses] == [-16.4]
+    assert -21.4 in [x["estimate"] for x in comparison.other_analyses]
+    # SURMOUNT-1 ≥20% responders: the ≥5% odds ratio (75.48) is not quoted.
+    a = _pick(db, SM1, category="WEIGHT_RESPONDER", title="≥20%", arm="15 mg")
+    b = _pick(db, SM1, category="WEIGHT_RESPONDER", title="≥20%", arm="Placebo")
+    comparison = compare_findings(db, a, b)
+    assert [x["estimate"] for x in comparison.reported_analyses] == [150.59]
+    assert all(x["mismatch"] for x in comparison.other_analyses) and 75.48 in [x["estimate"] for x in comparison.other_analyses]
+
+
+def test_c3_treatment_and_comparator_are_named_and_the_sign_is_never_flipped(db):
+    high = _pick(db, SM1, arm="15 mg", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72)
+    placebo = _pick(db, SM1, arm="placebo", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72)
+    forward, reverse = compare_findings(db, high, placebo), compare_findings(db, placebo, high)
+    for comparison, treatment_is in ((forward, "A"), (reverse, "B")):
+        analysis = comparison.reported_analyses[0]
+        assert analysis["estimate"] == -20.1 and (analysis["treatment_label"], analysis["comparator_label"]) == ("15 mg Tirzepatide", "Placebo")
+        assert analysis["pair_orientation"]["treatment_is"] == treatment_is and analysis["pair_orientation"]["direction_established"]
+        assert any("-20.1" in s and "15 mg Tirzepatide versus Placebo" in s for s in comparison.permitted_statements)
+    assert forward.descriptive_difference["value"] == pytest.approx(-20.1) and reverse.descriptive_difference["value"] == pytest.approx(20.1)
+    assert reverse.descriptive_difference["orientation"] == "A minus B" and reverse.reported_analyses[0]["pair_orientation"]["same_orientation_as_descriptive_difference"] is False
+    assert any("not re-signed" in s for s in reverse.permitted_statements)
+
+
+# ---- C4 and C7: a stored analysis is read only as far as its fields allow
+
+
+def _dto(**overrides) -> dict:
+    base = {"id": 0, "estimate": -2.0, "ci_low": -3.0, "ci_high": -1.0, "ci_level": 95.0, "ci_sides": "TWO_SIDED", "param_type": "LS Mean Difference", "unit": "kg",
+            "treatment_label": "Drug", "comparator_label": "Placebo", "p_value_text": None, "role": "PRIMARY", "multiplicity_controlled": "YES", "hypothesis_type": "SUPERIORITY",
+            "ni_margin": None, "ni_met": "NOT_STATED", "superiority_tested": "NOT_STATED", "superiority_met": "NOT_STATED", "tier": "PEER_REVIEWED", "ci_status": "REPORTED",
+            "p_value_status": "NOT_REPORTED", "estimand_label": "EFFICACY", "labels": [], "source": None, "locator_quote": None, "verification_status": "QUOTE_ANCHORED",
+            "direction": {"established": True, "status": "STATED_IN_CURATED_SOURCE", "basis": "stated"}}
+    return {**base, **overrides}
+
+
+def test_c7_null_value_follows_the_stated_scale():
+    difference = interpret_analysis(_dto(estimate=0.95, ci_low=0.8, ci_high=1.1))  # a difference: 0 is outside 0.8–1.1
+    assert difference["effect_scale"] == "DIFFERENCE" and difference["null_value"] == 0 and difference["ci_excludes_no_difference"] is True
+    ratio = interpret_analysis(_dto(estimate=0.95, ci_low=0.8, ci_high=1.1, param_type="Hazard Ratio (HR)"))  # a ratio: 1 is inside
+    assert ratio["effect_scale"] == "RATIO" and ratio["null_value"] == 1 and ratio["ci_excludes_no_difference"] is False and not ratio["establishes"]
+    assert any("includes 1" in s for s in ratio["does_not_establish"])
+
+
+def test_c7_bioequivalence_ratios_stored_as_differences_are_not_read_against_zero(db):
+    study = db.scalar(select(Study).where(Study.nct_id == BIOEQ))
+    ratios = [a for a in study.analyses if a.unit == "ratio"]
+    assert len(ratios) >= 12
+    for analysis in ratios:
+        dto = analysis_dto(analysis)
+        reading = interpret_analysis(dto)
+        assert dto["effect_scale"]["scale"] == "NOT_ESTABLISHED" and dto["effect_scale"]["null_value"] is None, analysis.id  # 'difference' by name, 'ratio' by unit
+        assert reading["ci_excludes_no_difference"] is None and not reading["establishes"], analysis.id
+        assert not any(s.startswith("A confirmatory conclusion") for s in reading["does_not_establish"]), analysis.id  # the old reading: "the interval excludes no difference, but…"
+        assert any("scale" in m for m in reading["missing"])
+        assert "90% CI" in reading["observed"] if analysis.ci_low is not None else "confidence interval not reported" in reading["observed"]
+    assert sum(a.ci_level == 90 for a in ratios) >= 11
+
+
+def test_c4_interval_with_invalid_or_missing_level_supports_no_inference(db):
+    study = db.scalar(select(Study).where(Study.nct_id == ACHIEVE3))
+    bad = next(a for a in study.analyses if a.ci_level is not None and a.ci_level < 50)  # the registry record posts -3.99 as the level
+    dto = analysis_dto(bad)
+    reading = interpret_analysis(dto)
+    assert dto["ci_level_status"] == "INVALID_LEVEL" and any(label["code"] == "CI_LEVEL_INVALID" for label in dto["labels"])
+    assert reading["ci_excludes_no_difference"] is None and reading["ci_level"] is None and not reading["establishes"]
+    assert "% CI" not in reading["observed"] and "not a valid percentage" in reading["observed"]
+    unknown = interpret_analysis(_dto(ci_level=None))
+    assert unknown["ci_excludes_no_difference"] is None and not unknown["establishes"] and "confidence level not stated" in unknown["observed"]
+    assert any("confidence level" in s for s in unknown["does_not_establish"])
+
+
+def test_c4_stated_confidence_level_and_sidedness_are_used():
+    ninety = interpret_analysis(_dto(ci_level=90.0))
+    assert "90% CI" in ninety["observed"] and ninety["ci_excludes_no_difference"] is True
+    assert not ninety["establishes"] and any("90%" in s and "conventional" in s for s in ninety["does_not_establish"])
+    one_sided = interpret_analysis(_dto(ci_level=97.5, ci_sides="ONE_SIDED"))
+    assert "one-sided 97.5% CI" in one_sided["observed"] and not one_sided["establishes"]
+    conventional = interpret_analysis(_dto())
+    assert conventional["establishes"] and "95% confidence interval excludes 0" in conventional["establishes"][0]
+
+
+def test_c4_direction_is_stated_only_when_established(db):
+    award = db.scalar(select(Study).where(Study.nct_id == AWARD11))
+    # Registry order "1.5 mg, 3 mg"; estimate −0.17 while the arm values give 1.5 mg − 3 mg = +0.18: the stored order is not the direction.
+    mirrored = next(a for a in award.analyses if a.endpoint.category == "HBA1C_CHANGE" and a.treatment_label == "Dulaglutide 1.5 mg" and a.comparator_label == "Dulaglutide 3 mg" and a.estimate == -0.17)
+    dto = analysis_dto(mirrored)
+    assert dto["direction"]["status"] == "CONTRADICTED_BY_ARM_VALUES" and dto["direction"]["established"] is False
+    assert any(label["code"] == "DIRECTION_NOT_ESTABLISHED" for label in dto["labels"])
+    reading = interpret_analysis(dto)
+    assert reading["observed"].startswith("Between Dulaglutide 1.5 mg and Dulaglutide 3 mg") and " versus " not in reading["observed"]
+    assert reading["direction_established"] is False and any("Which group the estimate favours" in s for s in reading["does_not_establish"])
+    assert dto["estimate"] == -0.17  # reported as stored; nothing is re-signed
+    sm1 = db.scalar(select(Study).where(Study.nct_id == SM1))
+    primary = next(a for a in sm1.analyses if a.origin == "REGISTRY" and a.estimate == -20.1)
+    dto = analysis_dto(primary)
+    assert dto["direction"]["status"] == "VERIFIED_AGAINST_ARM_VALUES" and dto["effect_scale"]["scale"] == "DIFFERENCE"
+    assert interpret_analysis(dto)["observed"].startswith("15 mg Tirzepatide versus Placebo")
+
+
+# ---- C5: follow-up and lead-in baselines
+
+
+def test_c5_eight_weeks_more_follow_up_is_a_major_difference_for_weight(db):
+    reta = _pick(db, TRIUMPH1, arm_is="retatrutide 12 mg", estimand="TREATMENT_REGIMEN", tier="PEER_REVIEWED", weeks=80)
+    tirz = _pick(db, SM1, arm="15 mg", estimand="TREATMENT_REGIMEN", tier="PEER_REVIEWED", weeks=72)
+    duration = _factor(compare_findings(db, reta, tirz), "duration")
+    assert duration.assessment == "MAJOR_DIFFERENCE" and "8 weeks" in duration.explanation and "still changing" in duration.explanation
+
+
+def test_c5_baseline_class_recognises_lead_in_run_in_and_withdrawal_designs():
+    from incretinos.engines.findings import baseline_class
+
+    assert baseline_class({}, "Baseline") == "STUDY_BASELINE" and baseline_class(None, None) == "STUDY_BASELINE"
+    assert baseline_class({"comparator_type": "PLACEBO"}, "baseline (randomization, week 0)") == "STUDY_BASELINE"
+    assert baseline_class({"lead_in": "12-week intensive lifestyle intervention before randomization"}, "Baseline") == "LEAD_IN_DESIGN_BASELINE_UNSPECIFIED"
+    assert baseline_class({"run_in": "4-week placebo run-in"}, None) == "LEAD_IN_DESIGN_BASELINE_UNSPECIFIED"
+    assert baseline_class({"randomized_withdrawal": True}, "Randomization (Week 36)") == "RANDOMIZATION_AFTER_LEAD_IN"
+    assert baseline_class({"randomized_withdrawal": True}, "Baseline (Week 0)") == "STUDY_ENTRY_INCLUDING_LEAD_IN"
+    assert baseline_class({"lead_in": "x"}, "randomization") == "RANDOMIZATION_AFTER_LEAD_IN"
+    assert baseline_class({"lead_in": "12-week lifestyle lead-in"}, "baseline (randomization, week 0)") == "RANDOMIZATION_AFTER_LEAD_IN"
+    assert baseline_class({"lead_in": "12-week lifestyle lead-in"}, "Baseline (Week 0)") == "LEAD_IN_DESIGN_BASELINE_UNSPECIFIED"  # week 0 may be the randomization here
+    assert baseline_class({"randomized_withdrawal": True}, "study entry (week 0)") == "STUDY_ENTRY_INCLUDING_LEAD_IN"
+    assert baseline_class({}, "Randomization (Week 36)") == "RANDOMIZATION_AFTER_LEAD_IN"  # stated in the text even without a curated design feature
+    assert baseline_class({}, "baseline (week 0) of the extension subset") == "SUBSET_BASELINE"
+
+
+def test_c5_change_after_a_lead_in_is_never_differenced_with_a_change_from_study_baseline(db):
+    after_lead_in = _pick(db, SM3, arm="Tirzepatide")
+    plain = _pick(db, SM1, arm="15 mg", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72)
+    assert after_lead_in.baseline_class == "LEAD_IN_DESIGN_BASELINE_UNSPECIFIED" and plain.baseline_class == "STUDY_BASELINE"
+    assert any(label["code"] == "LEAD_IN_DESIGN" for label in after_lead_in.labels)
+    comparison = compare_findings(db, after_lead_in, plain)
+    assert comparison.classification == "NOT SUITABLE FOR EFFICACY COMPARISON" and comparison.descriptive_difference is None
+    assert _factor(comparison, "baseline").assessment == "BLOCKING"
+    within = compare_findings(db, after_lead_in, _pick(db, SM3, arm="Placebo"))  # the trial's own randomized contrast is unaffected
+    assert within.classification == "DIRECT RANDOMIZED COMPARISON" and _factor(within, "baseline").assessment == "MATCH"
+
+
+# ---- C6: unknown is unknown
+
+
+def test_c6_unknown_population_factors_are_not_called_similar(db):
+    a = _pick(db, ACHIEVE1, arm="36 mg", weeks=40)
+    b = _pick(db, ACHIEVE5, arm="36 mg", weeks=40)
+    comparison = compare_findings(db, a, b)
+    assert {_factor(comparison, k).assessment for k in ("baseline_weight", "baseline_bmi", "age")} == {"UNKNOWN"}
+    assert comparison.classification == "DESCRIPTIVE CROSS-STUDY COMPARISON"  # was PARTIALLY COMPARABLE with "similar … populations"
+    assert any("Not established as similar" in r and "mean age" in r for r in comparison.reasons)
+    assert not any("similar" in s for s in comparison.permitted_statements)
+    dose = _factor(comparison, "dose")  # orforglipron has two formulations on record and neither arm records which
+    assert dose.assessment == "UNKNOWN" and "more than one formulation" in dose.explanation
+
+
+def test_c6_partially_comparable_states_what_matched_and_what_is_unknown(db):
+    orfo = _pick(db, ATTAIN1, arm="36 mg", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72)
+    tirz = _pick(db, SM1, arm="15 mg", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72)
+    comparison = compare_findings(db, orfo, tirz)
+    assert comparison.classification == "PARTIALLY COMPARABLE"
+    text = " ".join(comparison.permitted_statements)
+    assert "similar endpoint definitions, estimands, populations" not in text
+    assert "match on the stored evidence:" in text and "mean baseline body weight" in text and "mean age" in text
+    assert "not established as similar" in text and "mean baseline bmi" in text.split("not established as similar")[1]
+    assert not guard_statement(text, cross_trial=True)
+    # Remove the stored population summary of one trial: the same pair can no longer be called partially comparable.
+    orfo.population_summary = {}
+    stripped = compare_findings(db, orfo, tirz)
+    assert stripped.classification == "DESCRIPTIVE CROSS-STUDY COMPARISON" and any("body size" in r for r in stripped.reasons)
+
+
+# ---- C8: the language guard
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Retatrutide is superior to tirzepatide.",
+        "Without doubt, retatrutide is superior to tirzepatide.",
+        "There is no question that retatrutide is superior to tirzepatide.",
+        "Retatrutide was not only effective but significantly greater in weight loss than tirzepatide.",
+        "Retatrutide achieved larger weight loss than tirzepatide (p<0.05).",
+        "Retatrutide reduced weight more than tirzepatide and the difference was significant.",
+        "Retatrutide is clearly the stronger drug, exceeding tirzepatide by 4.1 percentage points.",
+        "The difference between retatrutide and tirzepatide was statistically significant.",
+        "Retatrutide outperformed tirzepatide.",
+        "Retatrutide is more effective than tirzepatide.",
+        "Retatrutide is better than tirzepatide for weight loss.",
+        "Although the trials were not head-to-head, retatrutide is superior to tirzepatide.",
+        "It is no surprise that retatrutide is superior to tirzepatide.",
+        "Retatrutide is superior to tirzepatide and was not associated with more nausea.",
+        "The weight loss was significantly larger with retatrutide.",
+    ],
+)
+def test_c8_cross_trial_claims_are_flagged_whatever_negation_word_stands_nearby(text):
+    assert guard_statement(text, cross_trial=True), text
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Superiority was not demonstrated.",
+        "The difference must not be described as statistically significant; no valid test supports it.",
+        "Do not state or imply that retatrutide 12 mg is superior (or inferior) to tirzepatide 15 mg on the basis of these two findings.",
+        "No statistically significant difference can be claimed across trials.",
+        "These values do not show that retatrutide is superior to tirzepatide.",
+        "There is no evidence that retatrutide is superior to tirzepatide.",
+        "It is not known whether retatrutide is more effective than tirzepatide.",
+        "Retatrutide is not superior, better, or more effective than tirzepatide on this evidence.",
+        "Neither superiority nor a statistically significant difference may be claimed.",
+        "A significant difference between the two drugs was not observed.",
+        "The difference was non-significant.",
+        "The two values may be tabulated side by side with their study context and the methodological differences listed here.",
+        "ACHIEVE-4 reported the incidence of clinically significant or severe hypoglycaemia.",
+    ],
+)
+def test_c8_honest_negative_statements_are_not_flagged(text):
+    assert not guard_statement(text, cross_trial=True), text
+
+
+def test_c8_guard_covers_noninferiority_and_keeps_earlier_behaviour():
+    ni = {"hypothesis_type": "NON_INFERIORITY", "superiority_met": "NOT_STATED"}
+    assert guard_statement("Orforglipron outperformed insulin glargine on MACE-4.", **ni)
+    assert guard_statement("Orforglipron was more effective than insulin glargine.", **ni)
+    assert not guard_statement("Orforglipron was non-inferior to insulin glargine; superiority was not demonstrated.", **ni)
+    assert not guard_statement("Report counts cannot be read as incidence and do not show that the drug causes the event.", data_family="SPONTANEOUS")
+    assert not guard_statement("DXA lean mass decreased; this is not a direct measure of muscle loss.", lean_mass=True)
+    assert guard_statement("Participants lost muscle on tirzepatide, without doubt.", lean_mass=True)
+
+
+def test_c8_statements_the_engine_itself_permits_pass_the_guard(db, client):
+    for preset in client.get("/api/compare/presets").json():
+        body = client.post("/api/compare", json={"a": preset["a"], "b": preset["b"]}).json()["comparison"]
+        if body["classification"].startswith("DIRECT"):
+            continue  # a within-trial analysis may legitimately report a p-value
+        assert not guard_statement(" ".join(body["permitted_statements"]), cross_trial=True), preset["title"]
+
+
+# ---- WEB-12: worked comparisons are resolved by description and checked against their titles
+
+
+def test_web12_presets_are_two_different_results_and_are_what_their_titles_say(db, client):
+    presets = {p["title"]: p for p in client.get("/api/compare/presets").json()}
+    assert len(presets) == 8 and all(p["a"] != p["b"] and p["verified"] for p in presets.values())
+    elora = presets["EloraTZP 9 mg + 15 mg vs tirzepatide 15 mg within the Phase 2b trial"]
+    assert (elora["resolved"]["a"]["arm"], elora["resolved"]["b"]["arm"]) == ("eloralintide 9 mg + tirzepatide 15 mg", "tirzepatide 15 mg")
+    assert elora["relationship"] == "RANDOMIZED_ARMS_OF_ONE_TRIAL" and elora["classification"] == "DIRECT RANDOMIZED COMPARISON"
+    expected = {
+        "Tirzepatide 15 mg vs placebo within SURMOUNT-1": ("DIRECT RANDOMIZED COMPARISON", "RANDOMIZED_ARMS_OF_ONE_TRIAL"),
+        "Retatrutide 12 mg (TRIUMPH-1) vs tirzepatide 15 mg (SURMOUNT-1)": ("DESCRIPTIVE CROSS-STUDY COMPARISON", "DIFFERENT_TRIALS"),
+        "ATTAIN-1 36 mg: efficacy estimand vs treatment-regimen estimand": ("NOT SUITABLE FOR EFFICACY COMPARISON", "SAME_ARM_TWO_REPORTS"),
+        "Orforglipron 36 mg (ATTAIN-1) vs tirzepatide 15 mg (SURMOUNT-1)": ("PARTIALLY COMPARABLE", "DIFFERENT_TRIALS"),
+        "SURMOUNT-4 (from randomization at week 36) vs SURMOUNT-1 (from baseline)": ("NOT SUITABLE FOR EFFICACY COMPARISON", "DIFFERENT_TRIALS"),
+        "EloraTZP Phase 2b (T2D, 48 weeks) vs tirzepatide 15 mg in SURMOUNT-1 (no T2D, 72 weeks)": ("NOT SUITABLE FOR EFFICACY COMPARISON", "DIFFERENT_TRIALS"),
+        "Tirzepatide vs semaglutide within SURMOUNT-5": ("DIRECT RANDOMIZED COMPARISON", "RANDOMIZED_ARMS_OF_ONE_TRIAL"),
+    }
+    for title, (classification, relationship) in expected.items():
+        assert (presets[title]["classification"], presets[title]["relationship"]) == (classification, relationship), title
+    for p in presets.values():  # every resolved pair is re-read from the database and matches what the preset says it resolved to
+        for side in ("a", "b"):
+            finding = get_finding(db, p[side])
+            described = p["resolved"][side]
+            assert (finding.study_name, finding.arm_label, finding.estimand_label, finding.timepoint_weeks, finding.tier) == (
+                described["study"], described["arm"], described["estimand"], described["timepoint_weeks"], described["tier"]), p["title"]
+            assert finding.study_name.split()[0] in p["title"] or finding.study_name in p["title"], p["title"]
+    assert client.post("/api/compare", json={"a": elora["a"], "b": elora["a"]}).status_code == 422  # a result beside itself is refused
+
+
+def test_web12_a_preset_that_is_no_longer_what_its_title_says_is_not_offered(db):
+    from incretinos.api.main import PRESETS, _resolve_preset
+
+    spec = next(s for s in PRESETS if s.title.startswith("EloraTZP 9 mg + 15 mg vs tirzepatide 15 mg"))
+    assert _resolve_preset(db, spec) is not None
+    study = db.scalar(select(Study).where(Study.nct_id == "NCT06603571"))
+    for r in study.results:  # the trial's tirzepatide-alone arm no longer has an efficacy-estimand weight result
+        if r.arm is not None and r.arm.drug_slug == "tirzepatide" and r.endpoint.category == "WEIGHT_PCT_CHANGE":
+            r.value = None
+    db.flush()
+    assert _resolve_preset(db, spec) is None  # not silently replaced by the combination arm (the old substring match did that)
+
+
+# ---- XS-12: one display rule, no winner by tier
+
+
+def test_xs12_display_rule_never_looks_at_the_evidence_tier():
+    from incretinos.engines.findings import DISPLAY_RULE, display_lead, display_order
+
+    label = {"id": 3, "tier": "REGULATORY_LABEL", "ci_low": None, "ci_high": None, "dispersion_value": None, "n_analyzed": None, "verification_status": "QUOTE_ANCHORED"}
+    release = {"id": 1, "tier": "PRESS_RELEASE", "ci_low": None, "ci_high": None, "dispersion_value": None, "n_analyzed": None, "verification_status": "QUOTE_ANCHORED"}
+    article = {"id": 2, "tier": "PEER_REVIEWED", "ci_low": -12.0, "ci_high": -10.4, "dispersion_value": None, "n_analyzed": None, "verification_status": "PENDING_HUMAN_REVIEW"}
+    assert [x["id"] for x in display_order([label, release, article])] == [2, 1, 3]  # reported interval first, then the record stored first
+    for tiers in (("REGULATORY_LABEL", "PRESS_RELEASE"), ("PRESS_RELEASE", "REGULATORY_LABEL")):  # swapping tiers changes nothing
+        assert [x["id"] for x in display_order([{**label, "tier": tiers[0]}, {**release, "tier": tiers[1]}])] == [1, 3]
+    rejected = {**article, "id": 9, "verification_status": "REJECTED"}
+    assert display_lead([rejected, label]) == (label, []) and display_lead([rejected]) == (None, [])
+    assert "Display choice, not a judgement of correctness" in DISPLAY_RULE and "Evidence tier is not used" in DISPLAY_RULE
+
+
+def test_xs12_every_source_of_one_quantity_is_returned_with_its_tier(db, client):
+    from incretinos.engines import benefit_risk
+    from incretinos.engines.findings import DISPLAY_RULE
+
+    profiles = benefit_risk.arm_profiles(db, ATTAIN1, estimand="TREATMENT_REGIMEN")
+    top = next(a for a in profiles["arms"] if a["drug_slug"] == "orforglipron" and a["dose_amount"] == 36)
+    entry = top["efficacy"]["weight_pct"]
+    sources = [entry, *entry["other_sources"]]
+    assert {s["tier"] for s in sources} == {"PEER_REVIEWED", "REGULATORY_REVIEW", "REGULATORY_LABEL"}  # journal, FDA review and label all returned
+    assert entry["ci_low"] is not None and all(o["ci_low"] is None for o in entry["other_sources"])  # the lead is the one with a reported interval
+    assert entry["sources_report_same_value"] is False and sorted({s["value"] for s in sources}) == [-11.2, -11.1]
+    assert entry["display_choice"] == DISPLAY_RULE and entry["alternatives"] == 2
+    body = client.get(f"/api/estimands?study={ATTAIN1}").json()
+    assert body["display_rule"] == DISPLAY_RULE
+    cell = next(r for r in body["rows"] if r["category"] == "WEIGHT_PCT_CHANGE" and r["arm"] == "orforglipron 36 mg" and r["timepoint_weeks"] == 72 and "TREATMENT_REGIMEN" in r["by_estimand"])
+    assert len(cell["by_estimand"]["TREATMENT_REGIMEN"]) >= 2  # all sources stay listed in the cell
+    assert cell["display_lead"]["TREATMENT_REGIMEN"] == entry["result_id"]  # and the chart lead is the same record on both surfaces
+
+
+# ---- Evidence a reviewer rejected takes no part in comparisons, profiles or worked examples
+
+
+def test_rejected_evidence_is_excluded_from_comparisons_and_profiles(db):
+    from incretinos.api.main import PRESETS, _resolve_preset
+    from incretinos.engines import benefit_risk
+
+    high = _pick(db, SM1, arm="15 mg", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72)
+    placebo = _pick(db, SM1, arm="placebo", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72)
+    assert compare_findings(db, high, placebo).classification == "DIRECT RANDOMIZED COMPARISON"
+    row = db.get(OutcomeResult, high.result_id)
+    row.verification_status = "REJECTED"  # what an authenticated review decision would record; this test only simulates the stored state
+    db.flush()
+    rejected = compare_findings(db, get_finding(db, high.result_id), placebo)
+    assert rejected.classification == "NOT SUITABLE FOR EFFICACY COMPARISON" and rejected.descriptive_difference is None
+    assert _factor(rejected, "review_status").assessment == "BLOCKING"
+    profiles = benefit_risk.arm_profiles(db, SM1, estimand="EFFICACY")
+    assert "weight_pct" not in next(a for a in profiles["arms"] if a["key"] == "tirzepatide|15|")["efficacy"]  # no other efficacy-estimand value is substituted
+    assert _resolve_preset(db, next(s for s in PRESETS if s.title == "Tirzepatide 15 mg vs placebo within SURMOUNT-1")) is None
