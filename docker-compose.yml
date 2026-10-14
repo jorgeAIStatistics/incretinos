@@ -1,12 +1,25 @@
 # IncretinOS — PostgreSQL + API + web. Runs fully offline from committed fixtures:
 #   docker compose up --build      →  http://localhost:3000
+#
+# The defaults are for one developer's machine. Before anyone else can reach a deployment:
+#   - set INCRETINOS_DB_PASSWORD: the default below is published in this file;
+#   - put a TLS-terminating reverse proxy in front of the web port. Compose serves plain HTTP, and the
+#     reviewer token travels in a request header;
+#   - leave the API port on the loopback interface (the default). Browsers never need it: they reach the
+#     API through the web application's same-origin /api proxy.
+#
+# Every ${VARIABLE} is read from the shell or from a .env file next to this file (see .env.example).
+# A variable that is not set is passed as empty, and the application then uses its own default.
 services:
   db:
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: incretinos
-      POSTGRES_PASSWORD: incretinos   # local demo credential; override for any shared deployment
+      # DEVELOPMENT DEFAULT. Override with INCRETINOS_DB_PASSWORD for anything that is not a private machine.
+      # (It is read only when the pgdata volume is first created; change an existing database with ALTER ROLE.)
+      POSTGRES_PASSWORD: ${INCRETINOS_DB_PASSWORD:-incretinos}
       POSTGRES_DB: incretinos
+    # The database port is not published: only the api service talks to it.
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -16,18 +29,36 @@ services:
       retries: 20
 
   api:
-    build: ./backend
+    build:
+      context: ./backend
+      args:
+        # Optional Python extras baked into the image, e.g. INCRETINOS_IMAGE_EXTRAS=llm for the Anthropic SDK.
+        INCRETINOS_EXTRAS: ${INCRETINOS_IMAGE_EXTRAS:-}
     environment:
-      INCRETINOS_DATABASE_URL: postgresql+psycopg://incretinos:incretinos@db:5432/incretinos
-      INCRETINOS_OFFLINE: ${INCRETINOS_OFFLINE:-true}
+      # The password must be URL-safe (letters, digits, - . _ ~), because it is placed inside this URL.
+      INCRETINOS_DATABASE_URL: postgresql+psycopg://incretinos:${INCRETINOS_DB_PASSWORD:-incretinos}@db:5432/incretinos
+      INCRETINOS_CORS_ORIGINS: ${INCRETINOS_CORS_ORIGINS:-http://localhost:${INCRETINOS_WEB_PORT:-3000}}
+      # Everything below is passed through as documented in .env.example; empty means "application default".
+      INCRETINOS_OFFLINE: ${INCRETINOS_OFFLINE:-}
       INCRETINOS_REVIEWER_TOKEN: ${INCRETINOS_REVIEWER_TOKEN:-}
-      INCRETINOS_LLM_PROVIDER: ${INCRETINOS_LLM_PROVIDER:-none}
-      INCRETINOS_CORS_ORIGINS: http://localhost:3000
+      INCRETINOS_REFRESH_HOURS: ${INCRETINOS_REFRESH_HOURS:-}
+      INCRETINOS_NCBI_API_KEY: ${INCRETINOS_NCBI_API_KEY:-}
+      INCRETINOS_NCBI_EMAIL: ${INCRETINOS_NCBI_EMAIL:-}
+      INCRETINOS_OPENFDA_API_KEY: ${INCRETINOS_OPENFDA_API_KEY:-}
+      INCRETINOS_LLM_PROVIDER: ${INCRETINOS_LLM_PROVIDER:-}
+      INCRETINOS_LLM_MODEL: ${INCRETINOS_LLM_MODEL:-}
+      INCRETINOS_ANTHROPIC_API_KEY: ${INCRETINOS_ANTHROPIC_API_KEY:-}
+      INCRETINOS_DOCS_ENABLED: ${INCRETINOS_DOCS_ENABLED:-}
+      INCRETINOS_RATE_LIMIT_ENABLED: ${INCRETINOS_RATE_LIMIT_ENABLED:-}
+      INCRETINOS_RATE_LIMIT_SIMULATION_PER_MINUTE: ${INCRETINOS_RATE_LIMIT_SIMULATION_PER_MINUTE:-}
+      INCRETINOS_RATE_LIMIT_ASSISTANT_PER_MINUTE: ${INCRETINOS_RATE_LIMIT_ASSISTANT_PER_MINUTE:-}
+      INCRETINOS_RATE_LIMIT_PROXY_HOPS: ${INCRETINOS_RATE_LIMIT_PROXY_HOPS:-}
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "${INCRETINOS_API_PORT:-8000}:8000"
+      # Loopback only by default. Set INCRETINOS_API_BIND=0.0.0.0 to expose the API directly (not needed for the web app).
+      - "${INCRETINOS_API_BIND:-127.0.0.1}:${INCRETINOS_API_PORT:-8000}:8000"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health').status == 200 else 1)"]
       interval: 10s
@@ -44,7 +75,8 @@ services:
       api:
         condition: service_healthy
     ports:
-      - "${INCRETINOS_WEB_PORT:-3000}:3000"
+      # Plain HTTP. Set INCRETINOS_WEB_BIND=127.0.0.1 when a TLS proxy on the same host is the public entry point.
+      - "${INCRETINOS_WEB_BIND:-0.0.0.0}:${INCRETINOS_WEB_PORT:-3000}:3000"
 
 volumes:
   pgdata:

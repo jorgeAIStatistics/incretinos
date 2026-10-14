@@ -5,9 +5,25 @@ on:
     branches: [main]
   pull_request:
 
+# The workflow only reads the repository.
+permissions:
+  contents: read
+
+# A newer push to the same branch or pull request replaces the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  # CI is configured by the variables in this file only; no .env file is read.
+  INCRETINOS_ENV_FILE: none
+
 jobs:
   backend:
+    name: Backend (SQLite)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: backend
@@ -17,19 +33,89 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-      - run: pip install -e ".[dev]"
+          cache-dependency-path: |
+            backend/constraints.txt
+            backend/pyproject.toml
+      - name: Install with the pinned versions
+        run: pip install -c constraints.txt -e ".[dev]"
       - run: ruff check incretinos tests scripts
       - name: Unit and integration tests (offline fixtures, no network)
         run: pytest -q --cov=incretinos --cov-report=term-missing:skip-covered
-      - name: Migration creates the full schema
-        run: INCRETINOS_DATABASE_URL=sqlite:///./var/ci-migrate.db alembic upgrade head
+      - name: Migrations build the schema, and the models have not drifted from them
+        env:
+          INCRETINOS_DATABASE_URL: sqlite:///./var/ci-migrate.db
+        run: |
+          alembic upgrade head
+          alembic check
       - name: Scientific validation rules on a freshly seeded database
         run: |
           incretinos seed --reset
           incretinos validate
 
-  frontend:
+  backend-postgres:
+    name: Backend (PostgreSQL)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine  # the version docker-compose.yml runs
+        env:
+          POSTGRES_USER: incretinos
+          POSTGRES_PASSWORD: incretinos-ci
+          POSTGRES_DB: incretinos
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U incretinos -d incretinos"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      INCRETINOS_DATABASE_URL: postgresql+psycopg://incretinos:incretinos-ci@localhost:5432/incretinos
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            backend/constraints.txt
+            backend/pyproject.toml
+      - name: Install with the pinned versions
+        run: pip install -c constraints.txt -e ".[dev]"
+      - name: Migrate (the path the container takes), then check for drift between models and migrations
+        run: |
+          incretinos init-db
+          alembic check
+      - name: Seed from the committed fixtures
+        run: incretinos seed
+      - name: Scientific validation rules
+        run: incretinos validate
+      - name: Backend tests against PostgreSQL
+        # The suite drops and rebuilds the database named here, then seeds it itself. Tests that need a
+        # scratch database create their own SQLite file, so the whole suite runs.
+        env:
+          INCRETINOS_TEST_DATABASE_URL: postgresql+psycopg://incretinos:incretinos-ci@localhost:5432/incretinos
+        run: pytest -q
+
+  images:
+    name: Container images build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: The Compose file is valid
+        run: docker compose config --quiet
+      - name: Build the API and web images (the API image installs from backend/constraints.txt)
+        run: docker compose build
+
+  frontend:
+    name: Frontend and browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: backend
     steps:
       - uses: actions/checkout@v4
@@ -37,23 +123,38 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
+          cache-dependency-path: |
+            backend/constraints.txt
+            backend/pyproject.toml
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Seed the offline evidence database
+      - name: Backend environment for the browser tests
+        # The Playwright configuration starts its own API from backend/.venv on its own port and seeds its own
+        # database (backend/var/e2e.db), so the package has to be installed there; nothing is seeded here.
         working-directory: backend
         run: |
           python -m venv .venv
-          .venv/bin/pip install -e .
-          .venv/bin/incretinos seed --reset
+          .venv/bin/pip install -c constraints.txt -e .
+          mkdir -p var  # the test server writes its seed log and database here
       - working-directory: frontend
         run: npm ci --no-audit --no-fund
       - working-directory: frontend
         run: npm run typecheck && npm run build
       - working-directory: frontend
         run: npx playwright install --with-deps chromium
-      - name: Browser tests of the principal workflows
+      - name: Browser tests of the principal workflows (each fails on any browser-console error)
         working-directory: frontend
         run: npx playwright test
+      - name: Keep the traces and the seed log when a browser test fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-output
+          path: |
+            frontend/test-results/
+            backend/var/e2e-seed.log
+          if-no-files-found: ignore
+          retention-days: 7
