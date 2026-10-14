@@ -6,6 +6,7 @@ cannot appear in a report without its source, tier, retrieval date and verificat
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -33,61 +34,140 @@ DISCLAIMER = (
 )
 
 
+# --------------------------------------------------------------------------- escaping
+#
+# Everything a report prints that is not a literal of this module comes, directly or through a generated
+# sentence, from source text: study names, arm labels, endpoint titles, units, quotes, URLs. A source must not
+# be able to add a heading, a link, an image, HTML, emphasis or a table column to a report, so every such value
+# passes through one of the functions below. The target is CommonMark and GitHub-flavoured Markdown.
+#
+# The escaping is deliberately no wider than the grammar requires, because a report is also read as plain text
+# and a locator quote should stay searchable in its source: "p <0.001", "[95% CI, -21.2 to -17.7]" and
+# TREATMENT_REGIMEN are left exactly as they are, since none of them can start a construct.
+
+# Line breaks, tabs and other control characters (ordinary and non-breaking spaces are kept as they are).
+_CONTROL = re.compile(r"[\x00-\x1f\x7f\u0085\u2028\u2029]+")
+# Bidirectional overrides and isolates can make digits display in a different order than they are stored.
+_BIDI = re.compile(r"[\u202a-\u202e\u2066-\u2069]")
+# "&name;" / "&#123;" would be decoded by the renderer; a bare "&" is not.
+_ENTITY = re.compile(r"&(?=#?\w+;)")
+# "<" opens a tag, comment, declaration or autolink only before a letter, "/", "!" or "?". "<0.001" is text.
+_TAG_OPEN = re.compile(r"<(?=[A-Za-z/!?])")
+# Code spans, emphasis and strikethrough pair up anywhere on a line, also across two values.
+_PAIRED = re.compile(r"([`*~])")
+# An underscore between two letters or digits (TREATMENT_REGIMEN, content_hash) cannot open or close emphasis;
+# every other underscore is escaped.
+_EMPHASIS_UNDERSCORE = re.compile(r"(?<![^\W_])_|_(?![^\W_])")
+# A link or image needs "]" directly before "(" or "[". The last character of a value is followed by text this
+# function cannot see, so a closing bracket there is escaped too. (A bare "[x]" links only if the document
+# defines "[x]: url", and a definition must start a line, which no value can do: see ``lead`` below.)
+_LINK_CLOSE = re.compile(r"\](?=\s*[(\[]|\s*$)")
+_LEADING_ORDERED = re.compile(r"^(\d{1,9})([.)])")
+_SAFE_URL = re.compile(r"https?://[^\s<>]+")
+
+
+def _md(text: Any, *, lead: bool = False) -> str:
+    """Inline text that renders as the same characters it was given.
+
+    Line breaks and control characters become one space, so a value can never start a new block (heading,
+    quote, list, table row, code fence, link definition); bidirectional overrides are dropped. Then: backslash
+    doubled; entity-like ``&`` and tag-opening ``<`` written as entities; backtick, ``*``, ``~`` and
+    emphasis-capable ``_`` escaped; the ``]`` of a would-be link escaped; ``://`` and ``www.`` broken up so that
+    a renderer does not turn source text into a link.
+
+    ``lead=True`` is for a value that opens a block (a list item or a paragraph): a leading ``#``, ``>``, ``-``,
+    ``+``, ``=``, ``[`` or ``1.`` is neutralised as well, which also rules out link definitions and task boxes.
+    """
+    out = _BIDI.sub("", _CONTROL.sub(" ", str(text))).strip()
+    out = out.replace("\\", "\\\\")
+    out = _TAG_OPEN.sub("&lt;", _ENTITY.sub("&amp;", out))
+    out = _EMPHASIS_UNDERSCORE.sub(r"\\_", _PAIRED.sub(r"\\\1", out))
+    out = _LINK_CLOSE.sub(r"\\]", out)
+    out = out.replace("://", "\\://").replace("www.", "www\\.")
+    if lead:
+        if out[:1] in ("#", ">", "-", "+", "=", "["):
+            out = "\\" + out
+        out = _LEADING_ORDERED.sub(r"\1\\\2", out)
+    return out
+
+
+def _code(text: Any) -> str:
+    """A code span holding ``text`` literally, delimited by more backticks than the text contains."""
+    body = _BIDI.sub("", _CONTROL.sub(" ", str(text))).strip()
+    if not body:
+        return "—"
+    fence = "`" * (max((len(run) for run in re.findall(r"`+", body)), default=0) + 1)
+    pad = " " if body.startswith("`") or body.endswith("`") else ""
+    return f"{fence}{pad}{body}{pad}{fence}"
+
+
+def _link(url: Any) -> str:
+    """An http(s) address as an explicit autolink whose text is the address itself; anything else as inert text."""
+    target = str(url).strip()
+    return f"<{target}>" if _SAFE_URL.fullmatch(target) else _md(target, lead=True)
+
+
 def _cell(text: Any) -> str:
-    return str(text if text not in (None, "") else "—").replace("|", "\\|").replace("\n", " ")
+    """A table cell: inline text in which a pipe cannot end the cell."""
+    return _md(text if text not in (None, "") else "—").replace("|", "\\|")
+
+
+def _item(text: Any) -> str:
+    """A value that opens a list item or a paragraph."""
+    return _md(text, lead=True)
 
 
 def _source_line(index: int, source: dict[str, Any], verification: str, location: str | None, quote: str | None) -> str:
     bits = [
-        f"[{index}] **{source['title']}**",
-        f"{source.get('publisher') or 'publisher not recorded'}",
-        f"tier: {source['tier_label']}",
-        f"published/updated: {source.get('published_date') or 'not recorded'}",
-        f"retrieved: {(source.get('retrieved_at') or '')[:10] or 'not recorded'}",
-        f"version: {source.get('version_label') or '—'}",
-        f"content hash: `{(source.get('content_hash') or '')[:16] or '—'}`",
-        f"verification: {verification.replace('_', ' ').lower()}",
+        f"[{index}] **{_md(source['title'])}**",
+        f"{_md(source.get('publisher') or 'publisher not recorded')}",
+        f"tier: {_md(source['tier_label'])}",
+        f"published/updated: {_md(source.get('published_date') or 'not recorded')}",
+        f"retrieved: {_md((source.get('retrieved_at') or '')[:10] or 'not recorded')}",
+        f"version: {_md(source.get('version_label') or '—')}",
+        f"content hash: {_code((source.get('content_hash') or '')[:16])}",
+        f"verification: {_md(verification.replace('_', ' ').lower())}",
     ]
     line = " · ".join(bits)
     if source.get("url"):
-        line += f"\n    {source['url']}"
+        line += f"\n    {_link(source['url'])}"
     if location:
-        line += f"\n    Location: `{location}`"
+        line += f"\n    Location: {_code(location)}"
     if quote:
-        line += f"\n    Locator quote: “{quote}”"
+        line += f"\n    Locator quote: “{_md(quote)}”"
     return line
 
 
 def _finding_block(tag: str, f: Finding, source_no: int) -> list[str]:
     reading = interpret_finding(f)
     lines = [
-        f"### Finding {tag} — {f.study_name}: {f.arm_label}",
+        f"### Finding {tag} — {_md(f.study_name)}: {_md(f.arm_label)}",
         "",
-        f"{f.statement} [{source_no}]",
+        f"{_item(f.statement)} [{source_no}]",
         "",
         "| Element | Value |",
         "|---|---|",
-        f"| Study | {_cell(f.study_name)} ({f.nct_id}), {_cell(f.phase)}, status {_cell(f.study_status)} |",
+        f"| Study | {_cell(f.study_name)} ({_md(f.nct_id)}), {_cell(f.phase)}, status {_cell(f.study_status)} |",
         f"| Population | {_cell(reading['population'])} |",
-        f"| Arm / dose | {_cell(f.arm_label)}" + (f" — {_fmt(f.dose_amount)} {f.dose_unit}" if f.dose_amount is not None else "") + (f" — formulation {f.formulation_key}" if f.formulation_key else "") + " |",
-        f"| Endpoint | {_cell(f.endpoint_title)} ({f.role.replace('_', ' ').lower()}; multiplicity control: {f.multiplicity_controlled.replace('_', ' ').lower()}) |",
-        f"| Estimand | {f.estimand_label.replace('_', ' ').lower()} ({f.estimand_basis.replace('_', ' ').lower()}) |",
+        f"| Arm / dose | {_cell(f.arm_label)}" + (f" — {_fmt(f.dose_amount)} {_md(f.dose_unit or '')}" if f.dose_amount is not None else "") + (f" — formulation {_md(f.formulation_key)}" if f.formulation_key else "") + " |",
+        f"| Endpoint | {_cell(f.endpoint_title)} ({_md(f.role.replace('_', ' ').lower())}; multiplicity control: {_md(f.multiplicity_controlled.replace('_', ' ').lower())}) |",
+        f"| Estimand | {_md(f.estimand_label.replace('_', ' ').lower())} ({_md(f.estimand_basis.replace('_', ' ').lower())}) |",
         f"| Reported value | {_cell(format_value(f))} |",
-        f"| Uncertainty | {_cell(format_ci(f))}" + (f"; {f.dispersion_type} {_fmt(f.dispersion_value)}" if f.dispersion_value is not None else "") + " |",
+        f"| Uncertainty | {_cell(format_ci(f))}" + (f"; {_md(f.dispersion_type or '')} {_fmt(f.dispersion_value)}" if f.dispersion_value is not None else "") + " |",
         f"| Participants analysed | {_cell(f.n_analyzed if f.n_analyzed is not None else 'not reported')} |",
         f"| Baseline / time point | {_cell(f.baseline_definition or 'not stated')} → week {_cell(_fmt(f.timepoint_weeks, 0) if f.timepoint_weeks is not None else 'not stated')} |",
         f"| Evidence tier | {_cell((f.source or {}).get('tier_label', f.tier))} |",
-        f"| Verification | {f.verification_status.replace('_', ' ').lower()} |",
+        f"| Verification | {_md(f.verification_status.replace('_', ' ').lower())} |",
         "",
-        "Qualifiers: " + "; ".join(label["text"] for label in f.labels) + ".",
+        "Qualifiers: " + "; ".join(_md(label["text"]) for label in f.labels) + ".",
         "",
         "**Does not establish:**",
-        *[f"- {item}" for item in reading["does_not_establish"]],
+        *[f"- {_item(item)}" for item in reading["does_not_establish"]],
     ]
     if reading["missing"]:
-        lines += ["", "**Not available in this source:**", *[f"- {item}" for item in reading["missing"]]]
+        lines += ["", "**Not available in this source:**", *[f"- {_item(item)}" for item in reading["missing"]]]
     if reading["derived_interval"]:
-        lines += ["", f"*Inference (not reported by the source):* {reading['derived_interval']['display']}"]
+        lines += ["", f"*Inference (not reported by the source):* {_md(reading['derived_interval']['display'])}"]
     return lines + [""]
 
 
@@ -98,7 +178,7 @@ def comparison_report_markdown(session: Session, result_a: int, result_b: int) -
     comparison = compare_findings(session, a, b)
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     lines = [
-        f"# Comparison report: {a.study_name} — {a.arm_label} versus {b.study_name} — {b.arm_label}",
+        f"# Comparison report: {_md(a.study_name)} — {_md(a.arm_label)} versus {_md(b.study_name)} — {_md(b.arm_label)}",
         "",
         f"Generated {now} by IncretinOS {__version__} from stored public evidence.",
         "",
@@ -106,14 +186,14 @@ def comparison_report_markdown(session: Session, result_a: int, result_b: int) -
         "",
         "## Classification",
         "",
-        f"**{comparison.classification}** — {comparison.headline}.",
+        f"**{_md(comparison.classification)}** — {_md(comparison.headline)}.",
         "",
         f"Factors: {comparison.counts.get('blocking', 0)} blocking · {comparison.counts.get('major', 0)} major differences · "
         f"{comparison.counts.get('minor', 0)} minor differences · {comparison.counts.get('unknown', 0)} not assessable · {comparison.counts.get('match', 0)} matching.",
         "",
         "### Why",
         "",
-        *[f"- {reason}" for reason in comparison.reasons],
+        *[f"- {_item(reason)}" for reason in comparison.reasons],
         "",
         "## The two findings",
         "",
@@ -125,10 +205,10 @@ def comparison_report_markdown(session: Session, result_a: int, result_b: int) -
     if comparison.reported_analyses:
         for analysis in comparison.reported_analyses:
             reading = interpret_analysis(analysis)
-            lines += [f"- {reading['observed']} Source tier: {analysis['source']['tier_label'] if analysis['source'] else analysis['tier']}; verification: {analysis['verification_status'].replace('_', ' ').lower()}."]
-            lines += [f"  - Establishes: {item}" for item in reading["establishes"]]
-            lines += [f"  - Does not establish: {item}" for item in reading["does_not_establish"]]
-            lines += [f"  - Not available: {item}" for item in reading["missing"]]
+            lines += [f"- {_item(reading['observed'])} Source tier: {_md(analysis['source']['tier_label'] if analysis['source'] else analysis['tier'])}; verification: {_md(analysis['verification_status'].replace('_', ' ').lower())}."]
+            lines += [f"  - Establishes: {_md(item)}" for item in reading["establishes"]]
+            lines += [f"  - Does not establish: {_md(item)}" for item in reading["does_not_establish"]]
+            lines += [f"  - Not available: {_md(item)}" for item in reading["missing"]]
     elif comparison.same_study:
         lines.append("No between-arm analysis for this pair is stored. Any difference between the two arm-level values is descriptive.")
     else:
@@ -138,7 +218,7 @@ def comparison_report_markdown(session: Session, result_a: int, result_b: int) -
     lines += ["## Descriptive difference", ""]
     if comparison.descriptive_difference:
         d = comparison.descriptive_difference
-        lines.append(f"A − B = **{_fmt(d['value'])}** {d['unit'] or ''} — confidence interval: not available. {d['note']}")
+        lines.append(f"A − B = **{_fmt(d['value'])}** {_md(d['unit'] or '')} — confidence interval: not available. {_md(d['note'])}")
     else:
         lines.append("Not computed: the classification does not permit a difference between these two values.")
     lines.append("")
@@ -148,19 +228,19 @@ def comparison_report_markdown(session: Session, result_a: int, result_b: int) -
         "",
         "| Dimension | Finding A | Finding B | Assessment | Explanation |",
         "|---|---|---|---|---|",
-        *[f"| {_cell(x.label)} | {_cell(x.a)} | {_cell(x.b)} | {x.assessment.replace('_', ' ').title()} | {_cell(x.explanation)} |" for x in comparison.factors],
+        *[f"| {_cell(x.label)} | {_cell(x.a)} | {_cell(x.b)} | {_cell(x.assessment.replace('_', ' ').title())} | {_cell(x.explanation)} |" for x in comparison.factors],
         "",
         "## What may be said",
         "",
-        *[f"- {s}" for s in comparison.permitted_statements],
+        *[f"- {_item(s)}" for s in comparison.permitted_statements],
         "",
         "## What may not be said",
         "",
-        *[f"- {s}" for s in comparison.prohibited_statements],
+        *[f"- {_item(s)}" for s in comparison.prohibited_statements],
         "",
     ]
     if comparison.requirements:
-        lines += ["## What a rigorous comparison would require", "", *[f"- {s}" for s in comparison.requirements], ""]
+        lines += ["## What a rigorous comparison would require", "", *[f"- {_item(s)}" for s in comparison.requirements], ""]
 
     lines += ["## Sources", ""]
     for index, f in ((1, a), (2, b)):
@@ -191,7 +271,7 @@ def study_report_markdown(session: Session, nct_id: str) -> str:
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     population = study.population
     lines = [
-        f"# Evidence report: {study.display_name} ({study.nct_id})",
+        f"# Evidence report: {_md(study.display_name)} ({_md(study.nct_id)})",
         "",
         f"Generated {now} by IncretinOS {__version__}.",
         "",
@@ -199,12 +279,12 @@ def study_report_markdown(session: Session, nct_id: str) -> str:
         "",
         "## Registered design",
         "",
-        f"- Title: {study.brief_title}",
-        f"- Phase: {study.phase or 'not stated'} · status: {study.overall_status} · enrollment: {study.enrollment} ({(study.enrollment_type or 'type not stated').lower()})",
-        f"- Allocation: {study.allocation or 'not stated'} · masking: {study.masking or 'not stated'} · model: {study.intervention_model or 'not stated'}",
-        f"- Primary completion: {study.primary_completion_date or 'not stated'} ({(study.primary_completion_type or 'type not stated').lower()}) · registry last updated: {study.last_update_posted}",
-        f"- Population: diabetes status {population.diabetes_status if population else 'NOT_STATED'} — {population.diabetes_basis if population else ''}",
-        f"- Registry record: https://clinicaltrials.gov/study/{study.nct_id}",
+        f"- Title: {_md(study.brief_title)}",
+        f"- Phase: {_md(study.phase or 'not stated')} · status: {_md(study.overall_status)} · enrollment: {_md(study.enrollment)} ({_md((study.enrollment_type or 'type not stated').lower())})",
+        f"- Allocation: {_md(study.allocation or 'not stated')} · masking: {_md(study.masking or 'not stated')} · model: {_md(study.intervention_model or 'not stated')}",
+        f"- Primary completion: {_md(study.primary_completion_date or 'not stated')} ({_md((study.primary_completion_type or 'type not stated').lower())}) · registry last updated: {_md(study.last_update_posted)}",
+        f"- Population: diabetes status {_md(population.diabetes_status if population else 'NOT_STATED')} — {_md((population.diabetes_basis or '') if population else '')}",
+        f"- Registry record: {_link(f'https://clinicaltrials.gov/study/{study.nct_id}')}",
         "",
         "## Linked publications",
         "",
@@ -214,7 +294,7 @@ def study_report_markdown(session: Session, nct_id: str) -> str:
         lines.append("None linked in the registry or PubMed.")
     for link in links[:25]:
         p = link.publication
-        lines.append(f"- {'**Primary results** — ' if link.relation == 'PRIMARY_RESULTS' else ''}{p.title} *{p.journal or ''}* {p.year or ''}. PMID {p.pmid}" + (f"; doi:{p.doi}" if p.doi else "") + f". Link basis: {', '.join(b.replace('_', ' ').lower() for b in link.bases)} (confidence {link.confidence.lower()}).")
+        lines.append(f"- {'**Primary results** — ' if link.relation == 'PRIMARY_RESULTS' else ''}{_item(p.title)} *{_md(p.journal or '')}* {_md(p.year or '')}. PMID {_md(p.pmid)}" + (f"; doi:{_md(p.doi)}" if p.doi else "") + f". Link basis: {', '.join(_md(b.replace('_', ' ').lower()) for b in link.bases)} (confidence {_md(link.confidence.lower())}).")
     lines += ["", "## Primary and key results as reported", ""]
     shown = 0
     sources: dict[int, tuple[dict, str, str | None, str | None]] = {}
@@ -225,7 +305,7 @@ def study_report_markdown(session: Session, nct_id: str) -> str:
         if finding.source:
             sources.setdefault(finding.source["id"], (finding.source, finding.verification_status, finding.source_location, finding.locator_quote))
             number = list(sources).index(finding.source["id"]) + 1
-            lines.append(f"- {finding.statement} [{number}]")
+            lines.append(f"- {_item(finding.statement)} [{number}]")
             shown += 1
         if shown >= 40:
             lines.append("- … further results are available in the application.")
@@ -239,9 +319,9 @@ def study_report_markdown(session: Session, nct_id: str) -> str:
     for analysis in analyses:
         dto = analysis_dto(analysis)
         reading = interpret_analysis(dto)
-        lines.append(f"- **{dto['endpoint_title']}** — {reading['observed']} [{'; '.join(label['text'] for label in dto['labels'])}]")
+        lines.append(f"- **{_md(dto['endpoint_title'])}** — {_md(reading['observed'])} [{'; '.join(_md(label['text']) for label in dto['labels'])}]")
         for item in reading["does_not_establish"][:3]:
-            lines.append(f"  - Does not establish: {item}")
+            lines.append(f"  - Does not establish: {_md(item)}")
     lines += ["", "## Sources", ""]
     for index, (source, verification, location, quote) in enumerate(sources.values(), start=1):
         lines.append(_source_line(index, source, verification, location, quote))
