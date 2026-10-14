@@ -74,6 +74,12 @@ TIME_RES = [
     (re.compile(rf"(?<![\d.])(?P<val>{UNUM})[\s-]*months?\b", re.IGNORECASE), 52.0 / 12.0),
     (re.compile(rf"(?<![\d.])(?P<val>{UNUM})[\s-]*(?:years?|yrs?)\b(?!\s*(?:of age|old|and older|or older))", re.IGNORECASE), 52.0),
 ]
+# "after a year of treatment": a time point written without a digit
+WORDED_TIME_RES = [
+    (re.compile(r"\b(?:a|one|per|each) year\b|\bannual(?:ly)?\b|\b12 months\b", re.IGNORECASE), 52.0),
+    (re.compile(r"\bhalf a year\b|\bsix months\b", re.IGNORECASE), 26.0),
+    (re.compile(r"\ba month\b", re.IGNORECASE), 52.0 / 12.0),
+]
 COUNT_RES = [
     re.compile(r"\b[nN]\s*=\s*(?P<val>\d+)\b"),
     re.compile(r"(?<![\d.])(?P<val>\d+)\s+(?:randomi[sz]ed\s+|enrolled\s+|treated\s+|analy[sz]ed\s+|adult\s+)?(?:participants|patients|adults|people|individuals|subjects|persons|volunteers)\b", re.IGNORECASE),
@@ -227,6 +233,10 @@ _f("NI_MET", r"\bnon-?inferiority\s+(?:was |were |is |has been |had been )?(?:me
 _f("NI_MET", r"\b(?:met|meeting|meets|satisf(?:ied|ies)|achieved|demonstrated|established|showed|shown|confirmed|reached)\b[^.;]{0,40}?\bnon-?inferiority\b", spanning=True)
 _f("NI_TEST", r"\bnon-?inferior(?:ity)?\b")
 
+# "confirmed against the source" is a claim about checking, not about the trial: read it before the role words below
+_f("VERIFICATION_HUMAN", r"\b(?:confirmed|checked|verified|validated|audited|cross-checked|reconciled)\s+(?:against|with|by|in)\s+(?:the\s+|its\s+|an?\s+)?(?:original\s+)?(?:source|publication|paper|article|record|registry|label|reviewers?|humans?|experts?|curators?)\b")
+_f("VERIFICATION_HUMAN", r"\b(?:has|have|had) been (?:independently |manually |fully )?(?:confirmed|checked|audited|certified|verified|validated)\b|\b(?:source|manually|human|hand)[- ](?:checked|confirmed)\b")
+
 # endpoint role and multiplicity
 _f("MULT_NOT_CONTROLLED", r"\bnot\s+(?:been\s+)?(?:controlled|adjusted|corrected)\s+for\s+(?:multiplicity|multiple (?:comparisons|testing)|type (?:i|1) error)\b|\bnot multiplicity[- ](?:controlled|adjusted)\b")
 _f("MULT_NOT_CONTROLLED", r"\b(?:without|no)\s+(?:multiplicity|type (?:i|1) error)[- ]?(?:control|adjustment|correction)?\b|\b(?:uncontrolled|unadjusted) for multiplicity\b|\boutside (?:the )?(?:type (?:i|1) error|multiplicity)[- ]control\w*\b")
@@ -243,13 +253,14 @@ _f("DEMONSTRATED", r"\bdemonstrat(?:ed|es|ing|e)\b")
 # estimands
 _f("ESTIMAND_TREATMENT_REGIMEN", r"\btreatment[- ]regimen(?:[- ]estimand)?\b|\btreatment[- ]policy(?: estimand| strategy)?\b|\b(?:regardless|irrespective) of (?:treatment |study[- ]drug )?(?:discontinuation|adherence)\b")
 _f("ESTIMAND_EFFICACY", r"\befficacy[- ]estimand\b|\bhypothetical (?:estimand|strategy)\b|\bon[- ]treatment estimand\b|\bhad (?:all |every )?participants? remained on (?:the assigned |study )?treatment\b|\bif (?:all )?participants (?:had )?(?:stayed|remained) on treatment\b")
+_f("ESTIMAND_ON_TREATMENT", r"\b(?:while[- ])?on[- ]treatment\b|\bper[- ]protocol\b|\bcompleters?\b")
 _f("ESTIMAND_INFERRED", r"\binferred\b")
 
 # evidence tier
 _f("TIER_NOT_PEER_REVIEWED", r"\b(?:not|never|non|rather than|instead of|without)[- ]+(?:yet |been |a |being |undergone |undergoing )*peer[- ]review(?:ed)?\b|\bunpublished\b|\bnot (?:yet )?(?:been )?published\b")
 _f("TIER_PEER_REVIEWED", r"\bpeer[- ]review(?:ed)?\b|\bjournal (?:article|publication|paper)\b|\bpublished (?:in|paper|article|study|trial|report|results|data)\b|\bpublication\b|\bpublished\b")
 _f("TIER_PEER_REVIEWED", r"\b(?:nejm|new england journal of medicine|the lancet|lancet|jama|nature medicine)\b")
-_f("TIER_PRESS_RELEASE", r"\bpress[- ]release\b|\btop-?line\b|\bsponsor (?:announcement|disclosure|statement|release)\b|\bannounced by (?:the sponsor|lilly)\b|\bcompany (?:announcement|release)\b|\bnews release\b")
+_f("TIER_PRESS_RELEASE", r"\bpress[- ]release\b|\btop-?line\b|\bsponsor (?:announcement|disclosure|statement|release)\b|\bannounce(?:d|s|ment)\b|\bcompany (?:announcement|release)\b|\bnews release\b")
 _f("TIER_REGISTRY_RESULTS", r"\bregistry[- ]posted\b|\bposted (?:results|on (?:the )?registry|to clinicaltrials\.gov)\b|\bclinicaltrials\.gov (?:results|record|posting|entry)\b|\bregistry (?:results|record|data|entry|posting)\b|\bsponsor[- ]submitted\b")
 _f("TIER_REGULATORY_LABEL", r"\bprescribing information\b|\b(?:product |approved |fda |us |drug )(?:label(?:ing)?)\b|\bpackage insert\b|(?<![-\w])label(?:ing)?\b(?! dosage)")
 _f("TIER_REGULATORY_REVIEW", r"\bfda review\b|\bregulatory review\b|\breview document\b|\bstatistical review(?:er)?\b")
@@ -261,6 +272,7 @@ _f("VERIFICATION_NOT_HUMAN", r"\b(?:not|never)\s+(?:yet\s+|been\s+)*(?:human[- ]
 _f("VERIFICATION_NOT_HUMAN", r"\b(?:awaiting|awaits|pending)\s+(?:human\s+)?(?:review|verification)\b|\bno human (?:review|verification)\b|\bwithout human (?:review|verification)\b")
 _f("VERIFICATION_HUMAN", r"\bhuman[- ](?:verified|reviewed|validated|checked|approved|confirmed)\b|\b(?:verified|validated|checked|confirmed|approved|reviewed)\s+by\s+(?:a |an |the )?(?:human|reviewer|expert|person|clinician|curator|scientist)s?\b")
 _f("VERIFICATION_HUMAN", r"\b(?:reviewer|expert|manually|independently|clinically|fully)[- ](?:verified|validated|approved|confirmed|checked|reviewed)\b|\bverified\b|\bvalidated\b|\bdouble[- ]checked\b|\bfact[- ]checked\b|\bverification\b")
+_f("VERIFICATION_HUMAN", r"\breviewed\b|\baudited\b|\bcertified\b|\bcross-checked\b|\bsigned off\b")
 _f("VERIFICATION_QUOTE_ANCHORED", r"\bquote[- ]anchored\b")
 _f("VERIFICATION_MACHINE_EXTRACTED", r"\bmachine[- ]extracted\b")
 
@@ -276,7 +288,7 @@ _f("REG_APPROVED", r"\b(?:fda|ema|regulator)[- ]approved\b|\bapproved\b|\bapprov
 _f("REG_INVESTIGATIONAL", r"\binvestigational\b|\bexperimental\b|\bin (?:clinical )?development\b|\bunder investigation\b")
 
 # endpoint families
-_f("EP_CV_DEATH", r"\bcardiovascular death\b|\bcv death\b|\bdeath from cardiovascular causes\b|\bcardiovascular mortality\b")
+_f("EP_CV_DEATH", r"\bcardiovascular deaths?\b|\bcv deaths?\b|\b(?:deaths?|died|dying) (?:from|of|due to) (?:a )?cardiovascular causes?\b|\bcardiovascular mortality\b")
 _f("EP_MORTALITY", r"\ball[- ]cause (?:death|mortality)\b|\bdeath from any cause\b|\bdeaths?\b|\bmortality\b|\bdied\b")
 _f("EP_MACE", r"\bmace(?:-(?P<variant>\d))?\b|\bmajor adverse cardiovascular events?\b")
 _f("EP_HBA1C", r"\bhba1c\b|\ba1c\b|\bglycated ha?emoglobin\b|\bha?emoglobin a1c\b")
@@ -341,7 +353,8 @@ NEUTRAL = frozenset(
     source sources evidence card cards record records statement statements stored
     estimand estimands interval intervals confidence ci limit limits upper lower bound bounds
     hazard ratio ratios odds risk difference differences
-    unit units kg mg kilogram kilograms milligram milligrams
+    kg mg kilogram kilograms milligram milligrams
+    studied tested evaluated investigated examined assessed
     one two first second
     overall total respective corresponding relative absolute
     made taking took administered administration dosed associated plus alongside together
@@ -356,6 +369,7 @@ NEUTRAL = frozenset(
     its his her our my
     report reports reporting
     led lead leads leading resulted resulting result
+    any alone defined definition define corresponds
     similarly likewise meanwhile notably specifically namely overall
     whereas while
     case cases context terms respect regard regarding concerning

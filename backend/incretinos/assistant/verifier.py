@@ -199,6 +199,8 @@ class TextSignature:
     vocabulary: set[str] = field(default_factory=set)
     negated_clauses: list[set[str]] = field(default_factory=list)
     plain_clauses: list[set[str]] = field(default_factory=list)
+    negated_features: set[str] = field(default_factory=set)  # features stated only inside a negated clause
+    approval_scope: set[str] = field(default_factory=set)  # features and stems of the sentences that state an approval or the drug's class
     lowered: str = ""
 
 
@@ -246,14 +248,26 @@ def text_signature(fact: EvidenceFact, vocab: Vocabulary) -> TextSignature:
                 sig.endpoint_variants.add(data["variant"])
             if data["name"] == "EXHAUSTIVE":
                 sig.exhaustive.add(data["text"].lower())
+    plain_features: set[str] = set()
     for clause in re.split(r"(?<=[.;:])\s+|,\s+(?=but\b|whereas\b|while\b)", text):
         words = re.findall(r"[A-Za-z][A-Za-z0-9_]*(?:[-/'][A-Za-z0-9_]+)*", clause)
         content = set()
         for word in words:
             if word.lower() not in lx.NEUTRAL and word.lower() not in lx.NEGATORS:
                 content |= stems(word.lower())
-        negated = any(word.lower() in lx.NEGATORS or word.lower().endswith("n't") for word in words)
+        # "without diabetes" describes a population; it does not negate the clause it stands in
+        negated = any((word.lower() in lx.NEGATORS and word.lower() not in ("without", "non")) or word.lower().endswith("n't") for word in words)
         (sig.negated_clauses if negated else sig.plain_clauses).append(content)
+        clause_features = {m.data["name"] for m in _scan_mentions(clause, vocab).mentions if m.kind == "FEATURE"}
+        if negated:
+            sig.negated_features |= clause_features
+        else:
+            plain_features |= clause_features
+    sig.negated_features -= plain_features
+    for sentence in re.split(r"(?<=[.])\s+", text):
+        found = {m.data["name"] for m in _scan_mentions(sentence, vocab).mentions if m.kind == "FEATURE"}
+        if ({"REG_APPROVED"} & found and "REG_NOT_APPROVED" not in found) or "pharmacologic class" in sentence.lower():
+            sig.approval_scope |= found | vocabulary_of(sentence)
     return sig
 
 
@@ -285,8 +299,13 @@ def _phase_digits(phase: str | None) -> set[str]:
     return set(re.findall(r"\d", phase or ""))
 
 
-def _dose_check(arm, allowed: dict[str, list[float]], label: str | None, out: list[Mismatch], side: str) -> None:
+def _dose_check(arm, allowed: dict[str, list[float]], label: str | None, out: list[Mismatch], side: str, primary: list[float] | None = None) -> None:
     every = sorted({d for values in allowed.values() for d in values})
+    named = [dose for values in arm.doses.values() for dose in values]
+    if primary and named and all(any(_eq(dose, known) for known in every) for dose in named) and not any(_eq(dose, p) for dose in named for p in primary):
+        # "(2 mg)" in "12 mg LY3437943 (2 mg)" is a starting dose: naming it alone names a different arm
+        out.append(Mismatch(f"{side} dose", f"{_show(named)} {arm.dose_unit}", f"{_show(primary)} mg ({label})"))
+        return
     for key, values in arm.doses.items():
         pool = allowed.get(key, []) if key and key in allowed and allowed.get(key) else every
         for dose in values:
@@ -310,8 +329,9 @@ def _check_arms(claim: StructuredClaim, fact: EvidenceFact, out: list[Mismatch])
         if named and named != drugs:
             return False
         scratch: list[Mismatch] = []
+        own = doses is fact.arm_doses
         for arm in arms:
-            _dose_check(arm, doses, None, scratch, "arm")
+            _dose_check(arm, doses, fact.arm_label if own else fact.comparator_label, scratch, "arm", fact.arm_primary_doses if own else fact.comparator_primary_doses)
         return not scratch
 
     if fact.kind == ARM_RESULT:
@@ -325,7 +345,7 @@ def _check_arms(claim: StructuredClaim, fact: EvidenceFact, out: list[Mismatch])
             out.append(Mismatch("drug", sorted(named), sorted(fact_treatment)))
         else:
             for arm in treatment:
-                _dose_check(arm, fact.arm_doses, fact.arm_label, out, "arm")
+                _dose_check(arm, fact.arm_doses, fact.arm_label, out, "arm", fact.arm_primary_doses)
         return
 
     # between-arm analysis
@@ -346,12 +366,12 @@ def _check_arms(claim: StructuredClaim, fact: EvidenceFact, out: list[Mismatch])
             out.append(Mismatch("drug", sorted(named_t), sorted(fact_treatment) or fact.arm_label))
         else:
             for arm in treatment:
-                _dose_check(arm, fact.arm_doses, fact.arm_label, out, "treatment")
+                _dose_check(arm, fact.arm_doses, fact.arm_label, out, "treatment", fact.arm_primary_doses)
         if named_c and named_c != fact_comparator:
             out.append(Mismatch("comparator", sorted(named_c), sorted(fact_comparator) or fact.comparator_label))
         else:
             for arm in comparator:
-                _dose_check(arm, fact.comparator_doses, fact.comparator_label, out, "comparator")
+                _dose_check(arm, fact.comparator_doses, fact.comparator_label, out, "comparator", fact.comparator_primary_doses)
 
 
 def _check_magnitude(claim: StructuredClaim, fact: EvidenceFact, out: list[Mismatch]) -> None:
@@ -440,8 +460,8 @@ def _check_statistics(claim: StructuredClaim, fact: EvidenceFact, ctx: Context, 
                 out.append(Mismatch("statistical interpretation", f"“{text}”", "an evaluation one arm's reported value does not carry", UNVERIFIABLE))
             continue
         if name in ("SUPERIORITY", "HYPOTHETICAL_SUPERIORITY"):
-            if ctx.hypothetical:
-                continue
+            if ctx.hypothetical and name == "HYPOTHETICAL_SUPERIORITY":
+                continue  # "showing superiority would require ...": named as a requirement, not asserted
             if arm_level:
                 out.append(Mismatch("statistical interpretation", f"superiority (“{text}”)", "one arm's value: no between-arm test is attached to it"))
             else:
@@ -762,7 +782,7 @@ def check_text(claim: StructuredClaim, fact: EvidenceFact, ctx: Context) -> list
             out.append(Mismatch(label, shown, "not stated in the cited statement", UNVERIFIABLE))
 
     for estimand in claim.estimand:
-        need({"TREATMENT_REGIMEN": "ESTIMAND_TREATMENT_REGIMEN", "EFFICACY": "ESTIMAND_EFFICACY", "INFERRED": "ESTIMAND_INFERRED", "NOT_STATED": "ESTIMAND_NOT_STATED"}[estimand], "estimand", estimand)
+        need(f"ESTIMAND_{estimand}", "estimand", estimand)
     for population in claim.population:
         need(f"POP_{population}", "population", population)
     for role in claim.endpoint_role:
@@ -781,7 +801,7 @@ def check_text(claim: StructuredClaim, fact: EvidenceFact, ctx: Context) -> list
         out.append(Mismatch("effect measure", claim.parameter, "not named in the cited statement", UNVERIFIABLE))
     for stat in claim.statistical:
         name = stat["name"]
-        if name in ("SUPERIORITY", "HYPOTHETICAL_SUPERIORITY") and ctx.hypothetical:
+        if name == "HYPOTHETICAL_SUPERIORITY" and ctx.hypothetical:
             continue
         if name == "EFFECT_WORD":
             if name not in sig.features and not _grounded(stat["text"], sig.vocabulary):
@@ -816,6 +836,18 @@ def check_text(claim: StructuredClaim, fact: EvidenceFact, ctx: Context) -> list
     for term in claim.residual_terms:
         sentence_stems |= stems(term)
     has_negation = bool(claim.negators) or bool({"NOT_APPROVED"} & set(claim.regulatory)) or any(s["name"].startswith(("NEG_", "NOT_", "NO_")) for s in claim.statistical) or "NOT_ESTABLISHED" in claim.endpoint_role
+    claimed_features = (
+        {f"POP_{p}" for p in claim.population} | {f"EP_{e['family']}" for e in claim.endpoints if e["family"] != "RESPONDER"} | {f"REG_{r}" for r in claim.regulatory}
+        | {f"TIER_{t}" for t in claim.tier} | {s["name"] for s in claim.statistical} | {f"ESTIMAND_{e}" for e in claim.estimand} | set(claim.endpoint_role)
+    )
+    if not has_negation and claimed_features & sig.negated_features:
+        # "No type 2 diabetes indication appears in the label" cannot support "approved for type 2 diabetes"
+        out.append(Mismatch("negation", sorted(f.lower().replace("_", " ") for f in claimed_features & sig.negated_features), "the cited statement says this only in the negative", CONTRADICTED))
+    if fact.kind == REGULATORY_STATUS and "APPROVED" in claim.regulatory and fact.regulatory_status == "APPROVED":
+        outside = sorted(f.lower().replace("_", " ") for f in claimed_features if f.startswith(("POP_", "EP_")) and f not in sig.approval_scope)
+        outside += [term for term in claim.residual_terms if _grounded(term, sig.vocabulary) and not _grounded(term, sig.approval_scope)]
+        if outside:
+            out.append(Mismatch("approved use", outside, "not part of what the cited statement says is approved", UNVERIFIABLE))
     if not has_negation:
         for clause in sig.negated_clauses:
             shared = sentence_stems & clause

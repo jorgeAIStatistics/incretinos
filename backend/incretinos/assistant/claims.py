@@ -366,6 +366,8 @@ def _scan_mentions(text: str, vocab: Vocabulary) -> _Reader:
         r.scan(pattern, "THRESHOLD", lambda m: {"value": float(m.group("val")), "text": m.group(0)})
     for pattern, factor in lx.TIME_RES:
         r.scan(pattern, "TIME", lambda m, factor=factor: {"weeks": float(m.group("val")) * factor, "exact": factor == 1.0, "text": m.group(0)})
+    for pattern, weeks in lx.WORDED_TIME_RES:
+        r.scan(pattern, "TIME", lambda m, weeks=weeks: {"weeks": weeks, "exact": False, "text": m.group(0)})
     r.scan(lx.DOSE_RE, "DOSE", lambda m: {"values": [float(v) for v in re.findall(lx.UNUM, m.group("vals"))], "unit": m.group("unit").lower().replace("milligrams", "mg").replace("milligram", "mg").replace("μ", "µ")})
     for pattern in lx.COUNT_RES:
         r.scan(pattern, "COUNT", lambda m: {"value": int(m.group("val"))})
@@ -541,6 +543,7 @@ def _direction(features: list[Mention]) -> dict[str, Any]:
 
 _FEATURE_FIELDS = {
     "ESTIMAND_TREATMENT_REGIMEN": ("estimand", "TREATMENT_REGIMEN"), "ESTIMAND_EFFICACY": ("estimand", "EFFICACY"), "ESTIMAND_INFERRED": ("estimand", "INFERRED"),
+    "ESTIMAND_ON_TREATMENT": ("estimand", "ON_TREATMENT"),
     "ESTIMAND_NOT_STATED": ("estimand", "NOT_STATED"), "TIME_NOT_STATED": ("missing", "TIME"), "POP_NOT_STATED": ("population", "NOT_STATED"),
     "POP_T2D": ("population", "T2D"), "POP_NO_T2D": ("population", "NO_T2D"), "POP_MIXED": ("population", "MIXED"), "POP_T1D": ("population", "T1D"),
     "TIER_PEER_REVIEWED": ("tier", "PEER_REVIEWED"), "TIER_NOT_PEER_REVIEWED": ("tier", "NOT_PEER_REVIEWED"), "TIER_PRESS_RELEASE": ("tier", "PRESS_RELEASE"),

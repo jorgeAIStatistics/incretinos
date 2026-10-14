@@ -66,6 +66,11 @@ def doses_in(label: str | None) -> list[float]:
     return out
 
 
+def primary_doses(label: str | None) -> list[float]:
+    """Dose amounts written outside brackets. In "12 mg LY3437943 (2 mg)" the arm is the 12 mg arm; 2 mg is its starting dose."""
+    return doses_in(re.sub(r"\([^)]*\)|\[[^\]]*\]", " ", label or ""))
+
+
 def arm_doses(label: str | None, drugs: list[str]) -> dict[str, list[float]]:
     """Dose amounts per drug for an arm label. With one drug every amount belongs to it; with several,
     each amount belongs to the drug named closest to it in the label."""
@@ -188,6 +193,8 @@ class EvidenceFact:
     drugs: list[str] = field(default_factory=list)
     arm_label: str | None = None
     arm_doses: dict[str, list[float]] = field(default_factory=dict)
+    arm_primary_doses: list[float] = field(default_factory=list)
+    comparator_primary_doses: list[float] = field(default_factory=list)
     is_placebo: bool = False
     is_pooled: bool = False
     scope: str | None = None
@@ -319,6 +326,7 @@ def fact_from_finding(f: Finding, verification_status: str | None = None) -> Evi
         drugs=drugs,
         arm_label=f.arm_label,
         arm_doses=arm_doses(f.arm_label, drugs),
+        arm_primary_doses=primary_doses(f.arm_label),
         is_placebo=f.is_placebo,
         is_pooled=f.is_pooled,
         scope=f.scope,
@@ -414,6 +422,8 @@ def fact_from_analysis(analysis: StatisticalAnalysis, text: str | None = None) -
         drugs=t_drugs,
         arm_label=dto["treatment_label"],
         arm_doses=t_doses,
+        arm_primary_doses=primary_doses(dto["treatment_label"]),
+        comparator_primary_doses=primary_doses(dto["comparator_label"]),
         is_placebo=bool(analysis.treatment_arm.is_placebo) if analysis.treatment_arm is not None else False,
         is_pooled=bool(analysis.treatment_arm.is_pooled) if analysis.treatment_arm is not None else False,
         comparator_label=dto["comparator_label"],
