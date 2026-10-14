@@ -21,6 +21,16 @@ Rules every check follows:
 Public interface: ``CHECKS`` (the registry of codes), ``evaluate`` (one record) and ``evaluate_all`` (the
 whole database in one pass). Both produce the same flags for the same record; ``evaluate`` can also
 report what changed since the previous ingestion when it is given the previous field values.
+
+A flag's ``fields`` are column names of the record it is about. A dotted name (``arm.dose_unit``,
+``endpoint.category``) is a column of the arm or endpoint the record points at. Explanations describe other
+records by their values, never by database id, so they stay the same when ids change.
+
+Reading a quote is heuristic by nature: numbers are classified by what stands next to them (a dose, a
+confidence level, a threshold, a week, a sample size, a p-value, a confidence limit, a dispersion, or a
+reported value), and an arm is taken to be named by its dose, its drug or brand name, or the word placebo.
+Where the reading is uncertain the checks stay silent or report the weaker fact; they are a guide for a
+reviewer and do not replace one.
 """
 
 from __future__ import annotations
@@ -50,12 +60,14 @@ from ..models import (
     StudyArm,
 )
 from ..vocab import DRUG_ALIASES
-from .policy import EVIDENCE_TYPES, SEVERITY_ORDER, CheckFlag
+from .policy import SEVERITY_ORDER, CheckFlag
 
 __all__ = ["CHECKS", "QUOTE_BASED_CODES", "evaluate", "evaluate_all"]
 
 HIGH, MEDIUM, LOW = "HIGH", "MEDIUM", "LOW"
-_RESULT, _ANALYSIS, _AE, _CLAIM = EVIDENCE_TYPES
+# The four record types that carry a verification status (review.policy.EVIDENCE_TYPES).
+_RESULT, _ANALYSIS, _AE, _CLAIM = "result", "analysis", "adverse_event", "claim"
+_ALL = (_RESULT, _ANALYSIS, _AE, _CLAIM)
 _NUMERIC = (_RESULT, _ANALYSIS, _AE)
 
 
@@ -70,7 +82,7 @@ CHECKS: dict[str, dict[str, Any]] = {
     "QUOTE_MISSING": _check(
         "No locator quote", HIGH,
         "This curated record has no quote from its source, so nothing stored shows where in the source it comes from.",
-        quote_based=True, applies_to=EVIDENCE_TYPES),
+        quote_based=True, applies_to=_ALL),
     "NUMBER_NOT_IN_QUOTE": _check(
         "Stored number is not in the quote", HIGH,
         "A stored value or interval limit does not appear as a number in the record's own quote.",
@@ -288,12 +300,12 @@ CHECKS: dict[str, dict[str, Any]] = {
     "DUPLICATE_ROW": _check(
         "Duplicate record", MEDIUM,
         "Another record has the same key and the same values, so the same fact is stored twice.",
-        applies_to=EVIDENCE_TYPES),
+        applies_to=_ALL),
     # --- history
     "CHANGED_SINCE_LAST_INGESTION": _check(
         "Changed since the last ingestion", MEDIUM,
         "One or more fields of this record differ from the values it had at the previous ingestion.",
-        applies_to=EVIDENCE_TYPES),
+        applies_to=_ALL),
 }
 
 #: Codes that read the locator quote. They never fire on a record of registry origin.
@@ -892,7 +904,7 @@ def _record_from(row: Any, cols: Sequence[str]) -> Record:
 class _Context:
     """Everything the checks read, as plain dictionaries: the records themselves and the entities they point at."""
 
-    records: dict[str, list[Record]] = field(default_factory=lambda: {t: [] for t in EVIDENCE_TYPES})
+    records: dict[str, list[Record]] = field(default_factory=lambda: {t: [] for t in _ALL})
     arms: dict[int, Record] = field(default_factory=dict)
     endpoints: dict[int, Record] = field(default_factory=dict)
     estimands: dict[int, Record] = field(default_factory=dict)
@@ -1034,7 +1046,7 @@ class _Engine:
         self._identity_cache: dict[tuple[str, int | None], _ArmIdentity] = {}
         self._dose_cache: dict[tuple[str, int | None, str], list[CheckFlag]] = {}
 
-        self.by_key: dict[str, dict[tuple, list[Record]]] = {t: defaultdict(list) for t in EVIDENCE_TYPES}
+        self.by_key: dict[str, dict[tuple, list[Record]]] = {t: defaultdict(list) for t in _ALL}
         self.by_quote: dict[str, dict[tuple, list[Record]]] = {t: defaultdict(list) for t in _NUMERIC}
         self.result_groups: dict[tuple, list[Record]] = defaultdict(list)
         self.analysis_groups: dict[tuple, list[Record]] = defaultdict(list)
@@ -1065,7 +1077,7 @@ class _Engine:
         elif etype == _CLAIM:
             self._claim(out, rec)
         else:
-            raise ValueError(f"Unknown evidence type {etype!r}; expected one of {EVIDENCE_TYPES}")
+            raise ValueError(f"Unknown evidence type {etype!r}; expected one of {_ALL}")
         self._duplicates(out, etype, rec)
         return _ordered(out)
 
@@ -1721,7 +1733,7 @@ class _Engine:
                 out.append(_flag("VALUE_OUT_OF_RANGE", f"p_value_text {_q(a['p_value_text'])} contains {t.text}; a p-value lies between 0 and 1.", "p_value_text"))
                 break
         if _REFERENCE_NOTE.search(a["comment"] or ""):
-            out.append(_flag("ANALYSIS_REFERENCE_NOT_STATED", f"The record's comment says the registry does not state which group is the reference; {pair} follows the registry's listing order, so the sign of {_g(estimate)} cannot be read from this record alone.", "treatment_label", "comparator_label", "estimate"))
+            out.append(_flag("ANALYSIS_REFERENCE_NOT_STATED", f"The record's comment says the registry does not state which group is the reference; {pair} follows the registry's listing order, so the direction of the estimate {_g(estimate)} cannot be read from this record alone.", "treatment_label", "comparator_label", "estimate"))
 
         hypothesis = a["hypothesis_type"]
         null = 1.0 if ratio else 0.0
@@ -1761,8 +1773,8 @@ class _Engine:
                         noise100 = noise + 100 * _half_unit(estimate)
                         scaled, flipped = abs(100 * estimate - diff) <= noise100 + 0.05 * abs(diff), abs(100 * estimate + diff) <= noise100 + 0.05 * abs(diff)
                         if (scaled or flipped) and abs(diff) > 4 * noise100:
-                            sign_note = " with the opposite sign" if flipped and not scaled else ""
-                            out.append(_flag("ANALYSIS_SCALE_VS_ARMS", f"The stored estimate is {_g(estimate)} with the unit {_q(a['unit'])}; the arm values of the same source and endpoint give {arithmetic}, which the estimate matches only after multiplying it by 100 ({_g(round(100 * estimate, 6))}){sign_note}.", "estimate", "unit"))
+                            sign_note = " and reversing its sign" if flipped and not scaled else ""
+                            out.append(_flag("ANALYSIS_SCALE_VS_ARMS", f"The stored estimate is {_g(estimate)} with the unit {_q(a['unit'])}; the arm values of the same source and endpoint give {arithmetic}; the estimate equals that, within rounding, only after multiplying it by 100 ({_g(round(100 * estimate, 6))}){sign_note}.", "estimate", "unit"))
                             if flipped and not scaled:
                                 out.append(_flag("ANALYSIS_DIRECTION_VS_ARMS", f"The stored estimate is {_g(estimate)} (on a 0 to 1 scale); the arm values of the same source and endpoint give {arithmetic}, the opposite sign.", "estimate", "treatment_label", "comparator_label"))
 
@@ -1955,7 +1967,7 @@ def evaluate(session: Session, evidence_type: str, row: Any, previous_fields: Ma
     CHANGED_SINCE_LAST_INGESTION flag lists each field that differs. Flags are ordered HIGH first.
     """
     if evidence_type not in _MODELS:
-        raise ValueError(f"Unknown evidence type {evidence_type!r}; expected one of {EVIDENCE_TYPES}")
+        raise ValueError(f"Unknown evidence type {evidence_type!r}; expected one of {_ALL}")
     model, cols = _MODELS[evidence_type]
     if not isinstance(row, model):
         raise TypeError(f"evidence_type {evidence_type!r} expects a {model.__name__}, got {type(row).__name__}")
@@ -1985,4 +1997,4 @@ def evaluate_all(session: Session) -> dict[tuple[str, int], list[CheckFlag]]:
     """
     ctx = _load_all(session)
     engine = _Engine(ctx)
-    return {(etype, rec["id"]): engine.flags(etype, rec) for etype in EVIDENCE_TYPES for rec in ctx.records[etype]}
+    return {(etype, rec["id"]): engine.flags(etype, rec) for etype in _ALL for rec in ctx.records[etype]}

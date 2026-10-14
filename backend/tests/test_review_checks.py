@@ -385,7 +385,7 @@ CASES: dict[str, Case] = {
     "ANALYSIS_SCALE_VS_ARMS": (
         lambda w: _contrast(w, 0.35, treated=53.0, placebo=18.0, unit="percentage of participants"),
         lambda w: _contrast(w, 35.0, treated=53.0, placebo=18.0, unit="percentage of participants"),
-        ("0.35", "53", "18", "= 35", "multiplying it by 100"),
+        ("0.35", "53", "18", "= 35", "only after multiplying it by 100 (35)"),
     ),
     "RATIO_NOT_POSITIVE": (
         lambda w: _hazard_ratio(w, registry=True, estimate=-0.84, ci_low=-0.94, ci_high=-0.75, locator_quote=None),
@@ -628,7 +628,7 @@ def test_scale_and_direction_are_both_reported_for_a_reversed_risk_difference(wo
     row = _contrast(world, -0.21, treated=52.0, placebo=32.0, unit="percentage of participants")
     flags = flags_of(world, row)
     assert {"ANALYSIS_SCALE_VS_ARMS", "ANALYSIS_DIRECTION_VS_ARMS"} <= codes(flags)
-    assert "with the opposite sign" in explanation(flags, "ANALYSIS_SCALE_VS_ARMS")
+    assert "multiplying it by 100 (-21) and reversing its sign" in explanation(flags, "ANALYSIS_SCALE_VS_ARMS")
 
 
 def test_model_based_difference_that_differs_from_raw_arm_values_is_not_flagged(world):
