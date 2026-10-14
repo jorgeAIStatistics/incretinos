@@ -215,8 +215,11 @@ def reset_derived_data(session: Session) -> dict[str, int]:
     Rows are deleted, not tables dropped, so this behaves the same on SQLite and PostgreSQL and never
     triggers a cascade into a preserved table. Returns the number of rows removed per table.
     """
-    from .models import EvidenceGap
+    from .models import EvidenceGap, EvidenceVersion
 
+    # No evidence row exists after this, so no stored version is the current one. The history itself is untouched,
+    # and the next reconcile compares every rebuilt row with the version it had when it was last seen.
+    session.execute(update(EvidenceVersion).values(is_current=False))
     # Gaps point at drugs, which are rebuilt: detach them so the cascade from ``drug`` cannot delete a
     # gap that carries a reviewer's triage. The gap engine re-attaches the drug on the next load.
     session.execute(update(EvidenceGap).values(drug_id=None))

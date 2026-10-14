@@ -101,7 +101,7 @@ MIN_RATIONALE_CHARS = 20
 MIN_RATIONALE_WORDS = 4
 MIN_RATIONALE_DISTINCT_WORDS = 3
 _BOILERPLATE_RATIONALE = re.compile(
-    r"^(approved?|rejected?|decision|review(ed)?)\s+recorded\s+(from|in|via)\s+the\s+review\s+(queue|page|screen)\.?$", re.IGNORECASE
+    r"^(approved?|reject(ed)?|decision|review(ed)?)\s+recorded\s+(from|in|via)\s+the\s+review\s+(queue|page|screen)\.?$", re.IGNORECASE
 )
 RESERVED_REVIEWER_NAMES = frozenset({"system", "api", "reviewer", "admin", "automation", "anonymous", "unknown"})
 

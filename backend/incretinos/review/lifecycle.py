@@ -363,6 +363,7 @@ class _Version:
     source_type: str | None
     source_key: str | None
     collision_level: int
+    last_seen_at: datetime | None
 
 
 _VERSION_COLUMNS = tuple(_Version.__dataclass_fields__)  # type: ignore[attr-defined]
@@ -524,6 +525,15 @@ def reconcile(session: Session, *, run_checks: bool = True) -> ReconcileReport:
     versions = _load_versions(session)
     by_identity = {(v.evidence_type, v.evidence_key, v.fingerprint): v for v in versions}
     current = {(v.evidence_type, v.evidence_key): v for v in versions if v.is_current}
+    # For a key that has no current version (its row disappeared, or the evidence tables were reset), the version
+    # it had when it was last seen: a row that comes back is compared with that, so a change is not missed.
+    last_known: dict[tuple[str, str], _Version] = {}
+    for v in versions:
+        key = (v.evidence_type, v.evidence_key)
+        if not v.is_current and key not in current:
+            held = last_known.get(key)
+            if held is None or (v.last_seen_at, v.id) > (held.last_seen_at, held.id):
+                last_known[key] = v
 
     row_updates: dict[str, list[dict[str, Any]]] = defaultdict(list)
     key_clears: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -552,7 +562,7 @@ def reconcile(session: Session, *, run_checks: bool = True) -> ReconcileReport:
             collisions[record.evidence_type] += 1
 
         version = by_identity.get((record.evidence_type, record.evidence_key, record.fingerprint))
-        previous = current.get(key)
+        previous = current.get(key) or last_known.get(key)
 
         own_flags = identity_flags(record)
         if check_flags is None:  # checks skipped or failed: keep what was stored for this exact content
@@ -594,8 +604,8 @@ def reconcile(session: Session, *, run_checks: bool = True) -> ReconcileReport:
                     "from_source_hash": outcome.decision.source_content_hash, "to_source_hash": source_hash, "to_snapshot_version": ref.version_no if ref else None,
                     "basis": "re-extracted with identical content" if record.is_registry else "quote found in the new source version",
                 })
-            if not version.is_current:
-                reactivated.append((record, version, previous))
+            if not version.is_current and previous is not None and previous is not version:
+                reactivated.append((record, version, previous))  # the content went back to an earlier version
             if not version.is_current or any(getattr(version, name) != value for name, value in index_values.items()):
                 version_updates.append({"b_id": version.id, **{f"b_{name}": value for name, value in index_values.items()}, "b_search_text": record.search_text})
         if previous is not None and previous is not version:
@@ -718,7 +728,7 @@ def _write_versions(
 ) -> dict[int, dict[str, Any]]:
     table = EvidenceVersion.__table__
     cache: dict[int, dict[str, Any]] = {}
-    _fetch_snapshots(session, [p.id for _, _, p in inserts if p is not None] + [p.id for _, v, p in reactivated if p is not None and p is not v], cache)
+    _fetch_snapshots(session, [p.id for _, _, p in inserts if p is not None] + [p.id for _, _, p in reactivated], cache)
     if demote:
         session.execute(update(table).where(table.c.id == bindparam("b_id")).values(is_current=False), [{"b_id": i} for i in sorted(demote)])
     if updates:
@@ -731,8 +741,7 @@ def _write_versions(
         session.execute(
             update(table).where(table.c.id == bindparam("b_id")).values(supersedes_id=bindparam("b_prev"), changed_fields=bindparam("b_changed"), current_since=now),
             [
-                {"b_id": version.id, "b_prev": previous.id if previous is not None and previous is not version else None,
-                 "b_changed": identity.diff_snapshots(cache.get(previous.id), record.snapshot) if previous is not None and previous is not version else None}
+                {"b_id": version.id, "b_prev": previous.id, "b_changed": identity.diff_snapshots(cache.get(previous.id), record.snapshot)}
                 for record, version, previous in reactivated
             ],
         )
