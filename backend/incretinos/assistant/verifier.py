@@ -26,6 +26,7 @@ from .claims import (
     SentenceReading,
     StructuredClaim,
     Vocabulary,
+    _build_arms,
     _scan_mentions,
     read_sentence,
     split_sentences,
@@ -186,6 +187,7 @@ class TextSignature:
 
     drugs: set[str] = field(default_factory=set)
     doses: set[float] = field(default_factory=set)
+    arm_pairs: set[tuple[str, float]] = field(default_factory=set)  # (drug, dose) as the statement writes them together
     studies: set[str] = field(default_factory=set)
     magnitudes: list[dict[str, Any]] = field(default_factory=list)
     numbers: set[float] = field(default_factory=set)
@@ -210,6 +212,8 @@ def text_signature(fact: EvidenceFact, vocab: Vocabulary) -> TextSignature:
     text = normalise(fact.text)
     reader = _scan_mentions(text, vocab)
     sig = TextSignature(lowered=text.lower(), vocabulary=vocabulary_of(f"{fact.text} {fact.context}"))
+    for arm in _build_arms(reader, vocab):
+        sig.arm_pairs |= {(drug, dose) for drug, values in arm.doses.items() if drug for dose in values}
     for mention in reader.mentions:
         data = mention.data
         if mention.kind == "DRUG" and data.get("slug"):
@@ -292,6 +296,8 @@ def _grounded(term: str, vocabulary: set[str]) -> bool:
     if stems(term) & vocabulary:
         return True
     parts = [part for part in re.split(r"[-/']", term) if part]
+    if any(ch.isdigit() for ch in term):
+        return False  # a name with a digit in it (GLP-1, MACE-4, SURPASS-2) is one name: "GLP-2" is not grounded by "GLP" and "2"
     return len(parts) > 1 and all(part in lx.NEUTRAL or stems(part) & vocabulary for part in parts)
 
 
@@ -622,9 +628,9 @@ def check_structured(claim: StructuredClaim, fact: EvidenceFact, ctx: Context) -
     for weeks in claim.timepoints_weeks:
         if fact.timepoint_weeks is not None and abs(weeks - fact.timepoint_weeks) <= (0.05 if float(weeks).is_integer() else 0.02 * fact.timepoint_weeks):
             continue
-        named_assessment = fact.timepoint_weeks is not None and any(abs(t - fact.timepoint_weeks) <= 0.05 for t in claim.timepoints_weeks)
-        if named_assessment and float(weeks).is_integer() and re.search(rf"\bweek\s*{int(weeks)}\b", (fact.baseline_definition or "").lower()):
-            continue  # the baseline itself, e.g. "from randomization (week 36) to week 88"
+        assessment = next((i for i, t in enumerate(claim.timepoints_weeks) if fact.timepoint_weeks is not None and abs(t - fact.timepoint_weeks) <= 0.05), None)
+        if assessment is not None and claim.timepoints_weeks.index(weeks) < assessment and float(weeks).is_integer() and re.search(rf"\bweek\s*{int(weeks)}\b", (fact.baseline_definition or "").lower()):
+            continue  # the baseline itself, named before the assessment: "from randomization (week 36) to week 88"
         out.append(Mismatch("time point", f"week {_show(weeks)}", f"week {_show(fact.timepoint_weeks)}" if fact.timepoint_weeks is not None else None))
     for population in claim.population:
         if population == fact.diabetes_status:
@@ -695,6 +701,8 @@ def check_structured(claim: StructuredClaim, fact: EvidenceFact, ctx: Context) -
             out.append(Mismatch("date", date, "not part of this result", UNVERIFIABLE))
     for number in claim.numbers:
         out.append(Mismatch("number", number, "no role could be read for this number", UNVERIFIABLE))
+    for fragment in claim.unread:
+        out.append(Mismatch("number", f"“{fragment}”", "digits that could not be read as a number or as part of a known name", UNVERIFIABLE))
     for status in claim.regulatory:
         out.append(Mismatch("regulatory status", status.lower().replace("_", " "), "a trial result says nothing about regulatory status", UNVERIFIABLE))
     for negator in claim.negators:
@@ -721,9 +729,12 @@ def check_text(claim: StructuredClaim, fact: EvidenceFact, ctx: Context) -> list
     elif named - known_drugs:
         out.append(Mismatch("drug", sorted(named - known_drugs), sorted(known_drugs) or "no drug named"))
     for arm in claim.arms:
-        for values in arm.doses.values():
+        for drug, values in arm.doses.items():
+            paired = {dose for name, dose in sig.arm_pairs if name == drug}
             for dose in values:
-                if not any(_eq(dose, known) for known in sig.doses):
+                if paired and not any(_eq(dose, known) for known in paired):
+                    out.append(Mismatch("dose", f"{drug} {_show(dose)} mg", f"{drug} {_show(sorted(paired))} mg"))
+                elif not any(_eq(dose, known) for known in sig.doses):
                     out.append(Mismatch("dose", f"{_show(dose)} mg", f"{_show(sorted(sig.doses))} mg" if sig.doses else "no dose named"))
 
     text_directions = {name[4:].split("_")[0] for name in sig.features if name.startswith("DIR_") and "COMPARATIVE" not in name}
@@ -762,8 +773,10 @@ def check_text(claim: StructuredClaim, fact: EvidenceFact, ctx: Context) -> list
         elif claim.ci.get("level") and claim.ci["level"] not in sig.numbers:
             out.append(Mismatch("confidence level", f"{_show(claim.ci['level'])}%", "not stated"))
     for weeks in claim.timepoints_weeks:
-        if not any(abs(weeks - known) <= 0.05 for known in sig.times) and weeks not in sig.numbers:
+        if not any(abs(weeks - known) <= 0.05 for known in sig.times):
             out.append(Mismatch("time point", f"week {_show(weeks)}", [f"week {_show(t)}" for t in sorted(sig.times)] or None))
+    for fragment in claim.unread:
+        out.append(Mismatch("number", f"“{fragment}”", "digits that could not be read as a number or as part of a known name", UNVERIFIABLE))
     for date in claim.dates:
         if not any(known.startswith(date) for known in sig.dates):
             out.append(Mismatch("date", date, sorted(sig.dates) or None))
@@ -957,7 +970,7 @@ def verify_sentence(reading: SentenceReading, cards: dict[str, dict[str, Any]], 
     if unknown:
         verdict = UNVERIFIABLE
         reasons.append(f"Cites unknown card(s) {unknown}.")
-    if not reading.is_factual and not reading.cited:
+    if not reading.is_factual:  # nothing is asserted (a heading, a connective, a bare marker): neither supported nor refused
         return {"sentence": reading.text, "cited": reading.cited, "claims": [], "verdict": NOT_FACTUAL if verdict == SUPPORTED else verdict, "reasons": reasons, "bound": []}
     if not reading.cited:
         numeric = any(c.magnitude is not None or c.magnitude_range or c.counts or c.numbers or c.timepoints_weeks or c.ci or c.p_value for c in reading.claims)

@@ -290,7 +290,7 @@ _f("REG_INVESTIGATIONAL", r"\binvestigational\b|\bexperimental\b|\bin (?:clinica
 # endpoint families
 _f("EP_CV_DEATH", r"\bcardiovascular deaths?\b|\bcv deaths?\b|\b(?:deaths?|died|dying) (?:from|of|due to) (?:a )?cardiovascular causes?\b|\bcardiovascular mortality\b")
 _f("EP_MORTALITY", r"\ball[- ]cause (?:death|mortality)\b|\bdeath from any cause\b|\bdeaths?\b|\bmortality\b|\bdied\b")
-_f("EP_MACE", r"\bmace(?:-(?P<variant>\d))?\b|\bmajor adverse cardiovascular events?\b")
+_f("EP_MACE", r"\bmace(?:-(?P<variant>\d))?\b(?!-\d)|\bmajor adverse cardiovascular events?\b")
 _f("EP_HBA1C", r"\bhba1c\b|\ba1c\b|\bglycated ha?emoglobin\b|\bha?emoglobin a1c\b")
 _f("EP_LEAN", r"\blean (?:body |soft tissue )?mass\b|\bfat[- ]free mass\b|\blean soft tissue\b")
 _f("EP_FAT", r"\bfat mass\b|\bbody fat\b")
@@ -343,7 +343,7 @@ NEUTRAL = frozenset(
     randomly treated enrolled enrolling included include includes including involving involved comprised comprising
     according based using used use via respectively versus compared comparison comparing
     group groups arm arms cohort cohorts dose doses dosage dosing level levels value values result results finding findings data datum figure figures
-    number numbers percentage percentages percent proportion proportions share mean means average averages least squares ls lsm adjusted point points
+    number numbers percentage percentages proportion proportions share mean means average averages least squares ls lsm adjusted point points
     change changes changed baseline week weeks wk month months year years day days time timepoint timepoints duration period
     end endpoint endpoints outcome outcomes analysis analyses trial trials study studies phase program programme programs
     participant participants patient patients adult adults people individual individuals subject subjects person persons
@@ -356,7 +356,7 @@ NEUTRAL = frozenset(
     kg mg kilogram kilograms milligram milligrams
     studied tested evaluated investigated examined assessed
     one two first second
-    overall total respective corresponding relative absolute
+    overall total respective corresponding
     made taking took administered administration dosed associated plus alongside together
     approximately roughly about around nearly
     following follow follows followed

@@ -236,6 +236,7 @@ class StructuredClaim:
     phases: list[str] = field(default_factory=list)
     dates: list[str] = field(default_factory=list)
     numbers: list[float] = field(default_factory=list)  # numbers with no recognised role
+    unread: list[str] = field(default_factory=list)  # digits that could not be read as a number or as part of a name
     statistical: list[dict[str, Any]] = field(default_factory=list)  # {name, text}
     endpoint_role: list[str] = field(default_factory=list)
     tier: list[str] = field(default_factory=list)
@@ -257,7 +258,7 @@ class StructuredClaim:
         return bool(
             self.arms or self.studies or self.unknown_studies or self.endpoints or self.magnitude is not None or self.magnitude_range or self.timepoints_weeks or self.population
             or self.estimand or self.ci or self.counts or self.p_value or self.phases or self.dates or self.numbers or self.statistical or self.endpoint_role or self.tier
-            or self.verification or self.regulatory or self.missing or self.exhaustive or self.residual_terms or self.direction or self.threshold is not None or self.dispersion
+            or self.verification or self.regulatory or self.missing or self.exhaustive or self.residual_terms or self.direction or self.threshold is not None or self.dispersion or self.unread
             or self.ni_margin is not None or self.parameter
         )
 
@@ -404,6 +405,12 @@ def _scan_mentions(text: str, vocab: Vocabulary) -> _Reader:
     r.scan(lx.BARE_NUMBER_RE, "NUMBER", lambda m: {"value": _float(m.group("val")), "signed": m.group("val")[0] in "+-"})
 
     _promote_numbers(r)
+    # Fail closed on digits nothing has read: "MACE-30", "Phase 20b", "0.790.99" must not pass as if the digits were not there.
+    # (a digit inside a word nothing else has read, such as GLP-1, is checked later as part of that word)
+    words = [(m.start(), m.end()) for m in _WORD_RE.finditer(text) if r.free(m.start(), m.end())]
+    for match in re.finditer(r"\d[\d.,]*", text):
+        if r.free(match.start(), match.end()) and not any(start <= match.start() and match.end() <= end for start, end in words):
+            r.add("UNREAD", match.start(), match.end(), text=text[max(0, match.start() - 8) : match.end() + 4].strip())
     return r
 
 
@@ -608,7 +615,7 @@ def _claim_from(r: _Reader, mentions: list[Mention], arms: list[ArmMention], spa
         claim.threshold = thresholds[0]
         if len(thresholds) > 1:
             claim.problems.append("more than one responder threshold in one clause")
-    claim.timepoints_weeks = list(dict.fromkeys(round(m.data["weeks"], 3) for m in by_kind.get("TIME", [])))
+    claim.timepoints_weeks = list(dict.fromkeys(round(m.data["weeks"], 3) for m in sorted(by_kind.get("TIME", []), key=lambda m: m.start)))
     claim.counts = list(dict.fromkeys(m.data["value"] for m in by_kind.get("COUNT", [])))
     if by_kind.get("DISPERSION"):
         claim.dispersion = dict(by_kind["DISPERSION"][0].data)
@@ -637,6 +644,7 @@ def _claim_from(r: _Reader, mentions: list[Mention], arms: list[ArmMention], spa
             claim.exhaustive.append(mention.data["text"].lower())
     if by_kind.get("THRESHOLD"):
         claim.endpoints.append({"family": "RESPONDER", "text": by_kind["THRESHOLD"][0].data["text"].lower(), "variant": None})
+    claim.unread = [m.data["text"] for m in by_kind.get("UNREAD", [])]
     for _, _, word in free_words:
         low = word.lower()
         if low in lx.NEGATORS or low.endswith("n't"):

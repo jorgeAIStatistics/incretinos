@@ -8,6 +8,7 @@ assistant produces for the audit's four questions.
 
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass, replace
 
@@ -516,6 +517,75 @@ def test_dev_benchmark_covers_every_category_and_meets_its_floors(db):
     for category, row in report["per_category"].items():
         if category != "VALID":
             assert row["cases"] >= 3 and row["detection_rate"] >= 0.8, (category, row, summary)
+
+
+# One element of a faithful sentence changed at a time. Every such sentence must stop being accepted.
+_WORD_MUTATIONS = [
+    ("retatrutide", "tirzepatide"), ("tirzepatide", "semaglutide"), ("orforglipron", "retatrutide"), ("dulaglutide", "tirzepatide"), ("placebo", "semaglutide"), ("semaglutide", "placebo"),
+    ("insulin glargine", "placebo"), ("eloralintide", "retatrutide"), ("bimagrumab", "tirzepatide"), ("Zepbound", "Wegovy"), ("FOUNDAYO", "Mounjaro"),
+    ("SURMOUNT-1", "SURMOUNT-2"), ("TRIUMPH-1", "TRIUMPH-2"), ("ACHIEVE-4", "ACHIEVE-3"), ("REWIND", "SURPASS-CVOT"), ("SURPASS-CVOT", "REWIND"), ("ATTAIN-1", "ATTAIN-2"), ("SURMOUNT-5", "SURMOUNT-1"),
+    ("SURPASS-2", "SURMOUNT-2"), ("ACHIEVE-3", "ACHIEVE-4"), ("TRIUMPH-2", "TRIUMPH-1"), ("SURMOUNT-4", "SURMOUNT-1"), ("BELIEVE", "SURMOUNT-1"),
+    ("week ", "month "), ("weeks", "months"), ("fell", "rose"), ("reduced", "increased"), ("lowered", "raised"), ("lost", "gained"), ("decreased", "increased"), ("reduction", "increase"), ("loss", "gain"),
+    ("increased", "decreased"), ("without type 2 diabetes", "with type 2 diabetes"), ("with type 2 diabetes", "without type 2 diabetes"), ("efficacy estimand", "treatment-regimen estimand"),
+    ("treatment-regimen estimand", "efficacy estimand"), ("press release", "peer-reviewed publication"), ("registry-posted", "peer-reviewed"), ("prescribing information", "press release"),
+    ("non-inferiority", "superiority"), ("non-inferior", "superior"), ("superiority", "non-inferiority"), ("not statistically significant", "statistically significant"), ("significantly", "non-significantly"),
+    ("exploratory", "confirmatory"), ("primary", "exploratory"), ("nominal", "confirmatory"), ("not controlled", "controlled"), ("no multiplicity", "full multiplicity"), ("investigational", "approved"),
+    ("FDA-approved", "investigational"), ("not approved", "approved"), ("is not tracked", "is tracked"), ("is not a direct", "is a direct"), ("not human-verified", "human-verified"), ("quote-anchored", "human-verified"),
+    ("percentage points", "kg"), ("%", " kg"), (" kg", "%"), ("hazard ratio", "odds ratio"), ("HR ", "OR "), ("more than", "less than"), ("greater", "smaller"), ("less often", "more often"), ("MACE-4", "MACE-3"),
+    ("MACE-3", "MACE-4"), ("body weight", "HbA1c"), ("HbA1c", "body weight"), ("all-cause death", "cardiovascular death"), ("triple", "dual"), ("GLP-1", "GLP-2"), ("Phase 2", "Phase 3"), ("Phase 3", "Phase 2"),
+    ("Phase 1", "Phase 3"), ("at least 5%", "at least 15%"), ("adults", "adolescents"), ("participants", "children"), ("no confidence interval", "a narrow confidence interval"),
+    ("no p-value is reported", "the p-value is 0.001"), ("inferred", "pre-specified"), ("met the", "missed the"), ("was non-inferior", "was not non-inferior"), ("chronic weight management", "heart failure"),
+    ("16 weeks", "16 months"), ("absolute", "percent"), ("9 mg plus tirzepatide 15 mg", "15 mg plus tirzepatide 9 mg"), ("3 mg to tirzepatide 5 mg", "5 mg to tirzepatide 3 mg"),
+    ("versus", "and"), ("peer reviewed", "human-verified"),
+]
+_NUMBER = re.compile(r"(?<![A-Za-z\[])([-\u2212\u2013]?)(\d+(?:\.\d+)?)(?![\d\]])")
+
+
+def _mutants(sentence: str) -> list[tuple[str, str]]:
+    out = []
+    masked = re.sub(r"\[C\d+\]", lambda m: "@" * len(m.group(0)), sentence)
+    for match in _NUMBER.finditer(masked):
+        if "@" in masked[max(0, match.start() - 2) : match.end() + 1]:
+            continue
+        value = float(match.group(2))
+        for changed in (f"{value * 10:g}", f"{value + 1:g}"):
+            out.append((f"number {match.group(2)} -> {changed}", sentence[: match.start(2)] + changed + sentence[match.end(2) :]))
+    for old, new in _WORD_MUTATIONS:
+        if old in sentence:
+            out.append((f"{old} -> {new}", sentence.replace(old, new, 1)))
+    return [(label, mutated) for label, mutated in out if mutated != sentence]
+
+
+def test_changing_one_element_of_a_faithful_sentence_gets_it_refused(db):
+    """Mutation test over the valid dev cases: wrong drug, trial, number, unit, direction, estimand, tier, status ..."""
+    cases = [c for c in benchmark.load_cases(benchmark.BENCHMARK_DIR / "dev.yaml") if c["expected"] == "SUPPORTED"]
+    vocabulary = Vocabulary.from_session(db)
+    # The only mutations that leave a sentence true: two correctly paired values joined by "and" instead of "versus",
+    # and "not peer reviewed" turned into "not human-verified" (which is also so).
+    harmless = {("valid-two-arms-versus", "versus -> and"), ("valid-same-trial-order", "versus -> and"), ("valid-press-release-not-peer-reviewed", "peer reviewed -> human-verified")}
+    tried, accepted = 0, []
+    for case in cases:
+        for label, mutated in _mutants(case["sentence"]):
+            tried += 1
+            outcome = benchmark.run_case(db, {**case, "sentence": mutated, "expected": "REJECT", "category": "MAGNITUDE_CHANGED"}, vocabulary)
+            if outcome["outcome"] != "REJECTED" and (case["id"], label) not in harmless:
+                accepted.append((case["id"], label, mutated))
+    assert tried >= 900, tried
+    assert not accepted, accepted[:10]
+
+
+def test_digits_nothing_can_read_are_refused_not_ignored(db):
+    """A number or a name with digits the extractor cannot read must never pass as if it were not there."""
+    for draft in (
+        "In ACHIEVE-4, the hazard ratio for MACE-40 with orforglipron versus insulin glargine was 0.84 (95% CI 0.59 to 1.2) [C2].",
+        "In ACHIEVE-4, the hazard ratio for MACE-4 with orforglipron versus insulin glargine was 0.84 (95% CI 0.590.12) [C2].",
+        "ACHIEVE-4 (NCT05803421), a Phase 30b trial, is completed [C1].",
+    ):
+        check = _check(db, "A", draft)
+        assert not check["passed"], draft
+    assert not _check(db, "R", "Retatrutide is an investigational triple GIP, GLP-2 and glucagon receptor agonist [C1].")["passed"]
+    assert not _check(db, "R", "In SURMOUNT-1, tirzepatide 15 mg reduced BMI by 20.9% at week 72 [C4].")["passed"]  # endpoint changed
+    assert not _check(db, "R", "HbA1c fell by 20.9% with tirzepatide 15 mg in SURMOUNT-1 [C4].")["passed"]
 
 
 def test_benchmark_errors_are_reported_and_never_scored(db, tmp_path):

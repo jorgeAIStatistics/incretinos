@@ -533,7 +533,13 @@ def _model_summary(session: Session, question: str, provider: LLMProvider, compo
     if not draft:
         meta["reason"] = "provider returned no text"
         return meta
-    check = check_citation_fidelity(draft, checker_cards, vocabulary=Vocabulary.from_session(session), truncated=truncated)
+    try:
+        check = check_citation_fidelity(draft, checker_cards, vocabulary=Vocabulary.from_session(session), truncated=truncated)
+    except Exception:  # fail closed: a draft the verifier cannot read is withheld, and the deterministic answer stands
+        log.exception("claim verification failed; the model draft is withheld")
+        meta["rejected"] = True
+        meta["error"] = "VerificationError"
+        return meta
     meta["citation_check"] = check
     if not check["passed"]:
         meta["rejected"] = True

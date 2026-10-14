@@ -88,7 +88,9 @@ def arm_doses(label: str | None, drugs: list[str]) -> dict[str, list[float]]:
         owner, best = None, None
         for slug, where in positions.items():
             for pos in where:
-                distance = abs(pos - match.start())
+                # "eloralintide 9 mg + tirzepatide 15 mg": a dose belongs to the drug named before it; only a dose
+                # with no drug before it ("15 mg tirzepatide") takes the one that follows
+                distance = match.start() - pos if pos <= match.start() else 10_000 + pos - match.start()
                 if best is None or distance < best:
                     owner, best = slug, distance
         for number in _NUM_RE.findall(match.group(1)):
