@@ -211,7 +211,10 @@ test("lists work with the paged API envelope {total, limit, offset, rows}", asyn
     const url = new URL(route.request().url());
     const limit = Number(url.searchParams.get("limit") ?? 20);
     const offset = Number(url.searchParams.get("offset") ?? 0);
-    const all = await (await route.fetch({ url: `${url.origin}${url.pathname}` })).json();
+    // The whole list, whichever shape the service answers in (a bare array, or the envelope with its largest page).
+    const whole = await (await route.fetch({ url: `${url.origin}${url.pathname}?limit=1000` })).json();
+    const all: unknown[] = Array.isArray(whole) ? whole : whole.rows;
+    expect(all.length, "the re-shaped list is the whole list").toBe(Array.isArray(whole) ? all.length : whole.total);
     await route.fulfill({ json: { total: all.length, limit, offset, rows: all.slice(offset, offset + limit) } });
   });
   await page.goto("/trials");

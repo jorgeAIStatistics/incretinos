@@ -242,7 +242,7 @@ export function SourcesTab() {
             options={[{ value: "", label: "All types" }, ...typeCodes.map((code) => ({ value: code, label: byType[code] !== undefined ? `${typeLabel(code)} (${formatCount(byType[code])})` : typeLabel(code) }))]}
             className="w-full sm:w-64"
           />
-          <SearchField label="Search" value={q} onChange={setQ} placeholder="Title, NCT, PMID…" hint={q.trim().length === 1 ? "Type at least 2 characters." : undefined} className="w-full sm:w-60" />
+          <SearchField label="Search" value={q} onChange={setQ} onBlur={() => setParams({ q: q.trim() })} placeholder="Title, NCT, PMID…" hint={q.trim().length === 1 ? "Type at least 2 characters." : undefined} className="w-full sm:w-60" />
         </form>
         {list.status === "error" ? (
           <ErrorState title="The source list could not be loaded" message={list.error ?? ""} onRetry={list.reload} />

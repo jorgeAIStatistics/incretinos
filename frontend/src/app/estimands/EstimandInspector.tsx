@@ -31,6 +31,9 @@ function defaultStudy(studies: StudyListItem[]): string | null {
 
 function BasisBadge({ basis }: { basis: string }) {
   if (basis === "STATED_BY_SOURCE") return <EpistemicBadge kind="DOCUMENTED">Stated by the source</EpistemicBadge>;
+  // The curator's research note names the estimand, but no checked quote from this source does: it is not inferred
+  // from an analysis description, and the card's own text says so (the chip stays short enough for a phone).
+  if (basis === "INFERRED_BY_CURATOR") return <EpistemicBadge kind="INFERENCE">Curator&apos;s attribution</EpistemicBadge>;
   if (basis.includes("INFERRED")) return <EpistemicBadge kind="INFERENCE">Inferred from the analysis description</EpistemicBadge>;
   return <Missing>{enumLabel(basis)}</Missing>;
 }
@@ -42,6 +45,9 @@ function EstimandCard({ estimand }: { estimand: EstimandDefinition }) {
         <h3 className="text-body font-semibold text-ink">{estimandLabel(estimand.label)}</h3>
         <BasisBadge basis={estimand.basis} />
       </div>
+      {estimand.basis === "INFERRED_BY_CURATOR" ? (
+        <p className="mt-1.5 text-data text-ink-3">The curator&apos;s research note names this estimand, but no checked quote from this source does.</p>
+      ) : null}
       {estimand.explainer ? <p className="mt-1.5 text-data text-ink-2">{estimand.explainer}</p> : null}
       {estimand.strategies.length ? (
         <ul className="mt-1.5 space-y-0.5 text-data text-ink-3">
@@ -158,8 +164,11 @@ function Results({ data, picked, onPick }: { data: EstimandData; picked: number 
       ["TREATMENT_REGIMEN", "EFFICACY"]
         .filter((e) => r.by_estimand[e]?.length)
         .map((e) => {
-          const f = r.by_estimand[e].find((x) => x.tier === "PEER_REVIEWED") ?? r.by_estimand[e][0];
-          return { ...findingRow(f), key: `${f.result_id}`, label: r.arm, sub: `${estimandLabel(e, f.estimand_basis)} · ${f.source?.tier_label ?? "source not recorded"}` };
+          // Several sources can report one arm under one estimand. The one plotted is the one the shared display rule
+          // puts first (reported interval, then dispersion, then n, then stored first), never the one of a preferred tier.
+          const leadId = r.display_lead?.[e];
+          const f = r.by_estimand[e].find((x) => x.result_id === leadId) ?? r.by_estimand[e][0];
+          return { ...findingRow(f, { drugs: data.study.drugs }), key: `${f.result_id}`, label: r.arm, sub: `${estimandLabel(e, f.estimand_basis)} · ${f.source?.tier_label ?? "source not recorded"}` };
         }),
     );
   const extraColumns = Array.from(new Set(data.rows.flatMap((r) => Object.keys(r.by_estimand)))).filter((label) => !KNOWN_COLUMNS.includes(label));
@@ -192,7 +201,12 @@ function Results({ data, picked, onPick }: { data: EstimandData; picked: number 
             title={`Percent change in body weight at week ${fmt(mainWeeks, 0)}, by estimand`}
             subtitle="Each arm appears once per estimand. The gap between the two rows of one arm reflects the handling of treatment discontinuation — it is not a treatment effect."
             table={<ChartTable rows={chartRows} unit="%" valueHeader="Change, %" />}
-            footnote={data.rule}
+            footnote={
+              <>
+                {data.rule}
+                {data.display_rule ? <span className="mt-1 block">{data.display_rule}</span> : null}
+              </>
+            }
           >
             <IntervalChart rows={chartRows} unit="%" mark="dot" axisLabel="Percent change in body weight" />
           </ChartFrame>

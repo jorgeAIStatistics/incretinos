@@ -44,6 +44,8 @@ export type Meta = {
   tier_labels: Record<string, string>;
   llm: { provider: string; enabled: boolean };
   review_enabled: boolean;
+  /** Evidence-level review state (all reviewable evidence, not results only). Absent from an API older than the review lifecycle. */
+  review?: { by_status: Record<string, number>; by_type: Record<string, Record<string, number>>; decisions_recorded: number; needs_review: number };
   notice: string;
 };
 
@@ -315,5 +317,15 @@ export type EstimandRow = {
   baseline_definition: string | null;
   /** Results keyed by estimand label. Several results in one cell come from different sources and stay separate. */
   by_estimand: Record<string, Finding[]>;
+  /** Per estimand label, the result_id the shared display rule puts first when several sources report the cell. */
+  display_lead?: Record<string, number>;
 };
-export type EstimandInspector = { study: StudyBrief; estimands: EstimandDefinition[]; rows: EstimandRow[]; explainers: Record<string, string>; rule: string };
+export type EstimandInspector = {
+  study: StudyBrief;
+  estimands: EstimandDefinition[];
+  rows: EstimandRow[];
+  explainers: Record<string, string>;
+  rule: string;
+  /** How the leading value of a cell is chosen (a display choice, never by evidence tier). */
+  display_rule?: string;
+};

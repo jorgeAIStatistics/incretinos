@@ -205,6 +205,7 @@ export function TrialAtlas() {
           label="Search"
           value={q}
           onChange={setQ}
+          onBlur={() => setParams({ q: q.trim() })}
           placeholder="Name, title or NCT number…"
           className="w-full sm:w-64"
         />

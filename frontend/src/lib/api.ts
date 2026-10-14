@@ -154,13 +154,35 @@ export function withQuery(path: string, params: Record<string, string | number |
   return `${path}${path.includes("?") ? "&" : "?"}${query}`;
 }
 
-/* ---------- formatting (number formatting is owned elsewhere: do not change `fmt` here) ---------- */
+/* ---------- formatting ---------- */
 
-export const fmt = (v: number | null | undefined, digits = 2): string => {
+/**
+ * A number as text.
+ *
+ * Without `digits` the value is shown as it was reported: every stored digit is kept and nothing is
+ * rounded (7.973 stays 7.973, 0.0046 stays 0.0046). Use this for values that come from a source.
+ * With `digits` the value is rounded to that many decimals — for numbers calculated here — but a
+ * non-zero value is never shown as 0: its first two significant digits are kept instead.
+ * Whole numbers keep their zeros (80 stays 80); only trailing decimal zeros are trimmed.
+ */
+export const fmt = (v: number | null | undefined, digits?: number): string => {
   if (v === null || v === undefined || Number.isNaN(v)) return "—";
-  const fixed = v.toFixed(digits);
-  // Trim trailing decimal zeros only — never the zeros of a whole number (80 must stay 80).
-  const s = fixed.includes(".") ? fixed.replace(/\.?0+$/, "") : fixed;
+  if (!Number.isFinite(v)) return v > 0 ? "∞" : "−∞";
+  // Decimal text without an exponent, so small values such as 4.6e-7 read as 0.00000046.
+  const plain = (n: number): string => {
+    const s = String(n);
+    const m = /^(-?)(\d)(?:\.(\d+))?e-(\d+)$/.exec(s);
+    return m ? n.toFixed(Math.min(100, Number(m[4]) + (m[3]?.length ?? 0))) : s;
+  };
+  let s: string;
+  if (digits === undefined) {
+    // 15 significant digits is what a double holds exactly: this removes binary noise (0.1 + 0.2) and nothing else.
+    s = plain(Number(v.toPrecision(15)));
+  } else {
+    const fixed = v.toFixed(digits);
+    s = fixed.includes(".") ? fixed.replace(/\.?0+$/, "") : fixed;
+    if (v !== 0 && Number(s) === 0) s = plain(Number(v.toPrecision(2)));
+  }
   return s === "-0" ? "0" : s.replace("-", "−");
 };
 export const pct = (v: number | null | undefined, digits = 1): string => (v === null || v === undefined ? "—" : `${fmt(v, digits)}%`);

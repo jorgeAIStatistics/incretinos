@@ -195,7 +195,7 @@ function Dashboard({ data }: { data: Overview }) {
             <StatTile label="Trials in depth" value={formatCount(m.counts.studies)} note={`${formatCount(m.counts.discovered_trials)} in the registry index`} />
             <StatTile label="Reported results" value={formatCount(m.counts.results)} note={`${formatCount(m.counts.analyses)} between-arm analyses`} />
             <StatTile label="Sources" value={formatCount(m.counts.sources)} note="Hashed and versioned" />
-            <StatTile label="Open evidence gaps" value={formatCount(m.counts.gaps)} note={`${formatCount(m.counts.open_review_items)} items awaiting review`} />
+            <StatTile label="Open evidence gaps" value={formatCount(m.counts.gaps)} note={m.review ? `${formatCount(m.review.needs_review)} evidence records awaiting review · ${formatCount(m.counts.open_review_items)} open queue ${m.counts.open_review_items === 1 ? "item" : "items"}` : `${formatCount(m.counts.open_review_items)} items awaiting review`} />
           </div>
           <VerificationBreakdown meta={m} />
         </Panel>

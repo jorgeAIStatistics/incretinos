@@ -87,7 +87,7 @@ export function TextField({
 }
 
 /** Search box with a leading icon and a clear button. The request it drives should be debounced (`useDebounced`). */
-export function SearchField({ label, value, onChange, placeholder, className, name = "q", hint }: FieldCommon & { value: string; onChange: (value: string) => void; placeholder?: string }) {
+export function SearchField({ label, value, onChange, onBlur, placeholder, className, name = "q", hint }: FieldCommon & { value: string; onChange: (value: string) => void; /** Called when focus leaves the box, for example to commit a debounced value at once. */ onBlur?: () => void; placeholder?: string }) {
   const id = useId();
   return (
     <div className={clsx(FIELD, className)}>
@@ -100,6 +100,7 @@ export function SearchField({ label, value, onChange, placeholder, className, na
           name={name}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
           placeholder={placeholder}
           autoComplete="off"
           spellCheck={false}

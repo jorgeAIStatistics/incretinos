@@ -174,3 +174,13 @@ export function useWholeList<T, X = Record<string, unknown>>(base: string | null
     return { rows, total, truncated: total > rows.length, extra: first.extra as X };
   });
 }
+
+/**
+ * Every row of a list endpoint as a plain array: `data` is null until the list has loaded. For views that read a
+ * short list whole (the molecules, the tracked trials) and only need the rows. Built on `useWholeList`, so it reads
+ * the old bare-array shape and the paged `{ total, limit, offset, rows }` envelope alike.
+ */
+export function useRows<T>(base: string | null, options: { cap?: number } = {}): { data: T[] | null; error: string | null; loading: boolean; truncated: boolean; reload: () => void } {
+  const state = useWholeList<T>(base, options);
+  return { data: state.data?.rows ?? null, error: state.error, loading: state.loading, truncated: state.data?.truncated ?? false, reload: state.reload };
+}

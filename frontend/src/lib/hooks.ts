@@ -8,6 +8,10 @@ import { type RefObject, useCallback, useEffect, useLayoutEffect, useState, useS
  * Updates use the History API, which Next.js keeps in step with `useSearchParams`: the address changes without a
  * round trip to the server and without adding a history entry for every keystroke.
  * Requires a <Suspense> boundary above the component (Next.js `useSearchParams`).
+ *
+ * A history update made while a link navigation is still loading cancels that navigation. A value that is written
+ * after a delay (a debounced search box) must therefore also be written at once when the user leaves the field,
+ * which happens before a click on a link starts navigating; the delayed write then finds nothing left to change.
  */
 export function useQueryParams(): [get: (key: string, fallback?: string) => string, set: (patch: Record<string, string | null | undefined>) => void] {
   const params = useSearchParams();
@@ -15,6 +19,8 @@ export function useQueryParams(): [get: (key: string, fallback?: string) => stri
   const get = useCallback((key: string, fallback = "") => params.get(key) ?? fallback, [params]);
   const set = useCallback(
     (patch: Record<string, string | null | undefined>) => {
+      // Never write this view's address over another route's (a late, debounced update after the user has left).
+      if (window.location.pathname !== pathname) return;
       const next = new URLSearchParams(window.location.search);
       for (const [key, value] of Object.entries(patch)) {
         if (value === null || value === undefined || value === "") next.delete(key);
