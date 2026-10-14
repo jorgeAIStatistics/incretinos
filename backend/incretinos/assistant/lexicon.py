@@ -339,8 +339,8 @@ NEUTRAL = frozenset(
     """
     a an the this that these those it its their they them there here which who whom whose what when where while whereas although though however
     and or but nor so yet both either each per as at by for from in into of on onto to with within across among amid between through throughout
-    during after before until upon over under above below about around approximately roughly nearly almost circa some such other another further
-    also too then thus hence therefore because since if whether than very more most much many few several
+    during after before until upon over under above below about around approximately roughly nearly almost circa such other another further
+    also too then thus hence therefore because since if whether than
     is are was were be been being am has have had having do does did done will would can could may might
     reported report reports reporting observed observe observes recorded record records measured measure measures measurement assessed assess
     evaluated evaluate analysed analyzed analyse analyze estimated estimate estimates calculated seen found noted note notes gave give gives given

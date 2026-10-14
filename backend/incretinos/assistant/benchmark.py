@@ -106,20 +106,24 @@ def resolve_evidence(session: Session, spec: dict[str, Any]) -> EvidenceFact:
         raise BenchmarkError(f"evidence entry is not a mapping: {spec!r}")
     kind = spec.get("kind")
     if kind == "result":
-        return fact_from_result(session, select_result(session, spec))
-    if kind == "analysis":
-        return fact_from_analysis(select_analysis(session, spec))
-    if kind == "claim":
+        fact = fact_from_result(session, select_result(session, spec))
+    elif kind == "analysis":
+        fact = fact_from_analysis(select_analysis(session, spec))
+    elif kind == "claim":
         claim = session.scalar(select(EvidenceClaim).where(EvidenceClaim.key == spec.get("key")))
         if claim is None:
             raise BenchmarkError(f"no claim with key {spec.get('key')!r}")
-        return fact_from_claim(claim)
-    if kind == "drug_status":
+        fact = fact_from_claim(claim)
+    elif kind == "drug_status":
         drug = session.scalar(select(Drug).where(Drug.slug == spec.get("drug")))
         if drug is None:
             raise BenchmarkError(f"no drug with slug {spec.get('drug')!r}")
-        return fact_from_drug(session, drug)
-    raise BenchmarkError(f"unknown evidence kind {kind!r}")
+        fact = fact_from_drug(session, drug)
+    else:
+        raise BenchmarkError(f"unknown evidence kind {kind!r}")
+    if not fact.usable:
+        raise BenchmarkError(f"the selected record was rejected in review and is never offered as evidence: {spec}")
+    return fact
 
 
 def load_cases(path: Path) -> list[dict[str, Any]]:

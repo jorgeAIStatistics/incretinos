@@ -296,6 +296,9 @@ class _Composer:
 
 def _drug_profile(c: _Composer, drug: Drug) -> None:
     fact = fact_from_drug(c.session, drug, text=drug_profile_text(drug))
+    if not fact.usable:  # the regulatory-status statement itself was rejected in review
+        c.add("UNAVAILABLE", f"The stored regulatory-status statement for {drug.name} was rejected in review and is not used.")
+        return
     c.add("REPORTED_EVIDENCE", fact.text, *fact.source_ids, fact=fact)
 
 

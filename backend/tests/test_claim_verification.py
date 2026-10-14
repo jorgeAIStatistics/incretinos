@@ -381,6 +381,20 @@ def test_rejected_records_never_become_evidence_cards(db):
     after = ask(db, QUESTIONS["R"])
     assert not any(rid in block.result_ids for block in after.blocks)
     assert not any(record == {"type": "result", "id": rid, "verification_status": "REJECTED"} for block in after.blocks for record in block.evidence)
+    with pytest.raises(benchmark.BenchmarkError):  # a rejected row is not benchmark evidence either
+        benchmark.resolve_evidence(db, {"kind": "result", "nct": "NCT05929066", "arm_contains": "12 mg", "estimand": "TREATMENT_REGIMEN", "tier": "PEER_REVIEWED"})
+    # a rejected mechanism row no longer shapes the pharmacologic class; a rejected status statement removes the profile
+    drug = db.scalar(select(Drug).where(Drug.slug == "retatrutide"))
+    drug.mechanisms[0].verification_status = "REJECTED"
+    db.flush()
+    assert len(fact_from_drug(db, drug).records) == len(drug.mechanisms)  # the status claim plus the remaining mechanism rows
+    assert "Triple" not in fact_from_drug(db, drug).text
+    from incretinos.models import EvidenceClaim
+
+    db.scalar(select(EvidenceClaim).where(EvidenceClaim.key == "retatrutide:regulatory-status")).verification_status = "REJECTED"
+    db.flush()
+    profile = ask(db, QUESTIONS["R"]).blocks[0]
+    assert profile.kind == "UNAVAILABLE" and "rejected in review" in profile.text
 
 
 # --------------------------------------------------------------------------- wiring: report, markers, truncation, provider
