@@ -1556,7 +1556,7 @@ def test_the_migration_upgrades_a_legacy_database(tmp_path):
 
 
 def test_a_database_that_predates_the_lifecycle_is_reported_clearly(tmp_path):
-    from incretinos.db import SchemaOutOfDate, ensure_schema_current
+    from incretinos.db import SchemaOutOfDate, create_all, ensure_schema_current
 
     target = tmp_path / "old.db"
     run = subprocess.run([sys.executable, "-m", "alembic", "upgrade", "10d1699882ea"], cwd=BACKEND, env={**os.environ, "INCRETINOS_DATABASE_URL": f"sqlite:///{target}"},
@@ -1565,6 +1565,16 @@ def test_a_database_that_predates_the_lifecycle_is_reported_clearly(tmp_path):
     engine = make_engine(f"sqlite:///{target}")
     with pytest.raises(SchemaOutOfDate, match="alembic upgrade head"):
         ensure_schema_current(engine)
+    with pytest.raises(SchemaOutOfDate):
+        create_all(engine)
+    engine.dispose()
+    with sqlite3.connect(target) as conn:  # nothing was created on the way: the database can still be migrated
+        assert conn.execute("SELECT COUNT(*) FROM sqlite_master WHERE name = 'evidence_version'").fetchone()[0] == 0
+    upgraded = subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], cwd=BACKEND, env={**os.environ, "INCRETINOS_DATABASE_URL": f"sqlite:///{target}"},
+                              capture_output=True, text=True)
+    assert upgraded.returncode == 0, upgraded.stderr[-800:]
+    engine = make_engine(f"sqlite:///{target}")
+    create_all(engine)  # now accepted
     engine.dispose()
 
 

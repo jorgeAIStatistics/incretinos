@@ -178,12 +178,13 @@ def rejected_visible(session: Session) -> Iterator[Session]:
 # --------------------------------------------------------------------------- schema and reset
 
 
-def create_all() -> None:
+def create_all(engine: Engine | None = None) -> None:
+    """Create missing tables. Refuses, without touching anything, a database whose existing tables are out of date."""
     from . import models  # noqa: F401  (register mappers)
 
-    engine = get_engine()
+    engine = engine or get_engine()
+    ensure_schema_current(engine)  # before creating anything: a half-upgraded database could not be migrated afterwards
     Base.metadata.create_all(engine)
-    ensure_schema_current(engine)
 
 
 def ensure_schema_current(engine: Engine | None = None) -> None:

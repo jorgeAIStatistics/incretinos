@@ -72,11 +72,13 @@ changes the fingerprint and forces a recheck.
 
 Fingerprint content per evidence type
 -------------------------------------
-See the ``_*_snapshot`` builders below: values and limits, interval and level, n, dispersion, units,
-estimand label and basis, baseline definition, population and method text, time point, the curated
-locator, the quote, notes, source key and tier, and the full arm and endpoint description including
-the platform's own classification of them. The registry JSON path of a registry row is positional
-(it shifts when the sponsor inserts an outcome measure) and is therefore kept as context, not hashed.
+See the ``_load_*`` functions below, which build each snapshot: values and limits, interval and
+level, n, dispersion, units, estimand label and basis, baseline definition, population and method
+text, time point, the curated locator, the quote, notes, source key and tier, and the full arm and
+endpoint description including the platform's own classification of them (drug, dose, formulation,
+endpoint category, role, threshold). The JSON path of a registry row is a list position that shifts
+when the sponsor inserts an outcome measure, so it is left out of both the key and the fingerprint;
+the review API reads it from the row and resolves it against the stored snapshot.
 """
 
 from __future__ import annotations
@@ -221,7 +223,7 @@ def digest(parts: Any) -> str:
 
 
 def hashed_content(snapshot: dict[str, Any]) -> dict[str, Any]:
-    """The part of a snapshot that the fingerprint covers (keys starting with ``_`` are display context)."""
+    """The part of a snapshot that the fingerprint covers (any key starting with ``_`` would be display-only)."""
     return {k: v for k, v in snapshot.items() if not k.startswith("_")}
 
 
