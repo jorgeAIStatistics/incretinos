@@ -34,7 +34,8 @@ const CHART_KIND: Record<string, { kind: string; fill: BarFill; title: string; h
   "DESCRIPTIVE CROSS-STUDY COMPARISON": { kind: "descriptive", fill: "outline", title: "Two results side by side, for description only", how: "Separate panels, unfilled bars: the arms were not randomized against each other and the designs differ; this is a description, not a comparison of efficacy." },
 };
 
-const sameScale = (a: any, b: any) => unitLabel(a.unit) === unitLabel(b.unit) && a.category === b.category && (a.threshold ?? null) === (b.threshold ?? null);
+// One axis needs one unit and one endpoint — including the sub-measure when an endpoint reports several (e.g. responder thresholds).
+const sameScale = (a: any, b: any) => unitLabel(a.unit) === unitLabel(b.unit) && a.category === b.category && (a.threshold ?? null) === (b.threshold ?? null) && (a.class_title ?? "") === (b.class_title ?? "");
 
 function FindingPicker({ side, value, onPick, studies, categories }: { side: "A" | "B"; value: number | null; onPick: (id: number) => void; studies: any[]; categories: Record<string, string> | null }) {
   const { data: current } = useApi(value ? `/findings/${value}` : null);
@@ -49,7 +50,7 @@ function FindingPicker({ side, value, onPick, studies, categories }: { side: "A"
   const { data: list, loading } = useApi(study ? `/findings?study=${study}&category=${category}&limit=${RESULT_LIMIT}` : null);
   const options = (list?.rows ?? []).map((f: any) => ({
     value: String(f.result_id),
-    label: `${f.arm_label} · ${withUnit(reportedText(f.value, f.value_text), f.unit)} · ${weekLabel(f.timepoint_weeks)} · ${estimandLabel(f.estimand_label, f.estimand_basis)} · ${tierLabel(f)}`,
+    label: `${f.arm_label}${f.class_title ? ` (${f.class_title})` : ""} · ${withUnit(reportedText(f.value, f.value_text), f.unit)} · ${weekLabel(f.timepoint_weeks)} · ${estimandLabel(f.estimand_label, f.estimand_basis)} · ${tierLabel(f)}`,
   }));
   const categoryOptions = categories ? Object.entries(categories).map(([v, l]) => ({ value: v, label: `${l.charAt(0).toUpperCase()}${l.slice(1)}` })) : [{ value: category, label: titleCase(category) }];
   const placeholder = !study ? "Select a trial first" : loading && !list ? "Loading results…" : options.length ? "Select a result…" : "No arm-level results for this endpoint in this trial";
@@ -74,7 +75,7 @@ function FindingCard({ side, f, reading }: { side: string; f: any; reading: any 
         <VerificationBadge status={f.verification_status} />
       </div>
       <p className="mt-1 text-[15px] font-semibold leading-snug text-ink"><Link href={`/trials/${f.nct_id}`}>{f.study_name}</Link> — {f.arm_label}</p>
-      <p className="mt-0.5 text-[12.5px] text-ink-3">{phaseLabel(f.phase)} · {diabetesLabel(f.diabetes_status)} · {f.endpoint_title}</p>
+      <p className="mt-0.5 text-[12.5px] text-ink-3">{phaseLabel(f.phase)} · {diabetesLabel(f.diabetes_status)} · {f.endpoint_title}{f.class_title ? ` — ${f.class_title}` : ""}</p>
       <p className="num mt-3 text-[28px] font-semibold leading-none text-ink" data-testid={`finding-${side.toLowerCase()}-value`}>
         {f.value != null ? withUnit(reportedText(f.value, f.value_text), f.unit) : f.value_low != null ? `${fmt(f.value_low)} to ${withUnit(fmt(f.value_high), f.unit)}` : "not reported"}
         {unitLabel(f.unit) ? null : <span className="ml-2 text-[13px] font-normal text-ink-3">(unit not recorded)</span>}
@@ -119,7 +120,7 @@ function ComparisonChart({ result, studies }: { result: any; studies: any[] }) {
     return (
       <div data-testid="no-comparison-chart">
         <Callout tone="warn" title="No comparison chart is drawn: the two values are not on a common scale">
-          Finding A is in {unitLabel(a.unit) || "a unit the source does not record"} ({a.endpoint_title}); finding B is in {unitLabel(b.unit) || "a unit the source does not record"} ({b.endpoint_title}). Values with different units or endpoints are never drawn on one axis.
+          Finding A is in {unitLabel(a.unit) || "a unit the source does not record"} ({a.endpoint_title}{a.class_title ? ` — ${a.class_title}` : ""}); finding B is in {unitLabel(b.unit) || "a unit the source does not record"} ({b.endpoint_title}{b.class_title ? ` — ${b.class_title}` : ""}). Values with different units or endpoints are never drawn on one axis.
         </Callout>
       </div>
     );

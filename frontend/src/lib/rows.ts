@@ -108,12 +108,13 @@ export const weekLabel = (weeks: number | null | undefined): string => (weeks !=
 export const tierLabel = (f: any): string => f.source?.tier_label ?? titleCase(f.tier);
 export const sourceShort = (source: any): string => (source ? [source.publisher ?? source.title, source.published_date].filter(Boolean).join(", ") : "not recorded");
 
+/** Estimand · evidence tier · time point (· baseline) (· the sub-measure, where an endpoint reports several, e.g. a responder threshold). */
+const basisLine = (f: any): string =>
+  [estimandLabel(f.estimand_label, f.estimand_basis), tierLabel(f), weekLabel(f.timepoint_weeks), f.baseline_definition ? `from ${f.baseline_definition}` : null, f.class_title || null].filter(Boolean).join(" · ");
+
 /** The lines every plotted result carries: estimand, evidence tier, time point (and baseline), then its source. */
 export function findingMeta(f: any): string[] {
-  return [
-    [estimandLabel(f.estimand_label, f.estimand_basis), tierLabel(f), weekLabel(f.timepoint_weeks), f.baseline_definition ? `from ${f.baseline_definition}` : null].filter(Boolean).join(" · "),
-    `Source: ${sourceShort(f.source)}`,
-  ];
+  return [basisLine(f), `Source: ${sourceShort(f.source)}`];
 }
 
 /** A finding becomes a chart row without losing its unit, its interval basis or its provenance. */
@@ -151,14 +152,15 @@ export function findingRow(f: any, opts: { studyInLabel?: boolean; drugs?: Study
 export type FindingSet = { key: string; findings: any[]; first: any; unit: string };
 
 /**
- * Results may share an axis and a caption only when they share endpoint, estimand, evidence tier, source,
- * time point, baseline definition and unit. This partitions findings into such sets, in the order given.
+ * Results may share an axis and a caption only when they share endpoint (and sub-measure, such as a responder
+ * threshold), estimand, evidence tier, source, time point, baseline definition and unit. This partitions findings
+ * into such sets, in the order given.
  */
 export function findingSets(findings: any[]): FindingSet[] {
   const sets = new Map<string, FindingSet>();
   for (const f of findings) {
     const unit = unitLabel(f.unit);
-    const key = [f.endpoint_id ?? f.endpoint_title ?? "", f.estimand_label, f.estimand_basis, f.tier, f.source?.id ?? "no-source", f.timepoint_weeks ?? "no-time", f.baseline_definition ?? "", unit].join("¦");
+    const key = [f.endpoint_id ?? f.endpoint_title ?? "", f.class_title ?? "", f.estimand_label, f.estimand_basis, f.tier, f.source?.id ?? "no-source", f.timepoint_weeks ?? "no-time", f.baseline_definition ?? "", unit].join("¦");
     const set = sets.get(key);
     if (set) set.findings.push(f);
     else sets.set(key, { key, findings: [f], first: f, unit });
@@ -166,10 +168,9 @@ export function findingSets(findings: any[]): FindingSet[] {
   return [...sets.values()];
 }
 
-/** What a set is, in the order estimand · evidence tier · time point (· baseline). True of every row in the set. */
+/** What a set is, in the order estimand · evidence tier · time point (· baseline) (· sub-measure). True of every row in the set. */
 export function setLabel(set: FindingSet): string {
-  const f = set.first;
-  return [estimandLabel(f.estimand_label, f.estimand_basis), tierLabel(f), weekLabel(f.timepoint_weeks), f.baseline_definition ? `from ${f.baseline_definition}` : null].filter(Boolean).join(" · ");
+  return basisLine(set.first);
 }
 
 /* ---------- between-arm contrasts ---------- */

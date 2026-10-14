@@ -271,7 +271,7 @@ export default function TrialPage({ params }: { params: Promise<{ nct: string }>
         </Section>
       </div>
       <Section title="Registered protocol endpoints">
-        <div className="max-h-[320px] overflow-auto rounded-lg border border-hairline bg-surface">
+        <div className="max-h-[320px] overflow-auto rounded-lg border border-hairline bg-surface" tabIndex={0} role="region" aria-label="Registered protocol endpoints">
           <table className="tbl"><thead><tr><th>Role</th><th>Outcome</th><th>Time frame</th></tr></thead>
             <tbody>{s.protocol_endpoints.map((e: any, i: number) => (<tr key={i}><td>{titleCase(e.role)}</td><td>{e.title}</td><td className="text-ink-3">{e.timeframe}</td></tr>))}</tbody>
           </table>

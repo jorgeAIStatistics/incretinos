@@ -33,9 +33,9 @@ const calc2 = (v: number): string => String(Number(v.toFixed(2))).replace("-", "
 const ESTIMAND: Record<string, string> = { EFFICACY: "Efficacy estimand", TREATMENT_REGIMEN: "Treatment-regimen estimand", NOT_STATED: "Estimand not stated" };
 const estimandText = (f: any): string => `${ESTIMAND[f.estimand_label]}${String(f.estimand_basis ?? "").includes("INFERRED") ? " (inferred)" : ""}`;
 const weekText = (f: any): string => (f.timepoint_weeks != null ? `week ${num(f.timepoint_weeks)}` : "time point not stated");
-/** Estimand · evidence tier · time point (· baseline): what a caption and every row under it must say. */
-const basisText = (f: any): string => [estimandText(f), f.source?.tier_label, weekText(f), f.baseline_definition ? `from ${f.baseline_definition}` : null].filter(Boolean).join(" · ");
-const basisKey = (f: any): string => [f.endpoint_id, f.estimand_label, f.estimand_basis, f.tier, f.source?.id, f.timepoint_weeks, f.baseline_definition ?? "", f.unit].join("|");
+/** Estimand · evidence tier · time point (· baseline) (· sub-measure of the endpoint): what a caption and every row under it must say. */
+const basisText = (f: any): string => [estimandText(f), f.source?.tier_label, weekText(f), f.baseline_definition ? `from ${f.baseline_definition}` : null, f.class_title || null].filter(Boolean).join(" · ");
+const basisKey = (f: any): string => [f.endpoint_id, f.class_title ?? "", f.estimand_label, f.estimand_basis, f.tier, f.source?.id, f.timepoint_weeks, f.baseline_definition ?? "", f.unit].join("|");
 const partition = (findings: any[]): any[][] => {
   const sets = new Map<string, any[]>();
   for (const f of findings) sets.set(basisKey(f), [...(sets.get(basisKey(f)) ?? []), f]);
@@ -232,14 +232,29 @@ test("WEB-01: the trial chart plots one coherent result set and its caption says
 test("WEB-01: no trial page mixes estimands, tiers, sources or time points in its headline chart", async ({ page, request }) => {
   const studies = await json(request, "/studies");
   let mixed = 0;
+  let subMeasures = 0;
   for (const s of studies.filter((x: any) => x.n_results > 0)) {
     const sets = weightSets(await json(request, `/studies/${s.nct_id}`));
     if (sets.length < 2) continue;
     mixed += 1;
     await page.goto(`/trials/${s.nct_id}`);
-    await expectOneCoherentSet(page.getByTestId("hero-chart"), sets);
+    const hero = page.getByTestId("hero-chart");
+    const select = hero.getByLabel(/Result set/);
+    await expect(select.locator("option")).toHaveCount(sets.length);
+    // Every selectable set — not only the default — is plotted alone, including the sub-measures of one endpoint
+    // (for example the ≥5%, ≥10% and ≥15% responder thresholds, which must never share a caption).
+    const seen = new Set<string>();
+    for (let i = 0; i < sets.length; i += 1) {
+      await select.selectOption({ index: i });
+      const shown = await expectOneCoherentSet(hero, sets);
+      seen.add(basisKey(shown[0]));
+      if (shown[0].class_title) subMeasures += 1;
+      expect(new Set(shown.map((f) => f.arm_label)).size, `${s.display_name}: each arm appears once in a set`).toBe(shown.length);
+    }
+    expect(seen.size, `${s.display_name}: every stored set can be shown`).toBe(sets.length);
   }
   expect(mixed, "trials that report percent weight change on more than one basis").toBeGreaterThanOrEqual(8);
+  expect(subMeasures, "sets that are one sub-measure of an endpoint").toBeGreaterThan(0);
 });
 
 test("WEB-01: the benefit–risk chart gives each estimand, tier, source and time point its own panel", async ({ page, request }) => {
