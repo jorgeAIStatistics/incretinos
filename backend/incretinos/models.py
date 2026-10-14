@@ -87,8 +87,8 @@ class ChangeEvent(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     source_id: Mapped[int] = mapped_column(ForeignKey("evidence_source.id", ondelete="CASCADE"), index=True)
-    from_snapshot_id: Mapped[int | None] = mapped_column(ForeignKey("source_snapshot.id"))
-    to_snapshot_id: Mapped[int | None] = mapped_column(ForeignKey("source_snapshot.id"))
+    from_snapshot_id: Mapped[int | None] = mapped_column(ForeignKey("source_snapshot.id"), index=True)
+    to_snapshot_id: Mapped[int | None] = mapped_column(ForeignKey("source_snapshot.id"), index=True)
     detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     summary: Mapped[str] = mapped_column(Text)
     changes: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
@@ -119,7 +119,7 @@ class ReviewDecision(Base):
     __tablename__ = "review_decision"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    queue_item_id: Mapped[int | None] = mapped_column(ForeignKey("review_queue_item.id"))
+    queue_item_id: Mapped[int | None] = mapped_column(ForeignKey("review_queue_item.id"), index=True)
     target_type: Mapped[str] = mapped_column(String(40))
     target_id: Mapped[int | None] = mapped_column(Integer)
     decision: Mapped[str] = mapped_column(String(20))  # APPROVE | REJECT | NEEDS_INFO
@@ -172,7 +172,7 @@ class Drug(Base):
     tier_group: Mapped[str] = mapped_column(String(20), default="CORE")  # CORE | ADJACENT | COMPARATOR
     regulatory_status: Mapped[str] = mapped_column(String(20), default=RegulatoryStatus.UNKNOWN.value)
     regulatory_summary: Mapped[str | None] = mapped_column(Text)
-    regulatory_source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
+    regulatory_source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"), index=True)
     regulatory_as_of: Mapped[str | None] = mapped_column(String(20))
     notes: Mapped[str | None] = mapped_column(Text)
 
@@ -190,7 +190,7 @@ class DrugMechanism(Base):
     target: Mapped[str] = mapped_column(String(20))
     action: Mapped[str] = mapped_column(Text)
     description: Mapped[str | None] = mapped_column(Text)
-    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"), index=True)
     quote: Mapped[str | None] = mapped_column(Text)
     verification_status: Mapped[str] = mapped_column(String(30), default=VerificationStatus.CURATED_PENDING_REVIEW.value)
 
@@ -208,7 +208,7 @@ class Indication(Base):
     status: Mapped[str] = mapped_column(String(20))
     jurisdiction: Mapped[str] = mapped_column(String(20), default="US")
     approval_date: Mapped[str | None] = mapped_column(String(20))
-    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"), index=True)
     quote: Mapped[str | None] = mapped_column(Text)
     verification_status: Mapped[str] = mapped_column(String(30), default=VerificationStatus.CURATED_PENDING_REVIEW.value)
 
@@ -227,7 +227,7 @@ class Formulation(Base):
     route: Mapped[str | None] = mapped_column(Text)
     stage: Mapped[str] = mapped_column(String(20))  # INVESTIGATIONAL | MARKETED
     notes: Mapped[str | None] = mapped_column(Text)
-    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"), index=True)
 
     drug: Mapped[Drug] = relationship(back_populates="formulations")
     doses: Mapped[list[Dose]] = relationship(back_populates="formulation", cascade="all, delete-orphan")
@@ -258,11 +258,11 @@ class ExposureEquivalence(Base):
     __tablename__ = "exposure_equivalence"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    dose_a_id: Mapped[int] = mapped_column(ForeignKey("dose.id", ondelete="CASCADE"))
-    dose_b_id: Mapped[int] = mapped_column(ForeignKey("dose.id", ondelete="CASCADE"))
+    dose_a_id: Mapped[int] = mapped_column(ForeignKey("dose.id", ondelete="CASCADE"), index=True)
+    dose_b_id: Mapped[int] = mapped_column(ForeignKey("dose.id", ondelete="CASCADE"), index=True)
     basis: Mapped[str] = mapped_column(String(40))
     statement: Mapped[str] = mapped_column(Text)
-    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"), index=True)
     quote: Mapped[str | None] = mapped_column(Text)
     verification_status: Mapped[str] = mapped_column(String(30), default=VerificationStatus.CURATED_PENDING_REVIEW.value)
 
@@ -307,7 +307,7 @@ class Study(Base):
     # Curated design descriptors (e.g. randomized_withdrawal, comparator_type, treatment_weeks).
     design_features: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     program: Mapped[str | None] = mapped_column(Text)
-    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"), index=True)
 
     source: Mapped[EvidenceSource | None] = relationship()
     versions: Mapped[list[StudyVersion]] = relationship(back_populates="study", cascade="all, delete-orphan")
@@ -342,7 +342,7 @@ class StudyVersion(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     study_id: Mapped[int] = mapped_column(ForeignKey("study.id", ondelete="CASCADE"), index=True)
-    snapshot_id: Mapped[int | None] = mapped_column(ForeignKey("source_snapshot.id"))
+    snapshot_id: Mapped[int | None] = mapped_column(ForeignKey("source_snapshot.id"), index=True)
     version_label: Mapped[str | None] = mapped_column(Text)  # registry "last update posted" date
     content_hash: Mapped[str] = mapped_column(String(64))
     overall_status: Mapped[str | None] = mapped_column(String(40))
@@ -392,7 +392,7 @@ class Population(Base):
     baseline: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     # Overall-population summary used by the comparability engine; each entry keeps its own source.
     summary: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
-    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"), index=True)
 
     study: Mapped[Study] = relationship(back_populates="population")
 
@@ -436,7 +436,7 @@ class Endpoint(Base):
     hierarchy_rank: Mapped[int | None] = mapped_column(Integer)
     multiplicity_controlled: Mapped[str] = mapped_column(String(12), default=TriState.NOT_STATED.value)
     is_pooled_arms: Mapped[bool] = mapped_column(Boolean, default=False)
-    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"), index=True)
     source_location: Mapped[str | None] = mapped_column(Text)
 
     study: Mapped[Study] = relationship(back_populates="endpoints")
@@ -452,7 +452,7 @@ class Estimand(Base):
     basis: Mapped[str] = mapped_column(String(40), default=EstimandBasis.NOT_DETERMINABLE.value)
     description: Mapped[str | None] = mapped_column(Text)
     population_text: Mapped[str | None] = mapped_column(Text)
-    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"), index=True)
     quote: Mapped[str | None] = mapped_column(Text)
 
     study: Mapped[Study] = relationship(back_populates="estimands")
@@ -479,8 +479,8 @@ class OutcomeResult(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     study_id: Mapped[int] = mapped_column(ForeignKey("study.id", ondelete="CASCADE"), index=True)
     endpoint_id: Mapped[int] = mapped_column(ForeignKey("endpoint.id", ondelete="CASCADE"), index=True)
-    arm_id: Mapped[int | None] = mapped_column(ForeignKey("study_arm.id", ondelete="SET NULL"))
-    estimand_id: Mapped[int | None] = mapped_column(ForeignKey("estimand.id", ondelete="SET NULL"))
+    arm_id: Mapped[int | None] = mapped_column(ForeignKey("study_arm.id", ondelete="SET NULL"), index=True)
+    estimand_id: Mapped[int | None] = mapped_column(ForeignKey("estimand.id", ondelete="SET NULL"), index=True)
     origin: Mapped[str] = mapped_column(String(10), default=Origin.REGISTRY.value)
     arm_label: Mapped[str] = mapped_column(Text)
     scope: Mapped[str] = mapped_column(String(20), default="ARM")  # ARM | POOLED | RANGE_ACROSS_ARMS
@@ -523,10 +523,10 @@ class StatisticalAnalysis(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     study_id: Mapped[int] = mapped_column(ForeignKey("study.id", ondelete="CASCADE"), index=True)
     endpoint_id: Mapped[int] = mapped_column(ForeignKey("endpoint.id", ondelete="CASCADE"), index=True)
-    estimand_id: Mapped[int | None] = mapped_column(ForeignKey("estimand.id", ondelete="SET NULL"))
+    estimand_id: Mapped[int | None] = mapped_column(ForeignKey("estimand.id", ondelete="SET NULL"), index=True)
     origin: Mapped[str] = mapped_column(String(10), default=Origin.REGISTRY.value)
-    treatment_arm_id: Mapped[int | None] = mapped_column(ForeignKey("study_arm.id", ondelete="SET NULL"))
-    comparator_arm_id: Mapped[int | None] = mapped_column(ForeignKey("study_arm.id", ondelete="SET NULL"))
+    treatment_arm_id: Mapped[int | None] = mapped_column(ForeignKey("study_arm.id", ondelete="SET NULL"), index=True)
+    comparator_arm_id: Mapped[int | None] = mapped_column(ForeignKey("study_arm.id", ondelete="SET NULL"), index=True)
     treatment_label: Mapped[str | None] = mapped_column(Text)
     comparator_label: Mapped[str | None] = mapped_column(Text)
     hypothesis_type: Mapped[str] = mapped_column(String(20), default="NOT_STATED")
@@ -569,7 +569,7 @@ class AdverseEvent(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     study_id: Mapped[int] = mapped_column(ForeignKey("study.id", ondelete="CASCADE"), index=True)
-    arm_id: Mapped[int | None] = mapped_column(ForeignKey("study_arm.id", ondelete="SET NULL"))
+    arm_id: Mapped[int | None] = mapped_column(ForeignKey("study_arm.id", ondelete="SET NULL"), index=True)
     origin: Mapped[str] = mapped_column(String(10), default=Origin.REGISTRY.value)
     arm_label: Mapped[str] = mapped_column(Text)
     scope: Mapped[str] = mapped_column(String(20), default="ARM")  # ARM | RANGE_ACROSS_ARMS | POOLED
@@ -618,7 +618,7 @@ class Publication(Base):
     abstract_sha256: Mapped[str | None] = mapped_column(String(64))
     abstract_chars: Mapped[int | None] = mapped_column(Integer)
     has_abstract_text_cached: Mapped[bool] = mapped_column(Boolean, default=False)
-    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"), index=True)
 
     source: Mapped[EvidenceSource | None] = relationship()
     study_links: Mapped[list[StudyPublication]] = relationship(back_populates="publication", cascade="all, delete-orphan")
@@ -655,7 +655,7 @@ class EvidenceClaim(Base):
     statement: Mapped[str] = mapped_column(Text)
     claim_kind: Mapped[str] = mapped_column(String(20), default=ClaimKind.DOCUMENTED.value)
     tier: Mapped[str] = mapped_column(String(40))
-    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"), index=True)
     locator: Mapped[str | None] = mapped_column(Text)
     quote: Mapped[str | None] = mapped_column(Text)
     verification_status: Mapped[str] = mapped_column(String(30), default=VerificationStatus.CURATED_PENDING_REVIEW.value)
@@ -706,7 +706,7 @@ class LabelRecord(Base):
     label_version: Mapped[str | None] = mapped_column(String(20))
     effective_time: Mapped[str | None] = mapped_column(String(20))
     sections: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
-    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"), index=True)
 
     drug: Mapped[Drug | None] = relationship()
     source: Mapped[EvidenceSource | None] = relationship()
@@ -726,7 +726,7 @@ class SpontaneousReportSeries(Base):
     data: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     database_last_updated: Mapped[str | None] = mapped_column(String(20))
     retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"), index=True)
 
     drug: Mapped[Drug | None] = relationship()
     source: Mapped[EvidenceSource | None] = relationship()
@@ -752,4 +752,4 @@ class DiscoveredTrial(Base):
     conditions: Mapped[list[str]] = mapped_column(JSON, default=list)
     interventions: Mapped[list[str]] = mapped_column(JSON, default=list)
     drug_slugs: Mapped[list[str]] = mapped_column(JSON, default=list)
-    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"))
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"), index=True)

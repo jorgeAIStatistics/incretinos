@@ -7,21 +7,36 @@ from pathlib import Path
 
 import typer
 
-from .config import get_settings
-from .db import Base, create_all, get_engine, session_scope
+from .config import describe_settings_sources, get_settings
+from .db import UnversionedSchemaError, drop_schema, session_scope, upgrade_schema
 
 app = typer.Typer(add_completion=False, help="IncretinOS — clinical evidence and trial intelligence (public data only).")
 
 
+def _database_label() -> str:
+    """The configured database without its password."""
+    from sqlalchemy.engine import make_url
+
+    return make_url(get_settings().database_url).render_as_string(hide_password=True)
+
+
+def _migrate(reset: bool) -> None:
+    """Bring the schema to the migration head. Every command that needs tables goes through here."""
+    typer.echo(describe_settings_sources(), err=True)
+    if reset:
+        drop_schema()
+    try:
+        upgrade_schema()
+    except UnversionedSchemaError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+
 @app.command("init-db")
 def init_db(reset: bool = typer.Option(False, help="Drop all tables first.")) -> None:
-    """Create database tables."""
-    from . import models  # noqa: F401
-
-    if reset:
-        Base.metadata.drop_all(get_engine())
-    create_all()
-    typer.echo(f"Database ready at {get_settings().database_url}")
+    """Create or upgrade the database schema by running the migrations."""
+    _migrate(reset)
+    typer.echo(f"Database schema is at the migration head: {_database_label()}")
 
 
 @app.command()
@@ -33,12 +48,9 @@ def seed(
     only: list[str] = typer.Option(None, help="Restrict study ingestion to these NCT IDs."),
 ) -> None:
     """Ingest the watchlist (registry, PubMed, labels, FAERS), load curated evidence, detect gaps."""
-    from . import models  # noqa: F401
     from .ingestion.pipeline import Pipeline
 
-    if reset:
-        Base.metadata.drop_all(get_engine())
-    create_all()
+    _migrate(reset)
     settings = get_settings()
     with session_scope() as session:
         report = Pipeline(session, settings, offline=not live, record=record).run(demo_change=demo_change, only=only or None)
@@ -109,6 +121,7 @@ def serve(host: str = "127.0.0.1", port: int = 8000, reload: bool = False) -> No
     """Run the API server."""
     import uvicorn
 
+    typer.echo(describe_settings_sources(), err=True)
     uvicorn.run("incretinos.api.main:app", host=host, port=port, reload=reload)
 
 
