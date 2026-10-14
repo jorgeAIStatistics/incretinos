@@ -167,7 +167,7 @@ function Lab() {
   const router = useRouter();
   const a = Number(params.get("a")) || null;
   const b = Number(params.get("b")) || null;
-  const { data: studies } = useApi<any[]>("/studies");
+  const { data: studies, error: studiesError } = useApi<any[]>("/studies");
   const { data: presets } = useApi<any[]>("/compare/presets");
   const { data: vocabulary } = useApi(VOCABULARY);
   const [result, setResult] = useState<any>(null);
@@ -234,7 +234,8 @@ function Lab() {
             <FindingCard side="B" f={result.b} reading={result.interpretation_b} />
           </div>
 
-          <div className="mt-5"><ComparisonChart result={result} studies={studies ?? []} /></div>
+          {/* Arm roles come from each trial's recorded drug roles (the trial list): the chart waits for it rather than show arms as unclassified. */}
+          <div className="mt-5">{studies || studiesError ? <ComparisonChart result={result} studies={studies ?? []} /> : <Loading rows={3} />}</div>
 
           <div className="mb-8 mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Panel className="min-w-0">

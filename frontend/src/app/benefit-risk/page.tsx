@@ -25,7 +25,7 @@ const NO_ARMS: any[] = [];
 function Workbench() {
   const params = useSearchParams();
   const router = useRouter();
-  const { data: studies } = useApi<any[]>("/studies");
+  const { data: studies, error: studiesError } = useApi<any[]>("/studies");
   const withResults = (studies ?? []).filter((s) => s.n_results > 0);
   const nct = params.get("nct") ?? withResults[0]?.nct_id ?? null;
   const study = (studies ?? []).find((s) => s.nct_id === nct);
@@ -171,7 +171,9 @@ function Workbench() {
         />
         <Select label="Efficacy estimand" value={estimand} onChange={setEstimand} options={[{ value: "", label: "Best available (stated first)" }, { value: "TREATMENT_REGIMEN", label: "Treatment-regimen" }, { value: "EFFICACY", label: "Efficacy" }]} className="w-56" />
       </div>
-      {request.error ? <ErrorNote message={request.error} /> : !data ? <Loading rows={6} /> : (
+      {studiesError ? <div className="mb-3"><ErrorNote message={`The trial list could not be loaded, so arm roles are shown as not classified. ${studiesError}`} /></div> : null}
+      {/* Arm roles come from the trial's recorded drug roles (the trial list), so the charts wait for it rather than show every arm as unclassified. */}
+      {request.error ? <ErrorNote message={request.error} /> : !data || (!studies && !studiesError) ? <Loading rows={6} /> : (
         <>
           <Callout tone="info" title={`${data.study.display_name}: ${diabetesLabel(data.study.diabetes_status)} · ${phaseLabel(data.study.phase)}${data.timepoint_weeks ? ` · planned treatment period ${fmt(data.timepoint_weeks)} weeks` : ""}`}>{data.notes[0]} {data.notes[2]}</Callout>
           {substituted.length ? (

@@ -109,8 +109,9 @@ export function ChartFrame({ title, subtitle, footnote, children, table, control
   const [showTable, setShowTable] = useState(false);
   return (
     <figure className="min-w-0 rounded-lg border border-hairline bg-surface">
-      <figcaption className="flex items-start justify-between gap-3 px-4 pt-3.5">
-        <div className="min-w-0 flex-1">
+      {/* The title block keeps at least 16rem; on a narrow card the table toggle moves below it instead of squeezing the caption. */}
+      <figcaption className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 px-4 pt-3.5">
+        <div className="min-w-0 flex-1 basis-64">
           <p className="text-[14.5px] font-semibold text-ink">{title}</p>
           {subtitle ? <div className="mt-0.5 max-w-3xl text-[12.5px] leading-snug text-ink-3">{subtitle}</div> : null}
         </div>
