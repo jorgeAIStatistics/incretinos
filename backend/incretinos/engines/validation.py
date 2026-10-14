@@ -2,7 +2,7 @@
 
 Each rule inspects the live database (and the engines' behaviour on it) for one way the
 platform could mislead a reader. The twelve mandatory cases from the product specification
-are V01–V12; V13–V15 are additional integrity checks. Rules return violations rather than
+are V01–V12; V13–V16 are additional integrity checks. Rules return violations rather than
 raising, so the UI, the CLI and the test-suite can all report them.
 """
 
@@ -11,10 +11,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..curation.loader import AUTHORITATIVE_APPROVAL_TIERS
+from ..db import INCLUDE_REJECTED
 from ..enums import (
     DISCONTINUATION_KINDS,
     EndpointRole,
@@ -24,15 +25,20 @@ from ..enums import (
     TriState,
 )
 from ..models import (
+    REVIEWABLE_MODELS,
     AdverseEvent,
     Drug,
     EvidenceSource,
+    EvidenceVersion,
     ExposureEquivalence,
     LabelRecord,
     OutcomeResult,
+    ReviewDecision,
+    SourceSnapshot,
     StatisticalAnalysis,
     Study,
 )
+from ..review.policy import HUMAN_DECISION_STATUSES, MECHANICAL_STATUSES, STORED_STATUSES
 from .comparability import compare_findings, harmonize_dose
 from .findings import analysis_dto, build_finding
 from .interpretation import classify_drug, guard_statement, interpret_analysis
@@ -344,17 +350,80 @@ def v12_missing_values_stay_missing(session: Session) -> RuleResult:
 
 def v13_every_result_has_provenance(session: Session) -> RuleResult:
     violations: list[str] = []
-    rows = session.execute(select(OutcomeResult.id, OutcomeResult.source_id, OutcomeResult.tier, OutcomeResult.verification_status, OutcomeResult.origin, OutcomeResult.locator_quote, OutcomeResult.source_location)).all()
+    rows = session.execute(
+        select(OutcomeResult.id, OutcomeResult.source_id, OutcomeResult.tier, OutcomeResult.verification_status, OutcomeResult.origin, OutcomeResult.locator_quote, OutcomeResult.source_location)
+        .execution_options(**{INCLUDE_REJECTED: True})  # provenance is checked for every stored row, whatever a reviewer decided
+    ).all()
     for rid, source_id, tier, status, origin, quote, location in rows:
         if source_id is None or not tier or not status:
             violations.append(f"Result {rid} lacks a source, tier or verification status.")
+        elif status not in STORED_STATUSES:
+            violations.append(f"Result {rid} carries '{status}', which is not one of the six verification statuses.")
         if origin == "CURATED" and not quote:
             violations.append(f"Curated result {rid} has no locator quote.")
         if origin == "REGISTRY" and not location:
             violations.append(f"Registry result {rid} has no source location.")
-        if status == "HUMAN_VERIFIED":
-            violations.append(f"Result {rid} is marked human-verified; that status may only come from a recorded review decision.")
+    # Whether a human-verified or rejected status is legitimate is rule V16 (it needs the decision ledger).
     return _result("V13", "Every result carries a source, evidence tier, locator and verification status", violations, len(rows))
+
+
+def v16_human_statuses_rest_on_attested_decisions(session: Session) -> RuleResult:
+    """HUMAN_VERIFIED and REJECTED exist only as the outcome of an attested human decision on the current fingerprint.
+
+    For every row that carries one of the two statuses, and for every row a recorded decision applies
+    to, the status is derived again from the decision ledger with the same pure function the review
+    lifecycle uses. Any difference is a violation: a human status nothing supports, an approval that
+    should have lapsed, or (the dangerous direction) a rejected row stored as usable.
+    """
+    from ..review.lifecycle import decisions_for, effective_status
+
+    opt_in = {INCLUDE_REJECTED: True}
+    violations: list[str] = []
+    scanned = 0
+    candidates: set[tuple[str, str]] = set()
+    for evidence_type, model in REVIEWABLE_MODELS.items():
+        scanned += session.scalar(select(func.count()).select_from(model).execution_options(**opt_in)) or 0
+        for row_id, key, status in session.execute(
+            select(model.id, model.evidence_key, model.verification_status).where(model.verification_status.in_(sorted(HUMAN_DECISION_STATUSES))).execution_options(**opt_in)
+        ):
+            if key is None:
+                violations.append(f"{evidence_type} {row_id} is {status} but has no evidence key: no recorded decision can apply to it.")
+            else:
+                candidates.add((evidence_type, key))
+    decided = session.execute(
+        select(ReviewDecision.evidence_type, ReviewDecision.evidence_key, ReviewDecision.natural_key).where(ReviewDecision.evidence_type.is_not(None)).distinct()
+    ).all()
+    naturals = {(t, n) for t, _, n in decided if n}
+    for evidence_type, key, natural in session.execute(
+        select(EvidenceVersion.evidence_type, EvidenceVersion.evidence_key, EvidenceVersion.natural_key).where(EvidenceVersion.is_current.is_(True))
+        .where(EvidenceVersion.natural_key.in_(sorted({n for _, n in naturals}) or [""]))
+    ):
+        if (evidence_type, natural) in naturals:
+            candidates.add((evidence_type, key))
+    candidates.update((t, k) for t, k, _ in decided if k)
+
+    for evidence_type, key in sorted(candidates):
+        model = REVIEWABLE_MODELS.get(evidence_type)
+        if model is None:
+            continue
+        row = session.execute(
+            select(model.id, model.fingerprint, model.verification_status, model.base_verification_status, model.source_snapshot_id, *( [model.origin] if hasattr(model, "origin") else [] ))
+            .where(model.evidence_key == key).execution_options(**opt_in)
+        ).first()
+        if row is None:
+            continue  # the decision's evidence no longer exists: an orphan, reported by the review summary
+        natural = session.scalar(
+            select(EvidenceVersion.natural_key).where(EvidenceVersion.evidence_type == evidence_type, EvidenceVersion.evidence_key == key, EvidenceVersion.fingerprint == row.fingerprint)
+        )
+        facts = decisions_for(session, evidence_type, key, natural)
+        mechanical = row.base_verification_status if row.base_verification_status in MECHANICAL_STATUSES else "PENDING_HUMAN_REVIEW"
+        source_hash = session.scalar(select(SourceSnapshot.content_hash).where(SourceSnapshot.id == row.source_snapshot_id)) if row.source_snapshot_id else None
+        outcome = effective_status(mechanical=mechanical, decisions=facts, fingerprint=row.fingerprint or "", structured=getattr(row, "origin", None) == "REGISTRY", source_content_hash=source_hash)
+        if row.verification_status in HUMAN_DECISION_STATUSES and outcome.decision is None:
+            violations.append(f"{evidence_type} {row.id} is {row.verification_status} without an attested human decision on its current fingerprint.")
+        elif outcome.status != row.verification_status:
+            violations.append(f"{evidence_type} {row.id} is stored as {row.verification_status} but its decision history yields {outcome.status} ({outcome.reason}).")
+    return _result("V16", "Human-verified and rejected statuses rest on an attested human decision for the exact evidence version", violations, scanned)
 
 
 def v14_press_release_results_are_labelled(session: Session) -> RuleResult:
@@ -405,6 +474,7 @@ RULES: list[Callable[[Session], RuleResult]] = [
     v13_every_result_has_provenance,
     v14_press_release_results_are_labelled,
     v15_cross_trial_never_superiority,
+    v16_human_statuses_rest_on_attested_decisions,
 ]
 
 

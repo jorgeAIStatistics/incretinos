@@ -1,12 +1,16 @@
 """Load curated evidence files into the database with source resolution and quote anchoring.
 
-Verification is decided here, mechanically:
+The mechanical verification status is decided here (rule: ``incretinos.review.anchoring``):
 
-* QUOTE_ANCHORED          — the locator quote was found in the stored source text (registry
-                            record, FDA label) or among excerpts verified against the live
-                            source when fixtures were recorded (PubMed abstracts, web pages).
-* CURATED_PENDING_REVIEW  — the quote could not be checked automatically; a review-queue item
-                            is opened. Nothing is ever marked human-verified by this loader.
+* QUOTE_ANCHORED        — the locator quote was found in the stored source text (registry
+                          record, FDA label) or among excerpts verified against the live
+                          source when fixtures were recorded (PubMed abstracts, web pages).
+* PENDING_HUMAN_REVIEW  — the quote could not be checked automatically. The row itself is the
+                          review item: it is listed by the evidence review API until a reviewer
+                          decides on it. Nothing is ever marked human-verified by this loader.
+
+Rows written here carry only a mechanical status. ``incretinos.review.lifecycle.reconcile`` runs
+after every load and re-applies recorded human decisions to the rebuilt rows.
 
 The curation schema has already rejected rows that contradict their own endpoint, term or quote
 (see ``schema.py``). The loader adds the checks that need the database:
@@ -37,12 +41,8 @@ from ..enums import (
     EvidenceTier,
     Origin,
     RegulatoryStatus,
-    VerificationStatus,
 )
 from ..ingestion.snapshots import (
-    enqueue_review,
-    normalize_ws,
-    quote_in_text,
     record_snapshot,
     sha256_text,
     source_text_for_anchoring,
@@ -67,6 +67,7 @@ from ..models import (
     StudyArm,
     StudyDrug,
 )
+from ..review.anchoring import anchor
 from ..vocab import (
     COMBINATION_SLUGS,
     DirectionBasis,
@@ -186,32 +187,16 @@ def resolve_source(session: Session, key: str) -> EvidenceSource:
     return source
 
 
-def anchor_quote(session: Session, source: EvidenceSource, quote: str | None, *, review_key: str, title: str) -> str:
-    """Decide the verification status of a curated statement from its locator quote."""
-    if quote:
-        text, excerpts = source_text_for_anchoring(session, source)
-        if text and quote_in_text(quote, text):
-            return VerificationStatus.QUOTE_ANCHORED.value
-        normalized = normalize_ws(quote).lower()
-        if any(normalized == normalize_ws(e).lower() or normalized in normalize_ws(e).lower() for e in excerpts):
-            return VerificationStatus.QUOTE_ANCHORED.value
-    enqueue_review(
-        session,
-        item_type="CURATED_CLAIM",
-        target_type="evidence_source",
-        target_id=source.id,
-        title=title[:300],
-        reason=(
-            "Curated statement could not be anchored automatically to stored source text. "
-            "A reviewer should confirm it against the original source."
-            if quote
-            else "Curated statement has no locator quote."
-        ),
-        priority="MEDIUM",
-        payload={"source_key": source.key, "quote": quote},
-        dedupe_key=f"curated:{review_key}"[:200],
-    )
-    return VerificationStatus.CURATED_PENDING_REVIEW.value
+def anchor_quote(session: Session, source: EvidenceSource, quote: str | None, *, review_key: str | None = None, title: str | None = None) -> str:
+    """Mechanical verification status of a curated statement, from its locator quote.
+
+    Returns QUOTE_ANCHORED or PENDING_HUMAN_REVIEW. No review-queue item is opened any more: a
+    pending evidence row is itself what a reviewer decides on (``/api/review/evidence``), so the
+    decision attaches to the exact row rather than to its source. ``review_key`` and ``title`` are
+    accepted for callers written against the earlier signature and are not used.
+    """
+    text, excerpts = source_text_for_anchoring(session, source)
+    return anchor(quote, text, excerpts).status
 
 
 # --------------------------------------------------------------------------- drugs
@@ -321,7 +306,7 @@ def load_drug_evidence(session: Session, curated_dir: Path) -> None:
                 raise CurationError(f"{d.slug}: exposure equivalence references unknown dose ({eq.a}, {eq.b})")
             source = resolve_source(session, eq.source)
             row = session.scalar(
-                select(ExposureEquivalence).where(ExposureEquivalence.dose_a_id == dose_a.id, ExposureEquivalence.dose_b_id == dose_b.id)
+                select(ExposureEquivalence).where(ExposureEquivalence.dose_a_id == dose_a.id, ExposureEquivalence.dose_b_id == dose_b.id).execution_options(include_rejected=True)
             ) or ExposureEquivalence(dose_a_id=dose_a.id, dose_b_id=dose_b.id, basis=eq.basis.value, statement=eq.statement)
             row.basis, row.statement, row.source_id, row.quote = eq.basis.value, eq.statement, source.id, eq.quote
             row.verification_status = anchor_quote(session, source, eq.quote, review_key=f"{d.slug}:eq:{eq.a}:{eq.b}", title=f"{d.name}: {eq.a} ↔ {eq.b}")
@@ -440,23 +425,21 @@ def apply_arm_annotations(session: Session, study: Study, file: StudyEvidenceFil
 def _quote_in_source(session: Session, source: EvidenceSource, quote: str | None) -> bool:
     """Whether a quote is found in the source's stored text or among its verified excerpts.
 
-    The same evidence ``anchor_quote`` uses, without opening a review item: it decides only whether an estimand
-    may keep the basis STATED_BY_SOURCE.
+    The same rule ``anchor_quote`` applies (``incretinos.review.anchoring.anchor``); here it decides only whether
+    an estimand may keep the basis STATED_BY_SOURCE.
     """
     if not quote:
         return False
     text, excerpts = source_text_for_anchoring(session, source)
-    if text and quote_in_text(quote, text):
-        return True
-    normalized = normalize_ws(quote).lower()
-    return any(normalized in normalize_ws(e).lower() for e in excerpts)
+    return anchor(quote, text, excerpts).anchored
 
 
 def _upsert_claim(session: Session, claim: ClaimDef, *, drug: Drug | None = None, study: Study | None = None) -> EvidenceClaim:
     source = resolve_source(session, claim.source)
     if drug is None and claim.drug:
         drug = session.scalar(select(Drug).where(Drug.slug == claim.drug))
-    row = session.scalar(select(EvidenceClaim).where(EvidenceClaim.key == claim.key)) or EvidenceClaim(key=claim.key, topic=claim.topic, statement=claim.statement, tier=source.tier)
+    # A rejected claim is hidden from ordinary queries; the upsert must still find it or it would insert a duplicate key.
+    row = session.scalar(select(EvidenceClaim).where(EvidenceClaim.key == claim.key).execution_options(include_rejected=True)) or EvidenceClaim(key=claim.key, topic=claim.topic, statement=claim.statement, tier=source.tier)
     row.topic, row.statement, row.claim_kind = claim.topic, claim.statement, claim.claim_kind.value
     row.tier, row.source_id, row.quote, row.locator = source.tier, source.id, claim.quote, claim.locator
     row.drug_id = drug.id if drug else None

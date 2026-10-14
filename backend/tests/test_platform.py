@@ -42,7 +42,7 @@ def test_number_in_quote_rules():
 def test_curated_values_are_anchored_or_explicitly_pending(db):
     rows = db.execute(select(OutcomeResult.verification_status, OutcomeResult.tier, OutcomeResult.locator_quote, OutcomeResult.value).where(OutcomeResult.origin == "CURATED")).all()
     assert len(rows) > 150
-    assert {status for status, *_ in rows} <= {"QUOTE_ANCHORED", "CURATED_PENDING_REVIEW"}
+    assert {status for status, *_ in rows} <= {"QUOTE_ANCHORED", "PENDING_HUMAN_REVIEW"}  # the legacy name CURATED_PENDING_REVIEW is no longer written
     assert sum(1 for status, *_ in rows if status == "QUOTE_ANCHORED") > 100
     for _status, _tier, quote, value in rows:
         assert quote and (value is None or number_in_quote(value, quote))  # citation fidelity: the number is in its own quote
@@ -69,12 +69,16 @@ def test_press_release_sources_store_no_text_only_hash_and_matched_quotes(db):
     assert ctgov.stores_full_text and ctgov.snapshots[-1].content.startswith("{")
 
 
-def test_unanchored_statements_are_queued_for_review_not_marked_verified(db):
-    pending = db.scalars(select(EvidenceClaim).where(EvidenceClaim.verification_status == "CURATED_PENDING_REVIEW")).all()
-    assert pending
-    assert db.scalar(select(ReviewQueueItem).where(ReviewQueueItem.item_type == "CURATED_CLAIM")) is not None
-    assert not db.scalars(select(OutcomeResult).where(OutcomeResult.verification_status == "HUMAN_VERIFIED")).all()
-    assert not db.scalars(select(ReviewDecision)).all()  # nothing claims a human review that did not happen
+def test_unanchored_statements_await_review_as_evidence_rows_not_marked_verified(db):
+    """A statement that cannot be anchored is itself the review item: pending, keyed, and never verified by a load."""
+    pending = db.scalars(select(EvidenceClaim).where(EvidenceClaim.verification_status == "PENDING_HUMAN_REVIEW")).all()
+    assert pending and all(c.evidence_key and c.fingerprint and c.base_verification_status == "PENDING_HUMAN_REVIEW" for c in pending)
+    # The source-level CURATED_CLAIM queue is retired: no load creates such an item any more.
+    assert db.scalar(select(ReviewQueueItem).where(ReviewQueueItem.item_type == "CURATED_CLAIM", ReviewQueueItem.status.in_(["OPEN", "IN_REVIEW"]))) is None
+    for model in (OutcomeResult, StatisticalAnalysis, EvidenceClaim):
+        stored = {s for (s,) in db.execute(select(model.verification_status).distinct().execution_options(include_rejected=True))}
+        assert stored <= {"MACHINE_EXTRACTED", "QUOTE_ANCHORED", "PENDING_HUMAN_REVIEW"}, stored  # no human status without a human decision
+    assert not db.scalars(select(ReviewDecision).where(ReviewDecision.evidence_type.is_not(None))).all()  # nothing claims a review that did not happen
 
 
 # --------------------------------------------------------------------------- evidence gaps

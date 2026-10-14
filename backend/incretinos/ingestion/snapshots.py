@@ -56,6 +56,10 @@ def audit(session: Session, action: str, *, actor: str = "system", target_type: 
     return event
 
 
+#: Queue statuses in which an item is still waiting for a person. An item in any other status is closed.
+OPEN_QUEUE_STATUSES = ("OPEN", "IN_REVIEW")
+
+
 def enqueue_review(
     session: Session,
     *,
@@ -68,10 +72,24 @@ def enqueue_review(
     payload: dict | None = None,
     dedupe_key: str | None = None,
 ) -> ReviewQueueItem | None:
+    """Open a review-queue item unless the same thing is already waiting for a reviewer.
+
+    The queue is for things that are not themselves evidence rows: source changes, reconciliation
+    problems, ingestion failures. (A pending evidence row is reviewed directly through the evidence
+    review API and never gets a queue item.)
+
+    ``dedupe_key`` suppresses a duplicate only while the earlier item is still open. Once that item
+    has been resolved or retired, the same condition arising again opens a new item: the closed one
+    keeps its decisions and gives up its key (it is renamed ``<key>#closed:<id>``). A resolved item
+    therefore never hides a later occurrence.
+    """
     if dedupe_key:
         existing = session.scalar(select(ReviewQueueItem).where(ReviewQueueItem.dedupe_key == dedupe_key))
         if existing is not None:
-            return None
+            if existing.status in OPEN_QUEUE_STATUSES:
+                return None
+            existing.dedupe_key = f"{dedupe_key[:170]}#closed:{existing.id}"
+            session.flush()
     item = ReviewQueueItem(
         item_type=item_type,
         target_type=target_type,

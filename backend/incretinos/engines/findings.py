@@ -264,12 +264,18 @@ def build_labels(f: Finding) -> list[dict[str, str]]:
         add("LEAN_MASS", "Lean mass ≠ muscle", "warn", LEAN_MASS_CAVEAT)
     if f.phase and "PHASE2" in f.phase and "PHASE3" not in f.phase:
         add("PHASE2", "Phase 2", "info", "Dose-finding study; smaller arms and wider uncertainty than Phase 3.")
-    if f.verification_status == VerificationStatus.CURATED_PENDING_REVIEW.value:
+    if f.verification_status in (VerificationStatus.PENDING_HUMAN_REVIEW.value, VerificationStatus.CURATED_PENDING_REVIEW.value):
         add("PENDING_REVIEW", "Pending human review", "muted", "Curated value whose quote could not be anchored automatically to stored source text.")
     elif f.verification_status == VerificationStatus.QUOTE_ANCHORED.value:
         add("QUOTE_ANCHORED", "Quote-anchored", "ok", "The locator quote was matched verbatim against the source text.")
     elif f.verification_status == VerificationStatus.MACHINE_EXTRACTED.value:
         add("MACHINE_EXTRACTED", "Machine-extracted", "ok", "Parsed directly from the structured registry payload whose hash is stored.")
+    elif f.verification_status == VerificationStatus.HUMAN_VERIFIED.value:
+        add("HUMAN_VERIFIED", "Human-verified", "ok", "A reviewer approved this exact evidence version against its source; the decision is in the review history.")
+    elif f.verification_status == VerificationStatus.SOURCE_CHANGED_RECHECK_REQUIRED.value:
+        add("RECHECK_REQUIRED", "Changed since review", "warn", "A reviewer decided on an earlier version; the stored evidence or its source changed afterwards and must be rechecked.")
+    elif f.verification_status == VerificationStatus.REJECTED.value:
+        add("REJECTED", "Rejected in review", "critical", "A reviewer rejected this evidence. It is shown for inspection only and is excluded from comparisons, summaries and reports.")
     return labels
 
 

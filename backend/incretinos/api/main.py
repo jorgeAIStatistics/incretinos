@@ -3,6 +3,10 @@
 Read endpoints are public (the product holds public data only). Endpoints that change
 state — review decisions and gap triage — require a reviewer token and are disabled
 entirely when no token is configured. Every external input is validated by a typed schema.
+
+Evidence a reviewer rejected is hidden from every query made through the request session
+(``incretinos.db``), so the analytic endpoints below never use it. The two inspection surfaces
+opt in explicitly: the evidence review API (``routers/review.py``) and a trial's own page.
 """
 
 from __future__ import annotations
@@ -24,7 +28,7 @@ from .. import __version__
 from ..assistant.answer import ask
 from ..assistant.providers import get_provider
 from ..config import get_settings
-from ..db import get_db
+from ..db import INCLUDE_REJECTED, get_db
 from ..engines import benefit_risk, design, stats
 from ..engines.comparability import compare_findings, harmonize_dose
 from ..engines.estimands import ESTIMAND_EXPLAINER
@@ -59,6 +63,7 @@ from ..enums import TIER_LABEL, EvidenceTier
 from ..ingestion.scheduler import start_scheduler
 from ..ingestion.snapshots import audit
 from ..models import (
+    REVIEWABLE_MODELS,
     AdverseEvent,
     AuditEvent,
     ChangeEvent,
@@ -79,6 +84,8 @@ from ..models import (
     StudyDrug,
 )
 from ..reports.export import comparison_report_markdown, study_report_markdown
+from ..review.policy import STATUS_LABEL, canonical_status, reviewer_problem
+from .routers.review import router as review_router
 
 settings = get_settings()
 
@@ -105,6 +112,8 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["Content-Type", "X-Reviewer-Token"],
 )
+
+app.include_router(review_router)
 
 Db = Annotated[Session, Depends(get_db)]
 NCT = Annotated[str, Field(pattern=r"^[Nn][Cc][Tt]\d{8}$")]
@@ -160,6 +169,22 @@ def health() -> dict[str, str]:
     return {"status": "ok", "version": __version__}
 
 
+def _review_counts(db: Session) -> dict[str, Any]:
+    """Verification status of all reviewable evidence, by type and in total (rejected rows are counted here)."""
+    by_type: dict[str, dict[str, int]] = {}
+    total: Counter[str] = Counter()
+    for evidence_type, model in REVIEWABLE_MODELS.items():
+        rows = db.execute(select(model.verification_status, func.count()).group_by(model.verification_status).execution_options(**{INCLUDE_REJECTED: True})).all()
+        by_type[evidence_type] = {canonical_status(status) or status: n for status, n in rows}
+        total.update(by_type[evidence_type])
+    return {
+        "by_status": {status: total.get(status, 0) for status in STATUS_LABEL},
+        "by_type": by_type,
+        "decisions_recorded": db.scalar(select(func.count()).select_from(ReviewDecision).where(ReviewDecision.evidence_type.is_not(None))),
+        "needs_review": total.get("PENDING_HUMAN_REVIEW", 0) + total.get("SOURCE_CHANGED_RECHECK_REQUIRED", 0),
+    }
+
+
 @app.get("/api/meta", tags=["meta"])
 def meta(db: Db) -> dict[str, Any]:
     cfg = get_settings()
@@ -176,14 +201,18 @@ def meta(db: Db) -> dict[str, Any]:
         "open_review_items": db.scalar(select(func.count()).select_from(ReviewQueueItem).where(ReviewQueueItem.status == "OPEN")),
     }
     last_run = db.scalar(select(IngestionRun).order_by(IngestionRun.id.desc()).limit(1))
-    verification = Counter(v for (v,) in db.execute(select(OutcomeResult.verification_status)))
+    review = _review_counts(db)
+    counts["results_rejected"] = review["by_type"].get("result", {}).get("REJECTED", 0)
     tiers = Counter(t for (t,) in db.execute(select(OutcomeResult.tier)))
     return {
         "version": __version__,
         "mode": "OFFLINE (committed fixtures)" if cfg.offline else "LIVE",
         "last_ingestion": {"mode": last_run.mode, "finished_at": last_run.finished_at.isoformat() if last_run and last_run.finished_at else None} if last_run else None,
         "counts": counts,
-        "result_verification": dict(verification),
+        # Every stored result by verification status, rejected ones included (they are not in counts.results).
+        "result_verification": review["by_type"].get("result", {}),
+        "verification_labels": dict(STATUS_LABEL),
+        "review": review,
         "result_tiers": dict(tiers),
         "tier_labels": {t.value: TIER_LABEL[t] for t in EvidenceTier},
         "llm": {"provider": cfg.llm_provider, "enabled": cfg.llm_provider.lower() != "none"},
@@ -307,6 +336,8 @@ def discovered(db: Db, drug: str | None = None, q: Annotated[str | None, Query(m
 
 @app.get("/api/studies/{nct}", tags=["studies"])
 def get_study(nct: str, db: Db) -> dict[str, Any]:
+    # Inspection surface: a trial's own tables list every stored row, rejected ones included, each with its verification status.
+    db.info[INCLUDE_REJECTED] = True
     study = _study_or_404(db, nct)
     population = study.population
     by_endpoint: dict[int, dict[str, Any]] = {}
@@ -934,6 +965,10 @@ def list_audit(db: Db, action: str | None = None, limit: int = Query(200, ge=1, 
 
 @app.get("/api/review-queue", tags=["provenance"])
 def review_queue(db: Db, status: str | None = "OPEN", item_type: str | None = None, limit: int = Query(300, ge=1, le=1000)) -> dict[str, Any]:
+    """Items that are not evidence rows: source changes, reconciliation problems, ingestion failures.
+
+    Evidence awaiting review is not here: a pending evidence row is its own review item (GET /api/review/evidence).
+    """
     query = select(ReviewQueueItem)
     if status:
         query = query.where(ReviewQueueItem.status == status)
@@ -943,29 +978,64 @@ def review_queue(db: Db, status: str | None = "OPEN", item_type: str | None = No
     items = sorted(db.scalars(query), key=lambda i: (order.get(i.priority, 9), i.id))
     counts = Counter((i.item_type, i.status) for i in db.scalars(select(ReviewQueueItem)))
     return {"total": len(items), "rows": [{"id": i.id, "item_type": i.item_type, "target_type": i.target_type, "target_id": i.target_id, "title": i.title, "reason": i.reason, "priority": i.priority, "status": i.status, "payload": i.payload, "created_at": i.created_at.isoformat()} for i in items[:limit]],
-            "counts": [{"item_type": t, "status": s, "n": n} for (t, s), n in sorted(counts.items())], "review_enabled": bool(get_settings().reviewer_token)}
+            "counts": [{"item_type": t, "status": s, "n": n} for (t, s), n in sorted(counts.items())], "review_enabled": bool(get_settings().reviewer_token),
+            "evidence_review": "/api/review/evidence"}
 
 
 class DecisionRequest(Strict):
-    decision: Literal["APPROVE", "REJECT", "NEEDS_INFO"]
+    decision: Literal["APPROVE", "REJECT", "NEEDS_INFO", "REOPEN"]
     reviewer: str = Field(min_length=2, max_length=120)
     rationale: str = Field(min_length=3, max_length=2000)
 
 
+# Queue item state machine: (status, decision) -> next status. Anything else is refused with 409.
+QUEUE_TRANSITIONS: dict[tuple[str, str], str] = {
+    ("OPEN", "APPROVE"): "RESOLVED",
+    ("OPEN", "REJECT"): "RESOLVED",
+    ("OPEN", "NEEDS_INFO"): "IN_REVIEW",
+    ("IN_REVIEW", "APPROVE"): "RESOLVED",
+    ("IN_REVIEW", "REJECT"): "RESOLVED",
+    ("IN_REVIEW", "NEEDS_INFO"): "IN_REVIEW",
+    ("RESOLVED", "REOPEN"): "OPEN",
+}
+
+
 @app.post("/api/review-queue/{item_id}/decision", tags=["provenance"])
 def decide(item_id: int, body: DecisionRequest, db: Db, _: Annotated[str, Depends(require_reviewer)]) -> dict[str, Any]:
+    """Decide on a queue item (a source change, a reconciliation problem, an ingestion failure).
+
+    This never changes the verification status of evidence: that is done per evidence row through
+    POST /api/review/evidence/{type}/{id}/decisions. A resolved item accepts no further decision
+    until it is explicitly reopened (decision REOPEN).
+    """
     item = db.get(ReviewQueueItem, item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Review item not found")
+    if item.item_type == "CURATED_CLAIM" or item.status == "RETIRED":
+        raise HTTPException(status_code=409, detail={
+            "message": "This item belongs to the retired source-level curated queue and can no longer be decided. Review the evidence row itself: "
+                       "a decision is recorded on one exact result, analysis, adverse event or claim.",
+            "evidence_review": "/api/review/evidence?status=PENDING_HUMAN_REVIEW" + (f"&source_key={item.payload['source_key']}" if (item.payload or {}).get("source_key") else ""),
+            "decision_endpoint": "POST /api/review/evidence/{evidence_type}/{id}/decisions",
+        })
+    problem = reviewer_problem(body.reviewer)
+    if problem:
+        raise HTTPException(status_code=422, detail=problem)
+    next_status = QUEUE_TRANSITIONS.get((item.status, body.decision))
+    if next_status is None:
+        hint = "Send decision REOPEN to reopen it before deciding again." if item.status == "RESOLVED" else "REOPEN applies to resolved items only."
+        raise HTTPException(status_code=409, detail=f"Item {item.id} is {item.status}; decision {body.decision} is not allowed in that state. {hint}")
+    previous = item.status
     db.add(ReviewDecision(queue_item_id=item.id, target_type=item.target_type, target_id=item.target_id, decision=body.decision, reviewer=body.reviewer, rationale=body.rationale))
-    item.status = "RESOLVED" if body.decision in ("APPROVE", "REJECT") else "IN_REVIEW"
+    item.status = next_status
     if item.item_type == "SOURCE_CHANGE" and item.target_id:
         event = db.get(ChangeEvent, item.target_id)
         if event is not None:
             event.review_status = item.status
-    audit(db, "review.decision", actor=body.reviewer, target_type="review_queue_item", target_id=item.id, decision=body.decision, rationale=body.rationale)
+    audit(db, "review.decision", actor=body.reviewer, target_type="review_queue_item", target_id=item.id, decision=body.decision, rationale=body.rationale,
+          item_type=item.item_type, status_before=previous, status_after=item.status)
     db.commit()
-    return {"id": item.id, "status": item.status, "decision": body.decision}
+    return {"id": item.id, "status": item.status, "decision": body.decision, "previous_status": previous}
 
 
 # --------------------------------------------------------------------------- reports & overview
