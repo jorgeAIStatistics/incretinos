@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from .. import __version__
 from ..assistant.answer import ask
-from ..assistant.providers import get_provider
+from ..assistant.providers import get_provider, provider_status
 from ..config import get_settings
 from ..db import get_db
 from ..engines import benefit_risk, design, stats
@@ -186,7 +186,7 @@ def meta(db: Db) -> dict[str, Any]:
         "result_verification": dict(verification),
         "result_tiers": dict(tiers),
         "tier_labels": {t.value: TIER_LABEL[t] for t in EvidenceTier},
-        "llm": {"provider": cfg.llm_provider, "enabled": cfg.llm_provider.lower() != "none"},
+        "llm": provider_status(cfg),
         "review_enabled": bool(cfg.reviewer_token),
         "notice": "Public data only. Research use by qualified researchers. Not medical advice, not a treatment recommendation, not a regulatory submission.",
     }

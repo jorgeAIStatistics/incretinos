@@ -135,12 +135,12 @@ def test_assistant_works_without_any_language_model(db):
     answer = ask(db, "What evidence differentiates retatrutide from tirzepatide?", NullProvider())
     assert answer.intent == "COMPARE_DRUGS" and answer.llm["used"] is False
     kinds = [b.kind for b in answer.blocks]
-    assert "VERIFIED_EVIDENCE" in kinds and "UNAVAILABLE" in kinds and "INTERPRETATION" in kinds and "MODEL_SUMMARY" not in kinds
+    assert "REPORTED_EVIDENCE" in kinds and "UNAVAILABLE" in kinds and "INTERPRETATION" in kinds and "MODEL_SUMMARY" not in kinds
     text = " ".join(b.text for b in answer.blocks)
     assert "Triple GIP, GLP-1 and glucagon receptor agonist" in text and "investigational" in text and "TRIUMPH-5" in text
     assert "No randomized head-to-head result" in text and "DESCRIPTIVE CROSS-STUDY COMPARISON" in text
     for block in answer.blocks:
-        if block.kind == "VERIFIED_EVIDENCE":
+        if block.kind == "REPORTED_EVIDENCE":
             assert block.citations, block.text[:80]
     assert {s["id"] for s in answer.sources} >= {c for b in answer.blocks for c in b.citations}
 
@@ -210,7 +210,7 @@ def test_model_summary_with_fabricated_number_is_rejected(db):
     assert answer.llm.get("rejected") is True and answer.llm["used"] is False
     assert any("31.4" in p for p in answer.llm["citation_check"]["problems"])
     assert all(b.kind != "MODEL_SUMMARY" for b in answer.blocks)  # the deterministic answer stands; the draft is dropped
-    assert any(b.kind == "VERIFIED_EVIDENCE" for b in answer.blocks)
+    assert any(b.kind == "REPORTED_EVIDENCE" for b in answer.blocks)
 
 
 def test_model_summary_without_citation_or_with_superiority_claim_is_rejected(db):
@@ -224,7 +224,7 @@ def test_faithful_model_summary_is_accepted_and_kept_separate(db):
     provider = FakeProvider("Retatrutide is an investigational agent [{first}].")
     answer = ask(db, "What evidence differentiates retatrutide from tirzepatide?", provider)
     assert answer.llm["used"] is True and answer.blocks[-1].kind == "MODEL_SUMMARY"
-    assert sum(1 for b in answer.blocks if b.kind == "MODEL_SUMMARY") == 1 and any(b.kind == "VERIFIED_EVIDENCE" for b in answer.blocks[:-1])
+    assert sum(1 for b in answer.blocks if b.kind == "MODEL_SUMMARY") == 1 and any(b.kind == "REPORTED_EVIDENCE" for b in answer.blocks[:-1])
 
 
 def test_provider_failure_never_breaks_the_answer(db):
