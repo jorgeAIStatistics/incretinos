@@ -3,6 +3,16 @@
 One code path serves live ingestion, fixture recording and the offline demo; only the
 transport differs. A failure in one source is recorded and queued for review — it
 never aborts the run and never results in partially invented data.
+
+Failure handling, in two layers:
+
+* A registry study is ingested inside its own savepoint. Whatever goes wrong while it is fetched, parsed or
+  written (a transport error, an unexpected payload shape, a value the database refuses), the savepoint is
+  rolled back, so the study leaves no rows; the failure is recorded against that study and the next study is
+  processed. A study is listed in the report only after its savepoint has been released.
+* If a whole step fails anyway, its transaction is rolled back and the report is put back to what it said
+  before the step, so the report never lists work that is not in the database. Failures already recorded
+  for individual items of that step are written again, because the rollback removed their review items.
 """
 
 from __future__ import annotations
@@ -71,6 +81,14 @@ class IngestReport:
     def as_dict(self) -> dict[str, Any]:
         return self.__dict__
 
+    def snapshot(self) -> dict[str, Any]:
+        """A copy of what the report says now (the failure list excepted), to restore if a step is rolled back."""
+        return {name: copy.deepcopy(value) for name, value in self.__dict__.items() if name != "failures"}
+
+    def restore(self, snapshot: dict[str, Any]) -> None:
+        for name, value in snapshot.items():
+            setattr(self, name, value)
+
 
 class Pipeline:
     def __init__(self, session: Session, settings: Settings, transport: Transport | None = None, *, offline: bool | None = None, record: bool = False):
@@ -89,11 +107,18 @@ class Pipeline:
         run = IngestionRun(adapter=adapter, mode=self.transport.mode)
         self.session.add(run)
         self.session.flush()
+        before = self.report.snapshot()
+        failures_before = len(self.report.failures)
         try:
             run.stats = fn() or {}
             run.status = "SUCCEEDED"
         except Exception as exc:  # recorded, surfaced, never swallowed silently
             self.session.rollback()
+            # The step's rows are gone, so the report must not list them; failures recorded for single items
+            # during the step did happen, and the rollback removed their review items, so they are recorded again.
+            self.report.restore(before)
+            for failure in self.report.failures[failures_before:]:
+                self._record_failure(failure["target"], failure["error"])
             run = IngestionRun(adapter=adapter, mode=self.transport.mode, status="FAILED", error=f"{type(exc).__name__}: {exc}")
             self.session.add(run)
             self._fail(adapter, exc)
@@ -103,6 +128,9 @@ class Pipeline:
     def _fail(self, what: str, exc: Exception) -> None:
         message = f"{type(exc).__name__}: {exc}"
         self.report.failures.append({"target": what, "error": message})
+        self._record_failure(what, message)
+
+    def _record_failure(self, what: str, message: str) -> None:
         enqueue_review(
             self.session,
             item_type="INGEST_FAILURE",
@@ -118,10 +146,11 @@ class Pipeline:
     # -- steps
     def ingest_studies(self, *, demo_change: bool = True, only: list[str] | None = None) -> dict:
         watchlist = loader.read_watchlist(self.settings.curated_dir)
-        ingested = 0
+        ingested = failed = 0
         for watch in watchlist.studies:
             if only and watch.nct not in only:
                 continue
+            change: dict[str, Any] | None = None
             try:
                 with self.session.begin_nested():
                     already = self.session.scalar(select(Study).where(Study.nct_id == watch.nct)) is not None
@@ -144,12 +173,19 @@ class Pipeline:
                             title=f"{watch.display_name} ({watch.nct}) registry record updated",
                             is_synthetic=synthetic_prior,
                         )
-                        self.report.changes.append({"nct": watch.nct, "summary": event.summary, "significance": event.significance, "synthetic": synthetic_prior})
-                ingested += 1
-                self.report.studies.append(watch.nct)
-            except (TransportError, ValueError, KeyError) as exc:
+                        change = {"nct": watch.nct, "summary": event.summary, "significance": event.significance, "synthetic": synthetic_prior}
+            except Exception as exc:
+                # Any error, not a chosen few: the savepoint has been rolled back, so this study left no rows
+                # (and no half-written ones), and the studies before and after it are unaffected.
+                failed += 1
                 self._fail(f"ctgov:{watch.nct}", exc)
-        return {"studies": ingested, "changes": len(self.report.changes)}
+                continue
+            # Reported only now, after the savepoint was released and its rows are part of the transaction.
+            ingested += 1
+            self.report.studies.append(watch.nct)
+            if change is not None:
+                self.report.changes.append(change)
+        return {"studies": ingested, "failed": failed, "changes": len(self.report.changes)}
 
     def ingest_publications(self) -> dict:
         watchlist = loader.read_watchlist(self.settings.curated_dir)
