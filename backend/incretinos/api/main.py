@@ -529,7 +529,7 @@ def estimand_inspector(db: Db, study: str) -> dict[str, Any]:
     for r in s.results:
         if r.endpoint.category not in ("WEIGHT_PCT_CHANGE", "HBA1C_CHANGE", "WEIGHT_ABS_CHANGE") or r.value is None or r.scope != "ARM" or " minus " in r.arm_label or r.arm is None or r.arm.is_pooled:
             continue
-        arm_key = "placebo" if r.arm.is_placebo else (f"{r.arm.drug_slug} {r.arm.dose_amount:g} mg" if r.arm.dose_amount is not None else r.arm.label)
+        arm_key = "placebo" if r.arm.is_placebo else (f"{r.arm.drug_slug} {r.arm.dose_amount:g} {r.arm.dose_unit or 'mg'}" if r.arm.dose_amount is not None else r.arm.label)
         key = (r.endpoint.category, arm_key, r.timepoint_weeks, baseline_class(s.design_features, r.baseline_definition))
         cell = table.setdefault(key, {"category": r.endpoint.category, "category_label": CATEGORY_LABEL.get(r.endpoint.category), "arm": arm_key, "timepoint_weeks": r.timepoint_weeks, "baseline_definition": r.baseline_definition, "by_estimand": {}})
         label = r.estimand.label if r.estimand else "NOT_STATED"
@@ -622,14 +622,37 @@ def safety_trial_ae(db: Db, drug: str | None = None, nct: str | None = None, mea
 
 
 @app.get("/api/safety/terms", tags=["safety"])
-def safety_terms(db: Db, nct: str) -> dict[str, Any]:
+def safety_terms(db: Db, nct: str, limit: int = Query(300, ge=1, le=5000)) -> dict[str, Any]:
+    """One entry per term and measure kind. A count the source does not report is null, never 0.
+
+    Every posted serious-event term is stored, so a study can have far more terms than ``limit``: the response
+    says how many exist and whether the list was cut. ``tables`` tells whether the term comes from the registry's
+    serious-event table, its non-serious table, or both (their rows are different counts and carry ``is_serious``).
+    """
     study = _study_or_404(db, nct)
-    counts: dict[tuple[str, str, str], int] = {}
+    terms: dict[tuple[str, str], dict[str, Any]] = {}
     for ae in study.adverse_events:
-        key = (ae.term, ae.measure_kind, ae.category)
-        counts[key] = max(counts.get(key, 0), ae.n_affected or 0)
-    rows = [{"term": t, "measure_kind": k, "measure_kind_label": AE_KIND_LABEL.get(k, k), "category": c, "max_participants_affected": n} for (t, k, c), n in counts.items()]
-    return {"study": study_brief(study), "terms": sorted(rows, key=lambda r: -r["max_participants_affected"])[:300]}
+        entry = terms.setdefault((ae.term, ae.measure_kind), {"categories": set(), "serious": set(), "count": None})
+        entry["categories"].add(ae.category)
+        entry["serious"].add(bool(ae.is_serious))
+        if ae.n_affected is not None:  # an unreported count stays unknown; it is not counted as zero
+            entry["count"] = ae.n_affected if entry["count"] is None else max(entry["count"], ae.n_affected)
+    rows = [
+        {
+            "term": t,
+            "measure_kind": k,
+            "measure_kind_label": AE_KIND_LABEL.get(k, k),
+            "category": sorted(e["categories"])[0] if len(e["categories"]) == 1 else None,
+            "categories": sorted(e["categories"]),
+            "is_serious": next(iter(e["serious"])) if len(e["serious"]) == 1 else None,
+            "tables": [name for flag, name in ((True, "SERIOUS"), (False, "NOT_SERIOUS")) if flag in e["serious"]],
+            "max_participants_affected": e["count"],
+        }
+        for (t, k), e in terms.items()
+    ]
+    # Terms reported only as a percentage have no count to rank by: they are listed first, then by count.
+    rows.sort(key=lambda r: (r["max_participants_affected"] is not None, -(r["max_participants_affected"] or 0), r["term"]))
+    return {"study": study_brief(study), "terms": rows[:limit], "total_terms": len(rows), "truncated": len(rows) > limit}
 
 
 @app.get("/api/safety/spontaneous/{slug}", tags=["safety"])

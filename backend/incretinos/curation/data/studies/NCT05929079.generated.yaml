@@ -3,38 +3,56 @@
 # Verification status is assigned by the loader (quote anchoring) — nothing here is human-verified.
 study: NCT05929079
 estimands:
-- key: treatment_regimen
+- key: treatment_regimen@pubmed:42810372
   label: TREATMENT_REGIMEN
+  basis: STATED_BY_SOURCE
   description: 'Treatment-regimen estimand as named by the source: the treatment effect regardless of treatment discontinuation (treatment-policy strategy).'
   source: pubmed:42810372
   strategies:
   - event: TREATMENT_DISCONTINUATION
     strategy: TREATMENT_POLICY
-- key: efficacy
+  quote: with missing data imputed with a primary multiple imputation strategy for the treatment regimen estimand
+- key: efficacy@web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe
   label: EFFICACY
-  description: 'Efficacy estimand as named by the source: the treatment effect had participants remained on study treatment (hypothetical strategy for treatment discontinuation).'
+  basis: INFERRED_BY_CURATOR
+  description: 'Efficacy estimand as recorded in the research note for this source; the note holds no verbatim quote from the source that names the estimand, so the label is the curator''s attribution:
+    the treatment effect had participants remained on study treatment (hypothetical strategy for treatment discontinuation).'
   source: web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe
   strategies:
   - event: TREATMENT_DISCONTINUATION
     strategy: HYPOTHETICAL
 endpoints:
-- key: weight-pct-change-w80-percent-change-in-body-weigh
+- key: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-1e3c26cb
   title: percent change in body weight from baseline
   role: KEY_SECONDARY
   category: WEIGHT_PCT_CHANGE
   unit: '%'
   timepoint_weeks: 80
   multiplicity_controlled: NOT_STATED
-- key: weight-pct-change-w80-estimated-treatment-differen
+- key: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+  title: percent change in body weight from baseline
+  role: PRIMARY
+  category: WEIGHT_PCT_CHANGE
+  unit: '%'
+  timepoint_weeks: 80
+  multiplicity_controlled: NOT_STATED
+- key: weight-pct-change-w80-estimated-treatment-difference-in-percent-ch-4e3a4b53
   title: estimated treatment difference in percent change in body weight vs placebo
   role: KEY_SECONDARY
   category: WEIGHT_PCT_CHANGE
   unit: percentage points
   timepoint_weeks: 80
   multiplicity_controlled: NOT_STATED
+- key: weight-pct-change-w80-estimated-treatment-difference-in-percent-ch-04a3e698
+  title: estimated treatment difference in percent change in body weight vs placebo
+  role: PRIMARY
+  category: WEIGHT_PCT_CHANGE
+  unit: percentage points
+  timepoint_weeks: 80
+  multiplicity_controlled: NOT_STATED
 results:
-- endpoint: weight-pct-change-w80-percent-change-in-body-weigh
-  estimand: treatment_regimen
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-1e3c26cb
+  estimand: treatment_regimen@pubmed:42810372
   arm: retatrutide 4 mg
   scope: ARM
   value: -11.9
@@ -45,8 +63,8 @@ results:
   source: pubmed:42810372
   quote: the mean percentage change from baseline in bodyweight at week 80 was -11·9% (SE 0·6) with retatrutide 4 mg, -16·8% (0·7) with retatrutide 9 mg
   notes: SE given in source (4 mg 0.6; 9 mg 0.7; 12 mg 0.7; placebo 0.7); per-arm CI not given. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w80-percent-change-in-body-weigh
-  estimand: treatment_regimen
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+  estimand: treatment_regimen@pubmed:42810372
   arm: retatrutide 9 mg
   scope: ARM
   value: -16.8
@@ -57,8 +75,8 @@ results:
   source: pubmed:42810372
   quote: the mean percentage change from baseline in bodyweight at week 80 was -11·9% (SE 0·6) with retatrutide 4 mg, -16·8% (0·7) with retatrutide 9 mg
   notes: SE given in source (4 mg 0.6; 9 mg 0.7; 12 mg 0.7; placebo 0.7); per-arm CI not given. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w80-percent-change-in-body-weigh
-  estimand: treatment_regimen
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+  estimand: treatment_regimen@pubmed:42810372
   arm: retatrutide 12 mg
   scope: ARM
   value: -18.8
@@ -69,8 +87,8 @@ results:
   source: pubmed:42810372
   quote: -18·8% (0·7) with retatrutide 12 mg, and -5·1% (0·7) with placebo
   notes: SE given in source (4 mg 0.6; 9 mg 0.7; 12 mg 0.7; placebo 0.7); per-arm CI not given. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w80-percent-change-in-body-weigh
-  estimand: treatment_regimen
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+  estimand: treatment_regimen@pubmed:42810372
   arm: placebo
   scope: ARM
   value: -5.1
@@ -81,8 +99,8 @@ results:
   source: pubmed:42810372
   quote: -18·8% (0·7) with retatrutide 12 mg, and -5·1% (0·7) with placebo
   notes: SE given in source (4 mg 0.6; 9 mg 0.7; 12 mg 0.7; placebo 0.7); per-arm CI not given. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w80-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-1e3c26cb
+  estimand: efficacy@web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe
   arm: retatrutide 4 mg
   scope: ARM
   value: -12.7
@@ -93,8 +111,8 @@ results:
   quote: -12.7% (-13.5 kg; -29.8 lbs)
   notes: 'Efficacy estimand per source: efficacy had all randomized participants remained on study intervention without initiating prohibited weight management treatments. Table header: "TRIUMPH-2 Efficacy
     Estimand Results". The Lancet abstract (S2) reports the treatment regimen estimand (-11.9/-16.8/-18.8 vs -5.1) - different estimand, not a conflict. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w80-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+  estimand: efficacy@web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe
   arm: retatrutide 9 mg
   scope: ARM
   value: -19.1
@@ -105,8 +123,8 @@ results:
   quote: -19.1% (-20.6 kg; -45.4 lbs)
   notes: 'Efficacy estimand per source: efficacy had all randomized participants remained on study intervention without initiating prohibited weight management treatments. Table header: "TRIUMPH-2 Efficacy
     Estimand Results". The Lancet abstract (S2) reports the treatment regimen estimand (-11.9/-16.8/-18.8 vs -5.1) - different estimand, not a conflict. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w80-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+  estimand: efficacy@web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe
   arm: retatrutide 12 mg
   scope: ARM
   value: -20.8
@@ -117,8 +135,8 @@ results:
   quote: -20.8% (-22.5 kg; -49.6 lbs)
   notes: 'Efficacy estimand per source: efficacy had all randomized participants remained on study intervention without initiating prohibited weight management treatments. Table header: "TRIUMPH-2 Efficacy
     Estimand Results". The Lancet abstract (S2) reports the treatment regimen estimand (-11.9/-16.8/-18.8 vs -5.1) - different estimand, not a conflict. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w80-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+  estimand: efficacy@web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe
   arm: placebo
   scope: ARM
   value: -4.0
@@ -130,8 +148,8 @@ results:
   notes: 'Efficacy estimand per source: efficacy had all randomized participants remained on study intervention without initiating prohibited weight management treatments. Table header: "TRIUMPH-2 Efficacy
     Estimand Results". The Lancet abstract (S2) reports the treatment regimen estimand (-11.9/-16.8/-18.8 vs -5.1) - different estimand, not a conflict. ci_not_reported_in_this_source'
 analyses:
-- endpoint: weight-pct-change-w80-estimated-treatment-differen
-  estimand: treatment_regimen
+- endpoint: weight-pct-change-w80-estimated-treatment-difference-in-percent-ch-4e3a4b53
+  estimand: treatment_regimen@pubmed:42810372
   treatment: retatrutide 4 mg
   comparator: placebo
   hypothesis_type: NOT_STATED
@@ -147,8 +165,8 @@ analyses:
   source: pubmed:42810372
   quote: -6·9% (95% CI -8·7 to -5·1) with retatrutide 4 mg
   notes: ''
-- endpoint: weight-pct-change-w80-estimated-treatment-differen
-  estimand: treatment_regimen
+- endpoint: weight-pct-change-w80-estimated-treatment-difference-in-percent-ch-04a3e698
+  estimand: treatment_regimen@pubmed:42810372
   treatment: retatrutide 9 mg
   comparator: placebo
   hypothesis_type: NOT_STATED
@@ -164,8 +182,8 @@ analyses:
   source: pubmed:42810372
   quote: -11·8% (-13·7 to -9·8) with retatrutide 9 mg
   notes: ''
-- endpoint: weight-pct-change-w80-estimated-treatment-differen
-  estimand: treatment_regimen
+- endpoint: weight-pct-change-w80-estimated-treatment-difference-in-percent-ch-04a3e698
+  estimand: treatment_regimen@pubmed:42810372
   treatment: retatrutide 12 mg
   comparator: placebo
   hypothesis_type: NOT_STATED

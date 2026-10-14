@@ -150,7 +150,9 @@ def arm_profiles(session: Session, nct_id: str, estimand: str | None = None, tim
         elif event.measure_kind == "PARTICIPANTS_WITH_EVENT":
             if low == "any serious adverse event" or ("serious adverse event" in low and "any" in low) or low.startswith("participants with") and "serious" in low:
                 add_ae(profile, "serious_ae_any", event)
-            for term in GI_TERMS:
+            # The registry's serious-event table lists the same terms with far smaller counts (participants with a
+            # SERIOUS event of that term). The tolerability measure is the incidence of the event, not that subset.
+            for term in GI_TERMS if not event.is_serious else []:
                 if low == term or low.startswith(term):
                     add_ae(profile, "diarrhoea" if term.startswith("diarr") else term, event)
 

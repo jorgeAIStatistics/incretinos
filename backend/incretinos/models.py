@@ -448,6 +448,8 @@ class Estimand(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     study_id: Mapped[int] = mapped_column(ForeignKey("study.id", ondelete="CASCADE"), index=True)
+    # REGISTRY = derived by the registry adapter (rebuilt on every ingest); CURATED = from a curated evidence file.
+    origin: Mapped[str] = mapped_column(String(10), default=Origin.REGISTRY.value, server_default=Origin.REGISTRY.value)
     label: Mapped[str] = mapped_column(Text, default=EstimandLabel.NOT_STATED.value)
     basis: Mapped[str] = mapped_column(String(40), default=EstimandBasis.NOT_DETERMINABLE.value)
     description: Mapped[str | None] = mapped_column(Text)
@@ -529,6 +531,13 @@ class StatisticalAnalysis(Base):
     comparator_arm_id: Mapped[int | None] = mapped_column(ForeignKey("study_arm.id", ondelete="SET NULL"))
     treatment_label: Mapped[str | None] = mapped_column(Text)
     comparator_label: Mapped[str | None] = mapped_column(Text)
+    # The compared groups in the order the source posts them, and how treatment / comparator were told apart
+    # (vocab.DirectionBasis). With basis NOT_STATED the two labels above are in posted order, not a direction.
+    group_labels: Mapped[list[str] | None] = mapped_column(JSON)
+    direction_basis: Mapped[str | None] = mapped_column(String(40))
+    # Registry "groupDescription" verbatim, and the outcome class / category the analysis belongs to (multi-class outcomes).
+    group_description: Mapped[str | None] = mapped_column(Text)
+    class_title: Mapped[str | None] = mapped_column(Text)
     hypothesis_type: Mapped[str] = mapped_column(String(20), default="NOT_STATED")
     param_type: Mapped[str | None] = mapped_column(Text)
     estimate: Mapped[float | None] = mapped_column(Float)
@@ -595,6 +604,40 @@ class AdverseEvent(Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
     study: Mapped[Study] = relationship(back_populates="adverse_events")
+    arm: Mapped[StudyArm | None] = relationship()
+    source: Mapped[EvidenceSource | None] = relationship()
+
+
+class ParticipantFlow(Base):
+    """Registry participant flow, one row per period x milestone-or-withdrawal-reason x group, as posted.
+
+    ``kind`` is MILESTONE (STARTED, COMPLETED, NOT COMPLETED, "Received at Least One Dose" ...) or
+    WITHDRAWAL_REASON (the registry's drop/withdraw reasons, e.g. "Withdrawal by Subject", "Adverse Event").
+    ``n_started`` is the number of participants of that group who STARTED the same period (the denominator).
+    These are counts of participants leaving the STUDY period; they are not adverse-event incidences and not
+    discontinuation of study TREATMENT.
+    """
+
+    __tablename__ = "participant_flow"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    study_id: Mapped[int] = mapped_column(ForeignKey("study.id", ondelete="CASCADE"), index=True)
+    arm_id: Mapped[int | None] = mapped_column(ForeignKey("study_arm.id", ondelete="SET NULL"))
+    origin: Mapped[str] = mapped_column(String(10), default=Origin.REGISTRY.value)
+    arm_label: Mapped[str] = mapped_column(Text)
+    period_index: Mapped[int] = mapped_column(Integer)
+    period_title: Mapped[str | None] = mapped_column(Text)
+    kind: Mapped[str] = mapped_column(String(20), index=True)  # MILESTONE | WITHDRAWAL_REASON
+    label: Mapped[str] = mapped_column(Text)  # milestone type or withdrawal reason, verbatim
+    n_participants: Mapped[int | None] = mapped_column(Integer)
+    n_started: Mapped[int | None] = mapped_column(Integer)
+    comment: Mapped[str | None] = mapped_column(Text)
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"), index=True)
+    source_location: Mapped[str | None] = mapped_column(Text)
+    tier: Mapped[str] = mapped_column(String(40))
+    verification_status: Mapped[str] = mapped_column(String(30))
+    missing_fields: Mapped[list[str]] = mapped_column(JSON, default=list)
+
     arm: Mapped[StudyArm | None] = relationship()
     source: Mapped[EvidenceSource | None] = relationship()
 

@@ -3,29 +3,33 @@
 # Verification status is assigned by the loader (quote anchoring) — nothing here is human-verified.
 study: NCT06354660
 estimands:
-- key: treatment_regimen
+- key: treatment_regimen@pubmed:42250575
   label: TREATMENT_REGIMEN
-  description: 'Treatment-regimen estimand as named by the source: the treatment effect regardless of treatment discontinuation (treatment-policy strategy).'
+  basis: INFERRED_BY_CURATOR
+  description: 'Treatment-regimen estimand as recorded in the research note for this source; the note holds no verbatim quote from the source that names the estimand, so the label is the curator''s attribution:
+    the treatment effect regardless of treatment discontinuation (treatment-policy strategy).'
   source: pubmed:42250575
   strategies:
   - event: TREATMENT_DISCONTINUATION
     strategy: TREATMENT_POLICY
-- key: efficacy
+- key: efficacy@web:eli-lilly-an-2026-03-19-lilly-s-triple-agonist-retatrutide-demon
   label: EFFICACY
+  basis: STATED_BY_SOURCE
   description: 'Efficacy estimand as named by the source: the treatment effect had participants remained on study treatment (hypothetical strategy for treatment discontinuation).'
   source: web:eli-lilly-an-2026-03-19-lilly-s-triple-agonist-retatrutide-demon
   strategies:
   - event: TREATMENT_DISCONTINUATION
     strategy: HYPOTHETICAL
+  quote: participants taking retatrutide lost up to an average of 36.6 lbs (16.8%), using the efficacy estimand
 endpoints:
-- key: hba1c-change-w40-estimated-treatment-differen
+- key: hba1c-change-w40-estimated-treatment-difference-in-hba1c-chan-99d79142
   title: estimated treatment difference in HbA1c change vs placebo
   role: PRIMARY
   category: HBA1C_CHANGE
   unit: HbA1c percentage points
   timepoint_weeks: 40
   multiplicity_controlled: NOT_STATED
-- key: weight-pct-change-w40-percent-change-in-body-weigh
+- key: weight-pct-change-w40-percent-change-in-body-weight-from-baseline-04b28d1d
   title: percent change in body weight from baseline
   role: KEY_SECONDARY
   category: WEIGHT_PCT_CHANGE
@@ -33,8 +37,8 @@ endpoints:
   timepoint_weeks: 40
   multiplicity_controlled: NOT_STATED
 results:
-- endpoint: weight-pct-change-w40-percent-change-in-body-weigh
-  estimand: treatment_regimen
+- endpoint: weight-pct-change-w40-percent-change-in-body-weight-from-baseline-04b28d1d
+  estimand: treatment_regimen@pubmed:42250575
   arm: retatrutide 4 mg
   scope: ARM
   value: -11.5
@@ -46,8 +50,8 @@ results:
   quote: bodyweight was -11·5% (SE 0·7) with retatrutide 4 mg, -13·9% (0·8) with 9 mg, and -15·3% (0·8) with 12 mg, versus -2·6% (0·5) with placebo
   notes: 'The abstract names the treatment regimen estimand in the preceding HbA1c sentence; the bodyweight values equal the treatment-regimen row of press release S7, so labelled treatment-regimen. SE
     in source: 0.7, 0.8, 0.8, 0.5. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w40-percent-change-in-body-weigh
-  estimand: treatment_regimen
+- endpoint: weight-pct-change-w40-percent-change-in-body-weight-from-baseline-04b28d1d
+  estimand: treatment_regimen@pubmed:42250575
   arm: retatrutide 9 mg
   scope: ARM
   value: -13.9
@@ -59,8 +63,8 @@ results:
   quote: bodyweight was -11·5% (SE 0·7) with retatrutide 4 mg, -13·9% (0·8) with 9 mg, and -15·3% (0·8) with 12 mg, versus -2·6% (0·5) with placebo
   notes: 'The abstract names the treatment regimen estimand in the preceding HbA1c sentence; the bodyweight values equal the treatment-regimen row of press release S7, so labelled treatment-regimen. SE
     in source: 0.7, 0.8, 0.8, 0.5. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w40-percent-change-in-body-weigh
-  estimand: treatment_regimen
+- endpoint: weight-pct-change-w40-percent-change-in-body-weight-from-baseline-04b28d1d
+  estimand: treatment_regimen@pubmed:42250575
   arm: retatrutide 12 mg
   scope: ARM
   value: -15.3
@@ -72,8 +76,8 @@ results:
   quote: bodyweight was -11·5% (SE 0·7) with retatrutide 4 mg, -13·9% (0·8) with 9 mg, and -15·3% (0·8) with 12 mg, versus -2·6% (0·5) with placebo
   notes: 'The abstract names the treatment regimen estimand in the preceding HbA1c sentence; the bodyweight values equal the treatment-regimen row of press release S7, so labelled treatment-regimen. SE
     in source: 0.7, 0.8, 0.8, 0.5. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w40-percent-change-in-body-weigh
-  estimand: treatment_regimen
+- endpoint: weight-pct-change-w40-percent-change-in-body-weight-from-baseline-04b28d1d
+  estimand: treatment_regimen@pubmed:42250575
   arm: placebo
   scope: ARM
   value: -2.6
@@ -85,8 +89,8 @@ results:
   quote: bodyweight was -11·5% (SE 0·7) with retatrutide 4 mg, -13·9% (0·8) with 9 mg, and -15·3% (0·8) with 12 mg, versus -2·6% (0·5) with placebo
   notes: 'The abstract names the treatment regimen estimand in the preceding HbA1c sentence; the bodyweight values equal the treatment-regimen row of press release S7, so labelled treatment-regimen. SE
     in source: 0.7, 0.8, 0.8, 0.5. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w40-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w40-percent-change-in-body-weight-from-baseline-04b28d1d
+  estimand: efficacy@web:eli-lilly-an-2026-03-19-lilly-s-triple-agonist-retatrutide-demon
   arm: retatrutide 4 mg
   scope: ARM
   value: -11.5
@@ -97,8 +101,8 @@ results:
   quote: -11.5% (-11.1 kg; -24.5 lbs)
   notes: Efficacy estimand here = had all randomized participants remained on study intervention for 40 weeks without initiating additional antihyperglycemic medications. For 4 mg the efficacy and treatment-regimen
     rows show the same value (-11.5%). ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w40-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w40-percent-change-in-body-weight-from-baseline-04b28d1d
+  estimand: efficacy@web:eli-lilly-an-2026-03-19-lilly-s-triple-agonist-retatrutide-demon
   arm: retatrutide 9 mg
   scope: ARM
   value: -15.5
@@ -109,8 +113,8 @@ results:
   quote: -15.5% (-15.1 kg; -33.3 lbs)
   notes: Efficacy estimand here = had all randomized participants remained on study intervention for 40 weeks without initiating additional antihyperglycemic medications. For 4 mg the efficacy and treatment-regimen
     rows show the same value (-11.5%). ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w40-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w40-percent-change-in-body-weight-from-baseline-04b28d1d
+  estimand: efficacy@web:eli-lilly-an-2026-03-19-lilly-s-triple-agonist-retatrutide-demon
   arm: retatrutide 12 mg
   scope: ARM
   value: -16.8
@@ -119,10 +123,11 @@ results:
   timepoint_weeks: 40
   source: web:eli-lilly-an-2026-03-19-lilly-s-triple-agonist-retatrutide-demon
   quote: participants taking retatrutide lost up to an average of 36.6 lbs (16.8%), using the efficacy estimand
-  notes: Efficacy estimand here = had all randomized participants remained on study intervention for 40 weeks without initiating additional antihyperglycemic medications. For 4 mg the efficacy and treatment-regimen
-    rows show the same value (-11.5%). ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w40-percent-change-in-body-weigh
-  estimand: efficacy
+  notes: 'Efficacy estimand here = had all randomized participants remained on study intervention for 40 weeks without initiating additional antihyperglycemic medications. For 4 mg the efficacy and treatment-regimen
+    rows show the same value (-11.5%). ci_not_reported_in_this_source Sign: the source prints this number without a minus sign and states the loss or reduction in words; it is stored as a negative change.'
+  sign_basis: DIRECTION_WORDING
+- endpoint: weight-pct-change-w40-percent-change-in-body-weight-from-baseline-04b28d1d
+  estimand: efficacy@web:eli-lilly-an-2026-03-19-lilly-s-triple-agonist-retatrutide-demon
   arm: placebo
   scope: ARM
   value: -2.5
@@ -134,8 +139,8 @@ results:
   notes: Efficacy estimand here = had all randomized participants remained on study intervention for 40 weeks without initiating additional antihyperglycemic medications. For 4 mg the efficacy and treatment-regimen
     rows show the same value (-11.5%). ci_not_reported_in_this_source
 analyses:
-- endpoint: hba1c-change-w40-estimated-treatment-differen
-  estimand: treatment_regimen
+- endpoint: hba1c-change-w40-estimated-treatment-difference-in-hba1c-chan-99d79142
+  estimand: treatment_regimen@pubmed:42250575
   treatment: retatrutide 12 mg
   comparator: placebo
   hypothesis_type: NOT_STATED

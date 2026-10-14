@@ -96,7 +96,12 @@ def interpret_finding(f: Finding) -> dict[str, Any]:
     analysis_bits = []
     if f.estimand_label != EstimandLabel.NOT_STATED.value:
         analysis_bits.append(ESTIMAND_EXPLAINER[f.estimand_label])
-        analysis_bits.append("Estimand label stated by the source." if "STATED" in f.estimand_basis else "Estimand label inferred from the registry's analysis-population text (an inference, not a statement by the source).")
+        if "STATED" in f.estimand_basis:
+            analysis_bits.append("Estimand label stated by the source.")
+        elif f.estimand_basis == "INFERRED_BY_CURATOR":
+            analysis_bits.append("Estimand label attributed by the curator: no checked quote from this source names the estimand (not a statement by the source).")
+        else:
+            analysis_bits.append("Estimand label inferred from the registry's analysis-population text (an inference, not a statement by the source).")
     else:
         analysis_bits.append(ESTIMAND_EXPLAINER[EstimandLabel.NOT_STATED.value])
     if f.analysis_method:
@@ -186,7 +191,14 @@ def interpret_analysis(a: dict[str, Any]) -> dict[str, Any]:
     param = a["param_type"] or "estimate"
     is_ratio = bool(re.search(r"ratio", param, re.IGNORECASE))
     null = 1.0 if is_ratio else 0.0
-    observed = f"{a['treatment_label']} versus {a['comparator_label'] or 'comparator not stated'} — {param}: {_fmt(estimate)}"
+    if a.get("direction_basis") == "NOT_STATED":
+        # The source does not say which group is the reference: name the groups, do not assert a direction.
+        contrast = f"Groups {' and '.join(a.get('group_labels') or [str(a['treatment_label'])])} (the source does not state which is the reference; the sign has no stated direction)"
+    else:
+        contrast = f"{a['treatment_label']} versus {a['comparator_label'] or 'comparator not stated'}"
+    if a.get("class_title"):
+        contrast += f" [{a['class_title']}]"
+    observed = f"{contrast} — {param}: {_fmt(estimate)}"
     observed += f" ({_fmt(a['ci_level'], 1)}% CI {_fmt(lo)} to {_fmt(hi)})" if lo is not None and hi is not None else " (confidence interval not reported in this source)"
     observed += f"; p {a['p_value_text']}." if a["p_value_text"] else "; p-value not reported in this source."
 

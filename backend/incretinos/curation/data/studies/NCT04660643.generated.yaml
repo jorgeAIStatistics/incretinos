@@ -3,37 +3,60 @@
 # Verification status is assigned by the loader (quote anchoring) — nothing here is human-verified.
 study: NCT04660643
 estimands:
-- key: efficacy
+- key: efficacy@web:eli-lilly-an-2023-12-11-lilly-s-zepbound-tirzepatide-achieved-ad
   label: EFFICACY
-  description: 'Efficacy estimand as named by the source: the treatment effect had participants remained on study treatment (hypothetical strategy for treatment discontinuation).'
+  basis: INFERRED_BY_CURATOR
+  description: 'Efficacy estimand as recorded in the research note for this source; the note holds no verbatim quote from the source that names the estimand, so the label is the curator''s attribution:
+    the treatment effect had participants remained on study treatment (hypothetical strategy for treatment discontinuation).'
   source: web:eli-lilly-an-2023-12-11-lilly-s-zepbound-tirzepatide-achieved-ad
   strategies:
   - event: TREATMENT_DISCONTINUATION
     strategy: HYPOTHETICAL
 endpoints:
-- key: weight-abs-change-w36-average-body-weight-loss-dur
+- key: other-w36-average-body-weight-loss-during-open-label-l-067789c2
   title: average body weight loss during open-label lead-in
   role: NOT_STATED
-  category: WEIGHT_ABS_CHANGE
+  category: OTHER
   unit: '% reduction'
   timepoint_weeks: 36
   multiplicity_controlled: NOT_STATED
-- key: weight-pct-change-w88-percent-change-in-body-weigh
+- key: weight-pct-change-w88-percent-change-in-body-weight-from-randomiza-f472ee8c
   title: percent change in body weight from randomization
   role: PRIMARY
   category: WEIGHT_PCT_CHANGE
   unit: '%'
   timepoint_weeks: 88
-  multiplicity_controlled: 'YES'
-- key: weight-pct-change-w88-difference-in-percent-change
+  multiplicity_controlled: NOT_STATED
+- key: weight-pct-change-w88-difference-in-percent-change-in-body-weight-6e2d92b0
+  title: difference in percent change in body weight from randomization
+  role: PRIMARY
+  category: WEIGHT_PCT_CHANGE
+  unit: percentage points
+  timepoint_weeks: 88
+  multiplicity_controlled: NOT_STATED
+- key: weight-pct-change-w88-difference-in-percent-change-in-body-weight-ea7845f9
   title: difference in percent change in body weight from randomization
   role: PRIMARY
   category: WEIGHT_PCT_CHANGE
   unit: percentage points
   timepoint_weeks: 88
   multiplicity_controlled: 'YES'
+- key: weight-pct-change-w88-percent-change-in-body-weight-from-randomiza-d8f7efd9
+  title: percent change in body weight from randomization
+  role: PRIMARY
+  category: WEIGHT_PCT_CHANGE
+  unit: '%'
+  timepoint_weeks: 88
+  multiplicity_controlled: 'YES'
+- key: weight-pct-change-w88-percent-change-in-body-weight-from-study-ent-28caf9e3
+  title: percent change in body weight from study entry
+  role: EXPLORATORY
+  category: WEIGHT_PCT_CHANGE
+  unit: '%'
+  timepoint_weeks: 88
+  multiplicity_controlled: 'NO'
 results:
-- endpoint: weight-abs-change-w36-average-body-weight-loss-dur
+- endpoint: other-w36-average-body-weight-loss-during-open-label-l-067789c2
   arm: open-label tirzepatide MTD
   scope: ARM
   value: 20.9
@@ -44,7 +67,7 @@ results:
   source: openfda-label:zepbound
   quote: randomized patients (n=670) had an average body weight loss of 20.9% (Week 0 to Week 36)
   notes: ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w88-percent-change-in-body-weigh
+- endpoint: weight-pct-change-w88-percent-change-in-body-weight-from-randomiza-f472ee8c
   arm: tirzepatide MTD (continued)
   scope: ARM
   value: -5.5
@@ -56,7 +79,7 @@ results:
   quote: from week 36 to week 88 was -5.5% with tirzepatide vs 14.0% with placebo (difference, -19.4% [95% CI, -21.2% to -17.7%]; P < .001)
   notes: JAMA abstract does not name the estimand; Lilly release S33 places these values (-5.5%, 14.0%) in the "Treatment-Regimen Estimand" columns and the label S28 reports them for the ITT population
     with hybrid imputation. Per-arm CI not given. Positive placebo value = weight regain. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w88-percent-change-in-body-weigh
+- endpoint: weight-pct-change-w88-percent-change-in-body-weight-from-randomiza-f472ee8c
   arm: placebo (switched)
   scope: ARM
   value: 14.0
@@ -68,8 +91,8 @@ results:
   quote: from week 36 to week 88 was -5.5% with tirzepatide vs 14.0% with placebo (difference, -19.4% [95% CI, -21.2% to -17.7%]; P < .001)
   notes: JAMA abstract does not name the estimand; Lilly release S33 places these values (-5.5%, 14.0%) in the "Treatment-Regimen Estimand" columns and the label S28 reports them for the ITT population
     with hybrid imputation. Per-arm CI not given. Positive placebo value = weight regain. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w88-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w88-percent-change-in-body-weight-from-randomiza-d8f7efd9
+  estimand: efficacy@web:eli-lilly-an-2023-12-11-lilly-s-zepbound-tirzepatide-achieved-ad
   arm: tirzepatide MTD (continued)
   scope: ARM
   value: -6.7
@@ -81,8 +104,8 @@ results:
   notes: 'Table row "Mean percent change in weight from week 36 (randomization) to week 88*"; columns in order: Efficacy Estimand Zepbound, Efficacy Estimand Placebo, Treatment-Regimen Zepbound, Treatment-Regimen
     Placebo. "*Tested for superiority, controlled for type 1 error." Registry S34 gives SE 0.52 (tirzepatide) and 0.53 (placebo) and LS mean difference -21.4 (95% CI -22.9 to -20.0), p<.001 for this on-treatment
     analysis. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w88-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w88-percent-change-in-body-weight-from-randomiza-d8f7efd9
+  estimand: efficacy@web:eli-lilly-an-2023-12-11-lilly-s-zepbound-tirzepatide-achieved-ad
   arm: placebo (switched)
   scope: ARM
   value: 14.8
@@ -94,8 +117,8 @@ results:
   notes: 'Table row "Mean percent change in weight from week 36 (randomization) to week 88*"; columns in order: Efficacy Estimand Zepbound, Efficacy Estimand Placebo, Treatment-Regimen Zepbound, Treatment-Regimen
     Placebo. "*Tested for superiority, controlled for type 1 error." Registry S34 gives SE 0.52 (tirzepatide) and 0.53 (placebo) and LS mean difference -21.4 (95% CI -22.9 to -20.0), p<.001 for this on-treatment
     analysis. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w88-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w88-percent-change-in-body-weight-from-study-ent-28caf9e3
+  estimand: efficacy@web:eli-lilly-an-2023-12-11-lilly-s-zepbound-tirzepatide-achieved-ad
   arm: tirzepatide MTD (continued)
   scope: ARM
   value: -26.0
@@ -106,8 +129,8 @@ results:
   quote: Percent change in body weight from week 0 -26.0 % -9.5 % -25.3 % -9.9 %
   notes: 'Row sits under the source heading "Additional Secondary and Exploratory Endpoints" and lacks the type-1-error asterisk; role recorded as exploratory/additional secondary. Registry S34: -26.0 (SE
     0.39) vs -9.5 (SE 0.40); LS mean difference -16.4 (95% CI -17.5 to -15.4), p<.001 (listed as a secondary outcome). ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w88-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w88-percent-change-in-body-weight-from-study-ent-28caf9e3
+  estimand: efficacy@web:eli-lilly-an-2023-12-11-lilly-s-zepbound-tirzepatide-achieved-ad
   arm: placebo (switched)
   scope: ARM
   value: -9.5
@@ -119,7 +142,7 @@ results:
   notes: 'Row sits under the source heading "Additional Secondary and Exploratory Endpoints" and lacks the type-1-error asterisk; role recorded as exploratory/additional secondary. Registry S34: -26.0 (SE
     0.39) vs -9.5 (SE 0.40); LS mean difference -16.4 (95% CI -17.5 to -15.4), p<.001 (listed as a secondary outcome). ci_not_reported_in_this_source'
 analyses:
-- endpoint: weight-pct-change-w88-difference-in-percent-change
+- endpoint: weight-pct-change-w88-difference-in-percent-change-in-body-weight-6e2d92b0
   treatment: tirzepatide MTD
   comparator: placebo
   hypothesis_type: NOT_STATED
@@ -135,7 +158,7 @@ analyses:
   source: pubmed:38078870
   quote: from week 36 to week 88 was -5.5% with tirzepatide vs 14.0% with placebo (difference, -19.4% [95% CI, -21.2% to -17.7%]; P < .001)
   notes: Estimand not named in abstract; corresponds to treatment-regimen estimand per S33.
-- endpoint: weight-pct-change-w88-difference-in-percent-change
+- endpoint: weight-pct-change-w88-difference-in-percent-change-in-body-weight-ea7845f9
   treatment: tirzepatide MTD
   comparator: placebo
   hypothesis_type: NOT_STATED

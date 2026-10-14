@@ -242,6 +242,8 @@ def build_labels(f: Finding) -> list[dict[str, str]]:
         add("ESTIMAND_NOT_STATED", "Estimand not stated", "warn", "The source does not say how data after treatment discontinuation were handled.")
     if f.estimand_basis == EstimandBasis.INFERRED_FROM_ANALYSIS_DESCRIPTION.value:
         add("ESTIMAND_INFERRED", "Estimand inferred", "warn", "Label inferred by rule from the registry's analysis-population text; the source does not name the estimand.")
+    elif f.estimand_basis == EstimandBasis.INFERRED_BY_CURATOR.value:
+        add("ESTIMAND_CURATOR", "Estimand per curator", "warn", "Label attributed by the curator; no checked quote from this source names the estimand.")
 
     if f.role in (EndpointRole.EXPLORATORY.value, EndpointRole.POST_HOC.value):
         add("EXPLORATORY", "Exploratory" if f.role == EndpointRole.EXPLORATORY.value else "Post hoc", "warn", "Not a confirmatory endpoint; hypothesis-generating only.")
@@ -288,6 +290,9 @@ def render_statement(f: Finding) -> str:
     endpoint = CATEGORY_LABEL.get(f.category, f.endpoint_title)
     if f.category == EndpointCategory.WEIGHT_RESPONDER.value and f.threshold is not None:
         endpoint = f"participants with ≥{_fmt(f.threshold)}% weight reduction"
+    elif f.category == EndpointCategory.WEIGHT_RESPONDER.value and f.class_title:
+        # An outcome that lists several thresholds has none of its own: the class says which one this value is.
+        endpoint = f"{f.endpoint_title} — {f.class_title}"
     if f.category in ("BODY_COMPOSITION", "OTHER", "LIPIDS", "PATIENT_REPORTED"):
         endpoint = f.endpoint_title if not f.class_title else f"{f.endpoint_title} — {f.class_title}"
     baseline = f.baseline_definition or ("baseline" if f.category in EFFICACY_CATEGORIES else None)
@@ -298,6 +303,8 @@ def render_statement(f: Finding) -> str:
     }.get(f.estimand_label, "estimand not stated")
     if f.estimand_basis == EstimandBasis.INFERRED_FROM_ANALYSIS_DESCRIPTION.value:
         estimand += " (inferred from the analysis description)"
+    elif f.estimand_basis == EstimandBasis.INFERRED_BY_CURATOR.value and f.estimand_label != EstimandLabel.NOT_STATED.value:
+        estimand += " (curator's attribution; no checked source quote names it)"
     n = f"n = {f.n_analyzed}" if f.n_analyzed is not None else "n not reported"
     tier = TIER_LABEL.get(EvidenceTier(f.tier), f.tier).lower() if f.tier in EvidenceTier._value2member_map_ else f.tier
     parts = [
@@ -416,6 +423,10 @@ def analysis_dto(a: StatisticalAnalysis) -> dict[str, Any]:
         labels.append({"code": "CI_NOT_REPORTED", "text": "CI not reported", "tone": "muted", "detail": "No confidence interval in this source; none has been estimated."})
     if a.tier == EvidenceTier.PRESS_RELEASE.value:
         labels.append({"code": "PRESS_RELEASE", "text": "Press release · topline", "tone": "warn", "detail": "Sponsor disclosure; not peer reviewed."})
+    if a.direction_basis == "NOT_STATED":
+        labels.append({"code": "REFERENCE_NOT_STATED", "text": "Reference group not stated", "tone": "warn", "detail": "The source does not say which group is the reference; the two groups are listed in posted order and the sign has no stated direction."})
+    elif a.direction_basis in ("REGISTRY_ARM_TYPE", "PLACEBO_GROUP_TITLE"):
+        labels.append({"code": "REFERENCE_FROM_ARM_ROLE", "text": "Reference group from arm role", "tone": "muted", "detail": "The registry analysis does not state the direction of the contrast; the comparator is the group the registry classifies as placebo or active comparator."})
     return {
         "id": a.id,
         "study_id": a.study_id,
@@ -431,6 +442,11 @@ def analysis_dto(a: StatisticalAnalysis) -> dict[str, Any]:
         "comparator_label": a.comparator_label,
         "treatment_arm_id": a.treatment_arm_id,
         "comparator_arm_id": a.comparator_arm_id,
+        # Groups in the order the source posts them, how treatment/comparator were assigned, and the outcome class.
+        "group_labels": list(a.group_labels or []),
+        "direction_basis": a.direction_basis,
+        "group_description": a.group_description,
+        "class_title": a.class_title,
         "hypothesis_type": a.hypothesis_type,
         "param_type": a.param_type,
         "estimate": a.estimate,
@@ -478,7 +494,10 @@ def ae_dto(ae: AdverseEvent) -> dict[str, Any]:
         "organ_system": ae.organ_system,
         "category": ae.category,
         "measure_kind": ae.measure_kind,
-        "measure_kind_label": AE_KIND_LABEL.get(ae.measure_kind, ae.measure_kind),
+        # The registry's serious-event table and its non-serious table are different counts of the same term.
+        "measure_kind_label": "Participants with ≥1 SERIOUS event (within-trial incidence proportion)"
+        if ae.is_serious and ae.measure_kind == "PARTICIPANTS_WITH_EVENT"
+        else AE_KIND_LABEL.get(ae.measure_kind, ae.measure_kind),
         "is_serious": ae.is_serious,
         "n_affected": ae.n_affected,
         "n_at_risk": ae.n_at_risk,
