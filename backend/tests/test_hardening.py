@@ -1014,9 +1014,11 @@ def test_rate_limits_can_be_switched_off(client, enforced_limits, monkeypatch):
     assert all(client.post("/api/design/simulate", json=SIMULATION).status_code == 200 for _ in range(4))
 
 
-def test_only_the_two_expensive_routes_are_rate_limited():
-    limited = set()
+def test_the_two_expensive_open_routes_are_rate_limited():
+    limited = {}
     for method, route in _api_routes():
-        if any(d.call in (limits.limit_simulation, limits.limit_assistant) for d in route.dependant.dependencies):
-            limited.add((method, route.path))
-    assert limited == {("POST", "/api/design/simulate"), ("POST", "/api/assistant/ask")}
+        for dependency in route.dependant.dependencies:
+            if dependency.call in (limits.limit_simulation, limits.limit_assistant):
+                limited[(method, route.path)] = dependency.call
+    assert limited.get(("POST", "/api/design/simulate")) is limits.limit_simulation
+    assert limited.get(("POST", "/api/assistant/ask")) is limits.limit_assistant
