@@ -175,7 +175,15 @@ export function setLabel(set: FindingSet): string {
 
 /* ---------- between-arm contrasts ---------- */
 
-export const isRatio = (paramType: string | null | undefined): boolean => /ratio/i.test(paramType ?? "");
+/** A between-arm estimate is a ratio when its parameter is named one (odds, hazard, risk ratio) or its unit is recorded as "ratio". */
+export const isRatio = (a: { param_type?: string | null; unit?: string | null }): boolean => /ratio/i.test(a.param_type ?? "") || /^ratio$/i.test((a.unit ?? "").trim());
+
+/** Whether a between-arm estimate is a ratio, a difference, or something this page cannot classify from its name. */
+export function contrastKind(a: { param_type?: string | null; unit?: string | null }): "ratio" | "difference" | "other" {
+  if (isRatio(a)) return "ratio";
+  return /differ/i.test(a.param_type ?? "") ? "difference" : "other";
+}
+export const contrastKindLabel = (a: { param_type?: string | null; unit?: string | null }): string => ({ ratio: "Ratio", difference: "Difference", other: "Contrast" })[contrastKind(a)];
 
 /**
  * What is subtracted from (or divided by) what in a reported between-arm analysis, and how that direction is known.
@@ -183,8 +191,10 @@ export const isRatio = (paramType: string | null | undefined): boolean => /ratio
  */
 export function contrastDirection(a: any): { expression: string; mark: string; basis: string } {
   const treatment = a.treatment_label ?? "treatment not stated";
+  const kind = contrastKind(a);
   if (!a.comparator_label) return { expression: `${treatment}; comparator not stated`, mark: "‡", basis: "The source does not name the comparator, so the direction of this contrast is not on record." };
-  const expression = isRatio(a.param_type) ? `${treatment} ÷ ${a.comparator_label}` : `${treatment} − ${a.comparator_label}`;
+  if (kind === "other") return { expression: `${treatment} vs ${a.comparator_label}`, mark: "§", basis: "The parameter is named neither a difference nor a ratio, so no direction of subtraction or division is asserted here." };
+  const expression = kind === "ratio" ? `${treatment} ÷ ${a.comparator_label}` : `${treatment} − ${a.comparator_label}`;
   if (a.origin === "CURATED") return { expression, mark: "a", basis: "Direction as curated from the cited source (treatment relative to comparator); the quoted source text is the authority." };
   if (/does not state which group is the reference/i.test(a.comment ?? "")) return { expression, mark: "c", basis: "The registry does not say which group is the reference: the groups are in registry order and the sign may be the reverse." };
   return { expression, mark: "b", basis: "Reference arm identified by its role in the trial (placebo or active comparator); the registry posts the estimate without stating the direction." };
@@ -192,5 +202,6 @@ export function contrastDirection(a: any): { expression: string; mark: string; b
 
 /** The unit printed beside a between-arm estimate: a ratio has none, a difference of percentages is in percentage points. */
 export function contrastUnit(a: any): string {
-  return isRatio(a.param_type) ? "" : differenceUnit(a.unit);
+  const kind = contrastKind(a);
+  return kind === "ratio" ? "" : kind === "difference" ? differenceUnit(a.unit) : unitLabel(a.unit);
 }

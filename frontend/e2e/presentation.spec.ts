@@ -171,6 +171,21 @@ test("WEB-02: a posted confidence level that is not a level is named as invalid,
   expect(await estimate.innerText()).not.toContain(`${num(odd.ci_level)}% CI`);
 });
 
+test("WEB-02: an estimate recorded as a ratio is presented as a ratio whatever its parameter is called", async ({ page, request }) => {
+  const analyses = (await json(request, "/analyses?limit=1500")).rows;
+  const ratio = analyses.find((a: any) => a.unit === "ratio" && !/ratio/i.test(a.param_type ?? "") && a.estimate != null && a.comparator_label);
+  expect(ratio, "an analysis whose unit is 'ratio' but whose parameter name does not say so").toBeTruthy();
+  const study = await json(request, `/studies/${ratio.nct_id}`);
+  const index = study.endpoint_groups.find((g: any) => g.endpoint_id === ratio.endpoint_id).analyses.findIndex((a: any) => a.id === ratio.id);
+  await page.goto(`/trials/${ratio.nct_id}`);
+  const group = page.locator(`[data-endpoint-id="${ratio.endpoint_id}"]`);
+  await openGroup(group);
+  const row = group.getByTestId("analysis-row").nth(index);
+  await expect(row.getByTestId("contrast-direction")).toContainText(`Ratio: ${ratio.treatment_label} ÷ ${ratio.comparator_label}`);
+  await expect(row.getByTestId("contrast-direction")).not.toContainText("Difference");
+  await expect(row.getByTestId("analysis-estimate")).toContainText(`${num(ratio.estimate)} (ratio, no unit)`);
+});
+
 /* ------------------------------------------------------------------ WEB-01 */
 
 /** Asserts that the headline chart shows exactly one stored result set and says so; returns that set. */

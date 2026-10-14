@@ -8,7 +8,7 @@ import { Suspense, useEffect, useState } from "react";
 import { type BarFill, ChartFrame, ChartTable, FacetedChart, Reported } from "@/components/charts";
 import { Badge, Callout, ClassificationBadge, ErrorNote, Loading, PageHeader, Panel, Qualifiers, Section, Select, SourceLine, VerificationBadge } from "@/components/ui";
 import { apiPost, fmt, phaseLabel, titleCase, useApi, diabetesLabel } from "@/lib/api";
-import { ciLabel, contrastDirection, contrastUnit, differenceUnit, estimandLabel, findingRow, isRatio, reportedText, tierLabel, unitLabel, weekLabel, withUnit } from "@/lib/rows";
+import { ciLabel, contrastDirection, contrastKindLabel, contrastUnit, differenceUnit, estimandLabel, findingRow, isRatio, reportedText, tierLabel, unitLabel, weekLabel, withUnit } from "@/lib/rows";
 
 // Vocabulary requested once: the API returns the label of every endpoint category with any findings response.
 const VOCABULARY = "/findings?limit=1";
@@ -247,10 +247,10 @@ function Lab() {
                   <div key={an.id} className="mt-2 text-[13px] text-ink-2" data-testid="reported-analysis">
                     <p className="text-[15px] text-ink">
                       <span className="font-semibold">{an.param_type ?? "Estimate"}:</span>{" "}
-                      {an.estimate == null ? <span className="text-ink-3">not reported</span> : <Reported text={reportedText(an.estimate, an.estimate_text)} unit={contrastUnit(an)} lo={an.ci_low} hi={an.ci_high} level={an.ci_level} missingUnit={isRatio(an.param_type) ? "ratio, no unit" : "unit not recorded"} />}
+                      {an.estimate == null ? <span className="text-ink-3">not reported</span> : <Reported text={reportedText(an.estimate, an.estimate_text)} unit={contrastUnit(an)} lo={an.ci_low} hi={an.ci_high} level={an.ci_level} missingUnit={isRatio(an) ? "ratio, no unit" : "unit not recorded"} />}
                       {an.ci_low == null || an.ci_high == null ? <span className="text-[12.5px] text-ink-3"> (CI not reported)</span> : null}
                     </p>
-                    <p className="mt-0.5" data-testid="contrast-direction">{isRatio(an.param_type) ? "Ratio" : "Difference"}: {direction.expression}. <span className="text-ink-3">{direction.basis}</span></p>
+                    <p className="mt-0.5" data-testid="contrast-direction">{contrastKindLabel(an)}: {direction.expression}. <span className="text-ink-3">{direction.basis}</span></p>
                     <p className="mt-0.5">p-value: {an.p_value_text ?? "not reported in this source"}{an.unit ? ` · outcome unit as stored: ${an.unit}` : ""}</p>
                     <div className="mt-1.5"><Qualifiers labels={an.labels} /></div>
                     <ul className="mt-2 list-disc space-y-1 pl-5">{[...result.analysis_interpretations[i].establishes.map((s: string) => `Establishes: ${s}`), ...result.analysis_interpretations[i].does_not_establish.slice(0, 3).map((s: string) => `Does not establish: ${s}`)].map((s) => <li key={s}>{s}</li>)}</ul>

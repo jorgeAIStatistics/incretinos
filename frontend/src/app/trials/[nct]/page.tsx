@@ -6,7 +6,7 @@ import { use, useState } from "react";
 import { ChartFrame, ChartTable, IntervalChart, Reported } from "@/components/charts";
 import { Badge, Callout, ErrorNote, KV, Loading, PageHeader, Panel, Qualifiers, Section, Select, SourceLine, VerificationBadge } from "@/components/ui";
 import { fmt, phaseLabel, titleCase, useApi, diabetesLabel } from "@/lib/api";
-import { byRoleThenDose, contrastDirection, contrastUnit, estimandLabel, findingRow, findingSets, isRatio, reportedText, setLabel, weekLabel, withUnit } from "@/lib/rows";
+import { byRoleThenDose, contrastDirection, contrastKindLabel, contrastUnit, estimandLabel, findingRow, findingSets, isRatio, reportedText, setLabel, weekLabel, withUnit } from "@/lib/rows";
 
 // Qualifier codes whose content this table already prints in its own column of the same row (estimand, interval, verification).
 const SHOWN_IN_OTHER_COLUMNS = ["ESTIMAND_EFFICACY", "ESTIMAND_TREATMENT_REGIMEN", "CI_NOT_REPORTED", "MACHINE_EXTRACTED", "QUOTE_ANCHORED", "PENDING_REVIEW"];
@@ -37,7 +37,7 @@ function Dispersion({ f }: { f: any }) {
 }
 
 function AnalysisEstimate({ a }: { a: any }) {
-  const ratio = isRatio(a.param_type);
+  const ratio = isRatio(a);
   return (
     <>
       <span className="text-[12px] text-ink-3">{a.param_type ?? "Parameter not stated"}</span>
@@ -112,7 +112,7 @@ function EndpointGroup({ g, open }: { g: any; open: boolean }) {
                       <td className="font-medium">
                         {a.treatment_label} <span className="font-normal text-ink-3">vs</span> {a.comparator_label ?? "comparator not stated"}
                         <span className="block text-[12px] font-normal text-ink-2" data-testid="contrast-direction">
-                          {isRatio(a.param_type) ? "Ratio" : "Difference"}: {directions[i].expression} <sup>{directions[i].mark}</sup>
+                          {contrastKindLabel(a)}: {directions[i].expression} <sup>{directions[i].mark}</sup>
                         </span>
                         <span className="block text-[11.5px] font-normal text-ink-3">{estimandLabel(a.estimand_label, a.estimand_basis)} · {weekLabel(a.timepoint_weeks)}</span>
                       </td>
