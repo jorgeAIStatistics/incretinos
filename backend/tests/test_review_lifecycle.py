@@ -1720,3 +1720,145 @@ def _shift_outcomes_and_revise(document: dict) -> None:
     inserted["analyses"] = []
     measures.insert(0, inserted)
     document["protocolSection"]["statusModule"]["lastUpdatePostDateStruct"] = {"date": "2027-02-01", "type": "ACTUAL"}
+
+
+# --------------------------------------------------------------------------- hooks: automated checks, scheduler, commands, container start
+
+
+def test_automated_check_flags_are_stored_when_the_checks_module_is_installed(lab, monkeypatch):
+    """`review.checks.evaluate_all` is written on another track; reconcile calls it when present and never depends on it."""
+    import types
+
+    from incretinos.review.policy import CheckFlag
+
+    row = lab.registry_primary("15 mg Tirzepatide")
+    rid = lab.by_key(row)["id"]
+    assert lab.by_key(row)["check_flags"] == [] and lab.by_key(row)["risk_level"] == "NONE"
+
+    module = types.ModuleType("incretinos.review.checks")
+    module.evaluate_all = lambda session: {("result", rid): [CheckFlag("TEST_ARM_MISMATCH", "HIGH", "Explains a risk; corrects nothing.", ("arm", "value"))]}  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "incretinos.review.checks", module)
+    with lab.session() as session:
+        report = reconcile(session)
+        session.commit()
+    assert report.checks == "RAN" and report.rows_updated == 1 and report.new_versions == 0 and report.transitions_total == 0
+    detail = lab.by_key(row)
+    assert detail["check_flags"] == [{"code": "TEST_ARM_MISMATCH", "severity": "HIGH", "explanation": "Explains a risk; corrects nothing.", "fields": ["arm", "value"]}]
+    assert detail["risk_level"] == "HIGH" and detail["values"]["value"] == -22.5 and detail["fingerprint"] == row["fingerprint"]  # a flag never changes evidence
+    flagged = lab.one(risk_level="HIGH")
+    assert flagged["evidence_key"] == row["evidence_key"] and flagged["flag_codes"] == ["TEST_ARM_MISMATCH"] and flagged["n_flags"] == 1
+    assert lab.rows(sort="risk")[0]["evidence_key"] == row["evidence_key"]
+    with lab.session() as session:
+        stored = session.get(OutcomeResult, rid)
+        assert stored.risk_level == "HIGH" and stored.check_flags[0]["code"] == "TEST_ARM_MISMATCH" and stored.verification_status == MACHINE
+
+    # A check that crashes is reported and audited; the load is not blocked and the stored flags are kept.
+    def broken(session):
+        raise RuntimeError("check failed")
+
+    module.evaluate_all = broken  # type: ignore[attr-defined]
+    with lab.session() as session:
+        report = reconcile(session)
+        session.commit()
+    assert report.checks == "FAILED" and "RuntimeError: check failed" in report.checks_error and report.rows_updated == 0
+    assert lab.by_key(row)["risk_level"] == "HIGH" and len(lab.audit("review.checks_failed")) == 1
+    assert lab.reseed().review["checks"] == "FAILED" and lab.by_key(row)["risk_level"] == "HIGH"  # kept across a rebuild of the same content
+
+    # Without the module nothing is flagged (and nothing breaks).
+    monkeypatch.delitem(sys.modules, "incretinos.review.checks")
+    with lab.session() as session:
+        report = reconcile(session)
+        session.commit()
+    assert report.checks in ("NOT_INSTALLED", "RAN") and (report.checks == "RAN" or lab.by_key(row)["risk_level"] == "NONE")
+
+
+def test_the_scheduled_refresh_reconciles_and_reports_changed_evidence(lab, monkeypatch):
+    from incretinos.ingestion import pipeline as pipeline_module
+    from incretinos.ingestion.scheduler import refresh_tracked_sources
+
+    row = lab.registry_primary("15 mg Tirzepatide")
+    rejected = lab.registry_primary("Placebo")
+    assert lab.decide(row, "APPROVE").json()["status_after"] == HUMAN_VERIFIED
+    assert lab.decide(rejected, "REJECT", rationale="Rejected before the scheduled refresh rebuilds the registry rows.").json()["status_after"] == REJECTED
+    patches: dict[str, Callable[[Any], None]] = {}
+    monkeypatch.setattr(pipeline_module, "build_transport", lambda **_: PatchedTransport(FIXTURES, patches=patches))  # the scheduler asks for a live transport
+
+    quiet = refresh_tracked_sources(get_settings())
+    assert quiet["failures"] == [] and quiet["evidence_changes"] == [] and quiet["review"]["transitions"] == 0
+    assert lab.status(row) == HUMAN_VERIFIED and lab.status(rejected) == REJECTED
+
+    patches[REGISTRY_FIXTURE] = _revise_primary_outcome("-20.5")
+    report = refresh_tracked_sources(get_settings())
+    assert [c["evidence_key"] for c in report["evidence_changes"]] == [row["evidence_key"]] and report["evidence_changes"][0]["value_changed"]
+    assert lab.status(row) == RECHECK and lab.status(rejected) == REJECTED
+    assert any(e["significance"] == "HIGH" for e in lab.client.get("/api/changes").json())
+    gaps = lab.client.get("/api/gaps").json()["rows"]
+    assert any(g["rule_id"] == "G13_RECORD_CHANGE" for g in gaps)  # the open change event is also raised as a gap by the same run
+
+
+def test_check_updates_command_reports_review_state(lab):
+    cli = __import__("incretinos.cli", fromlist=["app"]).app
+    row = lab.registry_primary("15 mg Tirzepatide")
+    assert lab.decide(row, "APPROVE").json()["status_after"] == HUMAN_VERIFIED
+    result = CliRunner().invoke(cli, ["check-updates"])
+    assert result.exit_code == 0, result.output[-1500:]
+    out = json.loads(result.stdout)
+    assert out["failures"] == [] and out["evidence_changes"] == [] and out["changes"] == []
+    assert out["review"]["statuses"][HUMAN_VERIFIED] == 1 and out["review"]["transitions"] == 0 and out["review"]["changed"] == 0
+    assert lab.status(row) == HUMAN_VERIFIED
+    assert [r.rule_id for r in _failed_rules(lab)] == []  # (the other rules need studies this two-study database does not hold)
+
+
+def test_container_start_reconciles_an_existing_database(lab, capsys):
+    """After a schema upgrade the stored rows have no evidence key; the entry step keys them without reloading anything."""
+    from incretinos import bootstrap
+
+    row = lab.registry_primary("15 mg Tirzepatide")
+    assert lab.decide(row, "APPROVE").json()["status_after"] == HUMAN_VERIFIED
+    with sqlite3.connect(lab.db_path) as conn:
+        n_before = conn.execute("SELECT COUNT(*) FROM outcome_result").fetchone()[0]
+        for table in ("outcome_result", "statistical_analysis", "adverse_event", "evidence_claim", "drug_mechanism", "indication"):
+            conn.execute(f"UPDATE {table} SET evidence_key = NULL, fingerprint = NULL, base_verification_status = NULL, source_snapshot_id = NULL")
+        conn.execute("UPDATE outcome_result SET verification_status = 'MACHINE_EXTRACTED' WHERE verification_status = 'HUMAN_VERIFIED'")
+    assert lab.client.get("/api/review/summary").json()["unreconciled_rows"]["result"] == n_before
+    bootstrap.main()
+    assert "Review state reconciled" in capsys.readouterr().out
+    summary = lab.client.get("/api/review/summary").json()
+    assert summary["unreconciled_rows"] == {} and summary["by_status"][HUMAN_VERIFIED] == 1
+    assert lab.status(row) == HUMAN_VERIFIED
+    with sqlite3.connect(lab.db_path) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM outcome_result").fetchone()[0] == n_before  # nothing was reloaded
+
+
+def test_a_decision_on_a_row_that_was_never_reconciled_is_refused(lab):
+    row = lab.registry_primary("5 mg Tirzepatide")
+    detail = lab.by_key(row)
+    with sqlite3.connect(lab.db_path) as conn:
+        conn.execute("UPDATE outcome_result SET evidence_key = NULL, fingerprint = NULL WHERE id = ?", (detail["id"],))
+    unkeyed = lab.client.get(f"/api/review/evidence/result/{detail['id']}").json()
+    assert unkeyed["reconciled"] is False and unkeyed["evidence_key"] is None
+    body = {"decision": "APPROVE", "reviewer": REVIEWER, "rationale": RATIONALE, "attest_human_review": True, "expected_fingerprint": detail["fingerprint"]}
+    refused = lab.client.post(f"/api/review/evidence/result/{detail['id']}/decisions", json=body, headers=TOKEN)
+    assert refused.status_code == 409 and "reconcile" in refused.json()["detail"]
+
+
+def test_curated_baseline_entries_are_re_anchored_too(lab):
+    """population.summary keeps a mechanical status per curated entry; reconcile keeps it honest (and never writes the legacy name)."""
+    with lab.session() as session:
+        from incretinos.models import Population
+
+        population = session.scalar(select(Population).join(Study, Population.study_id == Study.id).where(Study.nct_id == SURMOUNT_1))
+        quote = session.scalar(select(OutcomeResult.locator_quote).where(OutcomeResult.origin == "CURATED", OutcomeResult.arm_label == "tirzepatide 15 mg"))
+        population.summary = {
+            **(population.summary or {}),
+            "anchored_entry": {"value": 1.0, "origin": "CURATED", "source_key": "pubmed:35658024", "quote": quote, "verification": "CURATED_PENDING_REVIEW"},
+            "unanchored_entry": {"value": 2.0, "origin": "CURATED", "source_key": "pubmed:35658024", "quote": "a sentence that is not in the source", "verification": "QUOTE_ANCHORED"},
+        }
+        session.commit()
+        report = reconcile(session)
+        session.commit()
+        assert report.population_entries_reanchored == 2
+        summary = session.scalar(select(Population).where(Population.id == population.id)).summary
+        assert summary["anchored_entry"]["verification"] == ANCHORED and summary["unanchored_entry"]["verification"] == PENDING
+        assert summary["anchored_entry"]["value"] == 1.0 and all("verification" not in e for e in summary.values() if e.get("origin") == "REGISTRY")
+        assert reconcile(session).population_entries_reanchored == 0

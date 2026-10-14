@@ -85,9 +85,7 @@ class IndexRow:
     mechanical_status: str | None
     effective_status: str | None
     risk_level: str | None
-    check_flags: list[dict[str, Any]] | None
     supersedes_id: int | None
-    first_seen_at: datetime | None
     current_since: datetime | None
     search_text: str | None
 
@@ -103,12 +101,12 @@ class IndexRow:
 _INDEX_COLUMNS = (
     "id", "evidence_type", "evidence_key", "natural_key", "fingerprint", "label", "study_nct", "study_name", "drug_slugs", "origin", "source_key",
     "source_type", "tier", "endpoint_category", "missing_fields", "collision_level", "mechanical_status", "effective_status", "risk_level",
-    "check_flags", "supersedes_id", "first_seen_at", "current_since", "search_text",
+    "supersedes_id", "current_since", "search_text",
 )
 
 
 def index_rows(session: Session) -> list[IndexRow]:
-    """The current version of every reviewable row (without the field snapshot, which is large)."""
+    """The current version of every reviewable row: the light columns only (no snapshot, no flags)."""
     columns = [getattr(EvidenceVersion, name) for name in _INDEX_COLUMNS]
     return [IndexRow(*row) for row in session.execute(select(*columns).where(EvidenceVersion.is_current.is_(True)))]
 
@@ -209,32 +207,33 @@ def _predicates(filters: EvidenceFilters, state: ReviewState) -> dict[str, Any]:
     return tests
 
 
-def _facet_values(row: IndexRow, facet: str) -> list[str]:
-    if facet == "evidence_type":
-        return [row.evidence_type]
-    if facet == "status":
-        return [row.effective_status or "UNKNOWN"]
-    if facet == "tier":
-        return [row.tier] if row.tier else []
-    if facet == "source_type":
-        return [row.source_type] if row.source_type else []
-    if facet == "drug":
-        return row.drugs
-    if facet == "risk_level":
-        return [row.risk_level or "NONE"]
-    if facet == "endpoint_category":
-        return [row.endpoint_category] if row.endpoint_category else []
-    if facet == "origin":
-        return [row.origin] if row.origin else []
-    if facet == "missing_field":
-        return row.missing
-    return []
+_SINGLE_FACETS = {"evidence_type": "evidence_type", "status": "effective_status", "tier": "tier", "source_type": "source_type", "risk_level": "risk_level",
+                  "endpoint_category": "endpoint_category", "origin": "origin"}
+_FACET_DEFAULT = {"status": "UNKNOWN", "risk_level": "NONE"}
+
+
+def _count_facet(rows: list[IndexRow], facet: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    if facet in _SINGLE_FACETS:
+        attribute, default = _SINGLE_FACETS[facet], _FACET_DEFAULT.get(facet)
+        for row in rows:
+            value = getattr(row, attribute) or default
+            if value:
+                counts[value] = counts.get(value, 0) + 1
+    else:
+        packed = "drug_slugs" if facet == "drug" else "missing_fields"
+        for row in rows:
+            text = getattr(row, packed)
+            if text:
+                for value in text.split("|"):
+                    if value:
+                        counts[value] = counts.get(value, 0) + 1
+    return dict(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])))
 
 
 def _sort_key(sort: str, state: ReviewState):
     def last_change(row: IndexRow) -> float:
-        stamp = row.current_since or row.first_seen_at
-        return -(stamp.timestamp() if stamp else 0.0)
+        return -(row.current_since.timestamp() if row.current_since else 0.0)
 
     def by_status(row: IndexRow) -> tuple:
         return (STATUS_ATTENTION_ORDER.get(row.effective_status or "", 9), RISK_ORDER.get(row.risk_level or "NONE", 9), row.study_nct or "~", row.label, row.evidence_key)
@@ -319,33 +318,33 @@ def list_evidence(session: Session, filters: EvidenceFilters, *, sort: str = "st
     matched = [row for row in rows if all(test(row) for test in tests.values())]
     facets: dict[str, dict[str, int]] = {}
     for facet in FACETS:
-        others = [test for name, test in tests.items() if name != facet]
-        counts: Counter[str] = Counter()
-        for row in (matched if facet not in tests else rows):
-            if facet in tests and not all(test(row) for test in others):
-                continue
-            counts.update(_facet_values(row, facet))
-        facets[facet] = dict(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])))
+        if facet in tests:  # a facet counts every value of its own filter, with the other filters applied
+            others = [test for name, test in tests.items() if name != facet]
+            facets[facet] = _count_facet([row for row in rows if all(test(row) for test in others)], facet)
+        else:
+            facets[facet] = _count_facet(matched, facet)
     matched.sort(key=_sort_key(sort, state), reverse=descending)
     page = matched[offset : offset + limit]
     ids = _row_ids(session, page)
-    snapshots: dict[int, dict[str, Any]] = {}
+    extra: dict[int, tuple[dict[str, Any], list[dict[str, Any]], Any]] = {}
     if page:
-        for version_id, snapshot in session.execute(select(EvidenceVersion.id, EvidenceVersion.snapshot).where(EvidenceVersion.id.in_([r.version_id for r in page]))):
-            snapshots[version_id] = snapshot or {}
+        for version_id, snapshot, check_flags, first_seen_at in session.execute(
+            select(EvidenceVersion.id, EvidenceVersion.snapshot, EvidenceVersion.check_flags, EvidenceVersion.first_seen_at).where(EvidenceVersion.id.in_([r.version_id for r in page]))
+        ):
+            extra[version_id] = (snapshot or {}, check_flags or [], first_seen_at)
     items = []
     for row in page:
         key = (row.evidence_type, row.evidence_key)
-        flags = row.check_flags or []
+        snapshot, flags, first_seen_at = extra.get(row.version_id, ({}, [], None))
         items.append({
             "evidence_type": row.evidence_type, "id": ids.get(key), "evidence_key": row.evidence_key, "fingerprint": row.fingerprint, "label": row.label,
-            "value_summary": _value_summary(row.evidence_type, snapshots.get(row.version_id, {})), "study_nct": row.study_nct, "study_name": row.study_name,
+            "value_summary": _value_summary(row.evidence_type, snapshot), "study_nct": row.study_nct, "study_name": row.study_name,
             "drugs": row.drugs, "origin": row.origin, "source_key": row.source_key, "source_type": row.source_type, "tier": row.tier,
             "tier_label": _tier_label(row.tier), "endpoint_category": row.endpoint_category, "verification_status": row.effective_status,
             "status_label": STATUS_LABEL.get(row.effective_status or "", row.effective_status), "base_verification_status": row.mechanical_status,
             "usable": is_usable(row.effective_status), "risk_level": row.risk_level or "NONE", "n_flags": len(flags), "flag_codes": [str(f.get("code")) for f in flags],
             "missing_fields": row.missing, "changed_since_last_seen": _changed_since_last_seen(row, state), "changed_since_review": row.effective_status == RECHECK,
-            "changed_at": row.current_since if row.supersedes_id is not None else None, "first_seen_at": row.first_seen_at,
+            "changed_at": row.current_since if row.supersedes_id is not None else None, "first_seen_at": first_seen_at,
             "open_requests": len(state.open_requests.get(key, ())), "last_decision": _decision_brief(state.latest_decisive.get(key)),
             "identity_collision": row.collision_level > 0,
         })
