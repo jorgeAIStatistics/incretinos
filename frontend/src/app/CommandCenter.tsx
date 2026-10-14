@@ -122,7 +122,7 @@ const PORTFOLIO: Column<DrugSummary>[] = [
     key: "molecule",
     header: "Molecule",
     rowHeader: true,
-    className: "min-w-[150px] sm:min-w-[220px]",
+    className: "min-w-[150px] sm:min-w-[190px]",
     cell: (d) => {
       const code = d.code_name ?? d.brand_names?.join(" / ");
       return (
@@ -136,7 +136,7 @@ const PORTFOLIO: Column<DrugSummary>[] = [
       );
     },
   },
-  { key: "class", header: "Class (derived)", className: "min-w-[220px]", cell: (d) => d.classification.class_label },
+  { key: "class", header: "Class (derived)", className: "min-w-[180px]", cell: (d) => d.classification.class_label },
   { key: "status", header: "Regulatory status", cell: (d) => <RegulatoryBadge status={d.regulatory_status} /> },
   {
     key: "source",
@@ -210,7 +210,7 @@ function Dashboard({ data }: { data: Overview }) {
           rowKey={(d) => d.slug}
           maxHeight="none"
           pinFirstColumn
-          minWidth={760}
+          minWidth={700}
           empty={<p className="px-3 py-5 text-ink-3">No molecule is on record.</p>}
           footer={<p className="num text-data text-ink-2">{formatCount(data.drugs.length)} of {formatCount(data.drugs.length)} tracked molecules</p>}
         />

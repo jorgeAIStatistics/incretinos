@@ -32,15 +32,20 @@ export function SourceLine({ source, quote, location, compact }: { source: Sourc
 /**
  * A reported value with its interval. Formatting comes from `fmt` (owned with the charts); this component only
  * lays the pieces out. The percent sign is appended for percent units, as before.
+ * `rejected` strikes the value through: a record rejected in review is kept for audit but must not read as usable.
+ * Show the rejected VerificationBadge next to it, because a strike-through alone is not announced.
  */
-export function ValueCell({ value, unit, lo, hi, level }: { value: number | null; unit?: string | null; lo?: number | null; hi?: number | null; level?: number | null }) {
+export function ValueCell({ value, unit, lo, hi, level, rejected }: { value: number | null; unit?: string | null; lo?: number | null; hi?: number | null; level?: number | null; rejected?: boolean }) {
   const isPct = !!unit && /percent|%/i.test(unit);
+  const figure = (
+    <>
+      {fmt(value)}
+      {isPct ? "%" : ""}
+    </>
+  );
   return (
     <span className="num whitespace-nowrap">
-      <span className="font-semibold text-ink">
-        {fmt(value)}
-        {isPct ? "%" : ""}
-      </span>
+      {rejected ? <s className="font-semibold text-ink-3 decoration-critical decoration-2">{figure}</s> : <span className="font-semibold text-ink">{figure}</span>}
       {lo != null && hi != null ? (
         <span className="ml-1.5 text-caption text-ink-3">
           {level ? `${fmt(level, 1)}% CI ` : "CI "}

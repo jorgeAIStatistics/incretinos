@@ -290,9 +290,9 @@ export function Pagination({
         {unfiltered !== undefined && unfiltered > total ? <span className="text-ink-3"> (filtered from {numberFormat.format(unfiltered)})</span> : null}
         {truncated ? <span className="font-medium text-warn"> Only the first {numberFormat.format(reach)} can be shown: the service did not return the rest.</span> : null}
       </p>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {onPageSize ? (
-          <label htmlFor={sizeId} className="flex items-center gap-1.5 text-caption text-ink-3">
+          <label htmlFor={sizeId} className="flex items-center gap-1.5 whitespace-nowrap text-caption text-ink-3">
             Per page
             <select id={sizeId} value={pageSize} onChange={(e) => onPageSize(Number(e.target.value))} className="h-(--control-h-sm) cursor-pointer rounded-control border border-control bg-surface px-1.5 text-data text-ink">
               {pageSizes.map((s) => (

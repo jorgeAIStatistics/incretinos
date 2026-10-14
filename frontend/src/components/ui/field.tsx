@@ -15,7 +15,8 @@ export const CONTROL =
   "disabled:cursor-not-allowed disabled:bg-sunken disabled:text-ink-3 aria-invalid:border-critical";
 
 /* The label is tied to its control by id, not by wrapping it: a wrapping label would add the control's own value to its accessible name. */
-const FIELD = "flex min-w-0 flex-col gap-1 text-caption font-medium text-ink-2";
+/* `justify-end` keeps the controls of one row on a line when their labels wrap to different heights. */
+const FIELD = "flex min-w-0 flex-col justify-end gap-1 text-caption font-medium text-ink-2";
 
 function Messages({ hint, error, hintId, errorId }: { hint?: ReactNode; error?: string | null; hintId: string; errorId: string }) {
   if (error) {
