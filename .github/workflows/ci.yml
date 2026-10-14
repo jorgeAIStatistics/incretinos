@@ -51,6 +51,10 @@ jobs:
         run: |
           incretinos seed --reset
           incretinos validate
+      - name: Claim-verification benchmarks (reported; a set that cannot be run fails the step)
+        run: |
+          incretinos benchmark-claims --set dev
+          incretinos benchmark-claims --set heldout
 
   backend-postgres:
     name: Backend (PostgreSQL)
@@ -142,12 +146,13 @@ jobs:
       - working-directory: frontend
         run: npm ci --no-audit --no-fund
       - working-directory: frontend
-        run: npm run typecheck && npm run build
+        run: npm run typecheck && npm run lint && npm run build
       - working-directory: frontend
         run: npx playwright install --with-deps chromium
-      - name: Browser tests of the principal workflows (each fails on any browser-console error)
+      - name: Browser tests (workflows, design foundation, scientific presentation; each fails on any browser-console error)
         working-directory: frontend
-        run: npx playwright test
+        # Named explicitly so that a removed or renamed spec file fails the step instead of silently running fewer tests.
+        run: npx playwright test e2e/workflows.spec.ts e2e/foundation.spec.ts e2e/presentation.spec.ts
       - name: Keep the traces and the seed log when a browser test fails
         if: failure()
         uses: actions/upload-artifact@v4

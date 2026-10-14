@@ -5,6 +5,8 @@ COPY pyproject.toml constraints.txt alembic.ini ./
 COPY incretinos ./incretinos
 COPY alembic ./alembic
 COPY fixtures ./fixtures
+# The claim-verification benchmark sets read by `incretinos benchmark-claims` (dev and held-out; not loaded by the API).
+COPY benchmarks ./benchmarks
 # Reproducible install: every dependency is pinned by constraints.txt (generated from the environment the tests
 # ran in), so two builds of the same commit contain the same versions. The second command lists anything pip had
 # to resolve without a pin (a Linux-only dependency, or an optional extra); add such a package to constraints.txt.
@@ -21,7 +23,7 @@ USER incretinos
 # Explicit locations: the package is installed into site-packages, so nothing may be guessed from its own path.
 # INCRETINOS_ENV_FILE=none: the container is configured by environment variables only.
 ENV INCRETINOS_FIXTURE_DIR=/app/fixtures INCRETINOS_CURATED_DIR=/app/incretinos/curation/data INCRETINOS_CACHE_DIR=/app/var/cache \
-    INCRETINOS_MIGRATIONS_DIR=/app/alembic INCRETINOS_ENV_FILE=none
+    INCRETINOS_MIGRATIONS_DIR=/app/alembic INCRETINOS_BENCHMARK_DIR=/app/benchmarks/claims INCRETINOS_ENV_FILE=none
 EXPOSE 8000
 # Migrate (the same code path as `incretinos init-db` anywhere else), seed from offline fixtures when the database
 # is empty, then serve. exec makes the server PID 1 so that it receives the stop signal.

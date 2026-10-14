@@ -18,6 +18,7 @@ The verifier knows nothing about benchmark sentences; nothing here feeds back in
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -31,7 +32,9 @@ from .claims import Vocabulary
 from .facts import EvidenceFact, fact_from_analysis, fact_from_claim, fact_from_drug, fact_from_result
 from .verifier import NOT_FACTUAL, SUPPORTED, verify_draft
 
-BENCHMARK_DIR = BACKEND_ROOT / "benchmarks" / "claims"
+# backend/benchmarks/claims in a checkout. An installed package (the container image) cannot find it from its own
+# path, so INCRETINOS_BENCHMARK_DIR names it explicitly there, like the fixture, curation and migration directories.
+BENCHMARK_DIR = Path(os.environ.get("INCRETINOS_BENCHMARK_DIR") or BACKEND_ROOT / "benchmarks" / "claims")
 SETS = ("dev", "heldout")
 CATEGORIES = (
     "VALID", "DRUG_SWAPPED", "DIRECTION_REVERSED", "COMPARATOR_SWAPPED", "ARM_SWAPPED", "UNIT_CHANGED", "CI_MISSTATED", "NI_AS_SUPERIORITY", "SIGNIFICANCE_INVENTED",

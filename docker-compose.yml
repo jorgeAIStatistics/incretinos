@@ -71,6 +71,10 @@ services:
       context: ./frontend
       args:
         INCRETINOS_API_URL: http://api:8000
+    environment:
+      # Read at run time by server-rendered metadata (a trial page's title names the trial); the /api proxy itself is
+      # fixed at build time by the argument above.
+      INCRETINOS_API_URL: http://api:8000
     depends_on:
       api:
         condition: service_healthy
