@@ -178,7 +178,7 @@ test("research assistant cites evidence and declines recommendations", async ({ 
 test("source and audit explorer shows provenance, the change summary and validation", async ({ page }) => {
   await page.goto("/sources");
   await page.getByPlaceholder("Title, NCT, PMID…").fill("NCT04184622");
-  await page.getByRole("button", { name: /ClinicalTrials\.gov NCT04184622/ }).click();
+  await page.getByRole("link", { name: /ClinicalTrials\.gov NCT04184622/ }).click(); // selecting a source is navigation: it is a link with its own address
   await expect(page.getByText("Content hash (SHA-256)")).toBeVisible();
   await expect(page.getByText(/Yes \(public-domain/)).toBeVisible();
   await shot(page, "11-source-explorer");

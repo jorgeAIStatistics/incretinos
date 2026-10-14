@@ -1,0 +1,65 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // Linter: oxlint. ESLint with typescript-eslint cannot be used here: typescript-eslint 8 requires
+  // TypeScript < 6.1 and the TypeScript 7 package this project builds with has no JavaScript compiler API to parse with.
+  "plugins": ["typescript", "react", "jsx-a11y", "nextjs", "unicorn", "oxc"],
+  "categories": { "correctness": "error", "suspicious": "warn" },
+  "env": { "browser": true, "es2022": true },
+  "ignorePatterns": [".next/**", ".next-e2e/**", "node_modules/**", "next-env.d.ts", "playwright-report/**", "test-results/**"],
+  "rules": {
+    // Hooks: breaking the rules of hooks is a bug; a missing dependency is reviewed case by case.
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react/react-in-jsx-scope": "off",
+    // Derive state or update it in the event handler instead. Existing pages still do this (audit WEB-19), so it warns there.
+    "react/set-state-in-effect": "warn",
+    // role="status", "region" and "search" on generic elements are deliberate and widely supported.
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // Untyped API payloads hide exactly the mistakes this product cannot afford. Warn everywhere, fail in the foundation (below).
+    "typescript/no-explicit-any": "warn",
+    // Accessibility rules the design system depends on.
+    "jsx-a11y/alt-text": "error",
+    "jsx-a11y/anchor-is-valid": "error",
+    "jsx-a11y/aria-props": "error",
+    "jsx-a11y/aria-role": "error",
+    "jsx-a11y/click-events-have-key-events": "error",
+    "jsx-a11y/label-has-associated-control": "error",
+    "jsx-a11y/no-autofocus": "error",
+    "jsx-a11y/no-noninteractive-tabindex": "warn",
+    "jsx-a11y/no-static-element-interactions": "error",
+    "jsx-a11y/role-has-required-aria-props": "error",
+    "jsx-a11y/tabindex-no-positive": "error",
+    // Table column renderers are plain functions called by DataTable, not components; this rule cannot tell them apart.
+    "react/no-unstable-nested-components": "off",
+    // `[...rows].sort()` is deliberate: Array#toSorted is newer than the ES2022 target.
+    "unicorn/no-array-sort": "off",
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }]
+  },
+  "overrides": [
+    {
+      // The shared foundation and the pages built on it must stay fully typed.
+      "files": [
+        "src/lib/**",
+        "src/components/ui/**",
+        "src/components/ui.tsx",
+        "src/components/Shell.tsx",
+        "src/app/*.tsx",
+        "src/app/trials/*.tsx",
+        "src/app/gaps/**",
+        "src/app/sources/**",
+        "src/app/estimands/**",
+        "src/app/review/**",
+        "src/app/quality/**",
+        "src/app/conflicts/**"
+      ],
+      "rules": { "typescript/no-explicit-any": "error", "react/set-state-in-effect": "error", "react/exhaustive-deps": "error", "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }] }
+    },
+    {
+      // Kept untyped until the charts and number formatting, which own it, are typed.
+      "files": ["src/lib/rows.ts"],
+      "rules": { "typescript/no-explicit-any": "warn" }
+    },
+    { "files": ["e2e/**", "*.config.ts"], "rules": { "no-console": "off" } }
+  ]
+}
