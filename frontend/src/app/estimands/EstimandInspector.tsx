@@ -167,7 +167,14 @@ function Results({ data, picked, onPick }: { data: EstimandData; picked: number 
 
   return (
     <>
-      <Section title="Estimands defined for this trial" hint="As stated by each source, or inferred from its analysis description where the source does not name the estimand.">
+      <Section
+        title="Estimands defined for this trial"
+        hint={
+          <>
+            As stated by each source, or inferred from its analysis description where the source does not name the <Term k="estimand">estimand</Term>. Each card lists how <Term k="intercurrent-event">intercurrent events</Term> such as stopping treatment were handled.
+          </>
+        }
+      >
         {data.estimands.length ? (
           <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2">
             {data.estimands.map((e, i) => (

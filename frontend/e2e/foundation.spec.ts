@@ -180,6 +180,62 @@ test("lists state how many rows exist and every row can be reached", async ({ pa
   await expect(next).toBeDisabled();
 });
 
+test("lists work with the paged API envelope {total, limit, offset, rows}", async ({ page, request }) => {
+  const meta = await (await request.get("/api/meta")).json();
+  const sources: number = meta.counts.sources;
+  const studies: number = meta.counts.studies;
+  // The list endpoints are moving to explicit paging. These handlers re-shape the real answers into the new
+  // envelope in the browser; nothing is stored and no value is invented.
+  const pageSizes: number[] = [];
+  await page.route(/\/api\/sources\?/, async (route) => {
+    const url = new URL(route.request().url());
+    const limit = Number(url.searchParams.get("limit") ?? 50);
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    url.searchParams.set("limit", "2000");
+    url.searchParams.delete("offset");
+    const full = await (await route.fetch({ url: url.toString() })).json();
+    const rows = full.rows.slice(offset, offset + limit);
+    pageSizes.push(rows.length);
+    await route.fulfill({ json: { ...full, total: full.rows.length, limit, offset, rows } });
+  });
+  await page.goto("/sources");
+  const pages = page.getByRole("navigation", { name: "Pages of sources" });
+  await expect(pages).toContainText(`1–25 of ${count(sources)} sources`);
+  await pages.getByRole("button", { name: "Next page of sources" }).click();
+  await expect(pages).toContainText(`26–${Math.min(50, sources)} of ${count(sources)} sources`);
+  await expect(page.getByRole("table", { name: "Evidence sources" }).locator("tbody tr")).toHaveCount(Math.min(25, sources - 25));
+  expect(Math.max(...pageSizes), "one page per request, not the whole list").toBeLessThanOrEqual(25);
+
+  // A list that is filtered in the browser reads every page of a paged endpoint before it shows a total.
+  await page.route(/\/api\/studies(\?.*)?$/, async (route) => {
+    const url = new URL(route.request().url());
+    const limit = Number(url.searchParams.get("limit") ?? 20);
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    const all = await (await route.fetch({ url: `${url.origin}${url.pathname}` })).json();
+    await route.fulfill({ json: { total: all.length, limit, offset, rows: all.slice(offset, offset + limit) } });
+  });
+  await page.goto("/trials");
+  await expect(page.getByRole("navigation", { name: "Pages of trials" })).toContainText(`of ${count(studies)} trials`);
+  await expect(page.getByRole("table", { name: "Trials ingested in depth" }).locator("tbody tr")).toHaveCount(Math.min(50, studies));
+});
+
+test("a status the interface does not know is still counted, and legacy names are folded in", async ({ page }) => {
+  // Synthetic counts, injected into the response in the browser only, to exercise the summary. Nothing is stored.
+  await page.route("**/api/overview", async (route) => {
+    const body = await (await route.fetch()).json();
+    body.meta.result_verification = { MACHINE_EXTRACTED: 10, PENDING_HUMAN_REVIEW: 3, CURATED_PENDING_REVIEW: 2, SOURCE_CHANGED_RECHECK_REQUIRED: 1, REJECTED: 1, SOMETHING_NEW: 4 };
+    await route.fulfill({ json: body });
+  });
+  await page.goto("/");
+  const table = page.getByRole("table", { name: "Stored results by verification status" });
+  await expect(table.getByRole("row", { name: /Pending review/ })).toContainText("5");
+  await expect(table.getByRole("row", { name: /Recheck required/ })).toContainText("1");
+  await expect(table.getByRole("row", { name: /Rejected/ })).toContainText("1");
+  await expect(table.getByRole("row", { name: /Something new/ })).toContainText("4");
+  await expect(table.getByRole("row", { name: /Human-verified/ })).toContainText("0.0%");
+  await expect(table.getByRole("row")).toHaveCount(8); // header, six known statuses, one unknown
+});
+
 test("sortable column headers report their state and sort the rows", async ({ page }) => {
   await page.goto("/trials");
   const table = page.getByRole("table", { name: "Trials ingested in depth" });
