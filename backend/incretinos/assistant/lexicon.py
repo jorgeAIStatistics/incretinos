@@ -56,6 +56,7 @@ P_VALUE_RE = re.compile(
 )
 _WEIGHT_WORDS = r"(?:(?:body[- ]?)?weight[- ](?:reduction|loss)|reduction in (?:body[- ]?)?weight|loss of (?:body[- ]?)?weight)"
 THRESHOLD_RES = [
+    re.compile(rf"(?:{_WEIGHT_WORDS}|lost|losing|lose|loss|reduction)\s*(?:of\s*)?(?P<val>{UNUM})\s*(?:%|percent)\s+or\s+(?:more|greater)(?:\s*of\s+(?:their\s+|baseline\s+)?(?:body[- ]?)?weight)?", re.IGNORECASE),
     re.compile(rf"(?:{_WEIGHT_WORDS}|lost|losing|lose|loss|reduction)\s*(?:of\s*)?(?:≥|>=|=>|at least|of at least)\s*(?P<val>{UNUM})\s*(?:%|percent)(?:\s*(?:or (?:more|greater)))?(?:\s*of\s+(?:their\s+|baseline\s+)?(?:body[- ]?)?weight)?", re.IGNORECASE),
     re.compile(
         rf"(?:≥|>=|=>|at least|greater than or equal to)\s*(?P<val>{UNUM})\s*(?:%|percent)(?:\s*(?:or (?:more|greater)))?"
@@ -164,7 +165,9 @@ COMPARATOR_RE = re.compile(
 )
 PAIR_RE = re.compile(r"\bbetween\b", re.IGNORECASE)
 COMBINATION_CONNECTOR_RE = re.compile(r"^\s*(?:\+|plus|combined with|in combination with|added to|on top of|co-?administered with|together with)\s*$", re.IGNORECASE)
-LOOSE_CONNECTOR_RE = re.compile(r"^\s*(?:and|with)\s*$", re.IGNORECASE)
+LOOSE_CONNECTOR_RE = re.compile(r"^\s*(?:and|with)\s+(?:[\w-]+\s+){0,2}$|^\s*(?:and|with)\s*$", re.IGNORECASE)
+#: Quantifiers that claim completeness, by what they claim. "every combination" restates "all combinations".
+EXHAUSTIVE_CLASSES = [{"all", "every", "always", "everyone"}, {"only", "exclusively", "solely", "sole"}, {"none", "no other", "nobody"}]
 
 # --------------------------------------------------------------------------- feature lexicon
 
@@ -194,6 +197,9 @@ _f("CI_NOT_REPORTED", r"\b(?:no|without(?: an?y?| a)?)\s+(?:\d{2}\s*%\s*)?(?:con
 _f("CI_NOT_REPORTED", r"\b(?:\d{2}\s*%\s*)?(?:confidence intervals?|CI)\b[^.;,()]{0,40}?\b(?:not|never|n't)\s+(?:been\s+)?(?:reported|available|given|provided|stated|disclosed|published)\b", spanning=True)
 _f("CI_NOT_REPORTED", r"\b(?:confidence intervals?|CI)\s+(?:is|was|were)\s+(?:missing|unavailable|absent|unreported|lacking)\b")
 _f("N_NOT_REPORTED", r"\b(?:n|sample size|number of participants|number analy[sz]ed|group size)\s+(?:is |was |were )?(?:not|never)\s+(?:been\s+)?(?:reported|stated|given|available|disclosed)\b|\bno sample size\b")
+_f("N_NOT_REPORTED", r"\b(?:sample size|number of participants|number analy[sz]ed|group size)\b[^.;,()]{0,40}?\b(?:not|never)\s+(?:been\s+)?(?:reported|stated|given|available|disclosed)\b", spanning=True)
+# "neither a confidence interval nor the number analysed is reported": read by the extractor into the items it names
+_f("NEITHER_REPORTED", r"\bneither\b[^.;]{0,90}?\bnor\b[^.;]{0,70}?\b(?:is|was|were|are)\s+(?:reported|stated|given|available|disclosed)\b", spanning=True)
 _f("P_NOT_REPORTED", r"\bp[- ]?values?\s+(?:is |was |were )?(?:not|never)\s+(?:been\s+)?(?:reported|stated|given|available|disclosed)\b|\bno p[- ]?value\b|\bwithout a p[- ]?value\b")
 _f("ESTIMAND_NOT_STATED", r"\bestimand\s+(?:is |was )?not\s+(?:stated|reported|specified|named|given)\b|\bno estimand\s+(?:is |was )?(?:stated|reported|specified|named)\b|\bunstated estimand\b")
 _f("MULT_NOT_STATED", r"\bmultiplicity(?:[- ]control)?(?: status)?\s+(?:is |was )?not\s+(?:stated|reported|specified)\b")
@@ -230,7 +236,7 @@ _f("NOMINAL", r"\bnominal(?:ly)?\b")
 _f("NI_NOT_MET", r"\b(?:not|failed to (?:show|demonstrate|meet|establish)|did not (?:show|demonstrate|meet|establish|achieve))\b[^.;]{0,30}?\bnon-?inferior(?:ity)?\b", spanning=True)
 _f("NI_MET", r"\b(?:was|were|is|proved|shown to be|found to be|demonstrated to be|deemed|judged)\s+non-?inferior\b|\bnon-?inferior to\b")
 _f("NI_MET", r"\bnon-?inferiority\s+(?:was |were |is |has been |had been )?(?:met|shown|demonstrated|established|achieved|confirmed|concluded|declared|satisfied)\b|\bnon-?inferiority criteri(?:on|a)\b")
-_f("NI_MET", r"\b(?:met|meeting|meets|satisf(?:ied|ies)|achieved|demonstrated|established|showed|shown|confirmed|reached)\b[^.;]{0,40}?\bnon-?inferiority\b", spanning=True)
+_f("NI_MET", r"\b(?:met|meeting|meets|satisf(?:ied|ies|ying)|fulfill?(?:ed|s|ing)|achieved|demonstrated|established|showed|shown|confirmed|reached)\b[^.;]{0,40}?\bnon-?inferiority\b", spanning=True)
 _f("NI_TEST", r"\bnon-?inferior(?:ity)?\b")
 
 # "confirmed against the source" is a claim about checking, not about the trial: read it before the role words below
@@ -370,6 +376,9 @@ NEUTRAL = frozenset(
     report reports reporting
     led lead leads leading resulted resulting result
     any alone defined definition define corresponds
+    investigator investigators author authors researcher researchers
+    combined combination combinations coadministered
+    indicate indicates indicated indicating
     similarly likewise meanwhile notably specifically namely overall
     whereas while
     case cases context terms respect regard regarding concerning

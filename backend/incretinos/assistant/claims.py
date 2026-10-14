@@ -36,7 +36,8 @@ _LIST_GAP = re.compile(r"^[\s,]*(?:and|or)?\s*$", re.IGNORECASE)
 # "superior to X", "non-inferior to X", "outperformed X", "beyond X": the arm that follows is the comparator
 _COMPARATOR_CUE = re.compile(
     r"(?:\b(?:superior|inferior|non-?inferior|equivalent|comparable|similar|identical|preferable)\s+to|\b(?:better|worse)\s+than|\boutperform(?:ed|s|ing)?|\bbeat(?:s|ing)?|\bsurpass(?:ed|es|ing)?|\bexceed(?:ed|s|ing)?|\bbeyond|\bover)"
-    r"\s+(?:that of\s+|those with\s+|those of\s+|that with\s+)?(?:the\s+)?(?:oral\s+)?$",
+    r"\s+(?:that of\s+|those with\s+|those of\s+|that with\s+)?(?:the\s+)?(?:oral\s+)?$"
+    r"|\bdifferences?\s+(?:from|versus|vs\.?|relative to|compared (?:with|to))\s+(?:the\s+)?(?:oral\s+)?$",
     re.IGNORECASE,
 )
 
@@ -147,11 +148,12 @@ def split_sentences(draft: str) -> list[str]:
 
 def stems(word: str) -> set[str]:
     """A small set of forms a word may share with its inflections. Deliberately weak: it never joins unrelated words."""
-    w = lx.SYNONYMS.get(word.lower(), word.lower())
+    w = re.sub(r"'s$|'$", "", word.lower())  # "Lilly's", "group's"
+    w = lx.SYNONYMS.get(w, w)
     out = {w}
     for suffix, replacements in (("ies", ("y",)), ("sses", ("ss",)), ("es", ("", "e")), ("s", ("",)), ("ed", ("", "e")), ("ing", ("", "e")), ("ly", ("",)), ("ion", ("", "e")), ("ions", ("", "e")),
                                  ("ation", ("", "e")), ("ment", ("",)), ("ive", ("", "e", "ion")), ("al", ("",))):
-        if w.endswith(suffix) and len(w) - len(suffix) >= 4:
+        if w.endswith(suffix) and len(w) - len(suffix) >= 3:
             for replacement in replacements:
                 out.add(w[: -len(suffix)] + replacement)
     return out
@@ -565,6 +567,7 @@ _FEATURE_FIELDS = {
     "MULT_NOT_CONTROLLED": ("endpoint_role", "NOT_MULTIPLICITY_CONTROLLED"), "MULT_NOT_STATED": ("missing", "MULTIPLICITY"),
     "CI_NOT_REPORTED": ("missing", "CI"), "N_NOT_REPORTED": ("missing", "N"), "P_NOT_REPORTED": ("missing", "P"),
 }
+_NEITHER_ITEMS = [("CI", r"confidence interval|\bCI\b"), ("N", r"number (?:of participants )?analy[sz]ed|sample size|number of participants|\bn\b"), ("P", r"p[- ]?value"), ("MULTIPLICITY", r"multiplicity")]
 _STATISTICAL = {"SUPERIORITY", "NEG_SUPERIORITY", "HYPOTHETICAL_SUPERIORITY", "SIGNIFICANT", "NOT_SIGNIFICANT", "NOMINAL", "NO_DIFFERENCE", "NI_MET", "NI_NOT_MET", "NI_TEST", "CI_INCLUDES_NULL", "CI_EXCLUDES_NULL"}
 
 
@@ -642,6 +645,11 @@ def _claim_from(r: _Reader, mentions: list[Mention], arms: list[ArmMention], spa
             claim.endpoints.append({"family": name[3:], "text": mention.data["text"].lower(), "variant": mention.data.get("variant")})
         elif name == "EXHAUSTIVE":
             claim.exhaustive.append(mention.data["text"].lower())
+        elif name == "NEITHER_REPORTED":
+            named = [item for item, pattern in _NEITHER_ITEMS if re.search(pattern, mention.data["text"], re.IGNORECASE)]
+            if len(named) < 2:
+                claim.problems.append("a 'neither ... nor ... is reported' statement whose two items could not both be read")
+            claim.missing.extend(item for item in named if item not in claim.missing)
     if by_kind.get("THRESHOLD"):
         claim.endpoints.append({"family": "RESPONDER", "text": by_kind["THRESHOLD"][0].data["text"].lower(), "variant": None})
     claim.unread = [m.data["text"] for m in by_kind.get("UNREAD", [])]
@@ -649,8 +657,10 @@ def _claim_from(r: _Reader, mentions: list[Mention], arms: list[ArmMention], spa
         low = word.lower()
         if low in lx.NEGATORS or low.endswith("n't"):
             claim.negators.append(low)
-        elif low not in lx.NEUTRAL and not all(part in lx.NEUTRAL or part in lx.NEGATORS for part in re.split(r"[-/']", low) if part):
-            claim.residual_terms.append(low)
+        else:
+            bare = re.sub(r"'s$|'$", "", low)
+            if bare not in lx.NEUTRAL and not all(part in lx.NEUTRAL or part in lx.NEGATORS for part in re.split(r"[-/']", bare) if part):
+                claim.residual_terms.append(bare)
     claim.residual_terms = list(dict.fromkeys(claim.residual_terms))
     return claim
 
@@ -776,10 +786,12 @@ def read_sentence(sentence: str, vocab: Vocabulary | None = None) -> SentenceRea
                 previous_treatment = own_treatment
             unit_words = [w for w in words if start <= w[0] < end]
             claim = _claim_from(r, unit_mentions, unit_arms, text[start:end], cited_for(start, end), unit_words)
-            elliptical = claim.base_direction is None and claim.magnitude is not None and not claim.magnitude_signed and not claim.comparator_drugs
-            if claims and elliptical and (claims[-1].base_direction or claims[-1].direction) in ("DECREASE", "INCREASE"):
-                # "lost 20.9% versus 3.1% with placebo", "lost 20.9%, more than placebo (3.1%)": the verb carries over
-                claim.direction = claims[-1].base_direction or claims[-1].direction
+            carried = (claims[-1].base_direction or claims[-1].direction) if claims else None
+            if claim.base_direction is None and not claim.magnitude_signed and carried in ("DECREASE", "INCREASE"):
+                # "lost 20.9% versus 3.1% with placebo", "reduced weight by 20.9%, 17.8 points more than placebo":
+                # the verb carries over, and a comparative of this clause ("less than") still turns it round
+                claim.base_direction = carried
+                claim.direction = {"DECREASE": "INCREASE", "INCREASE": "DECREASE"}[carried] if claim.comparative_polarity == "DOWN" else carried
             claims.append(claim)
     comparative = any(c.comparative or any(s["name"] == "SUPERIORITY" for s in c.statistical) for c in claims) and any(m.data["text"] in ("than", "versus", "vs", "compared with", "compared to", "relative to", "against") for m in r.of("CMP"))
     return SentenceReading(text=sentence, cited=cited_all, claims=claims, instruction=instruction, hypothetical=hypothetical, comparative=comparative, problems=problems)

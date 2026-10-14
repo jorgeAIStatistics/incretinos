@@ -380,6 +380,18 @@ def _check_arms(claim: StructuredClaim, fact: EvidenceFact, out: list[Mismatch])
                 _dose_check(arm, fact.comparator_doses, fact.comparator_label, out, "comparator", fact.comparator_primary_doses)
 
 
+def _asserted_direction(claim: StructuredClaim, fact: EvidenceFact) -> str | None:
+    """The direction the claim gives this fact's value.
+
+    For one arm's value it is what the verb or noun says ("lost 13.7%, less than tirzepatide" is still a loss; the
+    "less" orders two arms and is checked as an order). For a between-arm estimate a comparative belongs to the
+    estimate itself ("a smaller reduction than placebo"), so the net reading applies.
+    """
+    if fact.kind == ARM_RESULT:
+        return claim.base_direction or claim.direction
+    return claim.direction
+
+
 def _check_magnitude(claim: StructuredClaim, fact: EvidenceFact, out: list[Mismatch]) -> None:
     value, signed = claim.magnitude, claim.magnitude_signed
     if value is None and claim.magnitude_range is None and len(claim.numbers) == 1 and not claim.statistical:
@@ -408,7 +420,7 @@ def _check_magnitude(claim: StructuredClaim, fact: EvidenceFact, out: list[Misma
     if fact.signed_change is not None:
         if signed:
             ok = _eq(value, fact.signed_change)
-        elif claim.direction in ("DECREASE", "INCREASE"):
+        elif _asserted_direction(claim, fact) in ("DECREASE", "INCREASE"):
             ok = _eq(abs(value), abs(fact.signed_change))
         else:
             ok = _eq(value, fact.value)
@@ -423,25 +435,26 @@ def _check_magnitude(claim: StructuredClaim, fact: EvidenceFact, out: list[Misma
 
 
 def _check_direction(claim: StructuredClaim, fact: EvidenceFact, out: list[Mismatch]) -> None:
-    if claim.direction is None:
+    direction = _asserted_direction(claim, fact)
+    if direction is None:
         return
-    if claim.direction == "AMBIGUOUS":
+    if direction == "AMBIGUOUS":
         out.append(Mismatch("direction", "both an increase and a decrease", "one direction", UNVERIFIABLE))
         return
     if claim.magnitude_signed and claim.magnitude is not None and fact.signed_change is not None and _eq(claim.magnitude, fact.signed_change):
         # "reduced by -25%": the sign already carries the direction
-        if (claim.direction == "DECREASE") == (claim.magnitude < 0) or claim.magnitude == 0:
+        if (direction == "DECREASE") == (claim.magnitude < 0) or claim.magnitude == 0:
             return
     if fact.direction is None:
-        out.append(Mismatch("direction", claim.direction.lower(), "the stored value is not a change or a ratio, so no direction is on record", UNVERIFIABLE))
-    elif fact.direction != claim.direction:
+        out.append(Mismatch("direction", direction.lower(), "the stored value is not a change or a ratio, so no direction is on record", UNVERIFIABLE))
+    elif fact.direction != direction:
         shown = {"DECREASE": "decrease", "INCREASE": "increase", "NO_CHANGE": "no change"}
-        out.append(Mismatch("direction", shown[claim.direction], f"{shown[fact.direction]} (stored value {_show(fact.value)})"))
+        out.append(Mismatch("direction", shown[direction], f"{shown[fact.direction]} (stored value {_show(fact.value)})"))
 
 
 def _mirrored_interval(claim: StructuredClaim, fact: EvidenceFact, low: float, high: float) -> bool:
     """ "a reduction of 20.9% (95% CI 19.9 to 21.8)": limits written as sizes of the reduction the sentence names."""
-    if fact.signed_change is None or claim.magnitude is None or claim.magnitude_signed or claim.direction != fact.direction:
+    if fact.signed_change is None or claim.magnitude is None or claim.magnitude_signed or _asserted_direction(claim, fact) != fact.direction:
         return False
     if min(low, high) < 0 or not (fact.ci_low <= 0 and fact.ci_high <= 0 or fact.ci_low >= 0 and fact.ci_high >= 0):
         return False
@@ -581,7 +594,8 @@ def _check_wording(claim: StructuredClaim, vocabulary: set[str], out: list[Misma
     if missing:
         out.append(Mismatch("wording", missing, "these terms are not in the cited evidence", UNVERIFIABLE))
     for word in claim.exhaustive:
-        if not _grounded(word, vocabulary):
+        same_claim = next((group for group in lx.EXHAUSTIVE_CLASSES if word in group), {word})
+        if not any(_grounded(member, vocabulary) for member in same_claim):
             out.append(Mismatch("completeness", f"“{word}”", "an exhaustive statement the cited evidence does not make", UNVERIFIABLE))
 
 
@@ -934,7 +948,7 @@ def _guard(sentence: str, facts: list[EvidenceFact]) -> list[str]:
     return [f"{v['message']} [{v['code']}]" for v in violations]
 
 
-def _side_by_side_comparison(reading: SentenceReading, cards: dict[str, dict[str, Any]]) -> str | None:
+def _side_by_side_comparison(supported: list[StructuredClaim], cards: dict[str, dict[str, Any]]) -> str | None:
     """A sentence that orders two separately cited values ("more weight loss with X (a) than with Y (b)").
 
     Two arms of one randomized trial, on the same endpoint, estimand and time point, may be described in the
@@ -942,7 +956,6 @@ def _side_by_side_comparison(reading: SentenceReading, cards: dict[str, dict[str
     comparison no cited analysis supports.
     """
     refusal = "Compares two separately cited results. A comparison is supported only by one reported between-arm analysis, or by two arms of the same trial on the same endpoint, estimand and time point."
-    supported = [c for c in reading.claims if c.verdict == SUPPORTED and c.bound_card in cards]
     facts = [cards[c.bound_card]["fact"] for c in supported]
     if len(supported) != 2 or len({f.fact_id for f in facts}) != 2 or any(f.kind != ARM_RESULT or f.value is None for f in facts):
         return refusal
@@ -990,13 +1003,16 @@ def verify_sentence(reading: SentenceReading, cards: dict[str, dict[str, Any]], 
         for mismatch in claim.mismatches:
             reasons.append(f"[{claim.bound_card or '-'}] {mismatch.get('message') or mismatch['claimed']}")
     bound = list(dict.fromkeys((c.bound_card, c.bound_fact) for c in reading.claims if c.bound_fact and c.verdict == SUPPORTED))
-    if reading.comparative and len({fact for _, fact in bound}) >= 2:
-        problem = _side_by_side_comparison(reading, cards)
+    # Comparative wording about arm-level values needs something to stand on. (A comparative bound to a between-arm
+    # analysis already has it: that analysis is the comparison.)
+    on_arms = [c for c in reading.claims if c.verdict == SUPPORTED and c.bound_card in cards and cards[c.bound_card]["fact"].kind == ARM_RESULT]
+    compares = any(c.comparative or any(s["name"] == "SUPERIORITY" for s in c.statistical) for c in on_arms)
+    if compares and len({c.bound_fact for c in on_arms}) >= 2 and reading.comparative:
+        problem = _side_by_side_comparison(on_arms, cards)
         if problem:
             verdict = CONTRADICTED if problem.startswith("The stated order") and verdict == SUPPORTED else (UNVERIFIABLE if verdict == SUPPORTED else verdict)
             reasons.append(problem)
-    dangling = [c for c in reading.claims if c.comparative and c.verdict == SUPPORTED and c.bound_card in cards and cards[c.bound_card]["fact"].kind == ARM_RESULT]
-    if dangling and len({fact for _, fact in bound}) < 2:
+    elif compares:
         verdict = UNVERIFIABLE if verdict == SUPPORTED else verdict
         reasons.append("Uses a comparative (more / less / greater / lower) about one arm's value without a second cited value or a between-arm analysis to compare it with.")
     if ctx.truncated and any(c.exhaustive for c in reading.claims):
