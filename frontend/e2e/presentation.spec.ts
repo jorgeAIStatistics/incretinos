@@ -42,7 +42,8 @@ const partition = (findings: any[]): any[][] => {
   return [...sets.values()];
 };
 const weightSets = (study: any): any[][] =>
-  partition(study.endpoint_groups.filter((g: any) => g.category === "WEIGHT_PCT_CHANGE").flatMap((g: any) => g.results).filter((r: any) => r.scope === "ARM" && r.value != null && !r.is_pooled));
+  // Arm-level values of the headline endpoint. Evidence rejected in review is never charted.
+  partition(study.endpoint_groups.filter((g: any) => g.category === "WEIGHT_PCT_CHANGE").flatMap((g: any) => g.results).filter((r: any) => r.scope === "ARM" && r.value != null && !r.is_pooled && r.verification_status !== "REJECTED"));
 /** The select or input whose label starts with this text. (A label's text includes its options, so a plain label match is ambiguous.) */
 const field = (scope: Locator, label: string): Locator =>
   scope.locator("label").filter({ hasText: new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}`) }).locator("select, input").first();

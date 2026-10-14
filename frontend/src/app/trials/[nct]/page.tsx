@@ -146,7 +146,9 @@ function WeightChart({ s }: { s: any }) {
   const [picked, setPicked] = useState<string | null>(null);
   const groups = s.endpoint_groups.filter((g: any) => g.category === "WEIGHT_PCT_CHANGE");
   const all = groups.flatMap((g: any) => g.results);
-  const armLevel = all.filter((r: any) => r.scope === "ARM" && r.value != null && !r.is_pooled);
+  // Evidence a reviewer rejected is kept in the tables below for audit but is never summarised in a chart.
+  const rejected = all.filter((r: any) => r.verification_status === "REJECTED").length;
+  const armLevel = all.filter((r: any) => r.scope === "ARM" && r.value != null && !r.is_pooled && r.verification_status !== "REJECTED");
   const sets = findingSets(armLevel);
   if (!sets.length) {
     return (
@@ -172,7 +174,7 @@ function WeightChart({ s }: { s: any }) {
     }),
     (x) => x.dose,
   ).map((x) => x.row);
-  const notPlotted = all.length - armLevel.length;
+  const notPlotted = all.length - armLevel.length - rejected;
   const axis = group?.category_label ? `${group.category_label.charAt(0).toUpperCase()}${group.category_label.slice(1)}` : first.endpoint_title;
   return (
     <div data-testid="hero-chart" className="min-w-0">
@@ -193,6 +195,7 @@ function WeightChart({ s }: { s: any }) {
           <span data-testid="hero-source">
             Source of every plotted value: <SourceLine source={first.source} /> · endpoint role: {titleCase(first.role)}
             {notPlotted > 0 ? <span className="block">{notPlotted} further {notPlotted === 1 ? "row" : "rows"} for this endpoint (pooled arms, ranges across arms or rows without a value) {notPlotted === 1 ? "is" : "are"} listed in the results below, not plotted.</span> : null}
+            {rejected > 0 ? <span className="block">{rejected} {rejected === 1 ? "value" : "values"} rejected in review {rejected === 1 ? "is" : "are"} not plotted; {rejected === 1 ? "it remains" : "they remain"} listed below with that status.</span> : null}
           </span>
         }
       >
