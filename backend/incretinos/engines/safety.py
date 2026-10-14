@@ -19,7 +19,7 @@ import math
 from typing import Any
 
 from scipy import stats as sps
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..enums import AE_KIND_LABEL, DISCONTINUATION_KINDS
@@ -168,7 +168,7 @@ def spontaneous_overview(session: Session, drug: Drug) -> dict[str, Any]:
     }
 
 
-def trial_ae_table(session: Session, drug_slug: str | None = None, nct_id: str | None = None, measure_kind: str | None = None, term: str | None = None, limit: int = 2000) -> dict[str, Any]:
+def trial_ae_table(session: Session, drug_slug: str | None = None, nct_id: str | None = None, measure_kind: str | None = None, term: str | None = None, limit: int = 2000, offset: int = 0) -> dict[str, Any]:
     """Structured trial adverse-event rows of ONE measure kind (the guard refuses mixtures)."""
     query = select(AdverseEvent).join(Study, AdverseEvent.study_id == Study.id)
     if nct_id:
@@ -179,9 +179,12 @@ def trial_ae_table(session: Session, drug_slug: str | None = None, nct_id: str |
         query = query.where(AdverseEvent.measure_kind == measure_kind)
     if term:
         query = query.where(AdverseEvent.term.ilike(f"%{term}%"))
-    rows = list(session.scalars(query.order_by(Study.display_name, AdverseEvent.term, AdverseEvent.arm_label).limit(limit)))
+    # "total" is every row matching the filters; "rows" is one page of them in a fully determined order.
+    total = session.scalar(select(func.count()).select_from(query.order_by(None).subquery()))
+    rows = list(session.scalars(query.order_by(Study.display_name, AdverseEvent.term, AdverseEvent.arm_label, AdverseEvent.id).limit(limit).offset(offset)))
     kinds = {r.measure_kind for r in rows}
     return {
+        "total": total,
         "rows": [ae_dto(r) for r in rows],
         "measure_kinds_present": sorted(kinds),
         "measure_kind_labels": {k: AE_KIND_LABEL.get(k, k) for k in sorted(kinds)},
