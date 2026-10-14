@@ -30,10 +30,10 @@ import uuid
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import bindparam, insert, select, update
+from sqlalchemy import bindparam, insert, or_, select, update
 from sqlalchemy.orm import Session
 
 from ..db import INCLUDE_REJECTED
@@ -256,6 +256,11 @@ def attach_decisions(
 # --------------------------------------------------------------------------- reading the ledger
 
 
+def _utc(value: datetime) -> datetime:
+    """SQLite returns naive datetimes, PostgreSQL aware ones; everything is stored in UTC and compared as such."""
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value
+
+
 def load_decision_facts(session: Session) -> list[DecisionFact]:
     d = ReviewDecision
     rows = session.execute(
@@ -264,11 +269,36 @@ def load_decision_facts(session: Session) -> list[DecisionFact]:
         .order_by(d.created_at, d.id)
     ).all()
     return [
-        DecisionFact(decision=r.decision, fingerprint=r.fingerprint, actor_kind=r.actor_kind, attested=r.attested, decided_at=r.created_at, id=r.id,
+        DecisionFact(decision=r.decision, fingerprint=r.fingerprint, actor_kind=r.actor_kind, attested=r.attested, decided_at=_utc(r.created_at), id=r.id,
                      evidence_type=r.evidence_type, evidence_key=r.evidence_key, natural_key=r.natural_key, source_content_hash=r.source_content_hash,
                      reviewer=r.reviewer, uid=r.uid)
         for r in rows
     ]
+
+
+def decisions_for(session: Session, evidence_type: str, evidence_key: str | None, natural_key: str | None) -> tuple[DecisionFact, ...]:
+    """The decision history of one evidence row, attached exactly as ``reconcile`` attaches it."""
+    if not evidence_key:
+        return ()
+    d = ReviewDecision
+    condition = d.evidence_key == evidence_key if natural_key is None else or_(d.evidence_key == evidence_key, d.natural_key == natural_key)
+    rows = session.execute(
+        select(d.id, d.decision, d.fingerprint, d.actor_kind, d.attested, d.created_at, d.evidence_type, d.evidence_key, d.natural_key, d.source_content_hash, d.reviewer, d.uid)
+        .where(d.evidence_type == evidence_type, condition).order_by(d.created_at, d.id)
+    ).all()
+    if not rows:
+        return ()
+    facts = [
+        DecisionFact(decision=r.decision, fingerprint=r.fingerprint, actor_kind=r.actor_kind, attested=r.attested, decided_at=_utc(r.created_at), id=r.id,
+                     evidence_type=r.evidence_type, evidence_key=r.evidence_key, natural_key=r.natural_key, source_content_hash=r.source_content_hash,
+                     reviewer=r.reviewer, uid=r.uid)
+        for r in rows
+    ]
+    v = EvidenceVersion
+    scope = v.evidence_key == evidence_key if natural_key is None else or_(v.evidence_key == evidence_key, v.natural_key == natural_key)
+    live = session.execute(select(v.evidence_type, v.evidence_key, v.natural_key, v.fingerprint).where(v.is_current.is_(True), v.evidence_type == evidence_type, scope)).all()
+    attached, _ = attach_decisions([tuple(r) for r in live], facts)
+    return attached.get((evidence_type, evidence_key), ())
 
 
 def identity_flags(record: EvidenceRecord) -> list[CheckFlag]:
@@ -545,7 +575,6 @@ def reconcile(session: Session, *, run_checks: bool = True) -> ReconcileReport:
     statuses: Counter[str] = Counter()
     collisions: Counter[str] = Counter()
     live_keys: set[tuple[str, str]] = set()
-    outcomes: dict[tuple[str, str], StatusOutcome] = {}
 
     for record, anchor_result in zip(records, mechanical, strict=True):
         key = (record.evidence_type, record.evidence_key)
@@ -555,7 +584,6 @@ def reconcile(session: Session, *, run_checks: bool = True) -> ReconcileReport:
         outcome = effective_status(
             mechanical=anchor_result.status, decisions=attached.get(key, ()), fingerprint=record.fingerprint, structured=record.is_registry, source_content_hash=source_hash
         )
-        outcomes[key] = outcome
         statuses[outcome.status] += 1
         report.open_requests += len(outcome.open_requests)
         if record.collision_level:
@@ -689,10 +717,11 @@ def hold_rejections(session: Session) -> int:
 
 
 def _write_rows(session: Session, key_clears: dict[str, list[dict[str, Any]]], row_updates: dict[str, list[dict[str, Any]]]) -> None:
-    """The only statement in the codebase that can store HUMAN_VERIFIED or REJECTED on an evidence row.
+    """Store the derived state of evidence rows: the one statement that can write HUMAN_VERIFIED.
 
-    ``b_status`` is always the value ``effective_status`` returned. Keys that move to another row are
-    cleared first so the unique index never sees two rows with one key mid-update.
+    ``b_status`` is always the value ``effective_status`` returned (``hold_rejections`` is the only
+    other writer of a human status, and it can only write REJECTED). Keys that move to another row
+    are cleared first so the unique index never sees two rows with one key mid-update.
     """
     for evidence_type, params in key_clears.items():
         table = REVIEWABLE_MODELS[evidence_type].__table__
@@ -803,6 +832,17 @@ def _record_changes(
         if source is None:
             continue
         n_values = sum(1 for e in entries if e["value_changed"])
+        # A reviewable change record is raised when a reported value changed or a reviewed row lost its status.
+        # A change of label or classification alone (for example after the platform's own classifier was
+        # improved) stays in the version history, the reconcile report and one audit event: raising a queue
+        # item per source for it would bury the changes that matter.
+        material = [e for e in entries if e["value_changed"] or e["status_before"] != e["status_after"]]
+        if not material:
+            audit(session, "review.evidence_changed", target_type="evidence_source", target_id=source_id, source_key=source.key, significance="LOW",
+                  rows_changed=len(entries), values_changed=0, change_event=None)
+            continue
+        other = len(entries) - len(material)
+        entries = material
         significance = "HIGH" if n_values else "MEDIUM"
         lines: list[dict[str, Any]] = []
         for entry in entries:
@@ -824,6 +864,7 @@ def _record_changes(
         summary = (
             f"{len(entries)} stored evidence row(s) citing {source.key} changed since they were last seen"
             f" ({n_values} with a changed reported value).{detail}"
+            + (f" {other} further row(s) changed in label or classification only." if other else "")
         )
         source_changed = all(e["source_changed"] for e in entries)
         event = None
@@ -865,7 +906,7 @@ def _record_changes(
         session.flush()
         audit(
             session, "review.evidence_changed", target_type="change_event", target_id=event.id, source_key=source.key, significance=significance,
-            rows_changed=len(entries), values_changed=n_values, truncated=sum(len(e["changed_fields"]) for e in entries) > len(lines),
+            rows_changed=len(entries) + other, values_changed=n_values, change_event=event.id, truncated=sum(len(e["changed_fields"]) for e in entries) > len(lines),
         )
         report.change_event_ids.append(event.id)
 
@@ -972,13 +1013,13 @@ def record_decision(
     status_before = row.verification_status
     status_after, reason = status_before, "REQUEST_RECORDED"
     if decisive_kind:
-        # The decision being recorded is the newest decisive one on the current fingerprint and source
-        # version, so it settles the status on its own (rows 2 and 7 of the truth table).
+        # Derived exactly as reconcile derives it: the row's whole decision history plus this decision.
         fact = DecisionFact(decision=decision, fingerprint=row.fingerprint, actor_kind=actor_kind, attested=bool(attested), decided_at=decided_at,
-                            source_content_hash=source_hash)
+                            id=2**62, evidence_type=evidence_type, evidence_key=row.evidence_key, natural_key=version.natural_key, source_content_hash=source_hash)
+        history = decisions_for(session, evidence_type, row.evidence_key, version.natural_key)
         outcome = effective_status(
-            mechanical=row.base_verification_status or PENDING, decisions=[fact], fingerprint=row.fingerprint,
-            structured=getattr(row, "origin", None) == identity.REGISTRY, source_content_hash=source_hash,
+            mechanical=row.base_verification_status if row.base_verification_status in MECHANICAL_STATUSES else PENDING, decisions=[*history, fact],
+            fingerprint=row.fingerprint, structured=getattr(row, "origin", None) == identity.REGISTRY, source_content_hash=source_hash,
         )
         status_after, reason = outcome.status, outcome.reason
     recorded = ReviewDecision(

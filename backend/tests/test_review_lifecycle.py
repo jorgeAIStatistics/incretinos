@@ -1465,8 +1465,12 @@ def test_ledger_export_and_import_reproduce_the_statuses_in_a_fresh_database(lab
     older["uid"] = "00000000-0000-4000-8000-000000000001"
     older["snapshot"] = {**older["snapshot"], "value": -99.0}
     older["fingerprint"] = ledger_module.identity.fingerprint_of(older["snapshot"])
-    older["created_at"] = "2030-01-01T00:00:00+00:00"
+    older["created_at"] = datetime.now(UTC).isoformat()  # the most recent decisive decision for this evidence
     older["checksum"] = ledger_module._checksum(older)
+    future = {**older, "uid": "00000000-0000-4000-8000-000000000002", "created_at": "2099-01-01T00:00:00+00:00"}
+    future["checksum"] = ledger_module._checksum(future)
+    with lab.session() as session, pytest.raises(ledger_module.LedgerError, match="dated in the future"):
+        ledger_module.import_ledger(session, {**document, "n_decisions": 1, "decisions": [future]})
     with lab.session() as session:
         report = ledger_module.import_ledger(session, {**document, "n_decisions": 1, "decisions": [older]})
         session.commit()
@@ -1862,3 +1866,29 @@ def test_curated_baseline_entries_are_re_anchored_too(lab):
         assert summary["anchored_entry"]["verification"] == ANCHORED and summary["unanchored_entry"]["verification"] == PENDING
         assert summary["anchored_entry"]["value"] == 1.0 and all("verification" not in e for e in summary.values() if e.get("origin") == "REGISTRY")
         assert reconcile(session).population_entries_reanchored == 0
+
+
+def test_a_change_of_supporting_text_alone_asks_for_a_recheck_only_where_a_review_exists(lab):
+    """No value changed: reviewed rows need a recheck and are listed; unreviewed rows are versioned without a queue item each."""
+    approved = lab.registry_primary("15 mg Tirzepatide")
+    assert lab.decide(approved, "APPROVE").json()["status_after"] == HUMAN_VERIFIED
+
+    def reword(document: dict) -> None:  # a labelled perturbation: the sponsor rewords the method description of the primary outcome
+        measure = document["resultsSection"]["outcomeMeasuresModule"]["outcomeMeasures"][0]
+        assert measure["title"] == PRIMARY_TITLE
+        measure["description"] = measure["description"] + " (Reworded by a test.)"
+        document["protocolSection"]["statusModule"]["lastUpdatePostDateStruct"] = {"date": "2027-03-01", "type": "ACTUAL"}
+
+    report = lab.check_updates({REGISTRY_FIXTURE: reword})
+    changed = {c["evidence_key"]: c for c in report.evidence_changes}
+    assert len(changed) == 4 and all(not c["value_changed"] for c in changed.values())  # the four arms of that outcome measure
+    assert all([f["field"] for f in c["changed_fields"]] == ["analysis_method"] for c in changed.values())
+    detail = lab.by_key(approved)
+    assert detail["status"]["verification_status"] == RECHECK and detail["values"]["value"] == -22.5
+    assert [d["field"] for d in detail["changed_since_review"]["diff"]] == ["analysis_method"]
+    assert lab.client.get("/api/review/evidence", params={"changed_since_last_seen": True}).json()["total"] == 4
+    event = next(e for e in lab.client.get("/api/changes").json() if e["source"]["key"] == f"ctgov:{SURMOUNT_1}")
+    listed = [c for c in event["changes"] if c.get("evidence_key")]
+    assert {c["evidence_key"] for c in listed} == {approved["evidence_key"]} and listed[0]["field"] == "result.analysis_method" and listed[0]["significance"] == "MEDIUM"
+    assert "3 further row(s) changed in label or classification only" in event["summary"] and event["significance"] != "HIGH"
+    assert len(lab.audit("review.evidence_changed")) == 1

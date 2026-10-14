@@ -19,7 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
@@ -168,6 +168,7 @@ def validate_ledger(data: Any) -> Ledger:
         problems.append(f"n_decisions says {ledger.n_decisions} but the file holds {len(ledger.decisions)} decision(s)")
     seen: set[str] = set()
     raw_decisions = data["decisions"]
+    latest_acceptable = utcnow() + timedelta(minutes=5)
     for index, (decision, raw) in enumerate(zip(ledger.decisions, raw_decisions, strict=True)):
         where = f"decision {index + 1} ({decision.uid})"
         if decision.uid in seen:
@@ -185,6 +186,9 @@ def validate_ledger(data: Any) -> Ledger:
             problems.append(f"{where}: {decision.decision} must be an attested decision by a human reviewer")
         if decision.decision == ReviewDecisionKind.PROPOSE_CORRECTION.value and not decision.proposed_correction:
             problems.append(f"{where}: PROPOSE_CORRECTION without a proposed correction")
+        made_at = decision.created_at if decision.created_at.tzinfo else decision.created_at.replace(tzinfo=UTC)
+        if made_at > latest_acceptable:
+            problems.append(f"{where}: dated in the future ({decision.created_at.isoformat()}); the latest decision wins, so dates must be real")
         for problem in (reviewer_problem(decision.reviewer), rationale_problem(decision.rationale)):
             if problem:
                 problems.append(f"{where}: {problem}")

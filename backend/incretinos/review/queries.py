@@ -43,6 +43,7 @@ from .lifecycle import (
     DecisionFact,
     StatusOutcome,
     attach_decisions,
+    decisions_for,
     effective_status,
     load_decision_facts,
 )
@@ -433,31 +434,6 @@ def find_row(session: Session, evidence_type: str, *, row_id: int | None = None,
     if row_id is not None:
         return session.get(model, row_id, execution_options=_OPT_IN)
     return session.scalar(select(model).where(model.evidence_key == evidence_key).execution_options(**_OPT_IN))
-
-
-def decisions_for(session: Session, evidence_type: str, evidence_key: str | None, natural_key: str | None) -> tuple[DecisionFact, ...]:
-    """The decision history of one evidence row, attached exactly as ``reconcile`` attaches it."""
-    if not evidence_key:
-        return ()
-    d = ReviewDecision
-    condition = d.evidence_key == evidence_key if natural_key is None else or_(d.evidence_key == evidence_key, d.natural_key == natural_key)
-    rows = session.execute(
-        select(d.id, d.decision, d.fingerprint, d.actor_kind, d.attested, d.created_at, d.evidence_type, d.evidence_key, d.natural_key, d.source_content_hash, d.reviewer, d.uid)
-        .where(d.evidence_type == evidence_type, condition).order_by(d.created_at, d.id)
-    ).all()
-    if not rows:
-        return ()
-    facts = [
-        DecisionFact(decision=r.decision, fingerprint=r.fingerprint, actor_kind=r.actor_kind, attested=r.attested, decided_at=r.created_at, id=r.id,
-                     evidence_type=r.evidence_type, evidence_key=r.evidence_key, natural_key=r.natural_key, source_content_hash=r.source_content_hash,
-                     reviewer=r.reviewer, uid=r.uid)
-        for r in rows
-    ]
-    v = EvidenceVersion
-    scope = v.evidence_key == evidence_key if natural_key is None else or_(v.evidence_key == evidence_key, v.natural_key == natural_key)
-    live = session.execute(select(v.evidence_type, v.evidence_key, v.natural_key, v.fingerprint).where(v.is_current.is_(True), v.evidence_type == evidence_type, scope)).all()
-    attached, _ = attach_decisions([tuple(r) for r in live], facts)
-    return attached.get((evidence_type, evidence_key), ())
 
 
 def _source_block(session: Session, source: EvidenceSource | None, snapshot: SourceSnapshot | None) -> dict[str, Any] | None:

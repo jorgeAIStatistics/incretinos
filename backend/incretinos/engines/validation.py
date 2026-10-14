@@ -375,8 +375,7 @@ def v16_human_statuses_rest_on_attested_decisions(session: Session) -> RuleResul
     lifecycle uses. Any difference is a violation: a human status nothing supports, an approval that
     should have lapsed, or (the dangerous direction) a rejected row stored as usable.
     """
-    from ..review.lifecycle import effective_status
-    from ..review.queries import decisions_for
+    from ..review.lifecycle import decisions_for, effective_status
 
     opt_in = {INCLUDE_REJECTED: True}
     violations: list[str] = []
