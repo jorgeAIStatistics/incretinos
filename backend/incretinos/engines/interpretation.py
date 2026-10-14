@@ -31,11 +31,12 @@ from .findings import (
     LEAN_MASS_CAVEAT,
     Finding,
     _fmt,
+    derived_interval,
+    effect_scale,
     format_ci,
     format_value,
     population_phrase,
 )
-from .stats import ci_from_se
 
 # --------------------------------------------------------------------------- pharmacologic class
 
@@ -130,7 +131,14 @@ def interpret_finding(f: Finding) -> dict[str, Any]:
     if f.multiplicity_controlled == TriState.NO.value:
         not_established.append("Statistical significance in the confirmatory sense: the endpoint was outside multiplicity control.")
     if f.baseline_class == "RANDOMIZATION_AFTER_LEAD_IN":
-        not_established.append("Change from study entry: this value is measured from randomization after an open-label lead-in, in participants who completed and tolerated that lead-in.")
+        not_established.append("Change from study entry: this value is measured from randomization after a lead-in period, in participants who completed and tolerated that lead-in.")
+    elif f.baseline_class == "STUDY_ENTRY_INCLUDING_LEAD_IN":
+        not_established.append("The change after randomization alone: this value is measured from study entry and includes the lead-in period.")
+    elif f.baseline_class == "LEAD_IN_DESIGN_BASELINE_UNSPECIFIED":
+        not_established.append("A change comparable with trials that had no lead-in: participants went through a lead-in period before randomization, and the stored source does not say whether "
+                               "'baseline' is study entry or randomization.")
+    elif f.baseline_class == "SUBSET_BASELINE":
+        not_established.append("The change in all randomized participants: this value describes a named subset.")
     if f.is_body_composition_lean:
         not_established.append("Loss of skeletal muscle mass, strength or function. " + LEAN_MASS_CAVEAT)
     if f.phase and "PHASE2" in f.phase and "PHASE3" not in f.phase:
@@ -154,10 +162,9 @@ def interpret_finding(f: Finding) -> dict[str, Any]:
     if f.baseline_definition is None and f.category in EFFICACY_CATEGORIES:
         missing.append("Explicit baseline definition in this source.")
 
-    derived = None
-    if f.ci_low is None and f.value is not None and f.dispersion_value is not None and f.dispersion_type and "standard error" in f.dispersion_type.lower():
-        derived = ci_from_se(f.value, f.dispersion_value)
-        derived["display"] = f"Derived 95% interval {_fmt(derived['ci_low'])} to {_fmt(derived['ci_high'])} (calculated here from the reported standard error; not reported by the source)."
+    derived = derived_interval(f)
+    if derived is None and f.ci_low is None and f.dispersion_value is not None and "GEOMETRIC" in (f.param_type or "").upper():
+        missing.append("A derived interval: the value is a geometric mean and the stored record does not say on which scale its standard error is expressed, so none is calculated.")
 
     return {
         "result_id": f.result_id,
@@ -185,34 +192,73 @@ def interpret_finding(f: Finding) -> dict[str, Any]:
     }
 
 
+def _interval_phrase(a: dict[str, Any]) -> str:
+    """The reported interval with its stated level and sidedness — or an explicit statement of what is absent."""
+    lo, hi = a["ci_low"], a["ci_high"]
+    if lo is None or hi is None:
+        return "confidence interval not reported in this source"
+    status = a.get("ci_level_status") or ("VALID" if a.get("ci_level") is not None and 50 <= a["ci_level"] < 100 else "LEVEL_NOT_REPORTED" if a.get("ci_level") is None else "INVALID_LEVEL")
+    if status == "VALID":
+        sides = {"TWO_SIDED": "two-sided ", "ONE_SIDED": "one-sided "}.get(a.get("ci_sides") or "", "")
+        return f"{sides}{_fmt(a['ci_level'], 2)}% CI {_fmt(lo)} to {_fmt(hi)}"
+    if status == "LEVEL_NOT_REPORTED":
+        return f"interval {_fmt(lo)} to {_fmt(hi)}, confidence level not stated"
+    return f"interval {_fmt(lo)} to {_fmt(hi)}, stored with a confidence level of {_fmt(a['ci_level'], 2)} that is not a valid percentage"
+
+
 def interpret_analysis(a: dict[str, Any]) -> dict[str, Any]:
-    """Reading of a between-arm analysis (dict from ``findings.analysis_dto``)."""
+    """Reading of a between-arm analysis (dict from ``findings.analysis_dto``).
+
+    The analysis is read only as far as its stored fields allow:
+
+    * the null value is 0 for a difference and 1 for a ratio, taken from the stated parameter type and
+      unit; when those do not establish the scale, the interval is not read against any null;
+    * the interval is read at its stated confidence level and sidedness; an interval whose level is
+      missing or invalid supports no statement about excluding the null;
+    * "X versus Y" is written only when the direction is established (stated by the curated source row
+      or confirmed by the stored arm-level values); otherwise the two groups are named without a direction.
+    """
     estimate, lo, hi = a["estimate"], a["ci_low"], a["ci_high"]
     param = a["param_type"] or "estimate"
-    is_ratio = bool(re.search(r"ratio", param, re.IGNORECASE))
-    null = 1.0 if is_ratio else 0.0
-    if a.get("direction_basis") == "NOT_STATED":
-        # The source does not say which group is the reference: name the groups, do not assert a direction.
-        contrast = f"Groups {' and '.join(a.get('group_labels') or [str(a['treatment_label'])])} (the source does not state which is the reference; the sign has no stated direction)"
+    scale = a.get("effect_scale") or effect_scale(a["param_type"], a.get("unit"))
+    is_ratio = scale["scale"] == "RATIO"
+    null = scale["null_value"]
+    direction = a.get("direction") or {"established": bool(a.get("treatment_label") and a.get("comparator_label")), "status": "NOT_ASSESSED", "basis": "Direction was not assessed for this record."}
+    level_status = a.get("ci_level_status") or ("NOT_REPORTED" if lo is None or hi is None else "VALID" if a.get("ci_level") is not None and 50 <= a["ci_level"] < 100 else "LEVEL_NOT_REPORTED" if a.get("ci_level") is None else "INVALID_LEVEL")
+    level_text = f"{_fmt(a['ci_level'], 2)}%" if level_status == "VALID" else ""
+
+    if direction["established"]:
+        groups = f"{a['treatment_label']} versus {a['comparator_label'] or 'comparator not stated'}"
+    elif a.get("direction_basis") == "NOT_STATED":
+        # The source does not say which group is the reference: name the groups in posted order, do not assert a direction.
+        groups = f"Groups {' and '.join(a.get('group_labels') or [str(a['treatment_label'])])} (the source does not state which is the reference; the sign has no stated direction)"
+    elif a.get("treatment_label") and a.get("comparator_label"):
+        groups = f"Between {a['treatment_label']} and {a['comparator_label']} (which group is the reference is not established)"
     else:
-        contrast = f"{a['treatment_label']} versus {a['comparator_label'] or 'comparator not stated'}"
+        groups = f"{a.get('treatment_label') or 'Groups not identified'}"
     if a.get("class_title"):
-        contrast += f" [{a['class_title']}]"
-    observed = f"{contrast} — {param}: {_fmt(estimate)}"
-    observed += f" ({_fmt(a['ci_level'], 1)}% CI {_fmt(lo)} to {_fmt(hi)})" if lo is not None and hi is not None else " (confidence interval not reported in this source)"
+        groups += f" [{a['class_title']}]"
+    observed = f"{groups} — {param}: {_fmt(estimate)} ({_interval_phrase(a)})"
     observed += f"; p {a['p_value_text']}." if a["p_value_text"] else "; p-value not reported in this source."
 
     establishes: list[str] = []
     not_established: list[str] = []
     missing = []
-    ci_excludes_null = None if lo is None or hi is None else not (lo <= null <= hi)
+    # The interval is read against the null only when the scale and the confidence level are both established.
+    readable = null is not None and level_status == "VALID" and lo is not None and hi is not None
+    ci_excludes_null = (not (lo <= null <= hi)) if readable else None
     exploratory = a["role"] in (EndpointRole.EXPLORATORY.value, EndpointRole.POST_HOC.value)
     uncontrolled = a["multiplicity_controlled"] == TriState.NO.value
+    one_sided = (a.get("ci_sides") or "") == "ONE_SIDED"
+    conventional = level_status == "VALID" and a["ci_level"] >= 95 and not one_sided  # two-sided 95% or stricter
+    null_text = _fmt(null) if null is not None else ""
 
     if a["hypothesis_type"] == "NON_INFERIORITY":
         margin = a["ni_margin"]
         if a["ni_met"] == TriState.YES.value:
-            detail = f" (upper confidence limit {_fmt(hi)} is below the pre-specified margin of {_fmt(margin)})" if hi is not None and margin is not None else ""
+            detail = ""
+            if readable and margin is not None and hi < margin:
+                detail = f" (the upper limit of the {level_text} confidence interval, {_fmt(hi)}, is below the pre-specified margin of {_fmt(margin)})"
             establishes.append(f"Non-inferiority on this endpoint: the treatment is not worse than the comparator by more than the pre-specified margin{detail}.")
         elif a["ni_met"] == TriState.NO.value:
             not_established.append("Non-inferiority: the margin was not excluded.")
@@ -221,26 +267,44 @@ def interpret_analysis(a: dict[str, Any]) -> dict[str, Any]:
         if a["superiority_met"] != TriState.YES.value:
             reason = []
             if ci_excludes_null is False:
-                reason.append(f"the confidence interval includes {_fmt(null)}")
+                reason.append(f"the {level_text} confidence interval includes {null_text}")
             if a["superiority_tested"] != TriState.YES.value:
                 reason.append("the stored source reports a non-inferiority conclusion and does not report a superiority test")
             not_established.append("Superiority of the treatment over the comparator" + (": " + "; ".join(reason) if reason else "") + ". Non-inferiority must not be read as superiority.")
         if is_ratio and estimate is not None and estimate < 1 and ci_excludes_null is False:
             not_established.append(f"A reduction in risk: a point estimate below 1 with an interval spanning {_fmt(lo)} to {_fmt(hi)} is compatible with benefit, no difference, or harm up to the upper limit.")
     elif a["hypothesis_type"] == "SUPERIORITY":
-        if ci_excludes_null and not exploratory and not uncontrolled:
-            establishes.append("A between-arm difference in this trial on this endpoint and estimand (the confidence interval excludes no difference)."
+        if ci_excludes_null and conventional and not exploratory and not uncontrolled:
+            establishes.append(f"A between-arm difference in this trial on this endpoint and estimand (the {level_text} confidence interval excludes {null_text}, the value of no difference)."
                                + (" Multiplicity control is documented." if a["multiplicity_controlled"] == TriState.YES.value else " Whether this comparison was inside multiplicity control is not stated in the stored source."))
+        elif ci_excludes_null and not conventional:
+            not_established.append(f"A difference at the conventional two-sided 5% level: the interval is reported at the {'one-sided ' if one_sided else ''}{level_text} level.")
         elif ci_excludes_null is False:
-            not_established.append("A between-arm difference: the confidence interval includes no difference.")
-        elif ci_excludes_null is None:
+            not_established.append(f"A between-arm difference: the {level_text} confidence interval includes {null_text}, the value of no difference.")
+        elif lo is None or hi is None:
             missing.append("A confidence interval, without which the precision of the difference cannot be judged.")
     else:
-        missing.append("The hypothesis tested (superiority, non-inferiority or descriptive) is not stated in the stored source.")
+        if a["hypothesis_type"] in (None, "NOT_STATED"):
+            missing.append("The hypothesis tested (superiority, non-inferiority or descriptive) is not stated in the stored source.")
+        else:
+            missing.append(f"A confirmatory hypothesis: the stored analysis is registered as '{str(a['hypothesis_type']).replace('_', ' ').lower()}', not as a superiority or non-inferiority test.")
         if ci_excludes_null is True:
-            not_established.append("A confirmatory conclusion: the interval excludes no difference, but the test type and its place in the testing hierarchy are not on record.")
+            not_established.append(f"A confirmatory conclusion: the {level_text} interval excludes {null_text}, but the test type and its place in the testing hierarchy are not on record.")
         elif ci_excludes_null is False:
-            not_established.append("A between-arm difference: the confidence interval includes no difference.")
+            not_established.append(f"A between-arm difference: the {level_text} confidence interval includes {null_text}, the value of no difference.")
+
+    if scale["scale"] == "NOT_ESTABLISHED":
+        not_established.append(f"Whether the interval excludes 'no difference': {scale['basis']}")
+        missing.append("The scale of the estimate (difference or ratio), and with it the value that would mean no difference.")
+    if lo is not None and hi is not None and level_status != "VALID":
+        not_established.append("Anything about statistical significance from the interval: its confidence level is "
+                               + ("not stated." if level_status == "LEVEL_NOT_REPORTED" else f"stored as {_fmt(a['ci_level'], 2)}, which is not a valid percentage."))
+        missing.append("A valid confidence level for the reported interval.")
+    if not direction["established"]:
+        not_established.append(f"Which group the estimate favours: {direction['basis']}")
+        missing.append("The direction of the comparison (which group is the reference).")
+    if direction.get("scale_note"):
+        not_established.append(f"The magnitude on the endpoint's own scale: {direction['scale_note']}")
 
     if exploratory:
         not_established.append("Any confirmatory claim: the endpoint is exploratory. The result is hypothesis-generating.")
@@ -262,8 +326,15 @@ def interpret_analysis(a: dict[str, Any]) -> dict[str, Any]:
         "analysis_id": a["id"],
         "observed": observed,
         "hypothesis_type": a["hypothesis_type"],
+        "effect_scale": scale["scale"],
+        "null_value": null,
+        "ci_level": a.get("ci_level") if level_status == "VALID" else None,
+        "ci_level_status": level_status,
+        "ci_sides": a.get("ci_sides") or "NOT_STATED",
+        "direction_established": bool(direction["established"]),
+        "direction_status": direction.get("status"),
         "ci_excludes_no_difference": ci_excludes_null,
-        "ci_excludes_no_difference_kind": "INFERENCE (read from the reported interval)",
+        "ci_excludes_no_difference_kind": "INFERENCE (read from the reported interval at its stated confidence level, against the null value of the stated scale)",
         "establishes": establishes,
         "does_not_establish": not_established,
         "missing": missing,
@@ -293,10 +364,19 @@ def describe_adverse_event(ae: dict[str, Any]) -> str:
 
 
 # --------------------------------------------------------------------------- language guard
+#
+# A heuristic screen for claims the evidence does not license. It is deliberately biased towards flagging:
+# a claim is cleared only by a negation that grammatically governs it inside the same clause. A negation
+# word that merely stands nearby ("without doubt", "no question", "not only … but") clears nothing.
 
+_SIGNIFICANCE = (
+    r"\bstatistically\b|(?<!clinically )\bsignificant(ly)?\b|\bstatistical significance\b|\bp\s*[<≤=]\s*0?\.\d+"
+)
 _PATTERNS = {
-    "NI_AS_SUPERIORITY": r"\bsuperior(ity)?\b|\bbetter than\b|\breduced (the )?risk\b|\bsignificant(ly)? (reduc|lower)|\bcardiovascular benefit\b|\bcardioprotect",
-    "CROSS_TRIAL_SUPERIORITY": r"\bsuperior(ity)?\b|\boutperform|\bmore effective than\b|\bbeats?\b|\bstatistically significant|\bsignificantly (greater|more|better|larger)|\bbest[- ]in[- ]class\b",
+    "NI_AS_SUPERIORITY": r"\bsuperior(ity)?\b|\bbetter than\b|\boutperform(s|ed|ing)?\b|\bmore effective\b|\breduced (the )?risk\b|"
+    r"\bsignificant(ly)? (reduc|lower|better|greater|fewer|improv)|\bcardiovascular benefit\b|\bcardioprotect",
+    "CROSS_TRIAL_SUPERIORITY": r"\bsuperior(ity)?\b|\boutperform(s|ed|ing)?\b|\bmore (effective|efficacious|potent)\b|\bbetter than\b|\bbeats?\b|\bbest[- ]in[- ]class\b|"
+    r"\b(stronger|better|best|most effective) (drug|agent|medicine|treatment|therapy|option|choice)\b|" + _SIGNIFICANCE,
     "LEAN_AS_MUSCLE": r"\bmuscle (loss|wasting|atrophy)\b|\bloss of (skeletal )?muscle\b|\blost muscle\b|\bsarcopenia\b",
     "SPONTANEOUS_AS_INCIDENCE": r"\bincidence\b|\bevent rate\b|\brate of\b|\brisk of\b|\b\d+(\.\d+)?\s?% of (patients|users|people)\b|\bper \d[\d,]* (patients|users|person)",
     "SPONTANEOUS_AS_CAUSAL": r"\bcauses?\b|\bcaused by\b|\bproves?\b|\bdue to the drug\b|\binduced by\b",
@@ -304,21 +384,86 @@ _PATTERNS = {
     "RECOMMENDATION": r"\b(you|patients?) should (take|start|switch|use|stop)\b|\bI recommend\b|\bthe best (drug|treatment|choice) (is|for)\b|\bprescribe\b|\bshould be (prescribed|preferred)\b",
     "UNLABELLED_EXPLORATORY": r"\bdemonstrated\b|\bproved\b|\bconfirmed\b|\bestablished\b",
 }
-_NEGATION = re.compile(r"\b(not|no|never|cannot|can't|does not|do not|without|neither|nor|rather than|must not|should not|is not)\b", re.IGNORECASE)
+
+# A between-drug comparative carrying a p-value is a significance claim even without the word "significant".
+_SENTENCE_PATTERNS = {
+    "CROSS_TRIAL_SUPERIORITY": r"\b(?:more|greater|larger|bigger|better|higher|stronger|fewer|less|lower)\b[^.;]{0,80}\bthan\b[^.;]{0,80}\bp\s*[<≤=]\s*0?\.\d+",
+}
+
+# Phrases that contain a negation word but assert rather than deny. They are blanked before negation is looked for.
+_PSEUDO_NEGATION = re.compile(
+    r"\bnot (?:only|just|merely|simply|least|to mention|surprising(?:ly)?)\b|\b(?:no|without|beyond)(?: a| any)? (?:doubt|question|surprise|wonder|dispute|exaggeration)\b|"
+    r"\bno denying\b|\bcannot be (?:denied|overstated)\b|\b(?:could|can)(?:n't| not|not) be (?:more|clearer)\b|\bno(?:thing)? (?:less|short) (?:than|of)\b|\bundoubtedly\b|\bno longer in doubt\b",
+    re.IGNORECASE,
+)
+# A negated verb, or a statement that evidence is absent, that can govern a claim later in the same clause.
+_GOVERNING_NEGATION = re.compile(
+    r"\b(?:do|does|did|is|are|was|were|has|have|had|can|could|should|must|may|might|will|would)(?:n't| not| never)\b|\bcannot\b|\bcan't\b|\bnever\b|"
+    r"\bnot (?:be |been )?(?:known|clear|established|demonstrated|shown|possible|permitted|appropriate|valid|supported|licensed)\b|\b(?:unknown|unclear) whether\b|"
+    r"\bfail(?:s|ed)? to\b|\bneither\b|\bnor\b|\brather than\b|\binstead of\b|"
+    r"\b(?:no|without|lack of|absence of|insufficient) (?:\w+ ){0,2}?(?:evidence|proof|indication|basis|data|trials?|stud(?:y|ies)|tests?|claims?|reason|support|comparison)\b",
+    re.IGNORECASE,
+)
+# A negating word immediately in front of the claim: "no significant", "not superior", "non-significant".
+_NEGATING_DETERMINER = re.compile(r"\b(?:no|not|non|without)\b(?:[- ]+(?:a|an|any|the|valid|formal|statistically|clinically))*[- ]*$", re.IGNORECASE)
+# The claim is the subject of a negated predicate: "superiority was not demonstrated".
+_NEGATED_PREDICATE = re.compile(
+    r"\b(?:(?:(?:was|were|is|are|has|have|had)(?:n't| not| never)(?: been| yet)?|(?:could|can|should|may|must)(?:n't| not)(?: be)?|cannot be)\s+(?:\w+ly\s+)?"
+    r"(?:demonstrated|shown|observed|established|found|seen|reached|achieved|met|tested|claimed|reported|detected|proven|proved|supported|confirmed|evaluated|assessed)"
+    r"|remains? (?:unproven|untested|unknown|unestablished))\b",
+    re.IGNORECASE,
+)
+_PREDICATE_BARRIER = re.compile(r"\b(?:to|than|over|versus|vs|and|compared|with)\b", re.IGNORECASE)
+_CLAUSE_BREAK = re.compile(r"[;:—–()]|,|\bbut\b|\bhowever\b|\balthough\b|\bthough\b|\bwhereas\b|\bwhile\b|\byet\b|\bnevertheless\b|\bnonetheless\b", re.IGNORECASE)
+_MAX_NEGATION_DISTANCE = 12  # words allowed between a governing negation and the claim
+_MAX_PREDICATE_DISTANCE = 6  # words allowed between the claim and its negated predicate
+
+
+def _blank(match: re.Match[str]) -> str:
+    return " " * len(match.group(0))
+
+
+def _governed_by_negation(clause: str, start: int, end: int) -> bool:
+    """True when a negation inside this clause grammatically governs the phrase at [start, end)."""
+    before, after = clause[:start], clause[end:]
+    if _NEGATING_DETERMINER.search(before):
+        return True
+    if any(len(before[neg.end():].split()) <= _MAX_NEGATION_DISTANCE for neg in _GOVERNING_NEGATION.finditer(before)):
+        return True
+    predicate = _NEGATED_PREDICATE.search(after)
+    if predicate is None:
+        return False
+    between = after[: predicate.start()]
+    return len(between.split()) <= _MAX_PREDICATE_DISTANCE and not _PREDICATE_BARRIER.search(between)
 
 
 def _hits(code: str, text: str) -> list[str]:
-    """Clauses that assert the pattern. A negation shortly before or after the phrase clears it."""
+    """Sentences that assert the pattern. Only a negation governing the phrase, in the same clause, clears it."""
     found = []
-    for clause in re.split(r"(?<=[.!?;])\s+", text):
-        match = re.search(_PATTERNS[code], clause, re.IGNORECASE)
-        if not match:
-            continue
-        before = clause[max(0, match.start() - 90) : match.start()]
-        after = clause[match.end() : match.end() + 45]
-        if _NEGATION.search(before) or _NEGATION.search(after):
-            continue
-        found.append(clause.strip()[:200])
+    pattern = re.compile(_PATTERNS[code], re.IGNORECASE)
+    sentence_pattern = re.compile(_SENTENCE_PATTERNS[code], re.IGNORECASE) if code in _SENTENCE_PATTERNS else None
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        masked = _PSEUDO_NEGATION.sub(_blank, sentence)
+        asserted = False
+        carried = False  # a cleared claim extends its negation over a following list ("not superior, better, or more effective")
+        for raw in _CLAUSE_BREAK.split(masked):
+            clause = raw.strip()
+            if not clause:
+                continue
+            continuation = bool(re.match(r"(?:or|nor|and)\b", clause, re.IGNORECASE)) or len(clause.split()) <= 3
+            matches = list(pattern.finditer(clause))
+            if not matches:
+                carried = carried and continuation
+                continue
+            cleared = [_governed_by_negation(clause, m.start(), m.end()) or (carried and continuation) for m in matches]
+            if not all(cleared):
+                asserted = True
+            carried = all(cleared)
+        if not asserted and sentence_pattern is not None:
+            wide = sentence_pattern.search(masked)
+            asserted = bool(wide and not _governed_by_negation(masked, wide.start(), wide.start()))
+        if asserted:
+            found.append(sentence.strip()[:200])
     return found
 
 
@@ -333,7 +478,12 @@ def guard_statement(
     measure_kind: str | None = None,
     exploratory: bool = False,
 ) -> list[dict[str, str]]:
-    """Return claims in ``text`` that the described evidence does not license (empty list = clean)."""
+    """Return claims in ``text`` that the described evidence does not license (empty list = clean).
+
+    The check is a pattern screen, not a parser: it catches the wordings listed in ``_PATTERNS`` and clears a
+    hit only when a negation governs it within the same clause. It errs towards flagging and cannot recognise
+    every paraphrase of a superiority claim.
+    """
     violations: list[dict[str, str]] = []
 
     def add(code: str, message: str) -> None:

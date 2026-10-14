@@ -229,6 +229,44 @@ def rejected_visible(session: Session) -> Iterator[Session]:
             session.info[INCLUDE_REJECTED] = previous
 
 
+# --------------------------------------------------------------------------- small reference tables read once per transaction
+
+_MEMO = "incretinos_session_memo"
+
+
+def session_memo(session: Session, name: str, build: Any) -> Any:
+    """``build(session)``, computed at most once per transaction and per visibility of rejected rows.
+
+    For small reference tables that an engine consults once per evidence row (for example the documented
+    exposure equivalences behind arm identity): without it a list endpoint issues one query set per row.
+    The value must hold plain data, not mapped objects. It is dropped as soon as the session writes
+    anything (flush, bulk statement, raw SQL) and whenever a transaction ends, so it can never outlive the
+    state it was read from; and it is kept separately for sessions that may see rejected evidence, so what
+    an inspection block read is never handed to analytic code.
+    """
+    memo = session.info.setdefault(_MEMO, {})
+    key = (name, bool(session.info.get(INCLUDE_REJECTED)))
+    if key not in memo:
+        memo[key] = build(session)
+    return memo[key]
+
+
+@event.listens_for(Session, "do_orm_execute")
+def _forget_memo_on_statement(state: ORMExecuteState) -> None:
+    if not state.is_select:
+        state.session.info.pop(_MEMO, None)
+
+
+@event.listens_for(Session, "after_flush")
+def _forget_memo_on_flush(session: Session, flush_context: Any) -> None:
+    session.info.pop(_MEMO, None)
+
+
+@event.listens_for(Session, "after_transaction_end")
+def _forget_memo_on_transaction_end(session: Session, transaction: Any) -> None:
+    session.info.pop(_MEMO, None)
+
+
 # --------------------------------------------------------------------------- schema (Alembic) and reset
 
 VERSION_TABLE = "alembic_version"

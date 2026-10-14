@@ -89,8 +89,15 @@ def disproportionality(drug_event: int, drug_total: int, event_total: int, all_t
     c = event without drug;          d = neither.
     """
     for name, value in (("drug_event", drug_event), ("drug_total", drug_total), ("event_total", event_total), ("all_total", all_total)):
-        if value is None or int(value) != value or value < 0:
+        if value is None or isinstance(value, bool) or not isinstance(value, int | float):
             raise StatsInputError(f"{name} must be a non-negative integer (a missing count is not zero)")
+        if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+            raise StatsInputError(f"{name} must be a finite non-negative integer")
+        if int(value) != value or value < 0:
+            raise StatsInputError(f"{name} must be a non-negative integer (a missing count is not zero)")
+    level = float(level)
+    if not 0 < level < 1:
+        raise StatsInputError("confidence level must be strictly between 0 and 1")
     a = int(drug_event)
     b = int(drug_total) - a
     c = int(event_total) - a
