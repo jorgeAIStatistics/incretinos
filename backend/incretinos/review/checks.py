@@ -376,6 +376,7 @@ _CI_LEAD = re.compile(
 _PAIR_GAP = re.compile(r"\s?%?\s*(?:to|,|-|;|and)\s*", re.IGNORECASE)
 _RANGE_GAP = re.compile(r"\s?%?\s?(?:to|-)\s?", re.IGNORECASE)
 _LIST_GAP = re.compile(r"\s?(?:,\s?and|,|and|to|-|or|&)\s?", re.IGNORECASE)
+_CELL_GAP = re.compile(r"[\s|%*]*")
 _VALUE_LIST_GAP = re.compile(r"\s*(?:,\s*and|,|and|&|or)\s*", re.IGNORECASE)
 _UNIT_WORDS = re.compile(r"%|percentage points?|\bkg\b|\blbs?\b|\*", re.IGNORECASE)
 _TIME_BEFORE = re.compile(r"\b(?:weeks?|wks?|months?|years?|days?)\s$", re.IGNORECASE)
@@ -519,12 +520,17 @@ def _parse(raw: str) -> _Quote:
             tok.role = "N"
         elif tok.decimals == 0 and not sign and tok.unit == "BARE" and _COUNT_AFTER.match(after):
             tok.role = "COUNT"
+        elif re.search(r"(?:±|\+/-)\s?$", before):
+            tok.role = "PAREN_SINGLE"  # "-9.6 ± 0.5": a dispersion, not a second value
         toks.append(tok)
 
     # "-19.8 and -21.0 percentage points", "14.0-21.4%": a bare number in a list takes the unit of the next one.
     for i in range(len(toks) - 2, -1, -1):
         a, b = toks[i], toks[i + 1]
-        if a.unit == "BARE" and b.unit != "BARE" and a.role == "VALUE" and b.role == "VALUE" and _LIST_GAP.fullmatch(text[a.end : b.start]):
+        gap = text[a.end : b.start]
+        listed = b.role == "VALUE" and _LIST_GAP.fullmatch(gap)
+        spread = b.role == "PAREN_SINGLE" and re.fullmatch(r"\s?(?:±|\+/-)\s?", gap)  # "-9.6 ± 0.5 kg"
+        if a.unit == "BARE" and b.unit != "BARE" and a.role == "VALUE" and (listed or spread):
             a.unit = b.unit
 
     # Two numbers straight after "95% CI" are confidence limits.
@@ -1017,10 +1023,12 @@ class _Engine:
         self._alias_re = re.compile(r"(?<![A-Za-z0-9])(" + "|".join(re.escape(a) for a in ordered) + r")(?![A-Za-z0-9])", re.IGNORECASE) if ordered else None
         self._trials: list[list[tuple[str, re.Pattern[str]]]] = []
         for study in ctx.studies.values():
-            names = [study["nct_id"]] if study.get("nct_id") else []
+            names: list[str] = []
             for candidate in (study.get("acronym"), study.get("display_name")):
                 if candidate and _TRIAL_NAME.fullmatch(candidate) and candidate not in names:
                     names.append(candidate)
+            if study.get("nct_id"):
+                names.append(study["nct_id"])
             # "SURMOUNT-1" must not be found inside "SURMOUNT-10" or "SURMOUNT-1-EXT"
             self._trials.append([(n, re.compile(r"(?<![A-Za-z0-9-])" + re.escape(n) + r"(?![A-Za-z0-9]|-[A-Za-z0-9])")) for n in names])
         self._identity_cache: dict[tuple[str, int | None], _ArmIdentity] = {}
@@ -1197,6 +1205,20 @@ class _Engine:
                         detail["respectively"] = True
                         return "unbound", detail
 
+        # A table: a header row of arm names and then a row of as many bare values, nothing but spaces or
+        # cell separators between them ("Placebo 5 mg 15 mg | Change, % -3.1 -15.0 -20.9"). They pair in order.
+        names = [m for m in marks if m.kind != "WORD"]
+        if len(names) == len(cands) and names[-1].end <= cands[0].start:
+            header = all(_CELL_GAP.fullmatch(q.text[a.end : b.start]) for a, b in zip(names, names[1:], strict=False))
+            cells = all(_CELL_GAP.fullmatch(q.text[a.end : b.start]) for a, b in zip(cands, cands[1:], strict=False))
+            if header and cells:
+                for cand in mine:
+                    mapped = names[cands.index(cand)]
+                    if mapped.own:
+                        return "bound", detail
+                    detail.update(other=mapped, order=cands.index(cand) + 1)
+                return "mismatch", detail
+
         # Values separated only by commas or "and" form one list; a marker next to a list cannot single one out.
         units: list[list[_Cand]] = []
         for cand in cands:
@@ -1239,7 +1261,12 @@ class _Engine:
                 if comparable:
                     detail["other"] = comparable[0]
                     outcome = "mismatch"
-            elif len(unit) == 1:
+            elif len(unit) > 1:
+                for way in ("after", "before"):
+                    listed_names = [m for m in gap(index, way) if m.kind != "WORD"]
+                    if len(listed_names) == len(unit) and listed_names[unit.index(cand)].own:
+                        return "bound", detail
+            else:
                 if any(m.own for m in gap(index, "after")) or any(m.own for m in gap(index, "before")):
                     return "bound", detail
                 # Every other value has an arm named after it (or before it) and this one has none:
@@ -1317,6 +1344,8 @@ class _Engine:
         # 4. which arm (or endpoint, or estimand) the number belongs to
         cands = self._candidates(q, hit)
         mine = [c for c in cands if any(t in hits for t in c.toks)]
+        if not mine:
+            return False
         status, detail = self._binding(q, cands, mine, arms[0], arms[1:], analysis=etype == _ANALYSIS)
         label = _q(arms[0].label, 60)
         unresolved = False
@@ -1386,7 +1415,7 @@ class _Engine:
             def holds(tokens: list[_Tok]) -> bool:
                 return any(_same_number(t.val, wanted[0]) for t in tokens) and any(_same_number(t.val, wanted[1]) for t in tokens)
 
-            if mine and not any(holds(window(c)) for c in mine):
+            if not any(holds(window(c)) for c in mine):
                 follows = ", ".join(t.text for t in window(mine[0])[:2]) or "no number"
                 owner = next((c.text for c in cands if c not in mine and holds(window(c))), None)
                 belongs = f"; the quote prints those limits after {owner}" if owner else ""
@@ -1830,12 +1859,12 @@ class _Engine:
 
         absent = list(dict.fromkeys(printed(t) for t in asserted if not q.has_number(t.val)))
         if absent:
-            present = list(dict.fromkeys(printed(t) for t in asserted if q.has_number(t.val)))
+            present = list(dict.fromkeys(t.text.lstrip("+-") for t in asserted if q.has_number(t.val)))
             shown = ", ".join(absent[:12]) + (", …" if len(absent) > 12 else "")
             if not present and any(_is_result_number(t) for t in asserted):
                 out.append(_flag("CLAIM_NO_NUMBER_IN_QUOTE", f"The statement gives the numbers {shown}; its quote {_q(q.text)} contains none of the statement's numbers.", "statement", "quote"))
             else:
-                also = f" (the quote does contain {', '.join(present[:8])})" if present else ""
+                also = f" (the quote does contain the numbers {', '.join(present[:8])})" if present else ""
                 out.append(_flag("CLAIM_NUMBER_NOT_IN_QUOTE", f"The statement contains {shown}, which the quote {_q(q.text)} does not{also}.", "statement", "quote"))
 
         missing: list[str] = []

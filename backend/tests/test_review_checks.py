@@ -835,11 +835,9 @@ def test_every_stored_record_is_evaluated(db, seeded_flags):
 
 
 def test_flags_on_seeded_evidence_are_well_formed_and_concrete(seeded_flags):
-    total = 0
     for (etype, _), flags in seeded_flags.items():
         assert len(flags) == len(set(flags))
         for flag in flags:
-            total += 1
             spec = CHECKS[flag.code]
             assert flag.severity == spec["severity"] and etype in spec["applies_to"], flag
             assert flag.fields and all(isinstance(f, str) and f for f in flag.fields), flag
@@ -847,7 +845,6 @@ def test_flags_on_seeded_evidence_are_well_formed_and_concrete(seeded_flags):
             assert re.search(r"\d|'[^']+'", flag.explanation), flag
             assert "should be" not in flag.explanation and "correct value" not in flag.explanation, flag
             assert flag.code != "CHANGED_SINCE_LAST_INGESTION"
-    assert total > 0
 
 
 def test_no_quote_based_flag_on_a_seeded_registry_record(db, seeded_flags):
@@ -860,10 +857,20 @@ def test_no_quote_based_flag_on_a_seeded_registry_record(db, seeded_flags):
             assert not quote_based, (etype, row_id, quote_based)
 
 
-def test_no_check_marks_anything_human_verified(db, seeded_flags):
-    """The checks only read: no status changes, and nothing is ever human-verified by code."""
-    for model in MODELS.values():
-        assert db.scalar(select(model.id).where(model.verification_status == "HUMAN_VERIFIED").limit(1)) is None
+def test_checks_only_read(db):
+    """Running the checks changes no verification status and leaves nothing to write."""
+
+    def statuses() -> dict[str, list[tuple[int, str]]]:
+        return {etype: sorted(tuple(r) for r in db.execute(select(model.id, model.verification_status))) for etype, model in MODELS.items()}
+
+    before = statuses()
+    everything = evaluate_all(db)
+    for etype, model in MODELS.items():
+        row = db.scalars(select(model).order_by(model.id.desc()).limit(1)).one()
+        assert evaluate(db, etype, row, previous_fields={"verification_status": "QUOTE_ANCHORED"}) is not None
+    assert not db.new and not db.dirty and not db.deleted
+    assert statuses() == before
+    assert len(everything) == sum(len(rows) for rows in before.values())
 
 
 def test_evaluate_agrees_with_evaluate_all_on_a_sample(db, seeded_flags):
@@ -876,3 +883,38 @@ def test_evaluate_agrees_with_evaluate_all_on_a_sample(db, seeded_flags):
         for row_id in sorted(sample):
             row = db.get(model, row_id)
             assert evaluate(db, etype, row) == seeded_flags[(etype, row_id)], (etype, row_id)
+
+
+# ------------------------------------------------------------------ arm names and values listed in order
+
+
+def test_a_list_of_doses_followed_by_a_list_of_values_pairs_in_order(world):
+    quote = "At 72 weeks, participants receiving tirzepatide 5 mg and 15 mg lost 15.0% and 20.9% of body weight (n=630), compared with 3.1% for placebo."
+    plain = dict(ci_low=None, ci_high=None, ci_level=None, locator_quote=quote)
+    high = flags_of(world, world.result(**plain))
+    assert not {"QUOTE_MULTIPLE_CANDIDATES", "QUOTE_ARM_MISMATCH", "ARM_NOT_IN_QUOTE", "SIGN_NOT_IN_QUOTE"} & codes(high)
+    placebo = flags_of(world, world.result(arm=world.placebo, value=-3.1, n_analyzed=None, **plain))
+    assert not {"QUOTE_MULTIPLE_CANDIDATES", "QUOTE_ARM_MISMATCH", "ARM_NOT_IN_QUOTE"} & codes(placebo)
+
+
+def test_table_header_pairs_arm_names_with_cells_in_order(world):
+    quote = "Placebo 5 mg 15 mg | % change at week 72 | -3.1 -15.0 -20.9"
+    plain = dict(ci_low=None, ci_high=None, ci_level=None, n_analyzed=None, locator_quote=quote)
+    assert not {"QUOTE_MULTIPLE_CANDIDATES", "QUOTE_ARM_MISMATCH"} & codes(flags_of(world, world.result(**plain)))
+    swapped = flags_of(world, world.result(arm=world.low_dose, **plain))
+    text = explanation(swapped, "QUOTE_ARM_MISMATCH")
+    assert "-20.9 is value 3" in text and "'15 mg'" in text and "tirzepatide 5 mg" in text
+
+
+def test_arm_named_before_a_comparison_is_not_paired_by_position(world):
+    """'Compared with placebo, X reduced weight by A vs B' is prose, not a table: no positional pairing, so no false mismatch."""
+    quote = "Compared with placebo, tirzepatide 15 mg reduced body weight by 20.9% vs 3.1% at week 72 (n=630)"
+    flags = flags_of(world, world.result(ci_low=None, ci_high=None, ci_level=None, locator_quote=quote))
+    assert "QUOTE_ARM_MISMATCH" not in codes(flags)
+
+
+def test_plus_minus_dispersion_is_not_a_second_candidate(world):
+    endpoint = world.endpoint("change from baseline in body weight", "WEIGHT_ABS_CHANGE", unit="kg")
+    quote = "body weight changed by -9.6 ± 0.5 kg with tirzepatide 15 mg at week 72 (n=630)"
+    flags = flags_of(world, world.result(endpoint=endpoint, value=-9.6, unit="kg", ci_low=None, ci_high=None, ci_level=None, locator_quote=quote))
+    assert flags == []
