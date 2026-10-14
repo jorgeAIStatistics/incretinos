@@ -1,0 +1,58 @@
+# Benchmark cases that can no longer be scored, kept exactly as they were written.
+#
+# A case selects stored evidence by description and labels one sentence about it. When the data repair of
+# Session 2 removed the selected record, or changed a stored attribute the sentence asserts, the case no longer
+# deserves its label. Such a case is not edited (neither the sentence nor the expected verdict) and not deleted:
+# it is moved here with the reason. This file is not a benchmark set: `incretinos benchmark-claims` never runs it.
+#
+# Each entry keeps the original case (with its evidence selector written out in full) and adds:
+#   from_set          the file it was moved from
+#   invalidated_at    the integration at which it was moved
+#   reason            what changed in the stored evidence, and why the label no longer holds
+version: 1
+cases:
+  - id: exploratory-multiplicity-controlled
+    from_set: dev
+    invalidated_at: "Session 2, wave 1 integration"
+    reason: >-
+      Record removed. The selector named the ACHIEVE-3 (NCT06045221) press-release value of -9.2% for orforglipron
+      36 mg under the efficacy estimand. The data repair removed that row together with three siblings (-6.7, -3.7
+      and -5.3) because their quote, "14.6 lbs (6.7%; 12 mg) and 19.7 lbs (9.2%; 36 mg) compared to ...", prints
+      no minus sign and no wording of a loss, so the stored negative values had no source support. The same number
+      remains as a registry-posted result, which is a different record (another source, tier and endpoint role),
+      so the selector was not re-pointed at it.
+    category: EXPLORATORY_AS_CONFIRMATORY
+    expected: REJECT
+    evidence:
+      - {kind: result, nct: NCT06045221, arm_contains: "36 mg", category: WEIGHT_PCT_CHANGE, estimand: EFFICACY, tier: PRESS_RELEASE}
+    sentence: "In ACHIEVE-3, the multiplicity-controlled key secondary analysis showed a -9.2% change in body weight with orforglipron 36 mg at week 52 [C1]."
+    note: "Stored as not controlled for multiplicity."
+  - id: exploratory-secondary-as-primary
+    from_set: dev
+    invalidated_at: "Session 2, wave 1 integration"
+    reason: >-
+      Stored attribute changed. The record (TRIUMPH-1, retatrutide 12 mg, peer-reviewed, -25% at week 80) is
+      unchanged in value, but its endpoint role was corrected from KEY_SECONDARY to PRIMARY: the role had been
+      inherited from another finding with the same endpoint title, and the research note for this finding says
+      primary. The sentence calls it the primary endpoint, which is now what is stored, so it no longer deserves
+      the label REJECT.
+    category: EXPLORATORY_AS_CONFIRMATORY
+    expected: REJECT
+    evidence:
+      - {kind: result, nct: NCT05929066, arm_contains: "12 mg", category: WEIGHT_PCT_CHANGE, tier: PEER_REVIEWED}
+    sentence: "The primary endpoint of TRIUMPH-1 showed a -25% change in body weight with retatrutide 12 mg at week 80 [C1]."
+    note: "Stored role is key secondary."
+  - id: valid-key-secondary-named
+    from_set: dev
+    invalidated_at: "Session 2, wave 1 integration"
+    reason: >-
+      Stored attribute changed. Same record as above: its endpoint role is now PRIMARY, not KEY_SECONDARY. The
+      sentence calls it a key secondary endpoint, which is no longer what is stored, so it no longer deserves the
+      label SUPPORTED.
+    category: VALID
+    expected: SUPPORTED
+    evidence:
+      - {kind: result, nct: NCT05929066, arm_contains: "12 mg", category: WEIGHT_PCT_CHANGE, tier: PEER_REVIEWED}
+    sentence: "Retatrutide 12 mg lowered body weight by 25% from baseline over 80 weeks in TRIUMPH-1, a key secondary endpoint reported in a peer-reviewed publication [C1]."
+    expected_fact: 1
+    note: "Endpoint role and tier as stored."

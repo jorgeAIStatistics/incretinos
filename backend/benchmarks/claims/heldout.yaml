@@ -140,10 +140,12 @@ cases:
     category: VALID
     expected: SUPPORTED
     evidence:
+      # Selector repaired at integration (category only): the same label record (value 20.9, unit "% reduction",
+      # week 36, n 670) is now stored under category OTHER, because a positive "% reduction" is not a signed change.
       - kind: result
         nct: NCT04660643
         arm_contains: "open-label tirzepatide"
-        category: WEIGHT_ABS_CHANGE
+        category: OTHER
         tier: REGULATORY_LABEL
     sentence: "Per FDA labeling, participants lost an average of 20.9% of their body weight during the 36-week open-label tirzepatide lead-in of SURMOUNT-4 (n=670) [C1]."
     expected_fact: 1

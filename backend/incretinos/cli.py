@@ -184,6 +184,27 @@ def report(
         typer.echo(markdown)
 
 
+@app.command("benchmark-claims")
+def benchmark_claims(
+    which: str = typer.Option("dev", "--set", help="Benchmark set to run: dev, heldout or all."),
+    as_json: bool = typer.Option(False, "--json", help="Print the full report as JSON."),
+) -> None:
+    """Run the adversarial claim-verification benchmark against the current database."""
+    from .assistant import benchmark
+
+    if which not in (*benchmark.SETS, "all"):
+        raise typer.BadParameter("--set must be dev, heldout or all")
+    with session_scope() as session:
+        reports = benchmark.run(session, which)
+    if as_json:
+        typer.echo(json.dumps(reports, indent=1, default=str))
+    else:
+        for report in reports:
+            typer.echo(benchmark.format_report(report))
+    if any(report.get("errors") for report in reports):
+        raise typer.Exit(code=2)  # a case that could not be run is a defect in the set, not a detection
+
+
 @app.command()
 def serve(host: str = "127.0.0.1", port: int = 8000, reload: bool = False) -> None:
     """Run the API server."""

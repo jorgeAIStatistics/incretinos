@@ -1,0 +1,282 @@
+"""Adversarial benchmark for the claim verifier.
+
+A benchmark set is a YAML file of cases. Each case names stored evidence by its scientific description
+(ids are not stable across seeds), gives one sentence citing that evidence as [C1], [C2] ... and says
+whether a faithful verifier must accept it (``SUPPORTED``) or refuse it (``REJECT``). The runner builds
+the same evidence facts the assistant builds, runs the same verifier, and reports
+
+- the detection rate for unsupported sentences, overall and per category;
+- the false-rejection rate on valid sentences;
+- citation accuracy: valid cases whose claims are bound to a fact from a cited source;
+- attribution accuracy: valid cases bound to the expected fact (source, arm and endpoint);
+- benchmark errors (a selector that matches nothing, or an analysis selector that matches several rows)
+  - these are never counted as detections;
+- the list of misses.
+
+The verifier knows nothing about benchmark sentences; nothing here feeds back into it.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+import yaml
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from ..config import BACKEND_ROOT
+from ..models import Drug, EvidenceClaim, OutcomeResult, StatisticalAnalysis, Study
+from .claims import Vocabulary
+from .facts import EvidenceFact, fact_from_analysis, fact_from_claim, fact_from_drug, fact_from_result
+from .verifier import NOT_FACTUAL, SUPPORTED, verify_draft
+
+BENCHMARK_DIR = BACKEND_ROOT / "benchmarks" / "claims"
+SETS = ("dev", "heldout")
+CATEGORIES = (
+    "VALID", "DRUG_SWAPPED", "DIRECTION_REVERSED", "COMPARATOR_SWAPPED", "ARM_SWAPPED", "UNIT_CHANGED", "CI_MISSTATED", "NI_AS_SUPERIORITY", "SIGNIFICANCE_INVENTED",
+    "TRIAL_MISATTRIBUTED", "ESTIMAND_MIXED", "EXPLORATORY_AS_CONFIRMATORY", "TIER_MISSTATED", "MISSING_AS_ZERO", "UNVERIFIED_AS_HUMAN_VERIFIED", "TIMEPOINT_CHANGED",
+    "POPULATION_CHANGED", "MAGNITUDE_CHANGED", "UNCITED_CLAIM", "INJECTED_INSTRUCTION",
+)
+
+
+class BenchmarkError(Exception):
+    """A case that cannot be run as written. Reported; never scored."""
+
+
+def _study(session: Session, nct: Any) -> Study:
+    study = session.scalar(select(Study).where(Study.nct_id == str(nct).upper())) if nct else None
+    if study is None:
+        raise BenchmarkError(f"study {nct!r} is not stored")
+    return study
+
+
+def _estimand_label(row: OutcomeResult | StatisticalAnalysis) -> str:
+    return row.estimand.label if row.estimand is not None else "NOT_STATED"
+
+
+def select_result(session: Session, spec: dict[str, Any]) -> OutcomeResult:
+    """The first stored arm-level result matching the description (same rule as ``tests/conftest.result_id``)."""
+    study = _study(session, spec.get("nct"))
+    arm = str(spec.get("arm_contains", "")).lower()
+    category = spec.get("category", "WEIGHT_PCT_CHANGE")
+    for row in sorted(study.results, key=lambda r: r.id):
+        if row.endpoint.category != category or row.value is None or row.scope != "ARM" or " minus " in row.arm_label or " to " in row.arm_label.lower():
+            continue
+        if arm not in row.arm_label.lower():
+            continue
+        if spec.get("estimand") and _estimand_label(row) != spec["estimand"]:
+            continue
+        if spec.get("tier") and row.tier != spec["tier"]:
+            continue
+        if spec.get("weeks") and row.timepoint_weeks != float(spec["weeks"]):
+            continue
+        return row
+    raise BenchmarkError(f"no result matches {spec}")
+
+
+def select_analysis(session: Session, spec: dict[str, Any]) -> StatisticalAnalysis:
+    """The one stored between-arm analysis matching the description; more than one match is an error."""
+    study = _study(session, spec.get("nct"))
+    treatment = str(spec.get("treatment_contains", "")).lower()
+    comparator = str(spec.get("comparator_contains", "")).lower()
+    rows = []
+    for row in sorted(study.analyses, key=lambda a: a.id):
+        if spec.get("category") and row.endpoint.category != spec["category"]:
+            continue
+        if treatment not in (row.treatment_label or "").lower() or comparator not in (row.comparator_label or "").lower():
+            continue
+        if spec.get("estimand") and _estimand_label(row) != spec["estimand"]:
+            continue
+        if spec.get("tier") and row.tier != spec["tier"]:
+            continue
+        if spec.get("weeks") and row.timepoint_weeks != float(spec["weeks"]):
+            continue
+        if spec.get("hypothesis_type") and row.hypothesis_type != spec["hypothesis_type"]:
+            continue
+        rows.append(row)
+    if len(rows) != 1:
+        raise BenchmarkError(f"{len(rows)} analyses match {spec} (exactly one is required)")
+    return rows[0]
+
+
+def resolve_evidence(session: Session, spec: dict[str, Any]) -> EvidenceFact:
+    """The evidence fact a selector describes."""
+    if not isinstance(spec, dict):
+        raise BenchmarkError(f"evidence entry is not a mapping: {spec!r}")
+    kind = spec.get("kind")
+    if kind == "result":
+        fact = fact_from_result(session, select_result(session, spec))
+    elif kind == "analysis":
+        fact = fact_from_analysis(select_analysis(session, spec))
+    elif kind == "claim":
+        claim = session.scalar(select(EvidenceClaim).where(EvidenceClaim.key == spec.get("key")))
+        if claim is None:
+            raise BenchmarkError(f"no claim with key {spec.get('key')!r}")
+        fact = fact_from_claim(claim)
+    elif kind == "drug_status":
+        drug = session.scalar(select(Drug).where(Drug.slug == spec.get("drug")))
+        if drug is None:
+            raise BenchmarkError(f"no drug with slug {spec.get('drug')!r}")
+        fact = fact_from_drug(session, drug)
+    else:
+        raise BenchmarkError(f"unknown evidence kind {kind!r}")
+    if not fact.usable:
+        raise BenchmarkError(f"the selected record was rejected in review and is never offered as evidence: {spec}")
+    return fact
+
+
+def load_cases(path: Path) -> list[dict[str, Any]]:
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(data, dict) or data.get("version") != 1:
+        raise BenchmarkError(f"{path.name}: unsupported benchmark version {data.get('version') if isinstance(data, dict) else None!r} (expected 1)")
+    cases = data.get("cases") or []
+    if not isinstance(cases, list):
+        raise BenchmarkError(f"{path.name}: 'cases' is not a list")
+    return cases
+
+
+def run_case(session: Session, case: dict[str, Any], vocabulary: Vocabulary) -> dict[str, Any]:
+    """Run one case. ``outcome`` is ACCEPTED, REJECTED or ERROR."""
+    result: dict[str, Any] = {
+        "id": case.get("id"),
+        "category": case.get("category"),
+        "expected": case.get("expected"),
+        "sentence": case.get("sentence"),
+        "outcome": "ERROR",
+        "correct": None,
+        "error": None,
+        "reasons": [],
+        "bound": [],
+    }
+    try:
+        if case.get("category") not in CATEGORIES:
+            raise BenchmarkError(f"unknown category {case.get('category')!r}")
+        if case.get("expected") not in ("SUPPORTED", "REJECT"):
+            raise BenchmarkError(f"expected must be SUPPORTED or REJECT, not {case.get('expected')!r}")
+        if not isinstance(case.get("sentence"), str) or not case["sentence"].strip():
+            raise BenchmarkError("the case has no sentence")
+        facts = [resolve_evidence(session, spec) for spec in case.get("evidence") or []]
+        expected_fact = case.get("expected_fact")
+        if expected_fact is not None and not (isinstance(expected_fact, int) and 1 <= expected_fact <= len(facts)):
+            raise BenchmarkError(f"expected_fact {expected_fact!r} does not name an evidence entry")
+    except BenchmarkError as exc:
+        result["error"] = str(exc)
+        return result
+
+    cards = [{"id": f"C{index}", "text": fact.text, "source_ids": fact.source_ids, "fact": fact} for index, fact in enumerate(facts, start=1)]
+    check = verify_draft(case["sentence"], cards, vocabulary=vocabulary)
+    accepted = check["passed"]
+    result["outcome"] = "ACCEPTED" if accepted else "REJECTED"
+    result["correct"] = accepted == (case["expected"] == "SUPPORTED")
+    result["reasons"] = check["problems"]
+    result["verdicts"] = [report["verdict"] for report in check["sentences"]]
+    bound = [b for report in check["sentences"] if report["verdict"] == SUPPORTED for b in report["bound"]]
+    result["bound"] = bound
+    if case["expected"] == "SUPPORTED":
+        by_card = {card["id"]: card["fact"] for card in cards}
+        factual = [report for report in check["sentences"] if report["verdict"] != NOT_FACTUAL]
+        cited_sources = {sid for report in factual for cid in report["cited"] if cid in by_card for sid in by_card[cid].source_ids}
+        bound_facts = [by_card[b["card"]] for b in bound if b["card"] in by_card]
+        result["citation_ok"] = bool(accepted and bound_facts and all(set(f.source_ids) & cited_sources or not f.source_ids for f in bound_facts))
+        if expected_fact is not None:
+            result["attribution_ok"] = bool(accepted and any(b["card"] == f"C{expected_fact}" for b in bound))
+    return result
+
+
+def summarize(name: str, results: list[dict[str, Any]], path: Path | None = None) -> dict[str, Any]:
+    errors = [r for r in results if r["outcome"] == "ERROR"]
+    scored = [r for r in results if r["outcome"] != "ERROR"]
+    unsupported = [r for r in scored if r["expected"] == "REJECT"]
+    valid = [r for r in scored if r["expected"] == "SUPPORTED"]
+    detected = [r for r in unsupported if r["outcome"] == "REJECTED"]
+    rejected_valid = [r for r in valid if r["outcome"] == "REJECTED"]
+    with_expected = [r for r in valid if "attribution_ok" in r]
+
+    def rate(part: int, whole: int) -> float | None:
+        return round(part / whole, 4) if whole else None
+
+    per_category: dict[str, dict[str, Any]] = {}
+    for category in CATEGORIES:
+        rows = [r for r in scored if r["category"] == category]
+        if not rows:
+            continue
+        if category == "VALID":
+            accepted = sum(1 for r in rows if r["outcome"] == "ACCEPTED")
+            per_category[category] = {"cases": len(rows), "accepted": accepted, "false_rejection_rate": rate(len(rows) - accepted, len(rows))}
+        else:
+            caught = sum(1 for r in rows if r["outcome"] == "REJECTED")
+            per_category[category] = {"cases": len(rows), "detected": caught, "detection_rate": rate(caught, len(rows))}
+    misses = [
+        {"id": r["id"], "category": r["category"], "expected": r["expected"], "outcome": r["outcome"], "sentence": r["sentence"], "reasons": r["reasons"][:4]}
+        for r in scored
+        if not r["correct"]
+    ]
+    return {
+        "set": name,
+        "path": str(path) if path else None,
+        "present": True,
+        "cases": len(results),
+        "scored": len(scored),
+        "unsupported_cases": len(unsupported),
+        "detected": len(detected),
+        "detection_rate": rate(len(detected), len(unsupported)),
+        "valid_cases": len(valid),
+        "false_rejections": len(rejected_valid),
+        "false_rejection_rate": rate(len(rejected_valid), len(valid)),
+        "citation_accuracy": rate(sum(1 for r in valid if r.get("citation_ok")), len(valid)),
+        "attribution_cases": len(with_expected),
+        "attribution_accuracy": rate(sum(1 for r in with_expected if r["attribution_ok"]), len(with_expected)),
+        "per_category": per_category,
+        "errors": [{"id": r["id"], "category": r["category"], "error": r["error"]} for r in errors],
+        "misses": misses,
+    }
+
+
+def run_set(session: Session, name: str, directory: Path | None = None) -> dict[str, Any]:
+    """Run one benchmark set. A set whose file is absent is reported as not present, not as a failure."""
+    path = (directory or BENCHMARK_DIR) / f"{name}.yaml"
+    if not path.exists():
+        return {"set": name, "path": str(path), "present": False, "cases": 0, "note": f"{path.name} is not present; nothing was run."}
+    try:
+        cases = load_cases(path)
+    except (BenchmarkError, yaml.YAMLError) as exc:
+        return {"set": name, "path": str(path), "present": True, "cases": 0, "errors": [{"id": None, "category": None, "error": f"could not read the set: {exc}"}], "misses": []}
+    vocabulary = Vocabulary.from_session(session)
+    results = [run_case(session, case if isinstance(case, dict) else {"id": None}, vocabulary) for case in cases]
+    summary = summarize(name, results, path)
+    summary["results"] = results
+    return summary
+
+
+def run(session: Session, which: str = "dev", directory: Path | None = None) -> list[dict[str, Any]]:
+    names = SETS if which == "all" else (which,)
+    return [run_set(session, name, directory) for name in names]
+
+
+def format_report(report: dict[str, Any]) -> str:
+    """Plain-text rendering of one set's report."""
+    if not report.get("present"):
+        return f"[{report['set']}] {report.get('note', 'not present')}"
+    lines = [f"[{report['set']}] {report.get('cases', 0)} cases ({report.get('scored', 0)} scored, {len(report.get('errors', []))} benchmark errors)"]
+    if report.get("scored"):
+        def pct(value: float | None) -> str:
+            return "n/a" if value is None else f"{100 * value:.1f}%"
+
+        lines.append(f"  detection rate (unsupported claims): {pct(report['detection_rate'])} ({report['detected']}/{report['unsupported_cases']})")
+        lines.append(f"  false-rejection rate (valid claims):  {pct(report['false_rejection_rate'])} ({report['false_rejections']}/{report['valid_cases']})")
+        lines.append(f"  citation accuracy (valid claims):     {pct(report['citation_accuracy'])}")
+        lines.append(f"  attribution accuracy (valid claims):  {pct(report['attribution_accuracy'])} (of {report['attribution_cases']} cases naming an expected fact)")
+        lines.append("  per category:")
+        for category, row in report["per_category"].items():
+            if category == "VALID":
+                lines.append(f"    {category:<30} accepted {row['accepted']}/{row['cases']}")
+            else:
+                lines.append(f"    {category:<30} detected {row['detected']}/{row['cases']}  ({pct(row['detection_rate'])})")
+    for error in report.get("errors", []):
+        lines.append(f"  BENCHMARK ERROR {error['id']}: {error['error']}")
+    for miss in report.get("misses", []):
+        lines.append(f"  MISS {miss['id']} [{miss['category']}] expected {miss['expected']}, got {miss['outcome']}: {miss['sentence']}")
+        for reason in miss["reasons"]:
+            lines.append(f"       - {reason}")
+    return "\n".join(lines)

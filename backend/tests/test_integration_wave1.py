@@ -209,3 +209,60 @@ def test_the_three_session_2_revisions_form_one_line_in_the_agreed_order():
         ("65bce81e7f45", "10d1699882ea"),  # data integrity
         ("10d1699882ea", None),
     ]
+
+
+# --------------------------------------------------------------------------- claims x review lifecycle x comparability
+
+
+def test_the_assistant_labels_evidence_with_the_real_statuses_and_never_as_human_verified(db):
+    """Every evidence block names the stored status of each record behind it, in the vocabulary of the review lifecycle."""
+    from incretinos.assistant.answer import ask
+    from incretinos.review.policy import STATUS_LABEL, STORED_STATUSES
+
+    questions = (
+        "What evidence differentiates retatrutide from tirzepatide?",
+        "Which outcomes in EloraTZP are exploratory?",
+        "What would be required to compare SURMOUNT-1 and TRIUMPH-1 rigorously?",
+        "Which results depend on hypothetical treatment continuation?",
+        "Which programs have prospective cardiovascular outcomes trials?",
+    )
+    seen: Counter[str] = Counter()
+    for question in questions:
+        answer = ask(db, question).as_dict()
+        kinds = {block["kind"] for block in answer["blocks"]}
+        assert "VERIFIED_EVIDENCE" not in kinds and kinds <= {"REPORTED_EVIDENCE", "INTERPRETATION", "UNAVAILABLE", "HYPOTHESIS", "REFUSAL", "MODEL_SUMMARY"}
+        for block in answer["blocks"]:
+            for record in block["evidence"] or []:
+                if record["verification_status"] is not None:
+                    assert record["verification_status"] in STORED_STATUSES and record["verification_status"] != "CURATED_PENDING_REVIEW"
+                    seen[record["verification_status"]] += 1
+            verification = block["verification"]
+            if verification is not None:
+                assert verification["human_verified"] is False and set(verification["statuses"]) <= STORED_STATUSES
+                assert verification["label"] in STATUS_LABEL.values() or verification["label"]
+                # The stored status of every record is the one the review API reports for it.
+                for record in block["evidence"]:
+                    if record["type"] == "result":
+                        assert db.scalar(select(REVIEWABLE_MODELS["result"].verification_status).where(REVIEWABLE_MODELS["result"].id == record["id"])) == record["verification_status"]
+    assert {"MACHINE_EXTRACTED", "QUOTE_ANCHORED", "PENDING_HUMAN_REVIEW"} <= set(seen) and "HUMAN_VERIFIED" not in seen and "REJECTED" not in seen
+
+
+def test_the_assistant_leads_with_the_shared_display_rule_not_with_the_evidence_tier(db):
+    """ATTAIN-1 reports its treatment-regimen weight change in the label (no interval) and in the publication (with one).
+
+    The answer leads with the highest-dose arm and, of the sources reporting it, with the one the shared display rule
+    puts first (a reported interval), which is what the estimand inspector marks as its lead as well.
+    """
+    from incretinos.assistant.answer import _best_weight_result
+    from incretinos.engines.findings import display_lead
+
+    study = db.scalar(select(Study).where(Study.nct_id == "NCT05869903"))
+    lead = _best_weight_result(db, study, "TREATMENT_REGIMEN")
+    assert (lead.tier, lead.value, lead.ci_low, lead.ci_high, lead.arm.dose_amount) == ("PEER_REVIEWED", -11.2, -12.0, -10.4, 36)
+    label_rows = [r for r in study.results if r.tier == "REGULATORY_LABEL" and r.endpoint.category == "WEIGHT_PCT_CHANGE" and r.estimand is not None and r.estimand.label == "TREATMENT_REGIMEN" and r.scope == "ARM"]
+    assert label_rows and all(r.ci_low is None for r in label_rows)  # the tier that used to win has no interval
+    assert display_lead([lead, *label_rows])[0] is lead
+    # One estimand throughout when none is requested: never the larger of two estimands' values.
+    for nct in ("NCT05929066", "NCT04184622", "NCT05931367"):
+        chosen = _best_weight_result(db, db.scalar(select(Study).where(Study.nct_id == nct)))
+        assert chosen is not None and chosen.estimand is not None and chosen.estimand.label == "TREATMENT_REGIMEN", nct

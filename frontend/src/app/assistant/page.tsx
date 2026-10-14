@@ -8,13 +8,22 @@ import { Badge, Button, Callout, ErrorNote, Loading, PageHeader, Panel, SourceLi
 import { apiPost, useApi } from "@/lib/api";
 
 const KIND: Record<string, { label: string; Icon: any; cls: string }> = {
-  VERIFIED_EVIDENCE: { label: "Reported evidence", Icon: BookCheck, cls: "border-l-[var(--teal)]" },
+  REPORTED_EVIDENCE: { label: "Reported evidence", Icon: BookCheck, cls: "border-l-[var(--teal)]" },
   INTERPRETATION: { label: "Rule-based interpretation", Icon: Lightbulb, cls: "border-l-[var(--accent)]" },
   UNAVAILABLE: { label: "Not available in stored sources", Icon: CircleSlash, cls: "border-l-[var(--ink-3)]" },
   HYPOTHESIS: { label: "Hypothesis — untested", Icon: FlaskConical, cls: "border-l-[#c9b37a] border-dashed" },
   REFUSAL: { label: "Not answered", Icon: Ban, cls: "border-l-[var(--critical)]" },
-  MODEL_SUMMARY: { label: "Model-drafted summary (passed citation check)", Icon: Sparkles, cls: "border-l-[var(--series-2)]" },
+  MODEL_SUMMARY: { label: "Model-drafted summary (every sentence checked against its cited evidence)", Icon: Sparkles, cls: "border-l-[var(--series-2)]" },
 };
+
+// How far the records behind a block have been checked. "Human-verified" appears only when every record is.
+function verificationNote(b: any): { text: string; tone: "ok" | "muted" | "warn" } | null {
+  if (b.kind !== "REPORTED_EVIDENCE") return null;
+  const v = b.verification;
+  if (!v) return { text: "Registry or derived statement — no review status", tone: "muted" };
+  if (v.human_verified) return { text: "Human-verified", tone: "ok" };
+  return { text: `${v.label} — not human-verified`, tone: v.needs_attention ? "warn" : "muted" };
+}
 
 export default function Assistant() {
   const { data: examples } = useApi<string[]>("/assistant/examples");
@@ -34,7 +43,7 @@ export default function Assistant() {
     <>
       <PageHeader eyebrow="Research assistant" title="Answers assembled from stored evidence, with every claim cited" lede="The assistant retrieves structured evidence first and composes its answer from it. It names what the sources do not contain, marks hypotheses, and declines treatment recommendations and unsupported causal claims." />
       <Callout tone={meta?.llm.enabled ? "info" : "muted"} title={meta?.llm.enabled ? `Language model enabled (${meta.llm.provider})` : "No language model is configured — answers are fully deterministic"}>
-        {meta?.llm.enabled ? "A model drafts an optional prose summary from the evidence cards below. The draft is shown only if every number in it appears in a card it cites; otherwise it is discarded." : "Retrieval, routing and interpretation are rule-based. Setting INCRETINOS_LLM_PROVIDER adds an optional model-drafted summary that must pass a citation check before it is shown."}
+        {meta?.llm.enabled ? "A model drafts an optional prose summary from the evidence cards below. Each sentence is read into structured claims and checked, without a model, against the database record behind the card it cites (drug, arm, trial, endpoint, value, unit, time point, estimand, interval, tier and verification status). The draft is shown only if every sentence is supported; otherwise it is withheld." : "Retrieval, routing and interpretation are rule-based. Setting INCRETINOS_LLM_PROVIDER adds an optional model-drafted summary; it is shown only if every sentence is supported by the record behind the card it cites."}
       </Callout>
       <form className="mt-5 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); ask(question); }}>
         <label className="sr-only" htmlFor="q">Research question</label>
@@ -49,16 +58,17 @@ export default function Assistant() {
       {answer && !busy ? (
         <div className="fade-in mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]" data-testid="assistant-answer">
           <div>
-            <p className="mb-2 text-[12px] text-ink-3">Question type: <span className="mono">{answer.intent}</span>{answer.llm.rejected ? <span className="ml-2"><Badge tone="warn">Model draft rejected by citation check</Badge></span> : null}</p>
+            <p className="mb-2 text-[12px] text-ink-3">Question type: <span className="mono">{answer.intent}</span>{answer.llm.rejected ? <span className="ml-2"><Badge tone="warn">Model draft withheld by claim verification</Badge></span> : null}{answer.llm.cards?.truncated ? <span className="ml-2"><Badge tone="warn">Model saw {answer.llm.cards.offered} of {answer.llm.cards.available} evidence cards</Badge></span> : null}</p>
             <ol className="space-y-2.5">
-              {answer.blocks.map((b: any, i: number) => { const k = KIND[b.kind] ?? KIND.INTERPRETATION; return (
-                <li key={i} className={clsx("rounded-r-md border border-l-4 border-hairline bg-surface px-4 py-3", k.cls)}>
-                  <p className="mb-1 flex items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-wide text-ink-3"><k.Icon aria-hidden size={13} /> {k.label}</p>
+              {answer.blocks.map((b: any, i: number) => { const k = KIND[b.kind] ?? KIND.INTERPRETATION; const v = verificationNote(b); return (
+                <li key={i} id={b.card_id ? `card-${b.card_id}` : undefined} className={clsx("rounded-r-md border border-l-4 border-hairline bg-surface px-4 py-3", k.cls)}>
+                  <p className="mb-1 flex flex-wrap items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-wide text-ink-3"><k.Icon aria-hidden size={13} /> {k.label}{b.card_id ? <span className="mono rounded border border-hairline-strong px-1 normal-case tracking-normal" title="Marker a model-drafted summary uses to cite this block">{b.card_id}</span> : null}{v ? <span className="normal-case tracking-normal" data-testid="block-verification"><Badge tone={v.tone} icon={false} title="Verification status of the records behind this block">{v.text}</Badge></span> : null}</p>
                   <p className="text-[13.5px] leading-relaxed text-ink">{b.text}</p>
+                  {b.note ? <p className="mt-1 text-[12px] text-ink-3">{b.note}</p> : null}
                   {b.citations.length ? <p className="mt-1.5 text-[12px] text-ink-3">Sources: {b.citations.map((id: number) => <Link key={id} href={`/sources?id=${id}`} className="num mr-1.5 font-medium">[{index.get(id) ?? id}]</Link>)}{b.result_ids.length ? <Link href={`/compare?a=${b.result_ids[0]}`} className="ml-1">open finding →</Link> : null}</p> : null}
                 </li>); })}
             </ol>
-            {answer.llm.citation_check && !answer.llm.citation_check.passed ? <div className="mt-3"><Callout tone="warn" title="Why the model draft was discarded"><ul className="list-disc pl-5">{answer.llm.citation_check.problems.map((p: string) => <li key={p}>{p}</li>)}</ul></Callout></div> : null}
+            {answer.llm.citation_check && !answer.llm.citation_check.passed ? <div className="mt-3"><Callout tone="warn" title="Why the model draft was withheld"><ul className="list-disc pl-5">{answer.llm.citation_check.problems.map((p: string) => <li key={p}>{p}</li>)}</ul></Callout></div> : null}
           </div>
           <Panel className="h-fit">
             <p className="text-[13.5px] font-semibold">Sources cited ({answer.sources.length})</p>
