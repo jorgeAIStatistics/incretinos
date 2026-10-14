@@ -388,8 +388,10 @@ _CI_LEAD = re.compile(
 _PAIR_GAP = re.compile(r"\s?%?\s*(?:to|,|-|;|and)\s*", re.IGNORECASE)
 _RANGE_GAP = re.compile(r"\s?%?\s?(?:to|-)\s?", re.IGNORECASE)
 _LIST_GAP = re.compile(r"\s?(?:,\s?and|,|and|to|-|or|&)\s?", re.IGNORECASE)
+_CLAUSE_BREAK = re.compile(r"[,;]|\.\s|\b(?:and|or|vs|versus|compared|than|while|whereas|but)\b", re.IGNORECASE)
 _CELL_GAP = re.compile(r"[\s|%*]*")
-_VALUE_LIST_GAP = re.compile(r"\s*(?:,\s*and|,|and|&|or)\s*", re.IGNORECASE)
+_VALUE_LIST_GAP = re.compile(r"\s*(?:,\s*and|,|and|&|or|vs\.?|versus)\s*", re.IGNORECASE)
+_LEADING_PHRASE = re.compile(r"\s*(?:[A-Za-z-]+\s*){1,2},")  # "In the 15 mg group, ..."
 _UNIT_WORDS = re.compile(r"%|percentage points?|\bkg\b|\blbs?\b|\*", re.IGNORECASE)
 _TIME_BEFORE = re.compile(r"\b(?:weeks?|wks?|months?|years?|days?)\s$", re.IGNORECASE)
 _TIME_AFTER = re.compile(r"[\s-]?(?:weeks?|wks?|months?|years?|yrs?|days?)\b", re.IGNORECASE)
@@ -458,6 +460,7 @@ class _Quote:
     toks: list[_Tok]
     doses: list[_DoseMark]
     free_text: str  # the quote with every number's own unit blanked: what is left can label a bare number
+    groups: list[tuple[int, int]]  # innermost (...) and [...] spans
 
     def equal(self, value: float) -> list[_Tok]:
         magnitude = abs(value)
@@ -483,6 +486,15 @@ def _dose_marks(text: str) -> list[_DoseMark]:
             cursor = lead.start(1)
     marks.sort(key=lambda d: d.start)
     return marks
+
+
+def _strip_brackets(text: str) -> str:
+    """The text without its complete (...) and [...] groups; an opening bracket that remains was never closed."""
+    while True:
+        stripped = _GROUP_RE.sub(" ", text)
+        if stripped == text:
+            return text
+        text = stripped
 
 
 def _sign_at(text: str, num_start: int) -> str:
@@ -581,7 +593,8 @@ def _parse(raw: str) -> _Quote:
         a, b = toks[i], toks[i + 1]
         if a.role == "VALUE" and b.role == "VALUE" and a.pair is None and _RANGE_GAP.fullmatch(text[a.end : b.start]):
             a.pair, b.role = i + 1, "RANGE_HI"
-    return _Quote(text=text, lower=text.lower(), toks=toks, doses=doses, free_text="".join(free))
+    groups = [g.span() for g in _GROUP_RE.finditer(text)]
+    return _Quote(text=text, lower=text.lower(), toks=toks, doses=doses, free_text="".join(free), groups=groups)
 
 
 # ------------------------------------------------------------------------------------- arm identity
@@ -1107,6 +1120,11 @@ class _Engine:
         if not exprs and not drugs and not placebo:
             head = text.split("(", 1)[0].lower()
             words = tuple(w for w in re.findall(r"[a-z][a-z-]{3,}", head) if w not in _ARM_STOPWORDS)
+        # A short remark in the label ("high-dose combination") is a name the source may use for the arm.
+        for remark in re.findall(r"\(([^()]*)\)", text.lower()):
+            remark = " ".join(remark.split())
+            if 1 < len(remark.split()) <= 4 and not re.search(r"[\d,;]", remark):
+                words += (remark,)
         descriptive = bool(exprs and drugs and _DESCRIPTIVE_DOSE.search(text))
         identity = _ArmIdentity(label=label or "", exprs=exprs, drugs=frozenset(drugs), placebo=placebo, words=words, descriptive_dose=descriptive)
         self._identity_cache[key] = identity
@@ -1231,61 +1249,95 @@ class _Engine:
                     detail.update(other=mapped, order=cands.index(cand) + 1)
                 return "mismatch", detail
 
-        # Values separated only by commas or "and" form one list; a marker next to a list cannot single one out.
+        # Values separated only by commas or "and" form one list; so do arm names.
         units: list[list[_Cand]] = []
         for cand in cands:
             if units and _VALUE_LIST_GAP.fullmatch(_UNIT_WORDS.sub("", q.text[units[-1][-1].end : cand.start])):
                 units[-1].append(cand)
             else:
                 units.append([cand])
-
-        def gap(index: int, side: str) -> list[_Marker]:
-            if side == "after":
-                lo, hi = units[index][-1].end, units[index + 1][0].start if index + 1 < len(units) else len(q.text)
+        unit_at = {cand.start: index for index, unit in enumerate(units) for cand in unit}
+        named: list[list[_Marker]] = []
+        for m in marks:
+            if named and _VALUE_LIST_GAP.fullmatch(q.text[named[-1][-1].end : m.start]):
+                named[-1].append(m)
             else:
-                lo, hi = units[index - 1][-1].end if index > 0 else 0, units[index][0].start
-            return [m for m in marks if lo <= m.start < hi]
+                named.append([m])
 
-        after_complete = all(gap(i, "after") for i in range(len(units)))
-        before_complete = all(gap(i, "before") for i in range(len(units)))
-        side = "after" if after_complete and not before_complete else "before" if before_complete and not after_complete else None
+        # Tie each arm name (or list of names) to the value it stands with:
+        #   "(6.7%; 12 mg)"                 the only value inside the same brackets
+        #   "-17.6% (4-mg dose), -23.7%"    brackets opened after a value belong to that value
+        #   "-5.5% with tirzepatide vs"     no comma, "and", "vs" or "than" between value and name
+        #   "3 mg 13%, 6 mg 64%"            ... or between name and the value that follows
+        #   "In the 15 mg group, 20.9%"     a name that opens a clause goes with the value after its comma
+        tied: dict[int, list[list[_Marker]]] = defaultdict(list)
+        for group in named:
+            start, end = group[0].start, group[-1].end
+            left = max((c for c in cands if c.end <= start), key=lambda c: c.end, default=None)
+            right = min((c for c in cands if c.start >= end), key=lambda c: c.start, default=None)
+            enclosing = next((span for span in q.groups if span[0] < start and end <= span[1]), None)
+            inside = [c for c in cands if enclosing and enclosing[0] < c.start and c.end <= enclosing[1]]
+            owners: list[_Cand] = []
+            if len(inside) == 1:
+                owners = inside
+            elif left is not None and re.search(r"[\(\[]", _strip_brackets(q.text[left.end : start])):
+                owners = [left]
+            else:
+                if left is not None and not _CLAUSE_BREAK.search(_strip_brackets(q.text[left.end : start])):
+                    owners.append(left)
+                if right is not None:
+                    after = _strip_brackets(q.text[end : right.start])
+                    if not owners:
+                        after = _LEADING_PHRASE.sub("", after, count=1)  # "in the placebo group, 3.1%"
+                    if not _CLAUSE_BREAK.search(after):
+                        owners.append(right)
+            for owner in owners:
+                tied[unit_at[owner.start]].append(group)
+
+        def tied_marks(index: int) -> list[_Marker]:
+            return [m for group in tied[index] for m in group]
+
         outcome = "unbound"
         for cand in mine:
-            index = next(i for i, unit in enumerate(units) if cand in unit)
-            unit = units[index]
-            if side is not None:
-                here = gap(index, side)
-                if len(unit) > 1:
-                    names = [m for m in here if m.kind != "WORD"]
-                    if len(names) == len(unit):
-                        mapped = names[unit.index(cand)]
+            index = unit_at[cand.start]
+            unit, here = units[index], tied_marks(index)
+            if len(unit) > 1:
+                # a list of values next to an equally long list of names pairs in order
+                for group in tied[index]:
+                    listed_names = [m for m in group if m.kind != "WORD"]
+                    if len(listed_names) == len(unit):
+                        mapped = listed_names[unit.index(cand)]
                         if mapped.own:
                             return "bound", detail
                         detail.update(other=mapped, order=unit.index(cand) + 1)
                         outcome = "mismatch"
-                    continue
-                if any(m.own for m in here):
+                continue
+            doses = [m for m in here if m.kind == "DOSE"]
+            if dose_bearing and doses:
+                # every dose named with the value must be this arm's, and all of this arm's doses must be there
+                if all(m.own for m in doses) and len({m.text for m in doses}) >= len(primary.exprs):
                     return "bound", detail
-                if dose_bearing or (primary.placebo and not primary.drugs):
-                    comparable = [m for m in here if m.kind == "DOSE"]
-                else:
-                    comparable = [m for m in here if m.kind in ("DRUG", "PLACEBO")]
-                if comparable:
-                    detail["other"] = comparable[0]
-                    outcome = "mismatch"
-            elif len(unit) > 1:
-                for way in ("after", "before"):
-                    listed_names = [m for m in gap(index, way) if m.kind != "WORD"]
-                    if len(listed_names) == len(unit) and listed_names[unit.index(cand)].own:
-                        return "bound", detail
+                detail["other"] = next((m for m in doses if not m.own), doses[0])
+                outcome = "mismatch"
+                continue
+            if any(m.own for m in here):
+                return "bound", detail
+            elsewhere = next(((m, other) for i, other_unit in enumerate(units) if i != index for m in tied_marks(i) if m.own for other in other_unit[:1]), None)
+            if primary.placebo and not primary.drugs:
+                rivals = [m for m in here if m.kind in ("DOSE", "DRUG")]
+            elif dose_bearing:
+                rivals = []
             else:
-                if any(m.own for m in gap(index, "after")) or any(m.own for m in gap(index, "before")):
-                    return "bound", detail
-                # Every other value has an arm named after it (or before it) and this one has none:
-                # it is the remaining arm's value, though the quote does not name that arm.
-                for way in ("after", "before"):
-                    if not gap(index, way) and all(gap(i, way) for i in range(len(units)) if i != index):
-                        return "remainder", detail
+                rivals = [m for m in here if m.kind in ("DRUG", "PLACEBO")]
+            if rivals:
+                detail["other"] = rivals[0]
+                outcome = "mismatch"
+            elif elsewhere is not None:
+                detail["own_at"] = elsewhere  # this arm's name stands with another value: not this value's arm by elimination
+            elif not here and all(tied[i] for i in range(len(units)) if i != index):
+                # every other value has its arm named with it and this one has none: it is the remaining
+                # arm's value, though the quote does not name that arm
+                return "remainder", detail
         return outcome, detail
 
     def _quote_value(self, out: list[CheckFlag], etype: str, rec: Record, q: _Quote, *, arms: Sequence[_ArmIdentity], arm_fields: tuple[str, ...], unit: str | None, signed: bool, change_endpoint: bool, endpoint_title: str | None) -> bool:
@@ -1380,6 +1432,9 @@ class _Engine:
             own = list(dict.fromkeys(_q(m.text) for m in detail["marks"] if m.own))
             if detail.get("respectively"):
                 why = "says 'respectively' without listing the arms"
+            elif "own_at" in detail:
+                own_mark, own_cand = detail["own_at"]
+                why = f"names {_q(own_mark.text)} with {own_cand.text}, not with {mine[0].text}"
             elif own:
                 why = f"names {', '.join(own)} but not next to {mine[0].text}"
             else:

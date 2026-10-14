@@ -918,3 +918,66 @@ def test_plus_minus_dispersion_is_not_a_second_candidate(world):
     quote = "body weight changed by -9.6 ± 0.5 kg with tirzepatide 15 mg at week 72 (n=630)"
     flags = flags_of(world, world.result(endpoint=endpoint, value=-9.6, unit="kg", ci_low=None, ci_high=None, ci_level=None, locator_quote=quote))
     assert flags == []
+
+
+def test_arm_named_in_the_quote_by_the_group_name_in_its_label(world):
+    """BELIEVE pattern: the quote calls the arm 'high-dose combination', the label carries that name as a remark."""
+    combo = world.arm("bimagrumab 30 mg/kg + semaglutide 2.4 mg (high-dose combination)", drug="bimagrumab+semaglutide", dose=None)
+    mono = world.arm("semaglutide 2.4 mg", drug="semaglutide", dose=2.4)
+    quote = "−12.0 kg (−10.8%; bimagrumab 30 mg kg), −16.5 kg (−15.7%; semaglutide 2.4 mg) and −24.2 kg (−22.1%; high-dose combination) at week 72"
+    plain = dict(ci_low=None, ci_high=None, ci_level=None, n_analyzed=None, locator_quote=quote)
+    arm_codes = {"QUOTE_MULTIPLE_CANDIDATES", "QUOTE_ARM_MISMATCH", "ARM_NOT_IN_QUOTE"}
+    assert not arm_codes & codes(flags_of(world, world.result(arm=combo, value=-22.1, **plain)))
+    assert not arm_codes & codes(flags_of(world, world.result(arm=mono, value=-15.7, **plain)))
+    swapped = flags_of(world, world.result(arm=mono, value=-22.1, source=world.paper, **plain))
+    assert "names '2.4 mg' with -15.7, not with -22.1" in explanation(swapped, "QUOTE_MULTIPLE_CANDIDATES")
+    half = flags_of(world, world.result(arm=combo, value=-10.8, source=world.paper, timepoint_weeks=72.0, class_title="other", **plain))
+    assert "'30 mg kg' is the arm named next to -10.8" in explanation(half, "QUOTE_ARM_MISMATCH")
+
+
+def test_values_swapped_between_arms_of_one_quote_are_caught(world):
+    """Each value of a prose list given to a neighbouring arm."""
+    quote = "The mean percent change in body weight at week 72 was -15.0% (5-mg dose) and -20.9% (15-mg dose) versus -3.1%"
+    plain = dict(ci_low=None, ci_high=None, ci_level=None, n_analyzed=None, locator_quote=quote)
+    for arm, value, code, words in (
+        (world.low_dose, -20.9, "QUOTE_ARM_MISMATCH", "'15-mg' is the arm named next to -20.9"),
+        (world.high_dose, -15.0, "QUOTE_ARM_MISMATCH", "'5-mg' is the arm named next to -15.0"),
+        (world.placebo, -15.0, "QUOTE_ARM_MISMATCH", "'5-mg' is the arm named next to -15.0"),
+        # the unlabelled value is not the 15 mg arm's by elimination: the quote names 15 mg with another value
+        (world.high_dose, -3.1, "QUOTE_MULTIPLE_CANDIDATES", "names '15-mg' with -20.9, not with -3.1"),
+    ):
+        flags = flags_of(world, world.result(arm=arm, value=value, **plain))
+        assert words in explanation(flags, code), (arm.label, value)
+        assert risk_level(flags) == "HIGH"
+
+
+PROSE = [
+    # quotes in which the 15 mg value (-20.9) and the placebo value (-3.1) are each tied to their arm
+    "weight change was -20.9% for tirzepatide 15 mg and -3.1% for placebo at week 72",
+    "Tirzepatide 15 mg: -20.9%; placebo: -3.1% (week 72)",
+    "At week 72: 15 mg -20.9% vs placebo -3.1%",
+    "At week 72, weight changed by -20.9% vs -3.1% (15 mg vs placebo)",
+    "At week 72, placebo (-3.1%) and tirzepatide 15 mg (-20.9%)",
+    "In the 15 mg group, weight changed by -20.9% at week 72; in the placebo group, by -3.1%",
+    "-20.9% and -3.1% with tirzepatide 15 mg and placebo at week 72",
+    "At week 72 weight changed by -20.9% with tirzepatide 15 mg. Placebo-treated participants changed by -3.1%.",
+    "-20.9% (95% CI, -21.8 to -19.9; 15 mg) and -3.1% (95% CI, -4.3 to -1.9; placebo) at week 72",
+    "Compared with placebo (-3.1%), tirzepatide 15 mg changed body weight by -20.9% at week 72",
+]
+
+
+@pytest.mark.parametrize("quote", PROSE)
+def test_prose_that_ties_each_value_to_its_arm_raises_no_arm_flag(world, quote):
+    plain = dict(ci_low=None, ci_high=None, ci_level=None, n_analyzed=None, locator_quote=quote)
+    arm_codes = {"QUOTE_MULTIPLE_CANDIDATES", "QUOTE_ARM_MISMATCH", "ARM_NOT_IN_QUOTE"}
+    assert not arm_codes & codes(flags_of(world, world.result(arm=world.high_dose, value=-20.9, **plain)))
+    assert not arm_codes & codes(flags_of(world, world.result(arm=world.placebo, value=-3.1, **plain)))
+
+
+@pytest.mark.parametrize("quote", PROSE)
+def test_the_same_prose_with_the_arms_swapped_is_flagged_high(world, quote):
+    plain = dict(ci_low=None, ci_high=None, ci_level=None, n_analyzed=None, locator_quote=quote)
+    for arm, value in ((world.placebo, -20.9), (world.high_dose, -3.1)):
+        flags = flags_of(world, world.result(arm=arm, value=value, **plain))
+        assert {"QUOTE_ARM_MISMATCH", "QUOTE_MULTIPLE_CANDIDATES"} & codes(flags), (arm.label, value, [(f.code, f.explanation) for f in flags])
+        assert risk_level(flags) == "HIGH"
