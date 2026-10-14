@@ -394,6 +394,7 @@ class _Version:
     source_key: str | None
     collision_level: int
     last_seen_at: datetime | None
+    supersedes_id: int | None
 
 
 _VERSION_COLUMNS = tuple(_Version.__dataclass_fields__)  # type: ignore[attr-defined]
@@ -477,17 +478,29 @@ def _reanchor_population_summaries(session: Session, snapshots: dict[int, Snapsh
     return changed
 
 
-def _automated_flags(session: Session, report: ReconcileReport, run_checks: bool) -> dict[tuple[str, int], list[CheckFlag]] | None:
-    """Flags from ``review.checks.evaluate_all`` when that module is installed; None when they are unavailable."""
-    if not run_checks:
-        report.checks = "SKIPPED"
-        return None
-    module = f"{__package__}.checks"  # written on another track; optional
+def _checks_module() -> Any | None:
+    """``review.checks`` when it is installed (it is optional: reconcile never depends on it)."""
+    module = f"{__package__}.checks"
     try:
-        checks = importlib.import_module(module)
+        return importlib.import_module(module)
     except ModuleNotFoundError as exc:
         if exc.name != module:
             raise
+        return None
+
+
+def _automated_flags(session: Session, report: ReconcileReport, run_checks: bool) -> dict[tuple[str, int], list[CheckFlag]] | None:
+    """Flags from ``review.checks.evaluate_all`` when that module is installed; None when they are unavailable.
+
+    The result has an entry for every record the checks evaluated, an empty list included. A record without an
+    entry was not evaluated (the checks run as analytic code and do not see rejected rows, so a rejected sibling
+    cannot keep a duplicate flag alive on the row that remains); reconcile keeps what is stored for it.
+    """
+    if not run_checks:
+        report.checks = "SKIPPED"
+        return None
+    checks = _checks_module()
+    if checks is None:
         report.checks = "NOT_INSTALLED"
         return {}
     evaluate = getattr(checks, "evaluate_all", None)
@@ -503,6 +516,47 @@ def _automated_flags(session: Session, report: ReconcileReport, run_checks: bool
         return None
     report.checks = "RAN"
     return found
+
+
+CHANGE_FLAG = "CHANGED_SINCE_LAST_INGESTION"
+
+
+def _superseded_version_id(version: _Version | None, previous: _Version | None) -> int | None:
+    """The version whose content the row's present content replaced, if it replaced any.
+
+    ``previous`` is the version the key had when it was last seen and ``version`` the stored version with the
+    row's present fingerprint, if one exists. When they differ, the present content is replacing ``previous`` in
+    this very pass; when they are the same version, what it replaced earlier is on record in ``supersedes_id``.
+    """
+    if previous is not None and previous is not version:
+        return previous.id
+    return version.supersedes_id if version is not None else None
+
+
+def _change_flags(session: Session, report: ReconcileReport, superseded: dict[tuple[str, str], int], records: list[EvidenceRecord]) -> dict[tuple[str, str], CheckFlag]:
+    """The "changed since the last ingestion" flag of every row whose content replaced an earlier version.
+
+    The previous field values come from the superseded version's snapshot in ``evidence_version`` and the present
+    ones from the row's own snapshot, both flattened the way the version history diffs them, so the flag, the
+    stored ``changed_fields`` and the change event describe one and the same difference. The flag is derived from
+    stored history on every pass (which keeps reconcile idempotent) and stays for as long as that version is the
+    current one. It is produced by ``review.checks.change_flag``; without that module there is no such flag.
+    """
+    if not superseded or report.checks != "RAN":
+        return {}
+    build = getattr(_checks_module(), "change_flag", None)
+    if build is None:
+        return {}
+    earlier = _fetch_snapshots(session, superseded.values(), {})
+    out: dict[tuple[str, str], CheckFlag] = {}
+    for record in records:
+        key = (record.evidence_type, record.evidence_key)
+        if key not in superseded:
+            continue
+        flag = build(identity.flatten(record.snapshot), identity.flatten(earlier.get(superseded[key]) or {}))
+        if flag is not None:
+            out[key] = flag
+    return out
 
 
 def _flag_dicts(flags: Iterable[Any]) -> list[dict[str, Any]]:
@@ -565,6 +619,15 @@ def reconcile(session: Session, *, run_checks: bool = True) -> ReconcileReport:
             if held is None or (v.last_seen_at, v.id) > (held.last_seen_at, held.id):
                 last_known[key] = v
 
+    # Rows whose present content replaced an earlier version, and the flag that says what changed.
+    superseded: dict[tuple[str, str], int] = {}
+    for record in records:
+        key = (record.evidence_type, record.evidence_key)
+        earlier_id = _superseded_version_id(by_identity.get((record.evidence_type, record.evidence_key, record.fingerprint)), current.get(key) or last_known.get(key))
+        if earlier_id is not None:
+            superseded[key] = earlier_id
+    change_flags = _change_flags(session, report, superseded, records) if check_flags is not None else {}
+
     row_updates: dict[str, list[dict[str, Any]]] = defaultdict(list)
     key_clears: dict[str, list[dict[str, Any]]] = defaultdict(list)
     version_inserts: list[tuple[EvidenceRecord, dict[str, Any], _Version | None]] = []
@@ -593,11 +656,17 @@ def reconcile(session: Session, *, run_checks: bool = True) -> ReconcileReport:
         previous = current.get(key) or last_known.get(key)
 
         own_flags = identity_flags(record)
-        if check_flags is None:  # checks skipped or failed: keep what was stored for this exact content
+        evaluated = None if check_flags is None else check_flags.get((record.evidence_type, record.row_id))
+        if evaluated is None:
+            # Checks skipped or failed, or this row was not evaluated (a rejected row is hidden from them):
+            # keep what was stored for this exact content.
             kept = [f for f in (version.check_flags if version else None) or [] if not str(f.get("code", "")).startswith("IDENTITY_")]
+            if check_flags is not None:  # the checks ran: the change flag is derived afresh from the version history
+                kept = [f for f in kept if f.get("code") != CHANGE_FLAG]
+                kept += [change_flags[key]] if key in change_flags else []
             flags = _flag_dicts([*own_flags, *kept])
         else:
-            flags = _flag_dicts([*own_flags, *check_flags.get((record.evidence_type, record.row_id), ())])
+            flags = _flag_dicts([*own_flags, *evaluated, *([change_flags[key]] if key in change_flags else [])])
         risk = _risk(flags)
 
         stored = record.stored

@@ -1790,6 +1790,7 @@ def test_automated_check_flags_are_stored_when_the_checks_module_is_installed(la
     row = lab.registry_primary("15 mg Tirzepatide")
     rid = lab.by_key(row)["id"]
     assert lab.by_key(row)["check_flags"] == [] and lab.by_key(row)["risk_level"] == "NONE"
+    high_before = lab.all_rows(risk_level="HIGH")
 
     module = types.ModuleType("incretinos.review.checks")
     module.evaluate_all = lambda session: {("result", rid): [CheckFlag("TEST_ARM_MISMATCH", "HIGH", "Explains a risk; corrects nothing.", ("arm", "value"))]}  # type: ignore[attr-defined]
@@ -1801,9 +1802,16 @@ def test_automated_check_flags_are_stored_when_the_checks_module_is_installed(la
     detail = lab.by_key(row)
     assert detail["check_flags"] == [{"code": "TEST_ARM_MISMATCH", "severity": "HIGH", "explanation": "Explains a risk; corrects nothing.", "fields": ["arm", "value"]}]
     assert detail["risk_level"] == "HIGH" and detail["values"]["value"] == -22.5 and detail["fingerprint"] == row["fingerprint"]  # a flag never changes evidence
-    flagged = lab.one(risk_level="HIGH")
-    assert flagged["evidence_key"] == row["evidence_key"] and flagged["flag_codes"] == ["TEST_ARM_MISMATCH"] and flagged["n_flags"] == 1
-    assert lab.rows(sort="risk")[0]["evidence_key"] == row["evidence_key"]
+    # The stand-in evaluated one row only. A row without an entry was not evaluated, so its stored flags (written by
+    # the real checks module when the laboratory database was seeded) are kept: exactly one row changed above.
+    high = lab.all_rows(risk_level="HIGH")
+    assert all(r["risk_level"] == "HIGH" for r in high) and row["risk_level"] == "NONE"
+    [flagged] = [r for r in high if r["evidence_key"] == row["evidence_key"]]
+    assert flagged["flag_codes"] == ["TEST_ARM_MISMATCH"] and flagged["n_flags"] == 1
+    assert {r["evidence_key"] for r in high} - {row["evidence_key"]} == {r["evidence_key"] for r in high_before}
+    by_risk = lab.all_rows(sort="risk")
+    order = [("HIGH", "MEDIUM", "LOW", "NONE").index(r["risk_level"]) for r in by_risk]
+    assert order == sorted(order) and row["evidence_key"] in [r["evidence_key"] for r in by_risk[: len(high)]]
     with lab.session() as session:
         stored = session.get(OutcomeResult, rid)
         assert stored.risk_level == "HIGH" and stored.check_flags[0]["code"] == "TEST_ARM_MISMATCH" and stored.verification_status == MACHINE
@@ -1826,6 +1834,45 @@ def test_automated_check_flags_are_stored_when_the_checks_module_is_installed(la
         report = reconcile(session)
         session.commit()
     assert report.checks in ("NOT_INSTALLED", "RAN") and (report.checks == "RAN" or lab.by_key(row)["risk_level"] == "NONE")
+
+
+def test_a_changed_row_carries_the_changed_since_last_ingestion_flag_with_the_previous_values(lab):
+    """The flag is built by review.checks from the superseded version in evidence_version, and derived again on every pass."""
+    changed_row = lab.registry_primary("15 mg Tirzepatide")
+    untouched_row = lab.registry_primary("10 mg Tirzepatide")
+    assert "CHANGED_SINCE_LAST_INGESTION" not in {code for r in lab.all_rows() for code in r["flag_codes"]}  # nothing has changed yet
+    assert lab.by_key(changed_row)["risk_level"] == "NONE"
+
+    lab.check_updates({REGISTRY_FIXTURE: _revise_primary_outcome("-20.5")})
+    detail = lab.by_key(changed_row)
+    [flag] = [f for f in detail["check_flags"] if f["code"] == "CHANGED_SINCE_LAST_INGESTION"]
+    assert flag["severity"] == "MEDIUM" and set(flag["fields"]) == {"value", "value_text"}
+    assert "value: -22.5 → -20.5" in flag["explanation"] and "2 field(s) differ from the previous ingestion" in flag["explanation"]
+    assert detail["risk_level"] == "MEDIUM" and detail["values"]["value"] == -20.5
+    # The flag names exactly the fields the version history records as changed.
+    assert set(flag["fields"]) == {c["field"] for c in detail["versions"][0]["changed_fields"]}
+    flagged = [r for r in lab.all_rows() if "CHANGED_SINCE_LAST_INGESTION" in r["flag_codes"]]
+    assert [r["evidence_key"] for r in flagged] == [changed_row["evidence_key"]]  # no other row of the record changed
+    assert lab.by_key(untouched_row)["check_flags"] == []
+    with lab.session() as session:
+        stored = session.scalar(select(OutcomeResult).where(OutcomeResult.evidence_key == changed_row["evidence_key"]))
+        assert stored.risk_level == "MEDIUM" and [f["code"] for f in stored.check_flags] == ["CHANGED_SINCE_LAST_INGESTION"]
+        version = session.scalar(select(EvidenceVersion).where(EvidenceVersion.evidence_key == changed_row["evidence_key"], EvidenceVersion.is_current.is_(True)))
+        assert version.check_flags == stored.check_flags and version.supersedes_id is not None
+
+    # Derived from stored history, so a second pass writes nothing and the flag stays while this version is current.
+    with lab.session() as session:
+        again = reconcile(session)
+        session.commit()
+    assert again.checks == "RAN" and again.rows_updated == 0 and again.new_versions == 0 and again.changed_total == 0
+    assert lab.by_key(changed_row)["check_flags"] == detail["check_flags"]
+    assert lab.check_updates({REGISTRY_FIXTURE: _revise_primary_outcome("-20.5")}).review["rows_updated"] == 0
+
+    # The registry going back to the earlier value is again a change, described from the version it replaces.
+    lab.check_updates()
+    [back] = [f for f in lab.by_key(changed_row)["check_flags"] if f["code"] == "CHANGED_SINCE_LAST_INGESTION"]
+    assert "value: -20.5 → -22.5" in back["explanation"] and lab.by_key(changed_row)["values"]["value"] == -22.5
+    assert [r.rule_id for r in _failed_rules(lab)] == []
 
 
 def test_the_scheduled_refresh_reconciles_and_reports_changed_evidence(lab, monkeypatch):
