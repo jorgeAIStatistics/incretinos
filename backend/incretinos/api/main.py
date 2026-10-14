@@ -8,15 +8,21 @@ entirely when no token is configured. Every external input is validated by a typ
 from __future__ import annotations
 
 import hmac
+import logging
+import math
 import re
 from collections import Counter
-from contextlib import asynccontextmanager
+from collections.abc import Iterator
+from contextlib import asynccontextmanager, contextmanager
+from dataclasses import dataclass
 from typing import Annotated, Any, Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
-from pydantic import BaseModel, ConfigDict, Field
+from fastapi.responses import JSONResponse, PlainTextResponse
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -31,10 +37,14 @@ from ..engines.estimands import ESTIMAND_EXPLAINER
 from ..engines.findings import (
     AE_KIND_LABEL,
     CATEGORY_LABEL,
+    DISPLAY_RULE,
     ae_dto,
     analysis_dto,
+    arm_stratum,
     baseline_class,
     build_finding,
+    derived_interval,
+    display_lead,
     get_finding,
     source_ref,
     study_brief,
@@ -79,8 +89,11 @@ from ..models import (
     StudyDrug,
 )
 from ..reports.export import comparison_report_markdown, study_report_markdown
+from ..review.policy import is_usable
+from ..vocab import norm_arm_label
 
 settings = get_settings()
+log = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -106,12 +119,67 @@ app.add_middleware(
     allow_headers=["Content-Type", "X-Reviewer-Token"],
 )
 
+
+
+def _json_safe(value: Any) -> Any:
+    """A validation error echoes the rejected input. NaN and infinities are not valid JSON, so they are spelled out."""
+    if isinstance(value, float) and not math.isfinite(value):
+        return "NaN" if math.isnan(value) else ("Infinity" if value > 0 else "-Infinity")
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, list | tuple):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, BaseException):
+        return str(value)
+    return value
+
+
+@app.exception_handler(RequestValidationError)
+async def invalid_request(_: Request, exc: RequestValidationError) -> JSONResponse:
+    """422 in FastAPI's usual shape. Without this, a body containing NaN or Infinity is rejected by validation but the
+    error report itself cannot be serialised, and the client receives a 500 instead of the reason."""
+    return JSONResponse(status_code=422, content={"detail": jsonable_encoder(_json_safe(exc.errors()))})
+
+
 Db = Annotated[Session, Depends(get_db)]
 NCT = Annotated[str, Field(pattern=r"^[Nn][Cc][Tt]\d{8}$")]
 
 
 class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+# Every number a calculation endpoint accepts is finite and of plausible magnitude. NaN, Infinity and values
+# beyond these bounds are rejected with a 422 before any arithmetic runs.
+MAX_INPUT_MAGNITUDE = 1e6
+Real = Annotated[float, Field(allow_inf_nan=False, ge=-MAX_INPUT_MAGNITUDE, le=MAX_INPUT_MAGNITUDE)]
+PositiveReal = Annotated[float, Field(allow_inf_nan=False, gt=0, le=MAX_INPUT_MAGNITUDE)]
+Proportion = Annotated[float, Field(allow_inf_nan=False, ge=0, lt=1)]
+Share = Annotated[float, Field(allow_inf_nan=False, ge=0, le=1)]
+
+
+@contextmanager
+def calculation() -> Iterator[None]:
+    """Turn every refusal or numerical failure of a calculation into a 422 with a clear message — never a 500."""
+    try:
+        yield
+    except (StatsInputError, InvalidInferenceError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (ArithmeticError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=f"The calculation is not defined for these inputs ({type(exc).__name__}). No result is returned.") from exc
+
+
+def _finite_result(value: Any, path: str = "result") -> Any:
+    """Refuse to return a calculation whose output contains NaN or an infinity."""
+    if isinstance(value, float) and not math.isfinite(value):
+        raise HTTPException(status_code=422, detail=f"The calculation did not produce a finite number for these inputs ({path}). No result is returned.")
+    if isinstance(value, dict):
+        for key, item in value.items():
+            _finite_result(item, f"{path}.{key}")
+    elif isinstance(value, list | tuple):
+        for index, item in enumerate(value):
+            _finite_result(item, f"{path}[{index}]")
+    return value
 
 
 def require_reviewer(x_reviewer_token: Annotated[str | None, Header()] = None) -> str:
@@ -146,9 +214,7 @@ def _compact(f) -> dict[str, Any]:
     for key in ("analysis_population", "analysis_method", "design_features", "population_summary", "conditions", "diabetes_basis"):
         data.pop(key, None)
     # An interval derived here from a reported standard error is returned separately and flagged as an inference.
-    data["derived_interval"] = None
-    if f.ci_low is None and f.value is not None and f.dispersion_value is not None and f.dispersion_type and "standard error" in f.dispersion_type.lower():
-        data["derived_interval"] = stats.ci_from_se(f.value, f.dispersion_value)
+    data["derived_interval"] = derived_interval(f)
     return data
 
 
@@ -420,12 +486,14 @@ def list_analyses(db: Db, study: str | None = None, category: str | None = None,
 
 
 class CompareRequest(Strict):
-    a: int = Field(gt=0)
-    b: int = Field(gt=0)
+    a: int = Field(gt=0, le=2**31 - 1)
+    b: int = Field(gt=0, le=2**31 - 1)
 
 
 @app.post("/api/compare", tags=["evidence"])
 def compare(body: CompareRequest, db: Db) -> dict[str, Any]:
+    if body.a == body.b:
+        raise HTTPException(status_code=422, detail="Choose two different results: a result set beside itself is not a comparison.")
     a, b = get_finding(db, body.a), get_finding(db, body.b)
     if a is None or b is None:
         raise HTTPException(status_code=404, detail="One or both findings were not found")
@@ -433,57 +501,169 @@ def compare(body: CompareRequest, db: Db) -> dict[str, Any]:
     audit(db, "comparison.run", actor="api", target_type="comparison", target_id=f"{body.a}:{body.b}", classification=comparison.classification)
     db.commit()
     return {"a": a.as_dict(), "b": b.as_dict(), "interpretation_a": interpret_finding(a), "interpretation_b": interpret_finding(b), "comparison": comparison.as_dict(),
-            "analysis_interpretations": [interpret_analysis(x) for x in comparison.reported_analyses]}
+            "analysis_interpretations": [interpret_analysis(x) for x in comparison.reported_analyses],
+            "other_analysis_interpretations": [interpret_analysis(x) for x in comparison.other_analyses]}
 
 
-def _pick(db: Session, nct: str, arm_contains: str, estimand: str | None, tier: str | None = None, weeks: float | None = None, category: str = "WEIGHT_PCT_CHANGE", baseline_contains: str | None = None) -> int | None:
-    study = db.scalar(select(Study).where(Study.nct_id == nct))
+# ---- worked comparison presets: resolved by scientific description, then checked against their own titles
+
+
+@dataclass(frozen=True)
+class PresetSide:
+    """One result described scientifically. Every stated attribute must hold for the stored result."""
+
+    nct: str
+    drug: str | None = None  # drug slug of the arm
+    dose: float | None = None  # parsed single dose of the arm, in its stored unit
+    placebo: bool = False
+    arm_label: str | None = None  # exact (normalised) arm label, for combination arms that have no single dose
+    estimand: str | None = None
+    tier: str | None = None
+    weeks: float | None = None
+    baseline: str | None = None  # baseline class
+    role: str | None = None  # endpoint role
+    diabetes: str | None = None  # diabetes status of the trial population
+    category: str = "WEIGHT_PCT_CHANGE"
+
+
+@dataclass(frozen=True)
+class PresetSpec:
+    title: str
+    question: str
+    a: PresetSide
+    b: PresetSide
+    relationship: str  # RANDOMIZED_ARMS_OF_ONE_TRIAL | SAME_ARM_TWO_REPORTS | DIFFERENT_TRIALS
+    analysis: str | None = None  # "CI" = an exactly matching between-arm analysis with an interval; "CI_NO_P" = … and no p-value
+
+
+def _side_problems(side: PresetSide, f: Any) -> list[str]:
+    """What a resolved finding fails to match in its description ([] = it is what the title says)."""
+    problems = []
+    if f.nct_id != side.nct:
+        problems.append(f"trial is {f.nct_id}, not {side.nct}")
+    if side.placebo != bool(f.is_placebo):
+        problems.append("placebo flag differs")
+    if side.drug is not None and f.drug_slug != side.drug:
+        problems.append(f"arm drug is {f.drug_slug}, not {side.drug}")
+    if side.dose is not None and f.dose_amount != side.dose:
+        problems.append(f"arm dose is {f.dose_amount}, not {side.dose}")
+    if side.arm_label is not None and norm_arm_label(f.arm_label) != norm_arm_label(side.arm_label):
+        problems.append(f"arm is '{f.arm_label}', not '{side.arm_label}'")
+    if side.estimand is not None and f.estimand_label != side.estimand:
+        problems.append(f"estimand is {f.estimand_label}, not {side.estimand}")
+    if side.tier is not None and f.tier != side.tier:
+        problems.append(f"tier is {f.tier}, not {side.tier}")
+    if side.weeks is not None and f.timepoint_weeks != side.weeks:
+        problems.append(f"week is {f.timepoint_weeks}, not {side.weeks}")
+    if side.baseline is not None and f.baseline_class != side.baseline:
+        problems.append(f"baseline is {f.baseline_class}, not {side.baseline}")
+    if side.role is not None and f.role != side.role:
+        problems.append(f"endpoint role is {f.role}, not {side.role}")
+    if side.diabetes is not None and f.diabetes_status != side.diabetes:
+        problems.append(f"diabetes status is {f.diabetes_status}, not {side.diabetes}")
+    if f.category != side.category or f.scope != "ARM" or f.is_pooled or f.value is None or f.randomization_stratum:
+        problems.append("not a single-arm value of the main randomization on the stated endpoint")
+    return problems
+
+
+def _preset_candidates(db: Session, side: PresetSide) -> list[OutcomeResult]:
+    study = db.scalar(select(Study).where(Study.nct_id == side.nct))
     if study is None:
+        return []
+    out = []
+    for r in sorted(study.results, key=lambda x: x.id):
+        arm = r.arm
+        if r.endpoint.category != side.category or r.value is None or r.scope != "ARM" or arm is None or arm.is_pooled or " minus " in r.arm_label or not is_usable(r.verification_status):
+            continue
+        if arm_stratum(arm.label) or bool(arm.is_placebo) != side.placebo:
+            continue
+        if side.drug is not None and arm.drug_slug != side.drug:
+            continue
+        if side.dose is not None and arm.dose_amount != side.dose:
+            continue
+        if side.arm_label is not None and norm_arm_label(r.arm_label) != norm_arm_label(side.arm_label):
+            continue
+        if side.estimand is not None and (r.estimand.label if r.estimand else "NOT_STATED") != side.estimand:
+            continue
+        if side.tier is not None and r.tier != side.tier:
+            continue
+        if side.weeks is not None and r.timepoint_weeks != side.weeks:
+            continue
+        if side.baseline is not None and baseline_class(study.design_features, r.baseline_definition) != side.baseline:
+            continue
+        if side.role is not None and r.endpoint.role != side.role:
+            continue
+        out.append(r)
+    return out
+
+
+def _resolve_preset(db: Session, spec: PresetSpec) -> dict[str, Any] | None:
+    """Resolve a preset to two stored results and check that the pair is what its title says. None = not offered."""
+    pairs = [(ra, rb) for ra in _preset_candidates(db, spec.a) for rb in _preset_candidates(db, spec.b) if ra.id != rb.id]
+    if not pairs:
+        log.warning("Comparison preset not offered (no stored results match its description): %s", spec.title)
         return None
-    for r in study.results:
-        if r.endpoint.category != category or r.value is None or r.scope != "ARM" or " minus " in r.arm_label or " to " in r.arm_label.lower():
-            continue
-        if arm_contains.lower() not in r.arm_label.lower():
-            continue
-        if estimand and (r.estimand.label if r.estimand else "NOT_STATED") != estimand:
-            continue
-        if tier and r.tier != tier:
-            continue
-        if weeks and r.timepoint_weeks != weeks:
-            continue
-        if baseline_contains and baseline_contains.lower() not in (r.baseline_definition or "").lower():
-            continue
-        return r.id
-    return None
+    # Within one trial, two values of one outcome measure go together; otherwise the records stored first are used.
+    ra, rb = min(pairs, key=lambda pair: (0 if pair[0].endpoint_id == pair[1].endpoint_id else 1, pair[0].id, pair[1].id))
+    fa, fb = build_finding(db, ra), build_finding(db, rb)
+    comparison = compare_findings(db, fa, fb)
+    problems = [f"A: {x}" for x in _side_problems(spec.a, fa)] + [f"B: {x}" for x in _side_problems(spec.b, fb)]
+    if fa.result_id == fb.result_id:
+        problems.append("both sides resolve to the same result")
+    if comparison.relationship != spec.relationship:
+        problems.append(f"the two groups are {comparison.relationship}, not {spec.relationship}")
+    if spec.analysis is not None:
+        exact = comparison.reported_analyses
+        if not exact or exact[0]["ci_low"] is None:
+            problems.append("no exactly matching between-arm analysis with a confidence interval is stored")
+        elif spec.analysis == "CI_NO_P" and exact[0]["p_value_text"]:
+            problems.append("the matching analysis does report a p-value")
+    if problems:
+        log.warning("Comparison preset not offered (it is not what its title says): %s — %s", spec.title, "; ".join(problems))
+        return None
+
+    def described(f: Any) -> dict[str, Any]:
+        return {"result_id": f.result_id, "study": f.study_name, "nct_id": f.nct_id, "arm": f.arm_label, "estimand": f.estimand_label, "timepoint_weeks": f.timepoint_weeks,
+                "baseline_class": f.baseline_class, "tier": f.tier, "diabetes_status": f.diabetes_status, "value": f.value, "unit": f.unit}
+
+    return {"title": spec.title, "question": spec.question, "a": fa.result_id, "b": fb.result_id, "classification": comparison.classification,
+            "relationship": comparison.relationship, "verified": True, "resolved": {"a": described(fa), "b": described(fb)}}
+
+
+_SM1, _ATTAIN1, _TRIUMPH1, _SM4, _ELORA, _SM5 = "NCT04184622", "NCT05869903", "NCT05929066", "NCT04660643", "NCT06603571", "NCT05822830"
+_SM1_15_EFFICACY = PresetSide(_SM1, drug="tirzepatide", dose=15, estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72, diabetes="NO_T2D")
+_ELORA_COMBO = PresetSide(_ELORA, arm_label="eloralintide 9 mg + tirzepatide 15 mg", estimand="EFFICACY", tier="PRESS_RELEASE", weeks=48, diabetes="T2D")
+PRESETS: tuple[PresetSpec, ...] = (
+    PresetSpec("Tirzepatide 15 mg vs placebo within SURMOUNT-1", "Randomized arms of one trial, registry-posted analysis with confidence interval.",
+               _SM1_15_EFFICACY, PresetSide(_SM1, placebo=True, drug="placebo", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72),
+               "RANDOMIZED_ARMS_OF_ONE_TRIAL", analysis="CI"),
+    PresetSpec("Retatrutide 12 mg (TRIUMPH-1) vs tirzepatide 15 mg (SURMOUNT-1)", "Different trials, same estimand: is this head-to-head evidence?",
+               PresetSide(_TRIUMPH1, drug="retatrutide", dose=12, estimand="TREATMENT_REGIMEN", tier="PEER_REVIEWED", weeks=80),
+               PresetSide(_SM1, drug="tirzepatide", dose=15, estimand="TREATMENT_REGIMEN", tier="PEER_REVIEWED", weeks=72), "DIFFERENT_TRIALS"),
+    PresetSpec("ATTAIN-1 36 mg: efficacy estimand vs treatment-regimen estimand", "Same arm, two estimands — two answers to two different questions.",
+               PresetSide(_ATTAIN1, drug="orforglipron", dose=36, estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72),
+               PresetSide(_ATTAIN1, drug="orforglipron", dose=36, estimand="TREATMENT_REGIMEN", tier="PEER_REVIEWED", weeks=72), "SAME_ARM_TWO_REPORTS"),
+    PresetSpec("Orforglipron 36 mg (ATTAIN-1) vs tirzepatide 15 mg (SURMOUNT-1)", "Two placebo-controlled Phase 3 trials without diabetes, same inferred estimand and duration.",
+               PresetSide(_ATTAIN1, drug="orforglipron", dose=36, estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72, diabetes="NO_T2D"), _SM1_15_EFFICACY, "DIFFERENT_TRIALS"),
+    PresetSpec("SURMOUNT-4 (from randomization at week 36) vs SURMOUNT-1 (from baseline)", "Randomized-withdrawal baseline versus study-entry baseline.",
+               PresetSide(_SM4, drug="tirzepatide", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=88, baseline="RANDOMIZATION_AFTER_LEAD_IN"),
+               PresetSide(_SM1, drug="tirzepatide", dose=15, estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72, baseline="STUDY_BASELINE"), "DIFFERENT_TRIALS"),
+    PresetSpec("EloraTZP 9 mg + 15 mg vs tirzepatide 15 mg within the Phase 2b trial", "Randomized within one Phase 2 trial in type 2 diabetes; press-release topline only.",
+               _ELORA_COMBO, PresetSide(_ELORA, drug="tirzepatide", dose=15, estimand="EFFICACY", tier="PRESS_RELEASE", weeks=48, diabetes="T2D"), "RANDOMIZED_ARMS_OF_ONE_TRIAL"),
+    PresetSpec("EloraTZP Phase 2b (T2D, 48 weeks) vs tirzepatide 15 mg in SURMOUNT-1 (no T2D, 72 weeks)", "Different populations, durations, phases and evidence tiers.",
+               _ELORA_COMBO, _SM1_15_EFFICACY, "DIFFERENT_TRIALS"),
+    PresetSpec("Tirzepatide vs semaglutide within SURMOUNT-5", "Head-to-head randomized trial; registry reports a difference with CI but no p-value.",
+               PresetSide(_SM5, drug="tirzepatide", tier="REGISTRY_RESULTS", role="PRIMARY"), PresetSide(_SM5, drug="semaglutide", tier="REGISTRY_RESULTS", role="PRIMARY"),
+               "RANDOMIZED_ARMS_OF_ONE_TRIAL", analysis="CI_NO_P"),
+)
 
 
 @app.get("/api/compare/presets", tags=["evidence"])
 def compare_presets(db: Db) -> list[dict[str, Any]]:
-    """Worked examples that exercise each classification (ids resolved from the live database)."""
-    specs = [
-        ("Tirzepatide 15 mg vs placebo within SURMOUNT-1", "Randomized arms of one trial, registry-posted analysis with confidence interval.",
-         _pick(db, "NCT04184622", "15 mg", "EFFICACY", "REGISTRY_RESULTS", 72), _pick(db, "NCT04184622", "placebo", "EFFICACY", "REGISTRY_RESULTS", 72)),
-        ("Retatrutide 12 mg (TRIUMPH-1) vs tirzepatide 15 mg (SURMOUNT-1)", "Different trials, same estimand: is this head-to-head evidence?",
-         _pick(db, "NCT05929066", "12 mg", "TREATMENT_REGIMEN", "PEER_REVIEWED", 80), _pick(db, "NCT04184622", "15 mg", "TREATMENT_REGIMEN", "PEER_REVIEWED", 72)),
-        ("ATTAIN-1 36 mg: efficacy estimand vs treatment-regimen estimand", "Same arm, two estimands — two answers to two different questions.",
-         _pick(db, "NCT05869903", "36 mg", "EFFICACY", "REGISTRY_RESULTS", 72), _pick(db, "NCT05869903", "36 mg", "TREATMENT_REGIMEN", "PEER_REVIEWED", 72)),
-        ("Orforglipron 36 mg (ATTAIN-1) vs tirzepatide 15 mg (SURMOUNT-1)", "Two placebo-controlled Phase 3 trials without diabetes, same inferred estimand and duration.",
-         _pick(db, "NCT05869903", "36 mg", "EFFICACY", "REGISTRY_RESULTS", 72), _pick(db, "NCT04184622", "15 mg", "EFFICACY", "REGISTRY_RESULTS", 72)),
-        ("SURMOUNT-4 (from randomization at week 36) vs SURMOUNT-1 (from baseline)", "Randomized-withdrawal baseline versus study-entry baseline.",
-         _pick(db, "NCT04660643", "tirzepatide", "EFFICACY", "REGISTRY_RESULTS", 88, baseline_contains="randomization"), _pick(db, "NCT04184622", "15 mg", "EFFICACY", "REGISTRY_RESULTS", 72)),
-        ("EloraTZP 9 mg + 15 mg vs tirzepatide 15 mg within the Phase 2b trial", "Randomized within one Phase 2 trial in type 2 diabetes; press-release topline only.",
-         _pick(db, "NCT06603571", "9 mg + tirzepatide 15", "EFFICACY"), _pick(db, "NCT06603571", "tirzepatide 15 mg", "EFFICACY")),
-        ("EloraTZP Phase 2b (T2D, 48 weeks) vs tirzepatide 15 mg in SURMOUNT-1 (no T2D, 72 weeks)", "Different populations, durations, phases and evidence tiers.",
-         _pick(db, "NCT06603571", "9 mg + tirzepatide 15", "EFFICACY"), _pick(db, "NCT04184622", "15 mg", "EFFICACY", "REGISTRY_RESULTS", 72)),
-        ("Tirzepatide vs semaglutide within SURMOUNT-5", "Head-to-head randomized trial; registry reports a difference with CI but no p-value.",
-         _pick(db, "NCT05822830", "tirzepatide", None, "REGISTRY_RESULTS"), _pick(db, "NCT05822830", "semaglutide", None, "REGISTRY_RESULTS")),
-    ]
-    out = []
-    for title, question, a, b in specs:
-        if a and b:
-            fa, fb = get_finding(db, a), get_finding(db, b)
-            out.append({"title": title, "question": question, "a": a, "b": b, "classification": compare_findings(db, fa, fb).classification})
-    return out
+    """Worked examples. Each is resolved from the live database by its scientific description and offered only
+    after the resolved pair has been checked to be what the title says (two different results, the stated arms,
+    estimands, time points and tiers, and the stated relationship between the groups)."""
+    return [preset for preset in (_resolve_preset(db, spec) for spec in PRESETS) if preset is not None]
 
 
 @app.get("/api/compare/studies", tags=["evidence"])
@@ -535,8 +715,17 @@ def estimand_inspector(db: Db, study: str) -> dict[str, Any]:
         label = r.estimand.label if r.estimand else "NOT_STATED"
         cell["by_estimand"].setdefault(label, []).append(_compact(build_finding(db, r)))
     rows = sorted(table.values(), key=lambda c: (c["category"], c["timepoint_weeks"] or 0, c["arm"] != "placebo", c["arm"]))
+    for cell in rows:
+        # Where several sources report one arm, endpoint, time point and estimand, all stay listed; the result id that a
+        # chart should draw first comes from the one shared display rule (never from the evidence tier).
+        cell["display_lead"] = {}
+        for label, findings in cell["by_estimand"].items():
+            lead, _others = display_lead(findings)
+            if lead is not None:
+                cell["display_lead"][label] = lead["result_id"]
     return {
         "study": study_brief(s),
+        "display_rule": DISPLAY_RULE,
         "estimands": [{"label": e.label, "basis": e.basis, "description": e.description, "quote": e.quote, "explainer": ESTIMAND_EXPLAINER.get(e.label), "strategies": [{"event": x.event, "strategy": x.strategy, "basis": x.basis, "quote": x.quote} for x in e.strategies], "source": source_ref(e.source)} for e in s.estimands],
         "rows": rows,
         "explainers": ESTIMAND_EXPLAINER,
@@ -550,64 +739,68 @@ def estimand_inspector(db: Db, study: str) -> dict[str, Any]:
 @app.get("/api/benefit-risk/{nct}", tags=["benefit-risk"])
 def benefit_risk_profiles(nct: str, db: Db, estimand: Literal["EFFICACY", "TREATMENT_REGIMEN"] | None = None, weeks: float | None = Query(None, gt=0, le=600)) -> dict[str, Any]:
     _study_or_404(db, nct)
-    return benefit_risk.arm_profiles(db, nct, estimand, weeks)
+    with calculation():
+        return benefit_risk.arm_profiles(db, nct, estimand, weeks)
 
 
 class Criterion(Strict):
-    weight: float = Field(ge=0, le=100)
-    best: float
-    worst: float
+    weight: float = Field(ge=0, le=100, allow_inf_nan=False)
+    best: Real
+    worst: Real
 
 
 class UtilityRequest(Strict):
     nct: NCT
     estimand: Literal["EFFICACY", "TREATMENT_REGIMEN"] | None = None
-    criteria: dict[str, Criterion] | None = None
+    weeks: float | None = Field(None, gt=0, le=600, allow_inf_nan=False)
+    criteria: dict[Annotated[str, Field(min_length=1, max_length=60)], Criterion] | None = Field(None, max_length=20)
 
 
 @app.post("/api/benefit-risk/utility", tags=["benefit-risk"])
 def utility(body: UtilityRequest, db: Db) -> dict[str, Any]:
     _study_or_404(db, body.nct)
-    try:
-        profiles = benefit_risk.arm_profiles(db, body.nct, body.estimand)
-        return benefit_risk.utility_scores(profiles, {k: v.model_dump() for k, v in body.criteria.items()} if body.criteria else None)
-    except StatsInputError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    with calculation():
+        profiles = benefit_risk.arm_profiles(db, body.nct, body.estimand, body.weeks)
+        return _finite_result(benefit_risk.utility_scores(profiles, {k: v.model_dump() for k, v in body.criteria.items()} if body.criteria else None))
 
 
 class DoseScenarioRequest(Strict):
     nct: NCT
     estimand: Literal["EFFICACY", "TREATMENT_REGIMEN"] | None = None
+    weeks: float | None = Field(None, gt=0, le=600, allow_inf_nan=False)
     metric: Literal["weight_pct", "weight_abs", "hba1c"] = "weight_pct"
-    shares: dict[str, float]
-    non_persistent_share: float = Field(0.0, ge=0, le=1)
-    non_persistent_value: float | None = None
+    shares: dict[Annotated[str, Field(min_length=1, max_length=400)], Share] = Field(max_length=50)
+    non_persistent_share: Share = 0.0
+    non_persistent_value: Real | None = None
+
+    @model_validator(mode="after")
+    def _something_to_mix(self) -> DoseScenarioRequest:
+        if not any(share > 0 for share in self.shares.values()):
+            raise ValueError("at least one arm needs a share above 0: a scenario made only of an assumed value says nothing about any studied dose")
+        return self
 
 
 @app.post("/api/benefit-risk/dose-scenario", tags=["benefit-risk"])
 def dose_scenario(body: DoseScenarioRequest, db: Db) -> dict[str, Any]:
     _study_or_404(db, body.nct)
-    try:
-        profiles = benefit_risk.arm_profiles(db, body.nct, body.estimand)
-        return benefit_risk.dose_scenario(profiles, body.shares, body.metric, body.non_persistent_share, body.non_persistent_value)
-    except StatsInputError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    with calculation():
+        profiles = benefit_risk.arm_profiles(db, body.nct, body.estimand, body.weeks)
+        return _finite_result(benefit_risk.dose_scenario(profiles, body.shares, body.metric, body.non_persistent_share, body.non_persistent_value))
 
 
 class RiskContrastRequest(Strict):
-    ae_a: int = Field(gt=0)
-    ae_b: int = Field(gt=0)
+    ae_a: int = Field(gt=0, le=2**31 - 1)
+    ae_b: int = Field(gt=0, le=2**31 - 1)
 
 
 @app.post("/api/stats/risk-contrast", tags=["benefit-risk"])
 def risk_contrast(body: RiskContrastRequest, db: Db) -> dict[str, Any]:
+    """Risk difference and ratio for ONE adverse event in TWO different randomized arms of one trial (A − B)."""
     a, b = db.get(AdverseEvent, body.ae_a), db.get(AdverseEvent, body.ae_b)
     if a is None or b is None:
         raise HTTPException(status_code=404, detail="Adverse-event row not found")
-    try:
-        contrast = benefit_risk.arm_contrast(a.n_affected, a.n_at_risk, b.n_affected, b.n_at_risk, a.measure_kind, b.measure_kind, a.study_id == b.study_id)
-    except (StatsInputError, InvalidInferenceError) as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    with calculation():
+        contrast = _finite_result(benefit_risk.adverse_event_contrast(db, a, b))
     return {"a": ae_dto(a), "b": ae_dto(b), "a_statement": describe_adverse_event(ae_dto(a)), "b_statement": describe_adverse_event(ae_dto(b)), **contrast}
 
 
@@ -624,12 +817,18 @@ def safety_trial_ae(db: Db, drug: str | None = None, nct: str | None = None, mea
 @app.get("/api/safety/terms", tags=["safety"])
 def safety_terms(db: Db, nct: str) -> dict[str, Any]:
     study = _study_or_404(db, nct)
-    counts: dict[tuple[str, str, str], int] = {}
+    # None = no count is reported for this term in any arm (for example a term reported only as a percentage).
+    # An absent count stays absent; it is never shown as 0.
+    counts: dict[tuple[str, str, str], int | None] = {}
     for ae in study.adverse_events:
         key = (ae.term, ae.measure_kind, ae.category)
-        counts[key] = max(counts.get(key, 0), ae.n_affected or 0)
-    rows = [{"term": t, "measure_kind": k, "measure_kind_label": AE_KIND_LABEL.get(k, k), "category": c, "max_participants_affected": n} for (t, k, c), n in counts.items()]
-    return {"study": study_brief(study), "terms": sorted(rows, key=lambda r: -r["max_participants_affected"])[:300]}
+        known = counts.get(key)
+        counts[key] = known if ae.n_affected is None else ae.n_affected if known is None else max(known, ae.n_affected)
+    rows = [{"term": t, "measure_kind": k, "measure_kind_label": AE_KIND_LABEL.get(k, k), "category": c, "max_participants_affected": n,
+             "count_status": "REPORTED" if n is not None else "NOT_REPORTED"} for (t, k, c), n in counts.items()]
+    # Terms with a reported count first (largest first); terms without any reported count follow, by name.
+    rows.sort(key=lambda r: (r["max_participants_affected"] is None, -(r["max_participants_affected"] or 0), r["term"].lower()))
+    return {"study": study_brief(study), "terms": rows[:300]}
 
 
 @app.get("/api/safety/spontaneous/{slug}", tags=["safety"])
@@ -637,19 +836,20 @@ def safety_spontaneous(slug: str, db: Db) -> dict[str, Any]:
     return spontaneous_overview(db, _drug_or_404(db, slug))
 
 
+MAX_REPORT_COUNT = 10**12
+
+
 class DisproportionalityRequest(Strict):
-    drug_event: int = Field(ge=0)
-    drug_total: int = Field(ge=0)
-    event_total: int = Field(ge=0)
-    all_total: int = Field(ge=0)
+    drug_event: int = Field(ge=0, le=MAX_REPORT_COUNT)
+    drug_total: int = Field(ge=0, le=MAX_REPORT_COUNT)
+    event_total: int = Field(ge=0, le=MAX_REPORT_COUNT)
+    all_total: int = Field(ge=0, le=MAX_REPORT_COUNT)
 
 
 @app.post("/api/safety/disproportionality", tags=["safety"])
 def safety_disproportionality(body: DisproportionalityRequest) -> dict[str, Any]:
-    try:
-        return disproportionality(body.drug_event, body.drug_total, body.event_total, body.all_total)
-    except StatsInputError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    with calculation():
+        return _finite_result(disproportionality(body.drug_event, body.drug_total, body.event_total, body.all_total))
 
 
 @app.get("/api/safety/labels/{slug}", tags=["safety"])
@@ -740,23 +940,23 @@ def design_amendments(nct: str, db: Db) -> dict[str, Any]:
 
 class PowerRequest(Strict):
     design: Literal["two_means", "two_proportions", "noninferiority_means", "logrank_events", "noninferiority_hr_events"]
-    alpha: float = Field(0.05, gt=0, lt=0.5)
-    power: float = Field(0.9, gt=0.5, lt=1)
-    ratio: float = Field(1.0, gt=0, le=10)
-    delta: float | None = None
-    sd: float | None = Field(None, gt=0)
-    p1: float | None = Field(None, gt=0, lt=1)
-    p2: float | None = Field(None, gt=0, lt=1)
-    margin: float | None = Field(None, gt=0)
-    true_difference: float = 0.0
-    hazard_ratio: float | None = Field(None, gt=0)
-    true_hazard_ratio: float = Field(1.0, gt=0)
-    attrition: float = Field(0.0, ge=0, lt=1)
+    alpha: float = Field(0.05, gt=0, lt=0.5, allow_inf_nan=False)
+    power: float = Field(0.9, gt=0.5, lt=1, allow_inf_nan=False)
+    ratio: float = Field(1.0, gt=0, le=10, allow_inf_nan=False)
+    delta: Real | None = None
+    sd: PositiveReal | None = None
+    p1: float | None = Field(None, gt=0, lt=1, allow_inf_nan=False)
+    p2: float | None = Field(None, gt=0, lt=1, allow_inf_nan=False)
+    margin: PositiveReal | None = None
+    true_difference: Real = 0.0
+    hazard_ratio: float | None = Field(None, gt=0, le=1000, allow_inf_nan=False)
+    true_hazard_ratio: float = Field(1.0, gt=0, le=1000, allow_inf_nan=False)
+    attrition: Proportion = 0.0
 
 
 @app.post("/api/design/power", tags=["design"])
 def design_power(body: PowerRequest) -> dict[str, Any]:
-    try:
+    with calculation():
         if body.design == "two_means":
             if body.delta is None or body.sd is None:
                 raise StatsInputError("delta and sd are required")
@@ -777,60 +977,62 @@ def design_power(body: PowerRequest) -> dict[str, Any]:
             if body.margin is None:
                 raise StatsInputError("margin is required")
             result = stats.events_noninferiority_hr(body.margin, body.true_hazard_ratio, body.alpha / 2, body.power, body.ratio)
-    except StatsInputError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    if body.attrition and "n_total" in result:
-        result["with_attrition"] = stats.inflate_for_attrition(result["n_total"], body.attrition)
+        if body.attrition and "n_total" in result:
+            result["with_attrition"] = stats.inflate_for_attrition(result["n_total"], body.attrition)
     result["kind"] = "CALCULATION"
     result["disclaimer"] = "A design calculation under the stated assumptions. It is not a forecast of the probability that any trial will succeed."
-    return result
+    return _finite_result(result)
 
 
 class SimulationRequest(Strict):
+    """Two-arm simulation. Besides the per-field limits, n_per_arm x n_sims may not exceed ``stats.MAX_SIMULATION_CELLS``
+    (5,000,000): the simulation runs in fixed-size blocks of about 12 MB, so the product bounds CPU time only."""
+
     n_per_arm: int = Field(ge=3, le=20000)
-    mean_treatment: float
-    mean_control: float
-    sd: float = Field(gt=0)
-    dropout_treatment: float = Field(0.0, ge=0, lt=1)
-    dropout_control: float = Field(0.0, ge=0, lt=1)
+    mean_treatment: Real
+    mean_control: Real
+    sd: PositiveReal
+    dropout_treatment: Proportion = 0.0
+    dropout_control: Proportion = 0.0
     missing_handling: Literal["COMPLETERS", "JUMP_TO_REFERENCE"] = "COMPLETERS"
-    n_sims: int = Field(2000, ge=100, le=20000)
-    alpha: float = Field(0.05, gt=0, lt=0.5)
+    n_sims: int = Field(2000, ge=stats.MIN_SIMULATIONS, le=stats.MAX_SIMULATIONS)
+    alpha: float = Field(0.05, gt=0, lt=0.5, allow_inf_nan=False)
     seed: int = Field(20261013, ge=0, le=2**31 - 1)
+
+    @model_validator(mode="after")
+    def _within_budget(self) -> SimulationRequest:
+        stats.check_simulation_budget(self.n_per_arm, self.n_sims)  # StatsInputError is a ValueError: reported as a 422
+        return self
 
 
 @app.post("/api/design/simulate", tags=["design"])
 def design_simulate(body: SimulationRequest) -> dict[str, Any]:
-    try:
-        return stats.simulate_two_arm_trial(stats.SimulationSpec(**body.model_dump()))
-    except StatsInputError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    with calculation():
+        return _finite_result(stats.simulate_two_arm_trial(stats.SimulationSpec(**body.model_dump())))
 
 
 class SensitivityRequest(Strict):
-    delta: float
-    sd: float = Field(gt=0)
+    delta: Real
+    sd: PositiveReal
     n_randomized_per_group: int = Field(ge=3, le=100000)
-    attrition_rates: list[Annotated[float, Field(ge=0, lt=1)]] = Field(default=[0.0, 0.1, 0.2, 0.3, 0.4], max_length=20)
-    alpha: float = Field(0.05, gt=0, lt=0.5)
-    mean_treatment: float | None = None
-    mean_control: float | None = None
-    missing_treatment: float = Field(0.0, ge=0, lt=1)
-    missing_control: float = Field(0.0, ge=0, lt=1)
-    deltas: list[float] = Field(default=[0.0, 2.0, 4.0, 6.0, 8.0], max_length=20)
+    attrition_rates: list[Proportion] = Field(default=[0.0, 0.1, 0.2, 0.3, 0.4], max_length=20)
+    alpha: float = Field(0.05, gt=0, lt=0.5, allow_inf_nan=False)
+    mean_treatment: Real | None = None
+    mean_control: Real | None = None
+    missing_treatment: Proportion = 0.0
+    missing_control: Proportion = 0.0
+    deltas: list[Real] = Field(default=[0.0, 2.0, 4.0, 6.0, 8.0], max_length=20)
 
 
 @app.post("/api/design/sensitivity", tags=["design"])
 def design_sensitivity(body: SensitivityRequest) -> dict[str, Any]:
-    try:
+    with calculation():
         out: dict[str, Any] = {"attrition": stats.attrition_sensitivity(body.delta, body.sd, body.n_randomized_per_group, body.attrition_rates, body.alpha),
                                "attrition_note": "Completers-only simplification: power if only participants who complete contribute. Label: scenario."}
         if body.mean_treatment is not None and body.mean_control is not None:
             out["missing_data"] = stats.missing_data_delta_scenarios(body.mean_treatment, body.mean_control, body.missing_treatment, body.missing_control, body.deltas)
             out["missing_data_note"] = "Delta-adjustment scenarios on aggregate means: hypothetical, not estimates."
-        return out
-    except StatsInputError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return _finite_result(out)
 
 
 # --------------------------------------------------------------------------- assistant
