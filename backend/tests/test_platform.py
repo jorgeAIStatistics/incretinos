@@ -315,7 +315,8 @@ def test_input_validation(client):
     assert client.post("/api/safety/disproportionality", json={"drug_event": 50, "drug_total": 10, "event_total": 100, "all_total": 1000}).status_code == 422
     assert client.get("/api/safety/trial-ae", params={"measure_kind": "MADE_UP"}).status_code == 422
     assert client.get("/api/harmonize", params={"formulation": "x", "amount": -1, "target": "y"}).status_code == 422
-    assert client.get("/api/studies", params={"q": "'; DROP TABLE study; --"}).json() == []
+    injection = client.get("/api/studies", params={"q": "'; DROP TABLE study; --"}).json()
+    assert injection["rows"] == [] and injection["total"] == 0
 
 
 def test_risk_contrast_endpoint_refuses_invalid_contrasts(client, db):
@@ -354,12 +355,12 @@ def test_reviewer_decision_is_recorded_and_audited(client):
     item = queue["rows"][0]
     response = client.post(f"/api/review-queue/{item['id']}/decision", json={"decision": "NEEDS_INFO", "reviewer": "Test Reviewer", "rationale": "Synthetic demonstration change reviewed in tests."}, headers=TOKEN)
     assert response.status_code == 200 and response.json()["status"] == "IN_REVIEW"
-    audit = client.get("/api/audit", params={"action": "review.decision"}).json()
+    audit = client.get("/api/audit", params={"action": "review.decision"}).json()["rows"]
     assert audit and audit[0]["actor"] == "Test Reviewer" and audit[0]["detail"]["decision"] == "NEEDS_INFO"
     gaps = client.get("/api/gaps", params={"drug": "retatrutide"}).json()["rows"]
     patched = client.patch(f"/api/gaps/{gaps[0]['id']}", json={"review_status": "CONFIRMED", "reviewer": "Test Reviewer", "reviewer_note": "Confirmed in test.", "clinical_importance": 5}, headers=TOKEN)
     assert patched.status_code == 200 and patched.json()["review_status"] == "CONFIRMED"
-    assert client.get("/api/audit", params={"action": "gap.reviewed"}).json()[0]["detail"]["after"]["review_status"] == "CONFIRMED"
+    assert client.get("/api/audit", params={"action": "gap.reviewed"}).json()["rows"][0]["detail"]["after"]["review_status"] == "CONFIRMED"
 
 
 def test_gap_weights_change_the_ranking_transparently(client):
@@ -371,7 +372,7 @@ def test_gap_weights_change_the_ranking_transparently(client):
 
 
 def test_change_feed_labels_the_synthetic_demonstration(client):
-    changes = client.get("/api/changes").json()
+    changes = client.get("/api/changes").json()["rows"]
     assert changes and changes[0]["is_synthetic"] and "SYNTHETIC DEMONSTRATION" in changes[0]["synthetic_notice"]
     fields = {c["field"] for c in changes[0]["changes"]}
     assert {"overall_status", "enrollment"} <= fields and all("before" in c and "after" in c and "note" in c for c in changes[0]["changes"])

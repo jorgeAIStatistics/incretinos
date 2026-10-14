@@ -15,7 +15,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
@@ -30,19 +30,18 @@ from ...review.lifecycle import (
     record_decision,
 )
 from ...review.policy import REVIEWABLE_TYPES, STATUS_LABEL, STORED_STATUSES, canonical_status, is_usable
+from ..auth import require_reviewer
 
 router = APIRouter(prefix="/api/review", tags=["review"])
 
 Db = Annotated[Session, Depends(get_db)]
+# The same bounds as api.main (PathId, Offset), repeated here because main imports this module: an unbounded integer
+# overflows the SQLite driver and the PostgreSQL INTEGER type, and both would surface as a 500.
+MAX_DB_ID = 2**31 - 1
+MAX_OFFSET = 1_000_000
+RowId = Annotated[int, Path(ge=1, le=MAX_DB_ID)]
 EvidenceType = Literal["result", "analysis", "adverse_event", "claim", "mechanism", "indication", "equivalence"]
 assert set(EvidenceType.__args__) == set(REVIEWABLE_TYPES)  # type: ignore[attr-defined]
-
-
-def require_reviewer(x_reviewer_token: Annotated[str | None, Header()] = None) -> str:
-    """The application's one reviewer check (``api.main.require_reviewer``), resolved late to avoid an import cycle."""
-    from .. import main
-
-    return main.require_reviewer(x_reviewer_token)
 
 
 class _Out(BaseModel):
@@ -511,7 +510,7 @@ def list_evidence(
     sort: Literal["status", "risk", "study", "last_change"] = "status",
     descending: bool = False,
     limit: int = Query(50, ge=1, le=500),
-    offset: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0, le=MAX_OFFSET),
 ) -> dict[str, Any]:
     """Reviewable evidence with filters, sorting, pagination and facet counts. Read-only."""
     statuses = None
@@ -545,7 +544,7 @@ def evidence_by_key(evidence_type: EvidenceType, evidence_key: Annotated[str, Pa
 
 
 @router.get("/evidence/{evidence_type}/{row_id}", response_model=EvidenceDetail)
-def evidence_by_id(evidence_type: EvidenceType, row_id: int, db: Db) -> dict[str, Any]:
+def evidence_by_id(evidence_type: EvidenceType, row_id: RowId, db: Db) -> dict[str, Any]:
     """Everything a reviewer needs to decide on one evidence row. Read-only."""
     row = queries.find_row(db, evidence_type, row_id=row_id)
     if row is None:
@@ -555,7 +554,7 @@ def evidence_by_id(evidence_type: EvidenceType, row_id: int, db: Db) -> dict[str
 
 @router.post("/evidence/{evidence_type}/{row_id}/decisions", response_model=EvidenceDecisionResponse)
 def decide_on_evidence(
-    evidence_type: EvidenceType, row_id: int, body: EvidenceDecisionRequest, db: Db, _: Annotated[str, Depends(require_reviewer)]
+    evidence_type: EvidenceType, row_id: RowId, body: EvidenceDecisionRequest, db: Db, _: Annotated[str, Depends(require_reviewer)]
 ) -> dict[str, Any]:
     """Record a decision on this exact evidence version. One transaction: decision, status, audit event."""
     try:

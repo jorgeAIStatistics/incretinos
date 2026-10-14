@@ -8,8 +8,15 @@ from pathlib import Path
 
 import typer
 
-from .config import get_settings
-from .db import create_all, get_engine, reset_derived_data, session_scope, wipe_everything
+from .config import describe_settings_sources, get_settings
+from .db import (
+    UnversionedSchemaError,
+    drop_schema,
+    get_engine,
+    reset_derived_data,
+    session_scope,
+    upgrade_schema,
+)
 
 app = typer.Typer(add_completion=False, help="IncretinOS — clinical evidence and trial intelligence (public data only).")
 review_app = typer.Typer(add_completion=False, help="Evidence review: status, reconcile, and backup / restore of the decision ledger.")
@@ -25,21 +32,42 @@ _WIPE_HELP = (
 )
 
 
-def _reset(reset: bool, wipe_review_history: bool) -> None:
-    """Shared by `init-db` and `seed`: rebuild derived data, and only on explicit request destroy human-authored state."""
+def _database_label() -> str:
+    """The configured database without its password."""
+    from sqlalchemy.engine import make_url
+
+    return make_url(get_settings().database_url).render_as_string(hide_password=True)
+
+
+def _schema_at_head() -> None:
+    """Bring the schema to the migration head. The only way any command creates or changes tables."""
+    try:
+        upgrade_schema()
+    except UnversionedSchemaError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+
+def _migrate(reset: bool = False, wipe_review_history: bool = False) -> None:
+    """Shared by `init-db` and `seed`: one schema path, and a reset that keeps what people wrote.
+
+    * no flag: run the migrations (creates the schema, or upgrades an older one in place);
+    * ``--reset``: run the migrations, then empty the derived tables. Review decisions, evidence version
+      history, the audit log, source snapshots and change events are kept;
+    * ``--reset --wipe-review-history``: back up the decision ledger, drop every table, run the migrations.
+    """
+    typer.echo(describe_settings_sources(), err=True)
     if wipe_review_history and not reset:
         raise typer.BadParameter("--wipe-review-history only has an effect together with --reset.")
-    if not reset:
-        return
-    if wipe_review_history:
+    if reset and wipe_review_history:
         backup = _backup_ledger_before_wipe()
-        wipe_everything()
+        drop_schema()
         typer.echo("Dropped every table, including review decisions, version history, the audit log and source snapshots." + (f" Decision ledger backed up to {backup}." if backup else ""), err=True)
-        return
-    create_all()
-    with session_scope() as session:
-        removed = reset_derived_data(session)
-    typer.echo(f"Emptied {sum(1 for n in removed.values() if n)} derived table(s) ({sum(removed.values())} rows). Review decisions, version history, audit log and snapshots were kept.", err=True)
+    _schema_at_head()
+    if reset and not wipe_review_history:
+        with session_scope() as session:
+            removed = reset_derived_data(session)
+        typer.echo(f"Emptied {sum(1 for n in removed.values() if n)} derived table(s) ({sum(removed.values())} rows). Review decisions, version history, audit log and snapshots were kept.", err=True)
 
 
 def _backup_ledger_before_wipe() -> Path | None:
@@ -65,12 +93,9 @@ def init_db(
     reset: bool = typer.Option(False, help=_RESET_HELP),
     wipe_review_history: bool = typer.Option(False, "--wipe-review-history", help=_WIPE_HELP),
 ) -> None:
-    """Create database tables."""
-    from . import models  # noqa: F401
-
-    _reset(reset, wipe_review_history)
-    create_all()
-    typer.echo(f"Database ready at {get_settings().database_url}")
+    """Create or upgrade the database schema by running the migrations."""
+    _migrate(reset, wipe_review_history)
+    typer.echo(f"Database schema is at the migration head: {_database_label()}")
 
 
 @app.command()
@@ -83,11 +108,9 @@ def seed(
     only: list[str] = typer.Option(None, help="Restrict study ingestion to these NCT IDs."),
 ) -> None:
     """Ingest the watchlist (registry, PubMed, labels, FAERS), load curated evidence, re-apply review decisions, detect gaps."""
-    from . import models  # noqa: F401
     from .ingestion.pipeline import Pipeline
 
-    _reset(reset, wipe_review_history)
-    create_all()
+    _migrate(reset, wipe_review_history)
     settings = get_settings()
     with session_scope() as session:
         report = Pipeline(session, settings, offline=not live, record=record).run(demo_change=demo_change, only=only or None)
@@ -166,6 +189,7 @@ def serve(host: str = "127.0.0.1", port: int = 8000, reload: bool = False) -> No
     """Run the API server."""
     import uvicorn
 
+    typer.echo(describe_settings_sources(), err=True)
     uvicorn.run("incretinos.api.main:app", host=host, port=port, reload=reload)
 
 
@@ -203,7 +227,7 @@ def review_reconcile(as_json: bool = typer.Option(False, "--json", help="Print t
     """Re-key evidence, re-validate anchoring, re-derive every status from the decision ledger and report what changed. Idempotent."""
     from .review.lifecycle import reconcile
 
-    create_all()
+    _schema_at_head()
     with session_scope() as session:
         outcome = reconcile(session)
     typer.echo(json.dumps(outcome.as_dict() if as_json else outcome.summary(), indent=1, default=str))
@@ -224,7 +248,7 @@ def review_import(file: Path = typer.Argument(..., exists=True, dir_okay=False, 
     """Add the decisions of a ledger file to this database and re-derive every status. Validated; safe to repeat."""
     from .review.ledger import LedgerError, import_ledger, read_ledger_file
 
-    create_all()
+    _schema_at_head()
     try:
         data, sha256 = read_ledger_file(file)
         with session_scope() as session:

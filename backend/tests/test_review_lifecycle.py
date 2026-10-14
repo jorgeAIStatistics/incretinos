@@ -437,7 +437,15 @@ class Lab:
         return rows[0]
 
     def audit(self, action: str) -> list[dict[str, Any]]:
-        return self.client.get("/api/audit", params={"action": action, "limit": 1000}).json()
+        body = self.client.get("/api/audit", params={"action": action, "limit": 1000}).json()
+        assert body["total"] == len(body["rows"])  # one page holds every event of this action
+        return body["rows"]
+
+    def changes(self) -> list[dict[str, Any]]:
+        """Every detected source change (the list endpoints return {total, limit, offset, rows})."""
+        body = self.client.get("/api/changes", params={"limit": 1000}).json()
+        assert body["total"] == len(body["rows"])
+        return body["rows"]
 
     def fingerprint_state(self) -> dict[tuple[str, str], tuple[str, str]]:
         """(type, key) -> (fingerprint, status) for every reviewable row, read straight from the tables."""
@@ -449,12 +457,22 @@ class Lab:
         return out
 
 
+def _migrate_database(path: Path) -> None:
+    """Create or upgrade a SQLite file by running the Alembic migrations against it."""
+    run = subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], cwd=BACKEND, env={**os.environ, "INCRETINOS_DATABASE_URL": f"sqlite:///{path}"},
+                         capture_output=True, text=True)
+    assert run.returncode == 0, run.stdout[-800:] + run.stderr[-800:]
+
+
 @pytest.fixture(scope="module")
 def template(tmp_path_factory) -> Path:
     root = tmp_path_factory.mktemp("review-lab")
     curated = _mini_curated(root / "curated")
+    # The same schema path as the CLI, the container and conftest: the migrations, not create_all. The commands
+    # under test (`seed --reset`, `init-db --reset`, `review reconcile`, `review import`) refuse a database that
+    # carries no migration version.
+    _migrate_database(root / "template.db")
     engine = make_engine(f"sqlite:///{root / 'template.db'}")
-    Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine, expire_on_commit=False)()
     report = Pipeline(session, get_settings().model_copy(update={"curated_dir": curated}), offline=True).run(skip={"discover"})
     session.commit()
@@ -640,7 +658,7 @@ def test_a_rejected_result_leaves_every_analytic_surface_and_stays_visible_for_i
     assert rid in _find_ids(before["findings list and picker"].json()) and rid in _find_ids(before["estimand inspector"].json())
     assert rid in _find_ids(before["benefit-risk profiles"].json()) and any(rid in (p["a"], p["b"]) for p in before["comparison presets"].json())
     assert "-22.5" in before["exported study report"].text and "-22.5" in json.dumps(before["assistant evidence cards"].json())
-    n_results_before = next(s for s in before["study list"].json() if s["nct_id"] == SURMOUNT_1)["n_results"]
+    n_results_before = next(s for s in before["study list"].json()["rows"] if s["nct_id"] == SURMOUNT_1)["n_results"]
     counts_before = client.get("/api/meta").json()["counts"]
 
     response = lab.decide(row, "REJECT", rationale="The stored value is not the one posted for this arm in the registry table.")
@@ -660,7 +678,7 @@ def test_a_rejected_result_leaves_every_analytic_surface_and_stays_visible_for_i
     arms = after["benefit-risk profiles"].json()["arms"]
     assert "-22.5" not in json.dumps(arms) and placebo_id in _find_ids(arms)  # the 15 mg arm lost this value; the other arms are intact
     assert "-22.5" not in after["exported study report"].text and "-22.5" not in json.dumps(after["assistant evidence cards"].json())
-    assert next(s for s in after["study list"].json() if s["nct_id"] == SURMOUNT_1)["n_results"] == n_results_before - 1
+    assert next(s for s in after["study list"].json()["rows"] if s["nct_id"] == SURMOUNT_1)["n_results"] == n_results_before - 1
     meta = client.get("/api/meta").json()
     assert meta["counts"]["results"] == counts_before["results"] - 1 and meta["counts"]["results_rejected"] == 1
     assert meta["result_verification"][REJECTED] == 1 and meta["review"]["by_status"][REJECTED] == 1
@@ -1161,7 +1179,7 @@ def test_a_revised_registry_value_forces_a_recheck_and_leaves_unaffected_approva
     assert len(report.evidence_changes) == 1  # nothing else in the record changed
 
     # A HIGH, reviewable change event with the field diff (it used to be LOW "registry revision date").
-    events = lab.client.get("/api/changes").json()
+    events = lab.changes()
     event = next(e for e in events if e["source"]["key"] == f"ctgov:{SURMOUNT_1}")
     assert event["significance"] == "HIGH" and event["review_status"] == "OPEN"
     value_line = next(c for c in event["changes"] if c.get("evidence_key") == changed_row["evidence_key"] and c["field"] == "result.value")
@@ -1194,7 +1212,7 @@ def test_a_revised_registry_value_forces_a_recheck_and_leaves_unaffected_approva
     # Nothing is reported twice.
     again = lab.check_updates({REGISTRY_FIXTURE: _revise_primary_outcome("-20.5")})
     assert again.evidence_changes == [] and len(lab.audit("review.approval_carried_forward")) == 1 and len(lab.audit("review.status_changed")) == 1
-    assert len(lab.client.get("/api/changes").json()) == len(events)
+    assert len(lab.changes()) == len(events)
 
     # Approving the new version settles it; the registry going back to the earlier value is again a change.
     assert lab.decide(changed_row, "APPROVE", rationale="The revised registry value of -20.5 is what the record now posts.").json()["status_after"] == HUMAN_VERIFIED
@@ -1236,7 +1254,7 @@ def test_a_changed_curated_value_forces_a_recheck(lab):
     assert diff["value"] == (-15.0, -15.1) and diff["value_text"] == ("-15", "-15.1") and "quote" in diff and len(diff) == 3
     [change] = report.evidence_changes
     assert change["evidence_key"] == row["evidence_key"] and change["value_changed"] and change["source_changed"] is False
-    event = next(e for e in lab.client.get("/api/changes").json() if e["source"]["key"] == "pubmed:35658024")
+    event = next(e for e in lab.changes() if e["source"]["key"] == "pubmed:35658024")
     assert event["significance"] == "HIGH" and "no new version" in event["summary"]
     assert lab.status(sibling) == HUMAN_VERIFIED and lab.by_key(sibling)["status"]["reason"] == "APPROVED"  # untouched sibling keeps its approval
 
@@ -1280,7 +1298,7 @@ def test_a_quote_that_left_the_source_forces_a_recheck(lab):
     assert lab.status(registry_row) == HUMAN_VERIFIED  # another source entirely
     transitions = {(t["target_id"], t["detail"]["from"], t["detail"]["to"]) for t in lab.audit("review.status_changed")}
     assert (approved["evidence_key"], HUMAN_VERIFIED, RECHECK) in transitions and (unreviewed["evidence_key"], ANCHORED, PENDING) in transitions
-    assert any(e["source"]["key"] == "openfda-label:zepbound" for e in lab.client.get("/api/changes").json())  # the label change itself is on record
+    assert any(e["source"]["key"] == "openfda-label:zepbound" for e in lab.changes())  # the label change itself is on record
 
     # The label goes back to the version the reviewer saw: the approval of this exact content on this exact source counts again.
     lab.check_updates()
@@ -1829,7 +1847,7 @@ def test_the_scheduled_refresh_reconciles_and_reports_changed_evidence(lab, monk
     report = refresh_tracked_sources(get_settings())
     assert [c["evidence_key"] for c in report["evidence_changes"]] == [row["evidence_key"]] and report["evidence_changes"][0]["value_changed"]
     assert lab.status(row) == RECHECK and lab.status(rejected) == REJECTED
-    assert any(e["significance"] == "HIGH" for e in lab.client.get("/api/changes").json())
+    assert any(e["significance"] == "HIGH" for e in lab.changes())
     gaps = lab.client.get("/api/gaps").json()["rows"]
     assert any(g["rule_id"] == "G13_RECORD_CHANGE" for g in gaps)  # the open change event is also raised as a gap by the same run
 
@@ -1921,7 +1939,7 @@ def test_a_change_of_supporting_text_alone_asks_for_a_recheck_only_where_a_revie
     assert detail["status"]["verification_status"] == RECHECK and detail["values"]["value"] == -22.5
     assert [d["field"] for d in detail["changed_since_review"]["diff"]] == ["analysis_method"]
     assert lab.client.get("/api/review/evidence", params={"changed_since_last_seen": True}).json()["total"] == 4
-    event = next(e for e in lab.client.get("/api/changes").json() if e["source"]["key"] == f"ctgov:{SURMOUNT_1}")
+    event = next(e for e in lab.changes() if e["source"]["key"] == f"ctgov:{SURMOUNT_1}")
     listed = [c for c in event["changes"] if c.get("evidence_key")]
     assert {c["evidence_key"] for c in listed} == {approved["evidence_key"]} and listed[0]["field"] == "result.analysis_method" and listed[0]["significance"] == "MEDIUM"
     assert "3 further row(s) changed in label or classification only" in event["summary"] and event["significance"] != "HIGH"

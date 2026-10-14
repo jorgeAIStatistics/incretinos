@@ -4,6 +4,15 @@ Read endpoints are public (the product holds public data only). Endpoints that c
 state — review decisions and gap triage — require a reviewer token and are disabled
 entirely when no token is configured. Every external input is validated by a typed schema.
 
+Three rules hold for every route, and tests/test_hardening.py checks them against the route table:
+
+* No GET request and no request without the reviewer token can change the database: the session
+  such a request receives refuses to commit (``db.get_db``). Usage worth recording goes to the
+  ``incretinos.usage`` application log, never to the audit trail.
+* A list endpoint returns ``{"total", "limit", "offset", "rows"}`` where ``total`` is the number of
+  rows that match the filters, not the size of the page, and the order is deterministic.
+* Identifiers are bounded (``DbId``), so an oversized number is a 422 and never reaches the driver.
+
 Evidence a reviewer rejected is hidden from every query made through the request session
 (``incretinos.db``), so the analytic endpoints below never use it. The two inspection surfaces
 opt in explicitly: the evidence review API (``routers/review.py``) and a trial's own page.
@@ -11,23 +20,25 @@ opt in explicitly: the evidence review API (``routers/review.py``) and a trial's
 
 from __future__ import annotations
 
-import hmac
+import logging
 import re
 from collections import Counter
 from contextlib import asynccontextmanager
 from typing import Annotated, Any, Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy import case, func, or_, select
+from sqlalchemy.orm import Session, joinedload, selectinload
+from starlette.datastructures import MutableHeaders
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .. import __version__
 from ..assistant.answer import ask
 from ..assistant.providers import get_provider
-from ..config import get_settings
+from ..config import describe_settings_sources, get_settings
 from ..db import INCLUDE_REJECTED, get_db
 from ..engines import benefit_risk, design, stats
 from ..engines.comparability import compare_findings, harmonize_dose
@@ -59,7 +70,7 @@ from ..engines.safety import (
 )
 from ..engines.stats import StatsInputError
 from ..engines.validation import run_all
-from ..enums import TIER_LABEL, EvidenceTier
+from ..enums import TIER_LABEL, EndpointCategory, EstimandLabel, EvidenceTier
 from ..ingestion.scheduler import start_scheduler
 from ..ingestion.snapshots import audit
 from ..models import (
@@ -68,8 +79,10 @@ from ..models import (
     AuditEvent,
     ChangeEvent,
     DiscoveredTrial,
+    Dose,
     Drug,
     Endpoint,
+    Estimand,
     EvidenceClaim,
     EvidenceGap,
     EvidenceSource,
@@ -79,20 +92,53 @@ from ..models import (
     Publication,
     ReviewDecision,
     ReviewQueueItem,
+    SourceSnapshot,
     StatisticalAnalysis,
     Study,
+    StudyArm,
     StudyDrug,
+    StudyPublication,
 )
 from ..reports.export import comparison_report_markdown, study_report_markdown
 from ..review.policy import STATUS_LABEL, canonical_status, reviewer_problem
+from .auth import require_reviewer
+from .limits import limit_assistant, limit_simulation
 from .routers.review import router as review_router
 
 settings = get_settings()
 
+# Anonymous activity (comparisons run, questions asked, reports exported) is logged here and nowhere else.
+# The audit trail in the database holds only reviewer decisions and ingestion events.
+usage_log = logging.getLogger("incretinos.usage")
+_log = logging.getLogger("incretinos.api")
+
+
+def _configure_logging() -> None:
+    """Send the application's own records (usage, scheduler, start-up) to stderr at INFO.
+
+    A web server configures only its own loggers, so without this the usage log would be discarded. Nothing is
+    changed when the host process has already set up logging.
+    """
+    logger = logging.getLogger("incretinos")
+    if not logger.handlers and not logging.getLogger().handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(levelname)s:     %(name)s: %(message)s"))
+        logger.addHandler(handler)
+    if logger.level == logging.NOTSET:
+        logger.setLevel(logging.INFO)
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    scheduler = start_scheduler(get_settings())
+    cfg = get_settings()
+    _configure_logging()
+    _log.info(describe_settings_sources())
+    _log.info(
+        "write access: %s; API documentation: %s",
+        "reviewer token configured" if cfg.reviewer_token else "none (read-only: no reviewer token is configured)",
+        "served at /docs" if cfg.docs_enabled else "not served (set INCRETINOS_DOCS_ENABLED=true to serve it)",
+    )
+    scheduler = start_scheduler(cfg)
     try:
         yield
     finally:
@@ -105,6 +151,10 @@ app = FastAPI(
     version=__version__,
     lifespan=lifespan,
     description="Clinical evidence and trial intelligence for incretin and amylin therapeutics. Public data only. Not medical advice.",
+    # The interactive documentation and the schema are served only when INCRETINOS_DOCS_ENABLED is true.
+    docs_url="/docs" if settings.docs_enabled else None,
+    redoc_url="/redoc" if settings.docs_enabled else None,
+    openapi_url="/openapi.json" if settings.docs_enabled else None,
 )
 app.add_middleware(
     CORSMiddleware,
@@ -113,24 +163,72 @@ app.add_middleware(
     allow_headers=["Content-Type", "X-Reviewer-Token"],
 )
 
+# The API answers with JSON or a Markdown download, never with a page: it needs no scripts, frames or subresources.
+_API_SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Cross-Origin-Resource-Policy": "same-site",
+    "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+}
+_DOCS_PATHS = ("/docs", "/redoc")
+
+
+class SecurityHeadersMiddleware:
+    """Adds the headers above to every HTTP response, including errors and CORS preflights."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        # The documentation pages load their viewer from a CDN, so they keep every header except the content policy.
+        is_docs = scope["path"].startswith(_DOCS_PATHS)
+
+        async def send_with_headers(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                for name, value in _API_SECURITY_HEADERS.items():
+                    if not (is_docs and name == "Content-Security-Policy"):
+                        headers.setdefault(name, value)
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
+
+
+app.add_middleware(SecurityHeadersMiddleware)
+
 app.include_router(review_router)
+
 
 Db = Annotated[Session, Depends(get_db)]
 NCT = Annotated[str, Field(pattern=r"^[Nn][Cc][Tt]\d{8}$")]
+# Largest identifier both databases can hold (PostgreSQL INTEGER). Use this type for every id that reaches a query:
+# an unbounded int overflows the SQLite driver (OverflowError) and the PostgreSQL integer type, and both surface as 500.
+MAX_DB_ID = 2**31 - 1
+DbId = Annotated[int, Field(ge=1, le=MAX_DB_ID)]  # in request bodies
+PathId = Annotated[int, Path(ge=1, le=MAX_DB_ID)]
+QueryId = Annotated[int, Query(ge=1, le=MAX_DB_ID)]
+MAX_OFFSET = 1_000_000
+Offset = Annotated[int, Query(ge=0, le=MAX_OFFSET, description="Number of matching rows to skip.")]
+Filter = Annotated[str | None, Query(max_length=120)]
 
 
 class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-def require_reviewer(x_reviewer_token: Annotated[str | None, Header()] = None) -> str:
-    """Least privilege: mutations need a configured token; without one the API is read-only."""
-    expected = get_settings().reviewer_token
-    if not expected:
-        raise HTTPException(status_code=403, detail="This deployment is read-only: no reviewer token is configured.")
-    if not x_reviewer_token or not hmac.compare_digest(x_reviewer_token, expected):
-        raise HTTPException(status_code=401, detail="A valid reviewer token is required for this action.")
-    return "reviewer"
+def _page(rows: list[Any], total: int, limit: int, offset: int, **extra: Any) -> dict[str, Any]:
+    """The one shape of a list response. ``total`` counts every row matching the filters, not the rows returned."""
+    return {"total": total, "limit": limit, "offset": offset, "rows": rows, **extra}
+
+
+def _known(value: str | None, allowed, what: str) -> None:
+    """A misspelt filter value must not read as 'no evidence': it is an error, not an empty list."""
+    if value is not None and value not in allowed:
+        raise HTTPException(status_code=422, detail=f"Unknown {what} '{value[:60]}'. Known values: {', '.join(sorted(allowed))}")
 
 
 def _study_or_404(db: Session, nct: str) -> Study:
@@ -159,6 +257,51 @@ def _compact(f) -> dict[str, Any]:
     if f.ci_low is None and f.value is not None and f.dispersion_value is not None and f.dispersion_type and "standard error" in f.dispersion_type.lower():
         data["derived_interval"] = stats.ci_from_se(f.value, f.dispersion_value)
     return data
+
+
+# Eager loading. These change how many queries a response costs, never what it contains.
+_STUDY_BRIEF = (joinedload(Study.population), selectinload(Study.drug_links).joinedload(StudyDrug.drug))
+_FINDING_PARENTS = (
+    selectinload(OutcomeResult.study).joinedload(Study.population),
+    selectinload(OutcomeResult.endpoint),
+    selectinload(OutcomeResult.arm),
+    selectinload(OutcomeResult.estimand).selectinload(Estimand.strategies),
+    selectinload(OutcomeResult.source),
+)
+_ANALYSIS_PARENTS = (
+    selectinload(StatisticalAnalysis.study),
+    selectinload(StatisticalAnalysis.endpoint),
+    selectinload(StatisticalAnalysis.estimand),
+    selectinload(StatisticalAnalysis.source),
+)
+
+
+def _prime_study(study: Study) -> tuple[Any, ...]:
+    """Load one study's endpoints, arms and estimands in three queries.
+
+    The engines look up ``result.endpoint``, ``result.arm`` and ``result.estimand`` row by row; once the parents
+    are in the session those lookups are identity-map hits instead of one query each.
+    """
+    return (study.endpoints, study.arms, [e.strategies for e in study.estimands])
+
+
+def _prime_studies(db: Session) -> list[Study]:
+    """Every study with its population and drug links (the engines scan all studies to find head-to-head trials)."""
+    return list(db.scalars(select(Study).options(*_STUDY_BRIEF).order_by(Study.id)))
+
+
+def _prime_evidence(db: Session) -> tuple[Any, ...]:
+    """The same for whole-database passes: the parent tables are small (a few hundred rows each).
+
+    The caller must keep the returned value alive while it works, because the session only holds weak references.
+    """
+    return (
+        _prime_studies(db),
+        db.scalars(select(Endpoint)).all(),
+        db.scalars(select(StudyArm)).all(),
+        db.scalars(select(Estimand).options(selectinload(Estimand.strategies))).all(),
+        db.scalars(select(EvidenceSource)).all(),
+    )
 
 
 # --------------------------------------------------------------------------- meta
@@ -223,6 +366,7 @@ def meta(db: Db) -> dict[str, Any]:
 
 @app.get("/api/validation", tags=["meta"])
 def validation(db: Db) -> dict[str, Any]:
+    _loaded = _prime_evidence(db)  # noqa: F841  (kept alive for the duration of the rules)
     results = [r.as_dict() for r in run_all(db)]
     return {"passed": sum(r["passed"] for r in results), "total": len(results), "rules": results}
 
@@ -230,9 +374,10 @@ def validation(db: Db) -> dict[str, Any]:
 # --------------------------------------------------------------------------- drugs
 
 
-def _drug_summary(db: Session, drug: Drug) -> dict[str, Any]:
+def _drug_summary(db: Session, drug: Drug, n_studies: int | None = None) -> dict[str, Any]:
     cls = classify_drug([(m.target, m.action) for m in drug.mechanisms])
-    n_studies = db.scalar(select(func.count()).select_from(StudyDrug).where(StudyDrug.drug_id == drug.id))
+    if n_studies is None:
+        n_studies = db.scalar(select(func.count()).select_from(StudyDrug).where(StudyDrug.drug_id == drug.id))
     return {
         "slug": drug.slug,
         "name": drug.name,
@@ -254,18 +399,26 @@ def _drug_summary(db: Session, drug: Drug) -> dict[str, Any]:
     }
 
 
-@app.get("/api/drugs", tags=["drugs"])
-def list_drugs(db: Db) -> list[dict[str, Any]]:
+def _drug_rows(db: Session) -> list[dict[str, Any]]:
+    """Every drug on record, core programme first."""
     order = {"CORE": 0, "ADJACENT": 1, "COMPARATOR": 2}
-    drugs = sorted(db.scalars(select(Drug)), key=lambda d: (order.get(d.tier_group, 9), d.id))
-    return [_drug_summary(db, d) for d in drugs]
+    drugs = sorted(db.scalars(select(Drug).options(selectinload(Drug.mechanisms), joinedload(Drug.regulatory_source))), key=lambda d: (order.get(d.tier_group, 9), d.id))
+    n_studies = {drug_id: n for drug_id, n in db.execute(select(StudyDrug.drug_id, func.count()).group_by(StudyDrug.drug_id))}
+    return [_drug_summary(db, d, n_studies.get(d.id, 0)) for d in drugs]
+
+
+@app.get("/api/drugs", tags=["drugs"])
+def list_drugs(db: Db, limit: int = Query(200, ge=1, le=500), offset: Offset = 0) -> dict[str, Any]:
+    rows = _drug_rows(db)
+    return _page(rows[offset : offset + limit], len(rows), limit, offset)
 
 
 @app.get("/api/drugs/{slug}", tags=["drugs"])
 def get_drug(slug: str, db: Db) -> dict[str, Any]:
     drug = _drug_or_404(db, slug)
     equivalences = []
-    for eq in db.scalars(select(ExposureEquivalence)):
+    eq_dose = (joinedload(ExposureEquivalence.dose_a).joinedload(Dose.formulation), joinedload(ExposureEquivalence.dose_b).joinedload(Dose.formulation), joinedload(ExposureEquivalence.source))
+    for eq in db.scalars(select(ExposureEquivalence).options(*eq_dose).order_by(ExposureEquivalence.id)):
         if eq.dose_a.formulation.drug_id == drug.id:
             equivalences.append(
                 {
@@ -278,7 +431,7 @@ def get_drug(slug: str, db: Db) -> dict[str, Any]:
                     "source": source_ref(eq.source),
                 }
             )
-    studies = [link.study for link in db.scalars(select(StudyDrug).where(StudyDrug.drug_id == drug.id))]
+    studies = db.scalars(select(Study).join(StudyDrug, StudyDrug.study_id == Study.id).where(StudyDrug.drug_id == drug.id).options(*_STUDY_BRIEF).order_by(StudyDrug.id)).all()
     claims = db.scalars(select(EvidenceClaim).where(EvidenceClaim.drug_id == drug.id)).all()
     return {
         **_drug_summary(db, drug),
@@ -301,9 +454,12 @@ def harmonize(db: Db, formulation: str = Query(max_length=80), amount: float = Q
 
 
 @app.get("/api/studies", tags=["studies"])
-def list_studies(db: Db, drug: str | None = None, program: str | None = None, has_results: bool | None = None, q: Annotated[str | None, Query(max_length=120)] = None) -> list[dict[str, Any]]:
-    out = []
-    for study in db.scalars(select(Study).order_by(Study.program, Study.display_name)):
+def list_studies(db: Db, drug: Filter = None, program: Filter = None, has_results: bool | None = None, q: Annotated[str | None, Query(max_length=120)] = None,
+                 limit: int = Query(500, ge=1, le=1000), offset: Offset = 0) -> dict[str, Any]:
+    matched = []
+    options = (*_STUDY_BRIEF, selectinload(Study.publication_links).joinedload(StudyPublication.publication))
+    # NULL programmes first on every database (SQLite's default; PostgreSQL would otherwise put them last).
+    for study in db.scalars(select(Study).options(*options).order_by(Study.program.asc().nulls_first(), Study.display_name, Study.id)):
         brief = study_brief(study)
         if drug and drug not in [d["slug"] for d in brief["drugs"]]:
             continue
@@ -313,25 +469,39 @@ def list_studies(db: Db, drug: str | None = None, program: str | None = None, ha
             continue
         if q and q.lower() not in f"{study.display_name} {study.brief_title} {study.nct_id}".lower():
             continue
-        tiers = sorted({r.tier for r in study.results} | {a.tier for a in study.analyses})
+        matched.append((study, brief))
+    page = matched[offset : offset + limit]
+    ids = [study.id for study, _ in page]
+    # Tier names and result counts come from two grouped queries, not from loading every result of every study.
+    tiers: dict[int, set[str]] = {i: set() for i in ids}
+    n_results: dict[int, int] = dict.fromkeys(ids, 0)
+    for study_id, tier, n in db.execute(select(OutcomeResult.study_id, OutcomeResult.tier, func.count()).where(OutcomeResult.study_id.in_(ids)).group_by(OutcomeResult.study_id, OutcomeResult.tier)):
+        tiers[study_id].add(tier)
+        n_results[study_id] += n
+    for study_id, tier in db.execute(select(StatisticalAnalysis.study_id, StatisticalAnalysis.tier).where(StatisticalAnalysis.study_id.in_(ids)).distinct()):
+        tiers[study_id].add(tier)
+    rows = []
+    for study, brief in page:
         primary_pub = next((link.publication for link in study.publication_links if link.relation == "PRIMARY_RESULTS"), None)
-        out.append({**brief, "evidence_tiers": tiers, "n_results": len(study.results), "n_publications": len(study.publication_links),
-                    "primary_publication": {"pmid": primary_pub.pmid, "journal": primary_pub.journal, "year": primary_pub.year} if primary_pub else None})
-    return out
+        rows.append({**brief, "evidence_tiers": sorted(tiers[study.id]), "n_results": n_results[study.id], "n_publications": len(study.publication_links),
+                     "primary_publication": {"pmid": primary_pub.pmid, "journal": primary_pub.journal, "year": primary_pub.year} if primary_pub else None})
+    return _page(rows, len(matched), limit, offset)
 
 
 @app.get("/api/discovered", tags=["studies"])
-def discovered(db: Db, drug: str | None = None, q: Annotated[str | None, Query(max_length=120)] = None, limit: int = Query(300, ge=1, le=1000)) -> dict[str, Any]:
+def discovered(db: Db, drug: Filter = None, q: Annotated[str | None, Query(max_length=120)] = None, limit: int = Query(300, ge=1, le=1000), offset: Offset = 0) -> dict[str, Any]:
     watched = {nct for (nct,) in db.execute(select(Study.nct_id))}
     rows = []
-    for trial in db.scalars(select(DiscoveredTrial).order_by(DiscoveredTrial.primary_completion_date.desc())):
+    # Trials without a completion date go last on every database (PostgreSQL would otherwise list them first).
+    for trial in db.scalars(select(DiscoveredTrial).order_by(DiscoveredTrial.primary_completion_date.desc().nulls_last(), DiscoveredTrial.id)):
         if drug and drug not in (trial.drug_slugs or []):
             continue
         if q and q.lower() not in f"{trial.brief_title} {trial.acronym or ''} {trial.nct_id}".lower():
             continue
         rows.append({"nct_id": trial.nct_id, "brief_title": trial.brief_title, "acronym": trial.acronym, "phase": trial.phase, "overall_status": trial.overall_status, "has_results": trial.has_results,
                      "enrollment": trial.enrollment, "primary_completion_date": trial.primary_completion_date, "last_update_posted": trial.last_update_posted, "drug_slugs": trial.drug_slugs, "ingested_in_depth": trial.nct_id in watched})
-    return {"total": len(rows), "rows": rows[:limit], "note": "Registry index of Lilly-led trials matching tracked intervention terms (summary fields only). Trials marked 'ingested in depth' have full protocol and results extraction."}
+    return _page(rows[offset : offset + limit], len(rows), limit, offset,
+                 note="Registry index of Lilly-led trials matching tracked intervention terms (summary fields only). Trials marked 'ingested in depth' have full protocol and results extraction.")
 
 
 @app.get("/api/studies/{nct}", tags=["studies"])
@@ -339,6 +509,7 @@ def get_study(nct: str, db: Db) -> dict[str, Any]:
     # Inspection surface: a trial's own tables list every stored row, rejected ones included, each with its verification status.
     db.info[INCLUDE_REJECTED] = True
     study = _study_or_404(db, nct)
+    _loaded = _prime_study(study)  # noqa: F841
     population = study.population
     by_endpoint: dict[int, dict[str, Any]] = {}
     for result in study.results:
@@ -364,7 +535,7 @@ def get_study(nct: str, db: Db) -> dict[str, Any]:
         "location_count": study.location_count,
         "countries": study.countries,
         "source": source_ref(study.source),
-        "population": {"diabetes_status": population.diabetes_status, "diabetes_basis": population.diabetes_basis, "sex": population.sex, "min_age": population.min_age, "max_age": population.max_age, "summary": population.summary, "baseline": population.baseline[:120]} if population else None,
+        "population": {"diabetes_status": population.diabetes_status, "diabetes_basis": population.diabetes_basis, "sex": population.sex, "min_age": population.min_age, "max_age": population.max_age, "summary": population.summary, "baseline": population.baseline[:120], "baseline_total": len(population.baseline)} if population else None,
         "arms": [{"id": a.id, "label": a.label, "arm_type": a.arm_type, "drug_slug": a.drug_slug, "dose_amount": a.dose_amount, "dose_unit": a.dose_unit, "dose_text": a.dose_text, "formulation_key": a.formulation_key, "is_placebo": a.is_placebo, "is_pooled": a.is_pooled, "n_randomized": a.n_randomized, "description": a.description, "origin": a.origin} for a in study.arms],
         "protocol_endpoints": [{"title": e.title, "role": e.role, "category": e.category, "timeframe": e.timeframe_text, "description": e.description} for e in study.endpoints if e.kind == "PROTOCOL"],
         "estimands": [{"id": e.id, "label": e.label, "basis": e.basis, "description": e.description, "quote": e.quote, "explainer": ESTIMAND_EXPLAINER.get(e.label), "strategies": [{"event": s.event, "strategy": s.strategy, "basis": s.basis, "quote": s.quote} for s in e.strategies], "source": source_ref(e.source)} for e in study.estimands],
@@ -388,37 +559,50 @@ def study_eligibility(nct: str, db: Db) -> dict[str, Any]:
 @app.get("/api/findings", tags=["evidence"])
 def list_findings(
     db: Db,
-    study: str | None = None,
-    drug: str | None = None,
-    category: str | None = None,
-    estimand: str | None = None,
-    tier: str | None = None,
+    study: Filter = None,
+    drug: Filter = None,
+    category: Filter = None,
+    estimand: Filter = None,
+    tier: Filter = None,
     arm_level_only: bool = True,
     limit: int = Query(400, ge=1, le=2000),
+    offset: Offset = 0,
 ) -> dict[str, Any]:
-    query = select(OutcomeResult).join(Study, OutcomeResult.study_id == Study.id).join(Endpoint, OutcomeResult.endpoint_id == Endpoint.id)
+    _known(category, EndpointCategory._value2member_map_, "endpoint category")
+    _known(estimand, EstimandLabel._value2member_map_, "estimand")
+    _known(tier, EvidenceTier._value2member_map_, "evidence tier")
+    # Pass 1: one narrow query decides which results match (the same rules as before, applied to a few columns
+    # instead of to fully loaded rows), which gives the true total. Pass 2 loads only the requested page.
+    query = (
+        select(OutcomeResult.id, OutcomeResult.scope, OutcomeResult.arm_label, StudyArm.is_pooled, StudyArm.drug_slug, Estimand.id, Estimand.label)
+        .join(Study, OutcomeResult.study_id == Study.id)
+        .join(Endpoint, OutcomeResult.endpoint_id == Endpoint.id)
+        .outerjoin(StudyArm, OutcomeResult.arm_id == StudyArm.id)
+        .outerjoin(Estimand, OutcomeResult.estimand_id == Estimand.id)
+    )
     if study:
         query = query.where(or_(Study.nct_id == study.upper(), Study.display_name == study))
     if category:
         query = query.where(Endpoint.category == category)
     if tier:
         query = query.where(OutcomeResult.tier == tier)
-    rows = []
-    for result in db.scalars(query.order_by(Study.display_name, Endpoint.id, OutcomeResult.id)):
-        if arm_level_only and (result.scope != "ARM" or " minus " in result.arm_label or (result.arm and result.arm.is_pooled)):
+    matched: list[int] = []
+    for result_id, scope, arm_label, arm_is_pooled, arm_drug_slug, estimand_id, estimand_label in db.execute(query.order_by(Study.display_name, Endpoint.id, OutcomeResult.id)):
+        if arm_level_only and (scope != "ARM" or " minus " in arm_label or arm_is_pooled):
             continue
-        if drug and not (result.arm and result.arm.drug_slug == drug):
+        if drug and arm_drug_slug != drug:
             continue
-        if estimand and (result.estimand.label if result.estimand else "NOT_STATED") != estimand:
+        if estimand and (estimand_label if estimand_id is not None else "NOT_STATED") != estimand:
             continue
-        rows.append(_compact(build_finding(db, result)))
-        if len(rows) >= limit:
-            break
-    return {"total": len(rows), "rows": rows, "category_labels": CATEGORY_LABEL}
+        matched.append(result_id)
+    page = matched[offset : offset + limit]
+    loaded = {r.id: r for r in db.scalars(select(OutcomeResult).where(OutcomeResult.id.in_(page)).options(*_FINDING_PARENTS))}
+    rows = [_compact(build_finding(db, loaded[result_id])) for result_id in page]
+    return _page(rows, len(matched), limit, offset, category_labels=CATEGORY_LABEL)
 
 
 @app.get("/api/findings/{result_id}", tags=["evidence"])
-def finding_detail(result_id: int, db: Db) -> dict[str, Any]:
+def finding_detail(result_id: PathId, db: Db) -> dict[str, Any]:
     finding = get_finding(db, result_id)
     if finding is None:
         raise HTTPException(status_code=404, detail="Finding not found")
@@ -426,7 +610,7 @@ def finding_detail(result_id: int, db: Db) -> dict[str, Any]:
 
 
 @app.get("/api/analyses/{analysis_id}", tags=["evidence"])
-def analysis_detail(analysis_id: int, db: Db) -> dict[str, Any]:
+def analysis_detail(analysis_id: PathId, db: Db) -> dict[str, Any]:
     analysis = db.get(StatisticalAnalysis, analysis_id)
     if analysis is None:
         raise HTTPException(status_code=404, detail="Analysis not found")
@@ -435,24 +619,28 @@ def analysis_detail(analysis_id: int, db: Db) -> dict[str, Any]:
 
 
 @app.get("/api/analyses", tags=["evidence"])
-def list_analyses(db: Db, study: str | None = None, category: str | None = None, curated_only: bool = False, limit: int = Query(300, ge=1, le=1500)) -> dict[str, Any]:
-    query = select(StatisticalAnalysis).join(Study, StatisticalAnalysis.study_id == Study.id).join(Endpoint, StatisticalAnalysis.endpoint_id == Endpoint.id)
+def list_analyses(db: Db, study: Filter = None, category: Filter = None, curated_only: bool = False, limit: int = Query(300, ge=1, le=1500), offset: Offset = 0) -> dict[str, Any]:
+    _known(category, EndpointCategory._value2member_map_, "endpoint category")
+    conditions = []
     if study:
-        query = query.where(or_(Study.nct_id == study.upper(), Study.display_name == study))
+        conditions.append(or_(Study.nct_id == study.upper(), Study.display_name == study))
     if category:
-        query = query.where(Endpoint.category == category)
+        conditions.append(Endpoint.category == category)
     if curated_only:
-        query = query.where(StatisticalAnalysis.origin == "CURATED")
+        conditions.append(StatisticalAnalysis.origin == "CURATED")
+    joined = select(StatisticalAnalysis).join(Study, StatisticalAnalysis.study_id == Study.id).join(Endpoint, StatisticalAnalysis.endpoint_id == Endpoint.id).where(*conditions)
+    total = db.scalar(select(func.count()).select_from(joined.subquery()))
     rows = []
-    for a in db.scalars(query.limit(limit)):
+    # The same order as /api/findings. Without an ORDER BY a page of a LIMIT query is whatever the database returns first.
+    for a in db.scalars(joined.options(*_ANALYSIS_PARENTS).order_by(Study.display_name, Endpoint.id, StatisticalAnalysis.id).limit(limit).offset(offset)):
         dto = analysis_dto(a)
         rows.append({**dto, "interpretation": interpret_analysis(dto)})
-    return {"total": len(rows), "rows": rows}
+    return _page(rows, total, limit, offset)
 
 
 class CompareRequest(Strict):
-    a: int = Field(gt=0)
-    b: int = Field(gt=0)
+    a: DbId
+    b: DbId
 
 
 @app.post("/api/compare", tags=["evidence"])
@@ -460,9 +648,9 @@ def compare(body: CompareRequest, db: Db) -> dict[str, Any]:
     a, b = get_finding(db, body.a), get_finding(db, body.b)
     if a is None or b is None:
         raise HTTPException(status_code=404, detail="One or both findings were not found")
+    _loaded = _prime_studies(db)  # noqa: F841
     comparison = compare_findings(db, a, b)
-    audit(db, "comparison.run", actor="api", target_type="comparison", target_id=f"{body.a}:{body.b}", classification=comparison.classification)
-    db.commit()
+    usage_log.info("comparison.run a=%s b=%s classification=%s", body.a, body.b, comparison.classification)
     return {"a": a.as_dict(), "b": b.as_dict(), "interpretation_a": interpret_finding(a), "interpretation_b": interpret_finding(b), "comparison": comparison.as_dict(),
             "analysis_interpretations": [interpret_analysis(x) for x in comparison.reported_analyses]}
 
@@ -491,6 +679,7 @@ def _pick(db: Session, nct: str, arm_contains: str, estimand: str | None, tier: 
 @app.get("/api/compare/presets", tags=["evidence"])
 def compare_presets(db: Db) -> list[dict[str, Any]]:
     """Worked examples that exercise each classification (ids resolved from the live database)."""
+    _loaded = _prime_evidence(db)  # noqa: F841
     specs = [
         ("Tirzepatide 15 mg vs placebo within SURMOUNT-1", "Randomized arms of one trial, registry-posted analysis with confidence interval.",
          _pick(db, "NCT04184622", "15 mg", "EFFICACY", "REGISTRY_RESULTS", 72), _pick(db, "NCT04184622", "placebo", "EFFICACY", "REGISTRY_RESULTS", 72)),
@@ -553,9 +742,10 @@ def compare_studies(db: Db, a: str, b: str) -> dict[str, Any]:
 
 
 @app.get("/api/estimands", tags=["evidence"])
-def estimand_inspector(db: Db, study: str) -> dict[str, Any]:
+def estimand_inspector(db: Db, study: Annotated[str, Query(max_length=40)]) -> dict[str, Any]:
     """Results for the same arm and endpoint laid out by estimand, so the two are never merged."""
     s = _study_or_404(db, study)
+    _loaded = _prime_study(s)  # noqa: F841
     table: dict[tuple, dict[str, Any]] = {}
     for r in s.results:
         if r.endpoint.category not in ("WEIGHT_PCT_CHANGE", "HBA1C_CHANGE", "WEIGHT_ABS_CHANGE") or r.value is None or r.scope != "ARM" or " minus " in r.arm_label or r.arm is None or r.arm.is_pooled:
@@ -626,8 +816,8 @@ def dose_scenario(body: DoseScenarioRequest, db: Db) -> dict[str, Any]:
 
 
 class RiskContrastRequest(Strict):
-    ae_a: int = Field(gt=0)
-    ae_b: int = Field(gt=0)
+    ae_a: DbId
+    ae_b: DbId
 
 
 @app.post("/api/stats/risk-contrast", tags=["benefit-risk"])
@@ -646,18 +836,20 @@ def risk_contrast(body: RiskContrastRequest, db: Db) -> dict[str, Any]:
 
 
 @app.get("/api/safety/trial-ae", tags=["safety"])
-def safety_trial_ae(db: Db, drug: str | None = None, nct: str | None = None, measure_kind: str | None = None, term: Annotated[str | None, Query(max_length=80)] = None, limit: int = Query(1500, ge=1, le=5000)) -> dict[str, Any]:
+def safety_trial_ae(db: Db, drug: Filter = None, nct: Filter = None, measure_kind: Filter = None, term: Annotated[str | None, Query(max_length=80)] = None,
+                    limit: int = Query(1500, ge=1, le=5000), offset: Offset = 0) -> dict[str, Any]:
     if measure_kind and measure_kind not in AE_KIND_LABEL:
         raise HTTPException(status_code=422, detail="Unknown measure kind")
-    return trial_ae_table(db, drug, nct, measure_kind, term, limit)
+    table = trial_ae_table(db, drug, nct, measure_kind, term, limit, offset)
+    return _page(table.pop("rows"), table.pop("total"), limit, offset, **table)
 
 
 @app.get("/api/safety/terms", tags=["safety"])
-def safety_terms(db: Db, nct: str, limit: int = Query(300, ge=1, le=5000)) -> dict[str, Any]:
+def safety_terms(db: Db, nct: Annotated[str, Query(max_length=40)], limit: int = Query(300, ge=1, le=5000), offset: Offset = 0) -> dict[str, Any]:
     """One entry per term and measure kind. A count the source does not report is null, never 0.
 
     Every posted serious-event term is stored, so a study can have far more terms than ``limit``: the response
-    says how many exist and whether the list was cut. ``tables`` tells whether the term comes from the registry's
+    says how many exist (``total``, also ``total_terms``) and whether terms remain after this page (``truncated``). ``tables`` tells whether the term comes from the registry's
     serious-event table, its non-serious table, or both (their rows are different counts and carry ``is_serious``).
     """
     study = _study_or_404(db, nct)
@@ -682,8 +874,10 @@ def safety_terms(db: Db, nct: str, limit: int = Query(300, ge=1, le=5000)) -> di
         for (t, k), e in terms.items()
     ]
     # Terms reported only as a percentage have no count to rank by: they are listed first, then by count.
-    rows.sort(key=lambda r: (r["max_participants_affected"] is not None, -(r["max_participants_affected"] or 0), r["term"]))
-    return {"study": study_brief(study), "terms": rows[:limit], "total_terms": len(rows), "truncated": len(rows) > limit}
+    rows.sort(key=lambda r: (r["max_participants_affected"] is not None, -(r["max_participants_affected"] or 0), r["term"], r["measure_kind"]))
+    page = rows[offset : offset + limit]
+    # "terms" is the original name of the list; "rows" is the same list under the name every list endpoint uses.
+    return _page(page, len(rows), limit, offset, study=study_brief(study), terms=page, total_terms=len(rows), truncated=offset + len(page) < len(rows))
 
 
 @app.get("/api/safety/spontaneous/{slug}", tags=["safety"])
@@ -725,12 +919,14 @@ def _gap_dto(gap: EvidenceGap, weights: dict[str, float] | None = None) -> dict[
 
 
 @app.get("/api/gaps", tags=["gaps"])
-def list_gaps(db: Db, drug: str | None = None, category: str | None = None, nature: str | None = None,
+def list_gaps(db: Db, drug: Filter = None, category: Filter = None, nature: Filter = None,
               w_importance: float = Query(DEFAULT_WEIGHTS["clinical_importance"], ge=0, le=1), w_uncertainty: float = Query(DEFAULT_WEIGHTS["uncertainty"], ge=0, le=1),
-              w_tractability: float = Query(DEFAULT_WEIGHTS["tractability"], ge=0, le=1), w_actionability: float = Query(DEFAULT_WEIGHTS["actionability"], ge=0, le=1)) -> dict[str, Any]:
+              w_tractability: float = Query(DEFAULT_WEIGHTS["tractability"], ge=0, le=1), w_actionability: float = Query(DEFAULT_WEIGHTS["actionability"], ge=0, le=1),
+              limit: int = Query(500, ge=1, le=1000), offset: Offset = 0) -> dict[str, Any]:
+    _known(nature, NATURE_LABEL, "gap nature")
     weights = {"clinical_importance": w_importance, "uncertainty": w_uncertainty, "tractability": w_tractability, "actionability": w_actionability}
     rows = []
-    for gap in db.scalars(select(EvidenceGap)):
+    for gap in db.scalars(select(EvidenceGap).options(joinedload(EvidenceGap.drug)).order_by(EvidenceGap.id)):
         if drug and (gap.drug is None or gap.drug.slug != drug):
             continue
         if category and gap.category != category:
@@ -739,8 +935,8 @@ def list_gaps(db: Db, drug: str | None = None, category: str | None = None, natu
             continue
         rows.append(_gap_dto(gap, weights))
     rows.sort(key=lambda g: -g["priority"]["score"])
-    return {"total": len(rows), "rows": rows, "weights": weights, "default_weights": DEFAULT_WEIGHTS, "nature_labels": NATURE_LABEL,
-            "categories": sorted({g["category"] for g in rows}), "note": "A gap in the public record is not confirmation that the sponsor has no data. Each gap states why it is open."}
+    return _page(rows[offset : offset + limit], len(rows), limit, offset, weights=weights, default_weights=DEFAULT_WEIGHTS, nature_labels=NATURE_LABEL,
+                 categories=sorted({g["category"] for g in rows}), note="A gap in the public record is not confirmation that the sponsor has no data. Each gap states why it is open.")
 
 
 class GapReview(Strict):
@@ -751,7 +947,7 @@ class GapReview(Strict):
 
 
 @app.patch("/api/gaps/{gap_id}", tags=["gaps"])
-def review_gap(gap_id: int, body: GapReview, db: Db, _: Annotated[str, Depends(require_reviewer)]) -> dict[str, Any]:
+def review_gap(gap_id: PathId, body: GapReview, db: Db, _: Annotated[str, Depends(require_reviewer)]) -> dict[str, Any]:
     gap = db.get(EvidenceGap, gap_id)
     if gap is None:
         raise HTTPException(status_code=404, detail="Gap not found")
@@ -770,7 +966,10 @@ def review_gap(gap_id: int, body: GapReview, db: Db, _: Annotated[str, Depends(r
 
 
 @app.get("/api/design/coverage", tags=["design"])
-def design_coverage(db: Db, drug: str | None = None) -> dict[str, Any]:
+def design_coverage(db: Db, drug: Filter = None) -> dict[str, Any]:
+    # Everything the matrix reads, loaded in a handful of queries; the engine then finds it in the session.
+    options = (*_STUDY_BRIEF, selectinload(Study.endpoints), selectinload(Study.arms), selectinload(Study.inclusion), selectinload(Study.exclusion))
+    _loaded = db.scalars(select(Study).options(*options)).unique().all()  # noqa: F841
     return design.coverage_matrix(db, drug)
 
 
@@ -853,7 +1052,7 @@ class SimulationRequest(Strict):
     seed: int = Field(20261013, ge=0, le=2**31 - 1)
 
 
-@app.post("/api/design/simulate", tags=["design"])
+@app.post("/api/design/simulate", tags=["design"], dependencies=[Depends(limit_simulation)])
 def design_simulate(body: SimulationRequest) -> dict[str, Any]:
     try:
         return stats.simulate_two_arm_trial(stats.SimulationSpec(**body.model_dump()))
@@ -894,11 +1093,10 @@ class AskRequest(Strict):
     question: str = Field(min_length=3, max_length=1000)
 
 
-@app.post("/api/assistant/ask", tags=["assistant"])
+@app.post("/api/assistant/ask", tags=["assistant"], dependencies=[Depends(limit_assistant)])
 def assistant_ask(body: AskRequest, db: Db) -> dict[str, Any]:
     answer = ask(db, body.question, get_provider(get_settings()))
-    audit(db, "assistant.question", actor="api", target_type="assistant", target_id=answer.intent, llm_used=answer.llm.get("used", False))
-    db.commit()
+    usage_log.info("assistant.question intent=%s llm_used=%s", answer.intent, answer.llm.get("used", False))
     return answer.as_dict()
 
 
@@ -918,68 +1116,91 @@ def assistant_examples() -> list[str]:
 
 
 @app.get("/api/sources", tags=["provenance"])
-def list_sources(db: Db, source_type: str | None = None, tier: str | None = None, q: Annotated[str | None, Query(max_length=120)] = None, limit: int = Query(500, ge=1, le=2000)) -> dict[str, Any]:
-    query = select(EvidenceSource)
+def list_sources(db: Db, source_type: Filter = None, tier: Filter = None, q: Annotated[str | None, Query(max_length=120)] = None, limit: int = Query(500, ge=1, le=2000), offset: Offset = 0) -> dict[str, Any]:
+    _known(tier, EvidenceTier._value2member_map_, "evidence tier")
+    conditions = []
     if source_type:
-        query = query.where(EvidenceSource.source_type == source_type)
+        conditions.append(EvidenceSource.source_type == source_type)
     if tier:
-        query = query.where(EvidenceSource.tier == tier)
+        conditions.append(EvidenceSource.tier == tier)
     if q:
-        query = query.where(or_(EvidenceSource.title.ilike(f"%{q}%"), EvidenceSource.key.ilike(f"%{q}%")))
-    usage = Counter(sid for (sid,) in db.execute(select(OutcomeResult.source_id)))
-    rows = []
-    for source in db.scalars(query.order_by(EvidenceSource.source_type, EvidenceSource.key).limit(limit)):
-        rows.append({**source_ref(source), "source_type": source.source_type, "license_note": source.license_note, "n_snapshots": len(source.snapshots), "n_results": usage.get(source.id, 0), "external_ids": source.external_ids})
-    types = Counter(t for (t,) in db.execute(select(EvidenceSource.source_type)))
-    return {"total": len(rows), "rows": rows, "by_type": dict(types)}
+        conditions.append(or_(EvidenceSource.title.ilike(f"%{q}%"), EvidenceSource.key.ilike(f"%{q}%")))
+    total = db.scalar(select(func.count()).select_from(EvidenceSource).where(*conditions))
+    sources = db.scalars(select(EvidenceSource).where(*conditions).order_by(EvidenceSource.source_type, EvidenceSource.key).limit(limit).offset(offset)).all()
+    ids = [source.id for source in sources]
+    # Counted in the database: loading the snapshots themselves would pull every stored document into memory.
+    n_results = {sid: n for sid, n in db.execute(select(OutcomeResult.source_id, func.count()).where(OutcomeResult.source_id.in_(ids)).group_by(OutcomeResult.source_id))}
+    n_snapshots = {sid: n for sid, n in db.execute(select(SourceSnapshot.source_id, func.count()).where(SourceSnapshot.source_id.in_(ids)).group_by(SourceSnapshot.source_id))}
+    rows = [{**source_ref(source), "source_type": source.source_type, "license_note": source.license_note, "n_snapshots": n_snapshots.get(source.id, 0), "n_results": n_results.get(source.id, 0), "external_ids": source.external_ids}
+            for source in sources]
+    by_type = {source_type: n for source_type, n in db.execute(select(EvidenceSource.source_type, func.count()).group_by(EvidenceSource.source_type))}
+    return _page(rows, total, limit, offset, by_type=by_type)
 
 
 @app.get("/api/sources/{source_id}", tags=["provenance"])
-def get_source(source_id: int, db: Db) -> dict[str, Any]:
+def get_source(source_id: PathId, db: Db) -> dict[str, Any]:
     source = db.get(EvidenceSource, source_id)
     if source is None:
         raise HTTPException(status_code=404, detail="Source not found")
-    results = db.scalars(select(OutcomeResult).where(OutcomeResult.source_id == source.id).limit(60)).all()
+    dependent = select(OutcomeResult).where(OutcomeResult.source_id == source.id)
+    results = db.scalars(dependent.options(selectinload(OutcomeResult.study), selectinload(OutcomeResult.endpoint)).order_by(OutcomeResult.id).limit(60)).all()
+    # Snapshot metadata only: whether the document is stored is asked of the database instead of loading the document.
+    snapshots = db.execute(
+        select(SourceSnapshot.version_no, SourceSnapshot.content_hash, SourceSnapshot.retrieved_at, SourceSnapshot.version_label, SourceSnapshot.byte_size,
+               SourceSnapshot.content.is_not(None), SourceSnapshot.is_synthetic, SourceSnapshot.excerpts)
+        .where(SourceSnapshot.source_id == source.id).order_by(SourceSnapshot.version_no)
+    ).all()
     return {
         **source_ref(source), "source_type": source.source_type, "license_note": source.license_note, "external_ids": source.external_ids, "classification": source.classification,
-        "snapshots": [{"version_no": s.version_no, "content_hash": s.content_hash, "retrieved_at": s.retrieved_at.isoformat(), "version_label": s.version_label, "byte_size": s.byte_size, "content_stored": s.content is not None, "is_synthetic": s.is_synthetic, "anchored_excerpts": s.excerpts} for s in source.snapshots],
+        "snapshots": [{"version_no": version_no, "content_hash": content_hash, "retrieved_at": retrieved_at.isoformat(), "version_label": version_label, "byte_size": byte_size, "content_stored": bool(content_stored), "is_synthetic": is_synthetic, "anchored_excerpts": excerpts}
+                      for version_no, content_hash, retrieved_at, version_label, byte_size, content_stored, is_synthetic, excerpts in snapshots],
         "dependent_findings": [{"result_id": r.id, "study": r.study.display_name, "arm": r.arm_label, "endpoint": r.endpoint.title, "value": r.value, "verification_status": r.verification_status, "locator_quote": r.locator_quote, "source_location": r.source_location} for r in results],
-        "changes": [{"id": e.id, "detected_at": e.detected_at.isoformat(), "summary": e.summary, "significance": e.significance, "review_status": e.review_status, "is_synthetic": e.is_synthetic} for e in db.scalars(select(ChangeEvent).where(ChangeEvent.source_id == source.id))],
+        # At most 60 dependent findings are listed; this is how many there are.
+        "dependent_findings_total": db.scalar(select(func.count()).select_from(dependent.subquery())),
+        "changes": [{"id": e.id, "detected_at": e.detected_at.isoformat(), "summary": e.summary, "significance": e.significance, "review_status": e.review_status, "is_synthetic": e.is_synthetic} for e in db.scalars(select(ChangeEvent).where(ChangeEvent.source_id == source.id).order_by(ChangeEvent.id))],
     }
 
 
-@app.get("/api/changes", tags=["provenance"])
-def list_changes(db: Db) -> list[dict[str, Any]]:
+def _change_rows(db: Session, limit: int, offset: int = 0) -> list[dict[str, Any]]:
+    """Detected source changes, newest first."""
+    events = db.scalars(select(ChangeEvent).options(joinedload(ChangeEvent.source)).order_by(ChangeEvent.detected_at.desc(), ChangeEvent.id.desc()).limit(limit).offset(offset))
     return [{"id": e.id, "source": source_ref(e.source), "detected_at": e.detected_at.isoformat(), "summary": e.summary, "significance": e.significance, "review_status": e.review_status, "is_synthetic": e.is_synthetic,
              "synthetic_notice": "SYNTHETIC DEMONSTRATION — the 'before' version was generated from the real record by labelled edits to demonstrate change review. It is not a real registry change." if e.is_synthetic else None, "changes": e.changes}
-            for e in db.scalars(select(ChangeEvent).order_by(ChangeEvent.detected_at.desc()))]
+            for e in events]
+
+
+@app.get("/api/changes", tags=["provenance"])
+def list_changes(db: Db, limit: int = Query(200, ge=1, le=1000), offset: Offset = 0) -> dict[str, Any]:
+    return _page(_change_rows(db, limit, offset), db.scalar(select(func.count()).select_from(ChangeEvent)), limit, offset)
 
 
 @app.get("/api/audit", tags=["provenance"])
-def list_audit(db: Db, action: str | None = None, limit: int = Query(200, ge=1, le=1000)) -> list[dict[str, Any]]:
-    query = select(AuditEvent)
-    if action:
-        query = query.where(AuditEvent.action == action)
-    return [{"id": e.id, "at": e.at.isoformat(), "actor": e.actor, "action": e.action, "target_type": e.target_type, "target_id": e.target_id, "detail": e.detail} for e in db.scalars(query.order_by(AuditEvent.id.desc()).limit(limit))]
+def list_audit(db: Db, action: Filter = None, limit: int = Query(200, ge=1, le=1000), offset: Offset = 0) -> dict[str, Any]:
+    conditions = [AuditEvent.action == action] if action else []
+    total = db.scalar(select(func.count()).select_from(AuditEvent).where(*conditions))
+    rows = [{"id": e.id, "at": e.at.isoformat(), "actor": e.actor, "action": e.action, "target_type": e.target_type, "target_id": e.target_id, "detail": e.detail}
+            for e in db.scalars(select(AuditEvent).where(*conditions).order_by(AuditEvent.id.desc()).limit(limit).offset(offset))]
+    return _page(rows, total, limit, offset)
 
 
 @app.get("/api/review-queue", tags=["provenance"])
-def review_queue(db: Db, status: str | None = "OPEN", item_type: str | None = None, limit: int = Query(300, ge=1, le=1000)) -> dict[str, Any]:
+def review_queue(db: Db, status: Filter = "OPEN", item_type: Filter = None, limit: int = Query(300, ge=1, le=1000), offset: Offset = 0) -> dict[str, Any]:
     """Items that are not evidence rows: source changes, reconciliation problems, ingestion failures.
 
     Evidence awaiting review is not here: a pending evidence row is its own review item (GET /api/review/evidence).
     """
-    query = select(ReviewQueueItem)
+    conditions = []
     if status:
-        query = query.where(ReviewQueueItem.status == status)
+        conditions.append(ReviewQueueItem.status == status)
     if item_type:
-        query = query.where(ReviewQueueItem.item_type == item_type)
-    order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
-    items = sorted(db.scalars(query), key=lambda i: (order.get(i.priority, 9), i.id))
-    counts = Counter((i.item_type, i.status) for i in db.scalars(select(ReviewQueueItem)))
-    return {"total": len(items), "rows": [{"id": i.id, "item_type": i.item_type, "target_type": i.target_type, "target_id": i.target_id, "title": i.title, "reason": i.reason, "priority": i.priority, "status": i.status, "payload": i.payload, "created_at": i.created_at.isoformat()} for i in items[:limit]],
-            "counts": [{"item_type": t, "status": s, "n": n} for (t, s), n in sorted(counts.items())], "review_enabled": bool(get_settings().reviewer_token),
-            "evidence_review": "/api/review/evidence"}
+        conditions.append(ReviewQueueItem.item_type == item_type)
+    total = db.scalar(select(func.count()).select_from(ReviewQueueItem).where(*conditions))
+    by_priority = case({"HIGH": 0, "MEDIUM": 1, "LOW": 2}, value=ReviewQueueItem.priority, else_=9)
+    items = db.scalars(select(ReviewQueueItem).where(*conditions).order_by(by_priority, ReviewQueueItem.id).limit(limit).offset(offset)).all()
+    counts = db.execute(select(ReviewQueueItem.item_type, ReviewQueueItem.status, func.count()).group_by(ReviewQueueItem.item_type, ReviewQueueItem.status)).all()
+    rows = [{"id": i.id, "item_type": i.item_type, "target_type": i.target_type, "target_id": i.target_id, "title": i.title, "reason": i.reason, "priority": i.priority, "status": i.status, "payload": i.payload, "created_at": i.created_at.isoformat()} for i in items]
+    return _page(rows, total, limit, offset, counts=[{"item_type": t, "status": s, "n": n} for t, s, n in sorted(counts)], review_enabled=bool(get_settings().reviewer_token),
+                 evidence_review="/api/review/evidence")
 
 
 class DecisionRequest(Strict):
@@ -1001,7 +1222,7 @@ QUEUE_TRANSITIONS: dict[tuple[str, str], str] = {
 
 
 @app.post("/api/review-queue/{item_id}/decision", tags=["provenance"])
-def decide(item_id: int, body: DecisionRequest, db: Db, _: Annotated[str, Depends(require_reviewer)]) -> dict[str, Any]:
+def decide(item_id: PathId, body: DecisionRequest, db: Db, _: Annotated[str, Depends(require_reviewer)]) -> dict[str, Any]:
     """Decide on a queue item (a source change, a reconciliation problem, an ingestion failure).
 
     This never changes the verification status of evidence: that is done per evidence row through
@@ -1042,27 +1263,29 @@ def decide(item_id: int, body: DecisionRequest, db: Db, _: Annotated[str, Depend
 
 
 @app.get("/api/reports/comparison", tags=["reports"], response_class=PlainTextResponse)
-def report_comparison(db: Db, a: int = Query(gt=0), b: int = Query(gt=0)) -> PlainTextResponse:
+def report_comparison(db: Db, a: QueryId, b: QueryId) -> PlainTextResponse:
+    _loaded = _prime_studies(db)  # noqa: F841
     try:
         markdown = comparison_report_markdown(db, a, b)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    audit(db, "report.exported", actor="api", target_type="comparison", target_id=f"{a}:{b}")
-    db.commit()
+    usage_log.info("report.exported kind=comparison a=%s b=%s", a, b)
     return PlainTextResponse(markdown, media_type="text/markdown; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="incretinos-comparison-{a}-{b}.md"'})
 
 
 @app.get("/api/reports/study/{nct}", tags=["reports"], response_class=PlainTextResponse)
 def report_study(nct: str, db: Db) -> PlainTextResponse:
     _study_or_404(db, nct)
+    usage_log.info("report.exported kind=study nct=%s", nct.upper())
     return PlainTextResponse(study_report_markdown(db, nct), media_type="text/markdown; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="incretinos-{nct.upper()}.md"'})
 
 
 @app.get("/api/overview", tags=["meta"])
 def overview(db: Db) -> dict[str, Any]:
-    drugs = [d for d in list_drugs(db) if d["tier_group"] != "COMPARATOR"]
-    studies = list(db.scalars(select(Study)))
-    gaps = sorted((_gap_dto(g) for g in db.scalars(select(EvidenceGap))), key=lambda g: -g["priority"]["score"])
+    drugs = [d for d in _drug_rows(db) if d["tier_group"] != "COMPARATOR"]
+    _loaded = _prime_evidence(db)
+    studies = _loaded[0]
+    gaps = sorted((_gap_dto(g) for g in db.scalars(select(EvidenceGap).options(joinedload(EvidenceGap.drug)).order_by(EvidenceGap.id))), key=lambda g: -g["priority"]["score"])
     upcoming = sorted(
         [study_brief(s) for s in studies if not s.has_results and (s.overall_status or "") in ("ACTIVE_NOT_RECRUITING", "RECRUITING") and s.primary_completion_date],
         key=lambda s: s["primary_completion_date"],
@@ -1075,7 +1298,7 @@ def overview(db: Db) -> dict[str, Any]:
         "studies_by_program": dict(Counter(s.program or "Other" for s in studies)),
         "top_gaps": gaps[:6],
         "gaps_by_nature": dict(Counter(g["gap_nature"] for g in gaps)),
-        "changes": list_changes(db)[:5],
+        "changes": _change_rows(db, limit=5),
         "upcoming_readouts": upcoming,
         "completed_without_registry_results": unpublished,
         "presets": compare_presets(db),
