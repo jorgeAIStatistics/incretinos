@@ -125,3 +125,9 @@ frontend/          Next.js application and Playwright tests
 research/          retrieval notes (with source URLs and locator quotes) and conversion report
 docs/              specification, limitations, examples, screenshots
 ```
+
+## Ownership and permissions
+
+Maintained by **Jorge Rodriguez** ([@jorgeAIStatistics](https://github.com/jorgeAIStatistics)).
+See [COPYRIGHT.md](COPYRIGHT.md) for ownership and third-party attribution scope,
+and [LICENSE](LICENSE) for permissions. Source-visible for portfolio review; reuse rights are reserved.
