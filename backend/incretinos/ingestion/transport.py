@@ -22,10 +22,17 @@ SERVICE_BASE_URLS = {
     "ctgov": "https://clinicaltrials.gov/api/v2",
     "eutils": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils",
     "openfda": "https://api.fda.gov",
+    # Full-text documents (incretinos.fulltext): Europe PMC REST (metadata + JATS XML of open-access records) and the
+    # Drugs@FDA document store (review PDFs). accessdata.fda.gov refuses clients without a descriptive user agent.
+    "europepmc": "https://www.ebi.ac.uk/europepmc/webservices/rest",
+    "fdadocs": "https://www.accessdata.fda.gov/drugsatfda_docs",
 }
 
 # Conservative request budgets (requests per second) for keyless access.
-DEFAULT_RATE_LIMITS = {"ctgov": 3.0, "eutils": 2.5, "openfda": 3.0}
+DEFAULT_RATE_LIMITS = {"ctgov": 3.0, "eutils": 2.5, "openfda": 3.0, "europepmc": 2.0, "fdadocs": 0.5}
+
+#: The project's descriptive user agent, sent on every live request.
+USER_AGENT = "IncretinOS/0.1 (research evidence platform; public-data only)"
 
 RETRYABLE_STATUS = {408, 425, 429, 500, 502, 503, 504}
 
@@ -107,7 +114,7 @@ class LiveTransport:
         if self.client is None:
             self.client = httpx.Client(
                 timeout=self.timeout_s,
-                headers={"User-Agent": "IncretinOS/0.1 (research evidence platform; public-data only)"},
+                headers={"User-Agent": USER_AGENT},
                 follow_redirects=True,
             )
         self._limiters = {svc: RateLimiter(rate, sleep=self.sleep) for svc, rate in self.rate_limits.items()}
