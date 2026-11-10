@@ -22,7 +22,9 @@ Rules that hold for every profile set:
 from __future__ import annotations
 
 import math
+import re
 from collections import Counter
+from itertools import combinations
 from typing import Any
 
 from sqlalchemy import select
@@ -66,6 +68,23 @@ IPD_REQUIREMENTS = [
 _ESTIMAND_TIE_ORDER = (EstimandLabel.TREATMENT_REGIMEN.value, EstimandLabel.EFFICACY.value, EstimandLabel.OTHER.value, EstimandLabel.NOT_STATED.value)
 
 
+_PERIOD_UNITS = {"day": 1 / 7, "week": 1.0, "wk": 1.0, "month": 52 / 12, "year": 52.0}
+
+
+def period_end_weeks(period: str | None) -> float | None:
+    """Latest time named in a reporting-period text, in weeks ('Baseline up to Week 193' -> 193; 'Up to 7 Years' -> 364).
+
+    Used only to compare time windows. None when the text names no time ('Overall Study'). A text that names several cohorts'
+    windows yields the latest of them.
+    """
+    if not period:
+        return None
+    low = period.lower()
+    ends = [float(n) * _PERIOD_UNITS[u] for n, u in re.findall(r"(\d+(?:\.\d+)?)\s*-?\s*(day|week|wk|month|year)s?\b", low)]
+    ends += [float(n) for n in re.findall(r"\bweeks?\s*(\d+(?:\.\d+)?)", low)]
+    return max(ends) if ends else None
+
+
 def _arm_key(arm: StudyArm) -> str:
     if arm.is_placebo:
         return "placebo"
@@ -87,6 +106,7 @@ def _source_brief(result: OutcomeResult) -> dict[str, Any]:
     return {
         "result_id": result.id,
         "value": result.value,
+        "value_text": result.value_text,
         "unit": result.unit,
         "ci_low": result.ci_low,
         "ci_high": result.ci_high,
@@ -256,6 +276,8 @@ def arm_profiles(session: Session, nct_id: str, estimand: str | None = None, tim
             profile["efficacy"][metric] = {
                 "result_id": best.id,
                 "value": best.value,
+                # As the source printed it (reported precision); None when not stored.
+                "value_text": best.value_text,
                 "unit": best.unit,
                 "ci_low": best.ci_low,
                 "ci_high": best.ci_high,
@@ -321,9 +343,17 @@ def arm_profiles(session: Session, nct_id: str, estimand: str | None = None, tim
             "verification_status": event.verification_status,
         }
 
+    # The efficacy assessment week of this profile set: an adverse-event measure is shown for the reporting period that best
+    # matches it, not for whichever period happened to be stored first.
+    efficacy_week = next((sel["timepoint_weeks"] for sel in selection.values() if sel.get("timepoint_weeks") is not None), None)
+
+    def period_rank(event: AdverseEvent) -> tuple[float, int]:
+        end = period_end_weeks(event.period)
+        return (abs(end - efficacy_week) if end is not None and efficacy_week is not None else math.inf, event.id)
+
     for (group_key, name), rows in candidates.items():
-        # Different reporting periods are different quantities: the period stored first is shown, the others are listed.
-        first_period = min(rows, key=lambda e: e.id).period
+        # Different reporting periods are different quantities: the period closest to the efficacy week is shown, the others are listed.
+        first_period = min(rows, key=period_rank).period
         same_period = [e for e in rows if e.period == first_period]
         lead, others = display_lead(same_period, kind="adverse_event")
         if lead is None:
@@ -331,7 +361,9 @@ def arm_profiles(session: Session, nct_id: str, estimand: str | None = None, tim
         entry = ae_entry(lead)
         entry["other_sources"] = [ae_entry(e) for e in others]
         entry["other_periods"] = [ae_entry(e) for e in sorted(rows, key=lambda e: e.id) if e.period != first_period]
-        entry["display_choice"] = DISPLAY_RULE_ADVERSE_EVENTS + " A measure reported for several periods is shown for the period stored first; the other periods are listed." if (others or entry["other_periods"]) else None
+        entry["period_end_weeks"] = period_end_weeks(lead.period)
+        entry["display_choice"] = (DISPLAY_RULE_ADVERSE_EVENTS + " A measure reported for several periods is shown for the period whose end is closest to the efficacy assessment week "
+                                   "(ties and unparseable periods: the one stored first); the other periods are listed.") if (others or entry["other_periods"]) else None
         profiles[group_key]["tolerability"][name] = entry
 
     ordered = sorted(profiles.values(), key=lambda p: (not p["is_placebo"], p["drug_slug"] or "", p["dose_amount"] if p["dose_amount"] is not None else 1e9, p["label"]))
@@ -342,6 +374,16 @@ def arm_profiles(session: Session, nct_id: str, estimand: str | None = None, tim
             p["key"] = f"{p['key']}|{p.pop('_norm')}"
         else:
             p.pop("_norm")
+    # One arm, one profile: two profiles whose records are not established as different randomized groups (an unmapped reporting
+    # label beside a registered arm of the same treatment, say) may be ONE group reported twice. They are kept apart — merging
+    # them would be a guess — but each says which other profiles it may be, and no calculation combines them.
+    for p in ordered:
+        p["not_distinct_from"] = []
+    for p, q in combinations(ordered, 2):
+        relation, why = arm_relation(session, representative(p["arm_group_key"]), representative(q["arm_group_key"]))
+        if relation in ("UNRESOLVED", "SAME_ARM"):
+            p["not_distinct_from"].append({"key": q["key"], "label": q["label"], "reason": why})
+            q["not_distinct_from"].append({"key": p["key"], "label": p["label"], "reason": why})
     strata = sorted({p["randomization_stratum"] for p in ordered})
     notes = [
         "Arm-level values are descriptive. The randomized contrast with the control arm, where reported, is the treatment effect.",
@@ -349,6 +391,11 @@ def arm_profiles(session: Session, nct_id: str, estimand: str | None = None, tim
         "Values within a trial are comparable across its randomized arms; they are not comparable across trials without the checks in the comparison laboratory.",
         "Each efficacy metric uses one estimand, one time point and one baseline for all arms (see 'selection'); an arm without such a value is listed under 'not_available' and never given another estimand or week.",
     ]
+    ambiguous = sorted({tuple(sorted((p["label"], other["label"]))) for p in ordered for other in p["not_distinct_from"]})
+    if ambiguous:
+        notes.append("These profiles are not established as different randomized groups and may be one group reported twice: "
+                     + "; ".join(f"'{x}' and '{y}'" for x, y in ambiguous)
+                     + ". They are shown separately, and the scenario and utility tools do not combine or rank them as two arms.")
     if len(strata) > 1:
         notes.append("This registration contains separately randomized sub-studies or periods (" + "; ".join(s or "main randomization" for s in strata) + "): arms of different ones were not randomized against each other.")
     messages = []
@@ -422,6 +469,19 @@ def adverse_event_contrast(session: Session, a: AdverseEvent, b: AdverseEvent) -
         raise StatsInputError(f"The two rows are not established as two arms randomized against each other. {why}")
     if (a.study.allocation or "").upper() != "RANDOMIZED":
         raise StatsInputError("The trial's allocation is not recorded as randomized; a between-arm risk contrast is not offered.")
+    model = (a.study.intervention_model or "").upper()
+    if model in ("CROSSOVER", "SEQUENTIAL"):
+        raise StatsInputError(f"The trial's intervention model is '{model.lower()}': groups may be the same participants in successive periods, so an interval that assumes two independent samples is not valid.")
+    unresolved = [x.arm.label for x in (a, b) if not resolve_arm(session, x.arm).resolved]
+    if unresolved:
+        # A reporting label that maps to no registered arm group may be a dose period of the same participants (for example the
+        # successive capsule and tablet periods of a bioequivalence cohort), not a parallel arm: independence is not established.
+        raise StatsInputError(
+            "The contrast is offered only between registered arm groups (or rows mapped to exactly one of them). "
+            + " and ".join(f"'{label}'" for label in unresolved)
+            + (" does" if len(unresolved) == 1 else " do")
+            + " not map to a registered arm group, so the two counts are not established as independent randomized samples (they may be successive periods of the same participants)."
+        )
     contrast = arm_contrast(a.n_affected, a.n_at_risk, b.n_affected, b.n_at_risk, a.measure_kind, b.measure_kind, True)
     caveats = []
     if a.source_id != b.source_id:
@@ -451,8 +511,10 @@ def utility_scores(profile_set: dict[str, Any], criteria: dict[str, dict[str, fl
         if c.get("best") == c.get("worst"):
             raise StatsInputError(f"Criterion '{name}': best and worst anchors must differ")
     rows = []
+    any_window_gap = False
     for arm in profile_set["arms"]:
         components, missing = [], []
+        windows: list[dict[str, Any]] = []
         score = 0.0
         for name, c in criteria.items():
             value = None
@@ -460,12 +522,16 @@ def utility_scores(profile_set: dict[str, Any], criteria: dict[str, dict[str, fl
             if name in arm["efficacy"]:
                 entry = arm["efficacy"][name]
                 value = entry["value"]
+                week = entry.get("timepoint_weeks")
+                window = {"criterion": name, "window": f"assessed at week {week:g}" if week is not None else None, "end_weeks": week}
             elif name in arm["tolerability"]:
                 entry = arm["tolerability"][name]
                 value = entry["percent"]
+                window = {"criterion": name, "window": entry.get("period") or None, "end_weeks": period_end_weeks(entry.get("period"))}
             if value is None:
                 missing.append(name)
                 continue
+            windows.append(window)
             partial = (value - c["worst"]) / (c["best"] - c["worst"])
             partial = min(1.0, max(0.0, partial))
             weight = c["weight"] / total_weight
@@ -473,8 +539,45 @@ def utility_scores(profile_set: dict[str, Any], criteria: dict[str, dict[str, fl
                                "estimand_label": entry.get("estimand_label"), "timepoint_weeks": entry.get("timepoint_weeks"), "period": entry.get("period"), "tier": entry.get("tier"),
                                "result_id": entry.get("result_id"), "ae_id": entry.get("ae_id")})
             score += partial * weight
-        rows.append({"arm": arm["label"], "key": arm["key"], "randomization_stratum": arm.get("randomization_stratum", ""), "score": None if missing else score, "components": components, "missing_criteria": missing,
-                     "note": "Score not computed: a criterion value is not reported for this arm (missing is not scored as zero)." if missing else None})
+        # Benefit at one week and harms counted over another window are different durations: the windows must match, or be stated
+        # so that the difference can be shown. A criterion with no stated window gets no score.
+        not_stated = [w["criterion"] for w in windows if not w["window"]]
+        ends = [w["end_weeks"] for w in windows]
+        if not_stated:
+            window_status = "WINDOW_NOT_STATED"
+        elif any(e is None for e in ends):
+            window_status = "WINDOW_STATED_NOT_IN_WEEKS"
+        elif ends and max(ends) - min(ends) > 1:
+            window_status = "DIFFERENT_WINDOWS"
+        else:
+            window_status = "MATCHED"
+        window_note = None
+        if window_status != "MATCHED" and not missing:
+            any_window_gap = True
+            listed = "; ".join(f"{w['criterion']}: {w['window'] or 'time window not stated'}" for w in windows)
+            if window_status == "WINDOW_NOT_STATED":
+                window_note = f"Score not computed: the time window of {', '.join(not_stated)} is not stated, so benefit and harm cannot be shown to cover comparable durations ({listed})."
+            elif window_status == "WINDOW_STATED_NOT_IN_WEEKS":
+                window_note = f"The criteria's time windows could not all be read in weeks and are not shown to match: {listed}. Read the score with that in mind."
+            else:
+                window_note = f"The criteria cover different time windows: {listed}. The score weighs benefit and harms accumulated over different durations."
+        no_score = bool(missing) or window_status == "WINDOW_NOT_STATED"
+        not_distinct = arm.get("not_distinct_from") or []
+        rows.append({"arm": arm["label"], "key": arm["key"], "randomization_stratum": arm.get("randomization_stratum", ""), "score": None if no_score else score, "components": components, "missing_criteria": missing,
+                     "time_windows": windows, "window_status": window_status, "window_note": window_note,
+                     "not_distinct_from": not_distinct,
+                     "note": "Score not computed: a criterion value is not reported for this arm (missing is not scored as zero)." if missing else window_note if no_score else
+                     ("This arm is not established as a different randomized group from " + ", ".join(f"'{x['label']}'" for x in not_distinct) + "; do not rank them as two arms." if not_distinct else None)})
+    caveats = [
+        "The ordering of arms depends entirely on the chosen weights and anchors; different defensible choices can reverse it.",
+        "Uncertainty in the underlying estimates is not propagated into the score.",
+        "The score is not a regulatory or clinical benefit–risk assessment and does not support treatment decisions.",
+        "Scores are comparable only between arms that were randomized against each other in the same trial.",
+    ]
+    if any_window_gap:
+        caveats.insert(0, "For at least one arm the criteria are not measured over one time window (each criterion's window is listed in 'time_windows'): "
+                          "efficacy at an assessment week is combined with adverse events counted over a different reporting period. "
+                          "Scores with window status other than MATCHED do not weigh benefit and harm over the same duration.")
     return {
         "label": "Exploratory, preference-dependent summary — not a validated clinical endpoint",
         "kind": "INFERENCE",
@@ -482,12 +585,7 @@ def utility_scores(profile_set: dict[str, Any], criteria: dict[str, dict[str, fl
         "rows": rows,
         "selection": profile_set.get("selection", {}),
         "method": "Linear partial-value functions between researcher-chosen 'worst' and 'best' anchors, combined by a weighted sum (weights normalised to 1).",
-        "caveats": [
-            "The ordering of arms depends entirely on the chosen weights and anchors; different defensible choices can reverse it.",
-            "Uncertainty in the underlying estimates is not propagated into the score.",
-            "The score is not a regulatory or clinical benefit–risk assessment and does not support treatment decisions.",
-            "Scores are comparable only between arms that were randomized against each other in the same trial.",
-        ],
+        "caveats": caveats,
     }
 
 
@@ -509,6 +607,16 @@ def dose_scenario(profile_set: dict[str, Any], shares: dict[str, float], metric:
         raise StatsInputError("Shares cannot be negative")
     if abs(total - 1.0) > 1e-6:
         raise StatsInputError(f"Shares must sum to 1 (they sum to {total:.4f})")
+    chosen = [key for key, share in shares.items() if share > 0 and key in arms]
+    for i, key in enumerate(chosen):
+        for other in chosen[i + 1:]:
+            same_records = set(arms[key].get("labels_merged") or []) & set(arms[other].get("labels_merged") or [])
+            ambiguous = next((x for x in arms[key].get("not_distinct_from") or [] if x["key"] == other), None)
+            if same_records or ambiguous or arms[key].get("arm_group_key") == arms[other].get("arm_group_key"):
+                raise StatsInputError(
+                    f"'{arms[key]['label']}' and '{arms[other]['label']}' are not established as two different randomized groups "
+                    f"({ambiguous['reason'] if ambiguous else 'they share stored arm records'}); a mixture could weight one group twice and is not computed."
+                )
     components = []
     used: list[dict[str, Any]] = []
     strata: set[str] = set()

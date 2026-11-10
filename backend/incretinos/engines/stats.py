@@ -38,6 +38,9 @@ SIMULATION_BLOCK_CELLS = 250_000
 MIN_SIMULATIONS, MAX_SIMULATIONS = 100, 20_000
 #: Completers-only analysis: share of simulated trials allowed to have an arm with fewer than two completers.
 MAX_UNDEFINED_REPLICATE_FRACTION = 0.01
+#: Smallest standard deviation a simulation accepts, relative to max(1, |means|). Below it the simulated values cannot be
+#: told apart in double precision (a denormal SD gives arms with zero spread and an undefined t statistic).
+MIN_RELATIVE_SD = 1e-6
 
 
 class StatsInputError(ValueError):
@@ -339,7 +342,11 @@ def inflate_for_attrition(n: int, attrition: float) -> dict[str, Any]:
     attrition = _finite(attrition, "attrition")
     if not 0 <= attrition < 1:
         raise StatsInputError("attrition must be in [0, 1)")
-    return {"n_evaluable": n, "attrition": attrition, "n_to_randomize": math.ceil(Fraction(n) / (1 - _decimal_fraction(attrition))), "method": "n / (1 − attrition), rounded up (exact arithmetic)"}
+    n_to_randomize = math.ceil(Fraction(n) / (1 - _decimal_fraction(attrition)))
+    # The inflated size is held to the same feasibility limit as every other design size (an attrition close to 1 would
+    # otherwise return billions of billions of participants).
+    _design_size(float(n_to_randomize), "participants to randomize")
+    return {"n_evaluable": n, "attrition": attrition, "n_to_randomize": n_to_randomize, "method": "n / (1 − attrition), rounded up (exact arithmetic)"}
 
 
 def attrition_sensitivity(delta: float, sd: float, n_randomized_per_group: int, attrition_rates: list[float], alpha: float = 0.05) -> list[dict[str, Any]]:
@@ -413,7 +420,10 @@ def _two_sample_t(sum_t: np.ndarray, ss_t: np.ndarray, n_t: np.ndarray, sum_c: n
     diff = sum_t / n_t - sum_c / n_c
     dof = n_t + n_c - 2
     se = np.sqrt((ss_t + ss_c) / dof * (1 / n_t + 1 / n_c))
-    p = 2 * sps.t.sf(np.abs(diff / se), dof)
+    # A replicate with no spread has an undefined t statistic: its p-value is NaN, never 0 (the caller refuses NaN).
+    defined = se > 0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        p = np.where(defined, 2 * sps.t.sf(np.abs(diff / np.where(defined, se, 1.0)), dof), np.nan)
     return diff, p
 
 
@@ -432,6 +442,12 @@ def simulate_two_arm_trial(spec: SimulationSpec) -> dict[str, Any]:
     if n_per_arm < 3 or sd <= 0 or n_sims < MIN_SIMULATIONS:
         raise StatsInputError("n_per_arm ≥ 3, sd > 0 and 100 ≤ n_sims ≤ 20000 are required")
     mean_treatment, mean_control = _finite(spec.mean_treatment, "mean_treatment"), _finite(spec.mean_control, "mean_control")
+    sd_floor = MIN_RELATIVE_SD * max(1.0, abs(mean_treatment), abs(mean_control))
+    if sd < sd_floor:
+        raise StatsInputError(
+            f"sd = {sd:g} is too small relative to the means (below {sd_floor:g}): the simulated outcomes would have no usable spread and the t-test "
+            "would be undefined. No simulation is run."
+        )
     dropout_treatment, dropout_control = _finite(spec.dropout_treatment, "dropout_treatment"), _finite(spec.dropout_control, "dropout_control")
     alpha = _probability(spec.alpha, "alpha")
     seed = _whole(spec.seed, "seed", minimum=0, maximum=2**63 - 1)
@@ -446,6 +462,7 @@ def simulate_two_arm_trial(spec: SimulationSpec) -> dict[str, Any]:
     diffs: list[np.ndarray] = []
     p_values: list[np.ndarray] = []
     not_analysable = 0
+    zero_spread = 0
     done = 0
     while done < n_sims:
         rows = min(block, n_sims - done)
@@ -472,10 +489,17 @@ def simulate_two_arm_trial(spec: SimulationSpec) -> dict[str, Any]:
         ss_t = np.where(keep_t, (trt - (sum_t / n_t)[:, None]) ** 2, 0.0).sum(axis=1)
         ss_c = np.where(keep_c, (ctl - (sum_c / n_c)[:, None]) ** 2, 0.0).sum(axis=1)
         diff, p = _two_sample_t(sum_t, ss_t, n_t, sum_c, ss_c, n_c)
-        diffs.append(diff)
-        p_values.append(p)
+        defined = np.isfinite(p)  # a replicate with zero spread in both arms has no t-test: not analysable, never a rejection
+        zero_spread += int((~defined).sum())
+        diffs.append(diff[defined])
+        p_values.append(p[defined])
 
-    analysed = n_sims - not_analysable
+    analysed = n_sims - not_analysable - zero_spread
+    if zero_spread and (analysed < 2 or zero_spread / n_sims > MAX_UNDEFINED_REPLICATE_FRACTION):
+        raise StatsInputError(
+            f"In {zero_spread:,} of {n_sims:,} simulated trials the outcomes had no spread, so the t-test is undefined. "
+            "Power and the distribution of the estimated difference are not reported: increase sd."
+        )
     undefined_fraction = not_analysable / n_sims
     if analysed < 2 or undefined_fraction > MAX_UNDEFINED_REPLICATE_FRACTION:
         raise StatsInputError(
@@ -489,6 +513,9 @@ def simulate_two_arm_trial(spec: SimulationSpec) -> dict[str, Any]:
     rejected = float(np.mean(all_p < alpha))
     mc_se = math.sqrt(rejected * (1 - rejected) / analysed)
     warnings: list[str] = []
+    if zero_spread:
+        warnings.append(f"{zero_spread:,} of {n_sims:,} simulated trials had no spread in the outcomes; the t-test is undefined for them and they are excluded "
+                        "from the rejection rate and every summary below, not counted as rejections.")
     if not_analysable:
         warnings.append(
             f"{not_analysable:,} of {n_sims:,} simulated trials had fewer than two completers in an arm; the t-test is undefined for them. "
@@ -500,7 +527,7 @@ def simulate_two_arm_trial(spec: SimulationSpec) -> dict[str, Any]:
         "seed": seed,
         "n_sims": n_sims,
         "n_sims_analysed": analysed,
-        "n_sims_not_analysable": not_analysable,
+        "n_sims_not_analysable": not_analysable + zero_spread,
         "warnings": warnings,
         "empirical_power": rejected,
         "monte_carlo_se": mc_se,

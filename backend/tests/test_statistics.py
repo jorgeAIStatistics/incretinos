@@ -574,3 +574,139 @@ def test_f07_disproportionality_rejects_non_finite_counts():
             disproportionality(bad, 10_000, 5_000, 2_000_000)
     with pytest.raises(StatsInputError):
         disproportionality(120, 10_000, 5_000, 2_000_000, level=1.5)
+
+
+# ---- Review 1 (comparability track): benefit-risk and calculation findings
+
+BIOEQ = "NCT06440980"
+
+
+def test_br1_crossover_periods_of_the_same_participants_are_not_contrasted(db, client):
+    """BR-1: the bioequivalence cohorts are dose periods of the same participants, not parallel randomized arms."""
+    from incretinos.engines.benefit_risk import adverse_event_contrast
+    from incretinos.engines.findings import arm_relation
+
+    one_mg, six_mg = _ae(db, BIOEQ, "Nausea", "Cohort 1A: 1 mg LY3502970 Capsule QD"), _ae(db, BIOEQ, "Nausea", "Cohort 1A: 6 mg LY3502970 Capsule QD")
+    relation, why = arm_relation(db, one_mg.arm, six_mg.arm)
+    assert relation == "UNRESOLVED" and "successive" in why  # was DISTINCT_ARMS ('the same drug at different doses')
+    with pytest.raises(StatsInputError, match="not established as two arms randomized against each other"):
+        adverse_event_contrast(db, one_mg, six_mg)
+    response = client.post("/api/stats/risk-contrast", json={"ae_a": one_mg.id, "ae_b": six_mg.id})
+    assert response.status_code == 422 and "risk_difference" not in response.json()
+    # No contrast at all is offered anywhere in this registration.
+    study = db.scalar(select(Study).where(Study.nct_id == BIOEQ))
+    nausea = [e for e in study.adverse_events if e.term == "Nausea" and e.n_affected is not None and e.n_at_risk]
+    accepted = 0
+    for i, a in enumerate(nausea):
+        for b in nausea[i + 1:]:
+            try:
+                adverse_event_contrast(db, a, b)
+                accepted += 1
+            except (StatsInputError, InvalidInferenceError):
+                pass
+    assert accepted == 0
+    # Two registered arms of a parallel trial are still contrasted.
+    assert adverse_event_contrast(db, _ae(db, SM1, "Nausea", "15 mg Tirzepatide"), _ae(db, SM1, "Nausea", "Placebo"))["caveats"] == []
+
+
+def test_br1_a_reporting_label_that_maps_to_no_registered_arm_is_not_contrasted(db):
+    from incretinos.engines.benefit_risk import adverse_event_contrast
+    from incretinos.engines.findings import resolve_arm
+
+    high, placebo = _ae(db, SM1, "Nausea", "15 mg Tirzepatide"), _ae(db, SM1, "Nausea", "Placebo")
+    stray = StudyArm(study_id=high.study_id, label="tirzepatide escalation cohort", norm_label="tirzepatide escalation cohort", origin="CURATED", arm_type="CURATED", drug_slug="tirzepatide")
+    db.add(stray)
+    db.flush()
+    db.refresh(high.study)
+    assert not resolve_arm(db, stray).resolved
+    high.arm_id, high.arm = stray.id, stray
+    db.flush()
+    with pytest.raises(StatsInputError, match="registered arm group|not established"):
+        adverse_event_contrast(db, high, placebo)
+
+
+def test_br2_one_randomized_group_is_never_mixed_with_itself(db, client):
+    """BR-2: '3/6/9 mg' (registered) and '3-9 mg (dose escalation)' (curated, unmapped) may be one group."""
+    profiles = benefit_risk.arm_profiles(db, ELORA_P2)
+    by_label = {a["label"]: a for a in profiles["arms"]}
+    registered, curated = by_label["3/6/9 mg Eloralintide"], next(a for label, a in by_label.items() if "3-9" in label)
+    assert curated["key"] in {x["key"] for x in registered["not_distinct_from"]}
+    assert registered["key"] in {x["key"] for x in curated["not_distinct_from"]}
+    assert any("may be one group reported twice" in n for n in profiles["notes"])
+    with pytest.raises(StatsInputError, match="not established as two different randomized groups"):
+        benefit_risk.dose_scenario(profiles, {registered["key"]: 0.5, curated["key"]: 0.5})
+    response = client.post("/api/benefit-risk/dose-scenario", json={"nct": ELORA_P2, "shares": {registered["key"]: 0.5, curated["key"]: 0.5}})
+    assert response.status_code == 422
+    # Two registered arms are still mixed.
+    mixed = benefit_risk.dose_scenario(profiles, {by_label["3 mg Eloralintide"]["key"]: 0.5, by_label["9 mg Eloralintide"]["key"]: 0.5})
+    assert mixed["kind"] == "SIMULATION" and len(mixed["components"]) == 2
+
+
+def test_br2_the_open_label_lead_in_is_one_period_with_the_lead_in(db):
+    from incretinos.engines.findings import arm_stratum
+
+    assert arm_stratum("open-label tirzepatide lead-in") == arm_stratum("Tirzepatide (lead-in)") == "LEAD-IN"
+    assert arm_stratum("Part A open-label extension") == "EXTENSION + PART A"
+    assert arm_stratum("open-label tirzepatide") == "OPEN-LABEL"  # an open-label arm outside a lead-in keeps its marker
+    profiles = benefit_risk.arm_profiles(db, SM4)
+    lead_in = [a for a in profiles["arms"] if "LEAD-IN" in a["randomization_stratum"]]
+    assert len(lead_in) == 1 and "open-label tirzepatide lead-in" in lead_in[0]["labels_merged"]
+
+
+def test_br3_utility_states_each_criterions_time_window(db):
+    """BR-3: week-72 efficacy and adverse events over a longer reporting period are flagged, not silently combined."""
+    profiles = benefit_risk.arm_profiles(db, SM1)
+    result = benefit_risk.utility_scores(profiles)
+    scored = [r for r in result["rows"] if r["score"] is not None]
+    assert scored
+    for row in scored:
+        windows = {w["criterion"]: w for w in row["time_windows"]}
+        assert windows["weight_pct"]["end_weeks"] == 72
+        assert windows["nausea"]["window"]  # the reporting period is stated, never hidden
+        if row["window_status"] != "MATCHED":
+            assert row["window_note"] and "different time windows" in row["window_note"]
+    if any(r["window_status"] != "MATCHED" for r in scored):
+        assert "not measured over one time window" in result["caveats"][0]
+    # The adverse-event period shown is the one closest to the efficacy week, not the one stored first.
+    for arm in profiles["arms"]:
+        entry = arm["tolerability"].get("nausea")
+        if entry and entry["other_periods"]:
+            chosen = abs(entry["period_end_weeks"] - 72)
+            assert all(benefit_risk.period_end_weeks(o["period"]) is None or abs(benefit_risk.period_end_weeks(o["period"]) - 72) >= chosen for o in entry["other_periods"])
+
+
+def test_br3_a_criterion_without_a_stated_window_gets_no_score():
+    def arm(period):
+        return {"label": "A", "key": "a", "efficacy": {"weight_pct": {"value": -10.0, "timepoint_weeks": 72.0}},
+                "tolerability": {"nausea": {"percent": 20.0, "period": period}, "treatment_discontinuation_ae": {"percent": 5.0, "period": "72 weeks"}}}
+
+    matched = benefit_risk.utility_scores({"arms": [arm("Baseline Up To 72 Weeks")]})["rows"][0]
+    assert matched["window_status"] == "MATCHED" and matched["score"] is not None and matched["window_note"] is None
+    longer = benefit_risk.utility_scores({"arms": [arm("Baseline up to Week 193")]})
+    assert longer["rows"][0]["window_status"] == "DIFFERENT_WINDOWS" and longer["rows"][0]["score"] is not None
+    assert "193" in longer["rows"][0]["window_note"] and "not measured over one time window" in longer["caveats"][0]
+    unstated = benefit_risk.utility_scores({"arms": [arm(None)]})["rows"][0]
+    assert unstated["window_status"] == "WINDOW_NOT_STATED" and unstated["score"] is None and "not stated" in unstated["note"]
+    assert benefit_risk.period_end_weeks("From Randomization to Study Completion (Up to 7 Years)") == 364
+    assert benefit_risk.period_end_weeks("Overall Study") is None
+
+
+def test_calc1_attrition_inflation_is_held_to_the_design_size_limit(client):
+    with pytest.raises(StatsInputError, match="participants to randomize"):
+        stats.inflate_for_attrition(468, 0.9999999999999999)
+    assert stats.inflate_for_attrition(465, 0.07)["n_to_randomize"] == 500  # ordinary inputs are unchanged
+    response = client.post("/api/design/power", json={"design": "two_means", "delta": 3, "sd": 10, "attrition": 0.9999999999999999})
+    assert response.status_code == 422 and "participants to randomize" in response.json()["detail"]
+
+
+def test_calc1_a_simulation_without_spread_is_refused_not_reported_as_power_one(client):
+    spec = stats.SimulationSpec(n_per_arm=100, mean_treatment=-10, mean_control=-2, sd=1e-320, n_sims=200)
+    with pytest.raises(StatsInputError, match="too small relative to the means"):
+        stats.simulate_two_arm_trial(spec)
+    response = client.post("/api/design/simulate", json={"n_per_arm": 100, "mean_treatment": -10, "mean_control": -2, "sd": 1e-320, "n_sims": 200})
+    assert response.status_code == 422 and "empirical_power" not in response.json()
+    # A replicate with zero spread has an undefined t-test: NaN, never p = 0.
+    diff, p = stats._two_sample_t(np.array([5.0]), np.array([0.0]), np.array([3]), np.array([1.0]), np.array([0.0]), np.array([3]))
+    assert diff[0] == pytest.approx(4 / 3) and math.isnan(p[0])
+    ordinary = stats.simulate_two_arm_trial(stats.SimulationSpec(n_per_arm=50, mean_treatment=-5, mean_control=0, sd=10, n_sims=200))
+    assert 0 < ordinary["empirical_power"] < 1 and ordinary["n_sims_not_analysable"] == 0
