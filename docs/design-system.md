@@ -39,7 +39,7 @@ data is the product.
   It is the identity. Everything else stays quiet so it can be read.
 
 Rules carried over from the first session, unchanged: charts use the validated series palette (blue `#2a78d6`,
-orange `#eb6834`, aqua `#1baf7a`, and a neutral grey for the control arm); bars start at zero; every chart has a
+orange `#eb6834`, green `#169b6b`, and a neutral grey for the control arm); bars start at zero; every chart has a
 table equivalent; status is never conveyed by colour alone.
 
 ## 2. Principles
@@ -136,7 +136,7 @@ Always with an icon and a text label. The tint and its border are decorative.
 |---|---|---|---|
 | `--series-1` | `#2a78d6` | Investigational arm | 4.42 |
 | `--series-2` | `#eb6834` | Active comparator | 3.20 |
-| `--series-3` | `#1baf7a` | Third series (not used yet) | 2.82 |
+| `--series-3` | `#169b6b` | Arm role not classified (in use: an arm the data does not identify as study drug, comparator or placebo) | 3.54 |
 | `--series-control` | `#8a8a84` | Placebo or control arm | 3.47 |
 | `--grid` | `#eceef1` | Gridlines, meter track | |
 
@@ -144,8 +144,12 @@ Always with an icon and a text label. The tint and its border are decorative.
 skill against a white surface: the three hues pass the lightness band, chroma floor, colour-vision separation
 (worst pair ΔE 9.2) and normal-vision floor (27.6). The control grey keeps its separation from blue and orange
 (colour-vision ΔE 10.2 or more, normal vision 17.6 or more); it fails that tool's chroma floor on purpose, because
-a control arm is meant to read as neutral. `--series-3` is below 3:1 on white: if it is ever used, the chart
-needs direct labels or its table view (it has both today).
+a control arm is meant to read as neutral.
+
+`--series-3` was `#1baf7a` (2.82:1 on white, 2.58:1 on the hover surface) while it was unused. It now marks "Arm role
+not classified", which is drawn as an outlined bar: the outline is the only edge of that mark, so it must meet
+3:1 (1.4.11). The hue is kept and the lightness lowered to `#169b6b` (3.54:1 on white, 3.2:1 on `--surface-hover`).
+Each such row also names its role in text ("Arm role not classified"), and every chart has its table view.
 
 Series colours identify an arm. They are never used for status, and status colours are never used as a series.
 
@@ -189,7 +193,11 @@ Rules:
 - Monospace (`.mono`) only for identifiers: NCT numbers, compound codes, rule ids, hashes, source keys. Mark them
   `translate="no"`.
 - Sentence case for headings, labels, buttons and table columns. Navigation entries keep their existing Title Case
-  names. No uppercase with letter-spacing.
+  names. No uppercase with letter-spacing (none is left in the pages; the review screens are owned separately).
+- **Recorded exception: arbitrary sizes in older pages.** The trial detail, compare, benefit–risk, safety, design,
+  molecules and assistant pages were written before this scale and still use arbitrary `text-[Npx]` sizes (about
+  160 uses, 14 distinct sizes, all between 11 and 30 px). They are converted when a page is next reworked; new
+  code uses the named scale only. A heading keeps its element (`h2`, `h3`) whatever size class it carries.
 - Typographic characters: `…` not `...`, curly quotes, a true minus sign for negative values (from `fmt`).
 
 ## 5. Spacing
@@ -454,6 +462,45 @@ qualifier as a caution (a press release), `Qualifiers` keeps the caution tone on
 `Hypothetical` is the container form of "not evidence": dashed outline, hatch texture, flask icon. It replaced a
 cream-coloured box, so the signal no longer depends on a hue.
 
+## 12a. What may share a chart
+
+These rules decide which numbers are drawn together. They are scientific rules, so they live in `lib/rows.ts`
+and are tested in `e2e/presentation.spec.ts` and `e2e/review-fixes.spec.ts`.
+
+- **One result set per chart or panel.** Rows share an axis and a caption only when they share the measure,
+  estimand, evidence tier, source, time point, baseline definition and unit (`findingSets`). The caption is
+  generated from the set; a fixed sentence never describes data it may not match. When several sets exist the
+  reader picks one (`Result set` select); they are never mixed.
+- **The measure is the measure as the source reports it, not the stored record.** Its key is the endpoint
+  category, the endpoint title as text, the responder threshold and the sub-measure. One source table is sometimes
+  stored as several endpoint records (the control arm in one record, the multiplicity-controlled active arms in
+  another): those rows are one set, so the control arm stays beside its active arms. An arm never appears twice in
+  one set. The trial page's endpoint list merges records that differ only in multiplicity control and prints each
+  row's status.
+- **Estimand chart.** One source's values at one time point and baseline; within it, at most one row per arm and
+  estimand. Label tablet doses are never drawn as further arms of a capsule-dose trial: they are another source's
+  set. The caption says whether this source reports both estimands (then the gap between an arm's two rows reflects
+  only intercurrent-event handling) or only one.
+- **Weight change is a percent change.** A row is plotted, scored or averaged as "percent change in body weight"
+  only if its category is weight percent change **and** its unit is a percent change (`isWeightPercentChange`). A
+  share of participants filed under that endpoint is listed, counted in a note, and kept out of the chart, the
+  utility score and the dose scenario.
+- **Arm roles come from data.** `armGroup` uses the API's `arm_role` wherever a row carries one, then the placebo
+  flag, the registered arm type and the drug's role in the trial; never the wording of the arm label.
+- **Dose scenarios** offer only the dose arms of one study drug (at least two doses, single drug, stated dose,
+  percent weight change). Comparators, other drugs and combinations are never "doses". The default puts 100% on the
+  highest dose. A stop-treatment share is offered only when a placebo arm is reported on the same basis, and its
+  label says it is assigned the placebo arm's value.
+- **Between-arm contrasts** take their scale (`effect_scale.scale`) and direction (`direction.established`,
+  `status`, `basis`) from the API. "X − Y" is written only for an established difference, "X ÷ Y" only for an
+  established ratio; otherwise the two groups are named and the API's reason is printed. The basis is printed as
+  the API states it: registry-stated, arm-confirmed (both, when the registry names the contrast and the arm values
+  confirm its sign), stated by the curated source, or not established.
+- **Reported text.** Where the API gives the source's own text for a number (`value_text`, `estimate_text`) and it
+  denotes the stored number, that text is printed, so "−25.0%" stays "−25.0%".
+- **Units.** Every value carries its unit (`withUnit`, `unitLabel`): kg, %, % HbA1c, % of participants; a
+  difference of two percentages is in percentage points (`differenceUnit`).
+
 ## 13. Components
 
 Import from `@/components/ui`. Every export that existed before the split still exists with the same props.
@@ -461,13 +508,15 @@ Import from `@/components/ui`. Every export that existed before the split still 
 | Component | Use it for | Notes |
 |---|---|---|
 | `Button`, `LinkButton`, `IconButton` | Actions; navigation that looks like a button; icon-only actions | Variants `primary`, `secondary` (`ghost` is its earlier name), `quiet`, `danger`; sizes `md`, `sm`; `loading`. `IconButton` requires `label`. A link navigates, a button acts |
-| `TextField`, `SearchField`, `NumberField`, `TextArea`, `Select`, `Slider` | Form controls | Label above, hint below, error replaces hint. The label is tied by id, not by wrapping. Debounce a request driven by typing with `useDebounced` |
+| `TextField`, `SearchField`, `NumberField`, `TextArea`, `Select`, `Slider` | Form controls | Label above, hint below, error replaces hint. The label is tied by id, not by wrapping. Debounce a request driven by typing with `useDebounced`. A `Select` that holds a qualifier (time point, estimand, measure) is not given a fixed width: `w-full sm:w-auto` lets it grow to its longest option, so the selected value is never cut; a long parenthetical goes in the hint |
+| `SecretField` | A token or other secret typed by the user | Uncontrolled password input: the secret is never written to the `value` attribute (so not into the DOM markup), no `name`, autocomplete off and the password-manager opt-out attributes; not placed in a `<form>` beside a name field. The page keeps the secret in memory only |
 | `SegmentedControl` | Two to four exclusive choices | Native radio group: arrow keys and form semantics come from the browser |
-| `Tabs`, `TabPanel` | Views of one subject | Radix tabs; sliding underline. Inactive panels unmount: keep state that must survive in the parent, and keep the tab in the address |
+| `Tabs`, `TabPanel` | Views of one subject | Radix tabs; sliding underline. Inactive panels unmount: keep state that must survive in the parent, and keep the tab in the address. The tab list scrolls sideways inside a box that keeps 4 px of room on every side, so a focused tab's ring is never clipped. Use these, not raw Radix tabs |
 | `Badge`, `ClassificationBadge`, `RegulatoryBadge` | Generic status with a tone | Icon and text always. `title` adds an explanation that opens on hover, focus and tap |
 | `VerificationBadge`, `TierBadge`, `EpistemicBadge`, `Missing`, `Qualifiers` | The evidence-state language | Section 12 |
 | `Term` | A technical term with a plain-English explanation | `<Term k="estimand">estimand</Term>`. Definitions live in `lib/glossary.ts` and nowhere else |
 | `PageHeader`, `Section`, `Panel` | Page scaffolding | h1, h2 and h3 respectively. `Panel title` renders a real heading; pass `level` |
+| `ChartFrame`, `IntervalChart`, `FacetedChart`, `ChartTable` (`components/charts.tsx`) | Charts | The title is a heading (`level`, default 3; 2 when the chart sits directly under the page title). Every chart has its table view. Section 12a says what may share a chart |
 | `StatTile` (`Stat`) | A headline count | Label in sentence case, proportional figures, no trend slot |
 | `DataTable`, `TableCard`, `SortHeader`, `useSort`, `sortRows` | Tables | Sticky header, sideways scrolling inside the frame, `aria-sort`, density, caption, pinned first column, expanded row, footer slot. Missing values sort last in both directions |
 | `Pagination` | "x to y of total" and paging | Also states a filtered-from count and a truncated result |
@@ -501,6 +550,11 @@ Icons: lucide only, one family. Size 12 in chips, 13 to 15 in buttons, 16 in nav
 - The in-flight request is aborted when the path changes or the component unmounts.
 - `Async` renders the four states and takes `isEmpty` and `empty` for the fifth. Empty is always an explicit
   decision made on a successful answer.
+- **Every call site branches on `status === "error"`**, including secondary requests (a picker's option list, the
+  worked examples, the service status, a term list). The failure is shown next to what it affects, with a retry
+  (`ErrorNote onRetry` or `ErrorState`), and the wording that would follow a successful empty answer ("No
+  arm-level results", "No language model is configured", "Loading terms…") is never shown for a failed one. A
+  page whose selection depends on a failed list says so instead of showing a skeleton for ever.
 - Pass a type: `useApi<StudyListItem[]>("/studies")`. Types are in `lib/types.ts`. The untyped default exists only
   so pages that have not been converted keep compiling; the linter rejects `any` in the foundation and in the
   pages built on it.
@@ -512,7 +566,7 @@ No list is cut short silently. Use one of:
 | Hook | For | Behaviour |
 |---|---|---|
 | `usePagedList(base, { pageSize, legacyLimit })` | Long lists (sources, review queue, audit log, registry index, gaps) | With the new API envelope `{ total, limit, offset, rows }` each page is one request. With an older shape (a bare array, or `{ total, rows }`) the whole list is fetched once at the endpoint's largest limit and paged in the browser. Either way the footer can say "26 to 50 of 207" |
-| `useWholeList(base)` | Lists filtered or sorted in the browser (trials) | Reads every page of a paged endpoint, up to a cap, and reports `truncated` if the cap is reached |
+| `useWholeList(base)` | Lists filtered or sorted in the browser (trials, the safety term selector) | Reads every page of a paged endpoint, up to a cap, and reports `truncated` if the cap is reached. Ask for the endpoint's largest page in `base` (`limit=5000` for safety terms) so most lists are one request. A selector over such a list offers a search box and says "n of total" |
 | `useClientPaging(rows)` | Paging rows already in memory | |
 | `rowsOf(payload)`, `readList(payload)` | Reading any of the three shapes | |
 
@@ -546,12 +600,13 @@ Target: WCAG 2.2 AA. What the foundation guarantees, and where it is asserted.
 | Text contrast 4.5:1 (1.4.3) | Token tables in section 3; `--ink-3` is safe on every surface and tint |
 | Non-text contrast 3:1 (1.4.11) | `--border-control`; focus ring; selected states never by faint fill alone |
 | Not colour alone (1.4.1) | Icon, text and outline on every state |
-| Reflow (1.4.10) | No sideways page scroll at 390 px; tables scroll inside their frame (test: "no route scrolls sideways") |
+| Reflow (1.4.10) | No sideways page scroll at 320, 390 and 834 px, measured after the network is idle and in every tab state; tables scroll inside a positioned frame, so visually hidden cell text cannot widen the page (test: "no route scrolls sideways … in any tab") |
 | Content on hover or focus (1.4.13) | Tooltips open on focus and tap as well, stay while hovered, close on Escape |
 | Keyboard (2.1.1), no trap (2.1.2) | Native buttons and links throughout; dialogs close on Escape and return focus (tests: phone navigation, Term) |
 | Bypass blocks (2.4.1) | Skip link, first tab stop (test: skip link) |
 | Page titled (2.4.2) | Per-route titles (test: document titles) |
-| Focus visible (2.4.7), not obscured (2.4.11) | Global focus ring; `scroll-padding-top` under the top bar and under sticky table headers |
+| Focus visible (2.4.7), not obscured (2.4.11) | Global focus ring; `scroll-padding-top` under the top bar and under sticky table headers; scroll boxes around focusable items (the tab list) keep room for the ring (test: "WEB-13") |
+| Info and relationships (1.3.1), headings (2.4.6) | Panel, chart and answer-block titles are heading elements (test: "WEB-12") |
 | Target size (2.5.8) | Section 9 |
 | Labels and errors (3.3.1, 3.3.2) | Visible labels; errors in text, linked to the field |
 | Name, role, value (4.1.2) | `aria-current`, `aria-sort`, `aria-expanded`, `aria-selected`, `aria-busy` (test: sortable headers) |
@@ -739,7 +794,8 @@ fresh image to a crop; a fresh capture of the same page is the closest equivalen
 
 `docs/design/before/` holds every route at 1440 x 900, 834 x 1112 and 390 x 844 before the Session 2 design work,
 with `metrics.jsonl` (document title, sideways overflow, page height, heading outline per route and size).
-`docs/design/after/` holds the same set afterwards, plus the three new routes.
+`docs/design/after/` holds the same set afterwards, plus the three new routes, plus tab states that are not a
+route's default view (the design workbench's other three tools, the sources page's changes and validation tabs).
 
 To capture again (the script seeds its own database and starts its own servers on the given ports; it is not part
 of `npm run test:e2e`):
