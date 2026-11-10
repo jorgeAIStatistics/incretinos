@@ -33,15 +33,17 @@ from typing import TypeVar
 
 import yaml
 from pydantic import BaseModel
-from sqlalchemy import delete, select
+from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.orm import Session
 
 from ..enums import (
+    EquivalenceBasis,
     EstimandBasis,
     EvidenceTier,
     Origin,
     RegulatoryStatus,
 )
+from ..ingestion.ctgov import assign_arm_roles
 from ..ingestion.snapshots import (
     record_snapshot,
     sha256_text,
@@ -70,6 +72,7 @@ from ..models import (
 from ..review.anchoring import anchor
 from ..vocab import (
     COMBINATION_SLUGS,
+    SEQUENCE_ARM_TYPE,
     DirectionBasis,
     arm_drug_slug,
     match_arm_label,
@@ -348,6 +351,8 @@ def apply_watch_study(session: Session, study: Study, watch: WatchStudy, curated
         file = load_yaml(path, StudyEvidenceFile)
         if file.study == study.nct_id and file.arms:
             apply_arm_annotations(session, study, file)
+    # Roles depend on the trial's drug roles (set above) and on the annotations: store them again now.
+    assign_arm_roles(session, study)
 
 
 def _study_arms(session: Session, study: Study) -> list[StudyArm]:
@@ -361,36 +366,134 @@ def _find_arm(session: Session, study: Study, label: str) -> StudyArm | None:
     return None if index is None else arms[index]
 
 
-def _find_or_create_arm(session: Session, study: Study, label: str) -> StudyArm:
-    arm = _find_arm(session, study, label)
-    if arm is None:
-        drug_slug, is_placebo = arm_drug_slug(label)
-        formulation_key = None
-        if drug_slug == "orforglipron":
-            # Sources name the formulation in the arm description; nothing is assumed when they do not.
-            if re.search(r"foundayo|tablet|label dosage", label, re.IGNORECASE):
-                formulation_key = "foundayo-tablet"
-            elif re.search(r"capsule|investigational", label, re.IGNORECASE):
-                formulation_key = "orforglipron-capsule"
-        single_drug = bool(drug_slug) and drug_slug != "placebo" and "+" not in drug_slug and drug_slug not in COMBINATION_SLUGS.values()
-        dose = parse_single_dose(label) if single_drug else None  # (amount, unit as reported): mg/kg is not mg
-        arm = StudyArm(
-            study_id=study.id,
-            origin=Origin.CURATED.value,
-            label=label,
-            norm_label=norm_arm_label(label),
-            arm_type="CURATED",
-            drug_slug=drug_slug,
-            is_placebo=is_placebo,
-            dose_amount=dose[0] if dose else None,
-            dose_unit=dose[1] if dose else None,
-            dose_text=label if drug_slug in COMBINATION_SLUGS.values() else None,
-            formulation_key=formulation_key,
-            is_pooled=bool(re.search(r"pooled|all doses|combined", label, re.IGNORECASE)),
+_POOLED = re.compile(r"pooled|all doses|combined", re.IGNORECASE)
+_CURATED_SEQUENCE = re.compile(r"\bto\b|\bthen\b|\bfollowed by\b|→|\bswitch(?:ed|ing)? to\b", re.IGNORECASE)
+
+
+def _curated_arm_content(label: str) -> dict:
+    """Drug, placebo flag, dose and formulation of an arm named only by a curated source label."""
+    drug_slug, is_placebo = arm_drug_slug(label)
+    if drug_slug and not is_placebo and "placebo" in label.lower() and _CURATED_SEQUENCE.search(label):
+        # "placebo to retatrutide MTD": placebo in one period and an active drug in another — a sequence arm.
+        return {"arm_type": SEQUENCE_ARM_TYPE, "drug_slug": None, "is_placebo": False, "dose": None, "formulation_key": None, "dose_text": label}
+    formulation_key = None
+    if drug_slug == "orforglipron":
+        # Sources name the formulation in the arm description; nothing is assumed when they do not.
+        if re.search(r"foundayo|tablet|label dosage", label, re.IGNORECASE):
+            formulation_key = "foundayo-tablet"
+        elif re.search(r"capsule|investigational", label, re.IGNORECASE):
+            formulation_key = "orforglipron-capsule"
+    single_drug = bool(drug_slug) and drug_slug != "placebo" and "+" not in drug_slug and drug_slug not in COMBINATION_SLUGS.values()
+    dose = parse_single_dose(label) if single_drug else None  # (amount, unit as reported): mg/kg is not mg
+    return {
+        "arm_type": "CURATED",
+        "drug_slug": drug_slug,
+        "is_placebo": is_placebo,
+        "dose": dose,
+        "formulation_key": formulation_key,
+        "dose_text": label if drug_slug in COMBINATION_SLUGS.values() else None,
+    }
+
+
+def _formulation_dose(session: Session, formulation_key: str | None, amount: float | None, unit: str | None) -> Dose | None:
+    if formulation_key is None or amount is None:
+        return None
+    return session.scalar(
+        select(Dose).join(Formulation, Formulation.id == Dose.formulation_id).where(Formulation.key == formulation_key, Dose.amount == amount, Dose.unit == (unit or "mg"))
+    )
+
+
+def _documented_equivalent(session: Session, a: Dose | None, b: Dose | None) -> ExposureEquivalence | None:
+    if a is None or b is None:
+        return None
+    return session.scalar(
+        select(ExposureEquivalence).where(
+            ExposureEquivalence.basis == EquivalenceBasis.DOCUMENTED_BIOEQUIVALENCE.value,
+            or_(
+                and_(ExposureEquivalence.dose_a_id == a.id, ExposureEquivalence.dose_b_id == b.id),
+                and_(ExposureEquivalence.dose_a_id == b.id, ExposureEquivalence.dose_b_id == a.id),
+            ),
         )
-        session.add(arm)
-        session.flush()
-    return arm
+    )
+
+
+def registered_arm_for(session: Session, study: Study, label: str) -> tuple[StudyArm | None, str | None]:
+    """The registered arm a differently worded curated label names, when exactly one fits; with the reason.
+
+    A curated source often names a randomized arm in its own words ("oral semaglutide 7 mg once daily" for the
+    registry's "7 mg Semaglutide"). The label is attached to a registered arm only when that arm is the single
+    registered, non-pooled arm with the same drug and the same single dose and unit, and
+    * the same formulation (or no formulation stated on one side), or
+    * a different formulation whose dose pair is a DOCUMENTED bioequivalence (drugs.yaml equivalences), as for
+      the Foundayo label's "5.5 mg" tablet dosage of the ATTAIN 6 mg capsule arm.
+    Anything else (no single dose, a combination, a pooled or titrated arm, two candidates) stays its own arm.
+    """
+    content = _curated_arm_content(label)
+    drug, dose, formulation = content["drug_slug"], content["dose"], content["formulation_key"]
+    if content["arm_type"] != "CURATED" or not drug or drug == "placebo" or dose is None or _POOLED.search(label):
+        return None, None  # a pooled ("combined") group is not any one registered arm
+    single = bool(drug) and "+" not in drug and drug not in COMBINATION_SLUGS.values()
+    if not single:
+        return None, None
+    matches: list[tuple[StudyArm, str]] = []
+    for arm in _study_arms(session, study):
+        if arm.origin != Origin.REGISTRY.value or arm.registered_arm_type is None or arm.is_pooled or arm.drug_slug != drug or arm.dose_amount is None:
+            continue
+        same_dose = arm.dose_amount == dose[0] and (arm.dose_unit or "mg") == dose[1]
+        if same_dose and (formulation is None or arm.formulation_key is None or formulation == arm.formulation_key):
+            matches.append((arm, f"same drug, dose ({dose[0]:g} {dose[1]}) and formulation as the registered arm '{arm.label}'"))
+            continue
+        if formulation and arm.formulation_key and formulation != arm.formulation_key:
+            equivalence = _documented_equivalent(
+                session,
+                _formulation_dose(session, formulation, dose[0], dose[1]),
+                _formulation_dose(session, arm.formulation_key, arm.dose_amount, arm.dose_unit),
+            )
+            if equivalence is not None:
+                matches.append(
+                    (
+                        arm,
+                        f"{dose[0]:g} {dose[1]} ({formulation}) is a documented bioequivalent dose of the registered arm '{arm.label}' "
+                        f"({arm.dose_amount:g} {arm.dose_unit or 'mg'}, {arm.formulation_key})",
+                    )
+                )
+    if len(matches) != 1:
+        return None, None
+    arm, why = matches[0]
+    return arm, f"Source arm label '{label}' is attached to the registered arm '{arm.label}': {why}."
+
+
+def _find_or_create_arm(session: Session, study: Study, label: str) -> StudyArm:
+    return _resolve_arm(session, study, label)[0]
+
+
+def _resolve_arm(session: Session, study: Study, label: str) -> tuple[StudyArm, str | None]:
+    """The arm a curated row names, and a note when it was attached to a registered arm worded differently."""
+    arm = _find_arm(session, study, label)
+    if arm is not None:
+        return arm, None
+    arm, note = registered_arm_for(session, study, label)
+    if arm is not None:
+        return arm, note
+    content = _curated_arm_content(label)
+    dose = content["dose"]
+    arm = StudyArm(
+        study_id=study.id,
+        origin=Origin.CURATED.value,
+        label=label,
+        norm_label=norm_arm_label(label),
+        arm_type=content["arm_type"],
+        drug_slug=content["drug_slug"],
+        is_placebo=content["is_placebo"],
+        dose_amount=dose[0] if dose else None,
+        dose_unit=dose[1] if dose else None,
+        dose_text=content["dose_text"],
+        formulation_key=content["formulation_key"],
+        is_pooled=bool(_POOLED.search(label)),
+    )
+    session.add(arm)
+    session.flush()
+    return arm, None
 
 
 def apply_arm_annotations(session: Session, study: Study, file: StudyEvidenceFile) -> None:
@@ -447,6 +550,43 @@ def _upsert_claim(session: Session, claim: ClaimDef, *, drug: Drug | None = None
     row.verification_status = anchor_quote(session, source, claim.quote, review_key=f"claim:{claim.key}", title=claim.statement)
     session.add(row)
     return row
+
+
+def _join_notes(*parts: str | None) -> str | None:
+    text = " ".join(p.strip() for p in parts if p and p.strip())
+    return text or None
+
+
+def reported_text(value: float | None, quote: str | None) -> str | None:
+    """The number as the source prints it ("-25.0", "0.9560"), so the reported precision is kept.
+
+    The printed digits are taken from the locator quote (decimal middle dot read as a point, typographic minus as
+    "-"). A number printed without a minus sign but stored as negative (sign stated in words, ``sign_basis``)
+    keeps its printed digits with the stored sign. Without a printed form the stored number is shown as is.
+    """
+    if value is None:
+        return None
+    fallback = f"{value:g}"
+    if not quote:
+        return fallback
+    text = quote.translate(_REPORTED_TRANSLATE)
+    sign = -1 if value < 0 else 1
+    forms: list[tuple[int, str]] = []
+    for match in _PRINTED_NUMBER.finditer(text):
+        digits = match.group(1)
+        if abs(float(digits.replace(",", "")) - abs(value)) > 1e-9 * max(1.0, abs(value)):
+            continue
+        printed_sign = -1 if match.group(0).lstrip().startswith("-") else 1
+        forms.append((printed_sign, digits))
+    if not forms:
+        return fallback
+    # The printed sign the stored value agrees with, if any; signs are not compared for zero.
+    chosen = next((d for s, d in forms if s == sign), forms[0][1])
+    return f"-{chosen}" if value < 0 else chosen
+
+
+_REPORTED_TRANSLATE = str.maketrans({"−": "-", "–": "-", "‒": "-", "—": "-", "·": "."})
+_PRINTED_NUMBER = re.compile(r"(?:(?<![\w.%)\]])-\s?)?(?<![\d.])(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)(?![\d]|\.\d)")
 
 
 def _missing(pairs: list[tuple[str, object]]) -> list[str]:
@@ -570,7 +710,7 @@ def load_study_evidence(session: Session, file: StudyEvidenceFile, *, reset: boo
         source = resolve_source(session, r.source)
         endpoint = endpoint_for(r.endpoint)
         estimand = estimand_for(r.estimand, source)
-        arm = None if r.scope == "RANGE_ACROSS_ARMS" else _find_or_create_arm(session, study, r.arm)
+        arm, arm_note = (None, None) if r.scope == "RANGE_ACROSS_ARMS" else _resolve_arm(session, study, r.arm)
         if endpoint.source_id is None:
             endpoint.source_id = source.id
         missing = _missing([("confidence_interval", r.ci_low), ("n_analyzed", r.n_analyzed)])
@@ -588,7 +728,7 @@ def load_study_evidence(session: Session, file: StudyEvidenceFile, *, reset: boo
                 class_title=r.class_title,
                 param_type=r.param_type,
                 value=r.value,
-                value_text=None if r.value is None else f"{r.value:g}",
+                value_text=reported_text(r.value, " ".join([r.quote or "", *r.extra_quotes])),
                 value_low=r.value_low,
                 value_high=r.value_high,
                 unit=r.unit or endpoint.unit,
@@ -611,7 +751,7 @@ def load_study_evidence(session: Session, file: StudyEvidenceFile, *, reset: boo
                     session, source, r.quote, review_key=f"{file.study}:{tag}result:{i}:{r.endpoint}:{r.arm}", title=f"{study.display_name} — {endpoint.title} — {r.arm}"
                 ),
                 missing_fields=missing,
-                notes=with_sign_note(r.notes, r.sign_basis),
+                notes=_join_notes(with_sign_note(r.notes, r.sign_basis), arm_note),
             )
         )
 
@@ -619,8 +759,8 @@ def load_study_evidence(session: Session, file: StudyEvidenceFile, *, reset: boo
         source = resolve_source(session, a.source)
         endpoint = endpoint_for(a.endpoint)
         estimand = estimand_for(a.estimand, source)
-        treatment = _find_or_create_arm(session, study, a.treatment)
-        comparator = _find_or_create_arm(session, study, a.comparator) if a.comparator else None
+        treatment, treatment_note = _resolve_arm(session, study, a.treatment)
+        comparator, comparator_note = _resolve_arm(session, study, a.comparator) if a.comparator else (None, None)
         if endpoint.source_id is None:
             endpoint.source_id = source.id
         missing = _missing([("estimate", a.estimate), ("confidence_interval", a.ci_low), ("p_value", a.p_value_text)])
@@ -641,7 +781,7 @@ def load_study_evidence(session: Session, file: StudyEvidenceFile, *, reset: boo
                 hypothesis_type=a.hypothesis_type.value,
                 param_type=a.param_type,
                 estimate=a.estimate,
-                estimate_text=None if a.estimate is None else f"{a.estimate:g}",
+                estimate_text=reported_text(a.estimate, " ".join([a.quote or "", *a.extra_quotes])),
                 unit=a.unit,
                 ci_low=a.ci_low,
                 ci_high=a.ci_high,
@@ -664,13 +804,13 @@ def load_study_evidence(session: Session, file: StudyEvidenceFile, *, reset: boo
                     session, source, a.quote, review_key=f"{file.study}:{tag}analysis:{i}:{a.endpoint}:{a.treatment}", title=f"{study.display_name} — {endpoint.title} — {a.treatment} vs {a.comparator}"
                 ),
                 missing_fields=missing,
-                notes=with_sign_note(a.notes, a.sign_basis),
+                notes=_join_notes(with_sign_note(a.notes, a.sign_basis), treatment_note, comparator_note),
             )
         )
 
     for i, ae in enumerate(file.adverse_events):
         source = resolve_source(session, ae.source)
-        arm = None if ae.scope == "RANGE_ACROSS_ARMS" else _find_or_create_arm(session, study, ae.arm)
+        arm, arm_note = (None, None) if ae.scope == "RANGE_ACROSS_ARMS" else _resolve_arm(session, study, ae.arm)
         session.add(
             AdverseEvent(
                 study_id=study.id,
@@ -697,13 +837,14 @@ def load_study_evidence(session: Session, file: StudyEvidenceFile, *, reset: boo
                     session, source, ae.quote, review_key=f"{file.study}:{tag}ae:{i}:{ae.term}:{ae.arm}", title=f"{study.display_name} — {ae.term} — {ae.arm}"
                 ),
                 missing_fields=_missing([("n_affected", ae.n_affected), ("n_at_risk", ae.n_at_risk)]),
-                notes=ae.notes,
+                notes=_join_notes(ae.notes, arm_note),
             )
         )
 
     for claim in file.claims:
         _upsert_claim(session, claim, study=study)
     session.flush()
+    assign_arm_roles(session, study)  # curated arms created above get their stored role too
     return {"results": len(file.results), "analyses": len(file.analyses), "adverse_events": len(file.adverse_events), "claims": len(file.claims)}
 
 

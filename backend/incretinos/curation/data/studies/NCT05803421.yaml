@@ -59,6 +59,8 @@ analyses:
     quote: "(HR 0·84; 95% CI 0·59-1·20; p<0·0001 for non-inferiority)"
     extra_quotes:
       - "if the upper limit of the two-sided 95% CI for the hazard ratio (HR; orforglipron vs insulin glargine) was less than 1·8"
+      # ni_met YES: the abstract states the conclusion in words (verified excerpt of PMID 42815506).
+      - "was confirmed by demonstrating non-inferiority to insulin glargine for MACE-4"
     comment: "The abstract reports a non-inferiority conclusion only. The sponsor's release gives a log-rank p-value of 0.336 for the same hazard ratio, i.e. no demonstrated difference."
   - endpoint: mace3
     treatment: Orforglipron

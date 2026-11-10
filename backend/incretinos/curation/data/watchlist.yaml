@@ -10,7 +10,9 @@ studies:
   - {nct: NCT04657016, display_name: SURMOUNT-3, program: SURMOUNT, drugs: [{slug: tirzepatide}],
      design_features: {comparator_type: PLACEBO, treatment_weeks: 72, lead_in: "12-week intensive lifestyle intervention before randomization"}}
   - {nct: NCT04660643, display_name: SURMOUNT-4, program: SURMOUNT, drugs: [{slug: tirzepatide}], primary_pmid: "38078870",
-     design_features: {comparator_type: PLACEBO, treatment_weeks: 52, randomized_withdrawal: true, lead_in: "36-week open-label tirzepatide lead-in; randomization at week 36"}}
+     # treatment_weeks is the week of the primary assessment as the registry reports it (study week 88: "Randomization
+     # (Week 36), Week 88"); the randomized period is 52 weeks of it (arm descriptions: "for an additional 52 weeks").
+     design_features: {comparator_type: PLACEBO, treatment_weeks: 88, lead_in_weeks: 36, randomized_period_weeks: 52, randomized_withdrawal: true, lead_in: "36-week open-label tirzepatide lead-in; randomization at week 36"}}
   - {nct: NCT05822830, display_name: SURMOUNT-5, program: SURMOUNT, drugs: [{slug: tirzepatide}, {slug: semaglutide, role: COMPARATOR}], primary_pmid: "40353578",
      design_features: {comparator_type: ACTIVE, treatment_weeks: 72, open_label: true}}
   - {nct: NCT05412004, display_name: SURMOUNT-OSA, program: SURMOUNT, drugs: [{slug: tirzepatide}],
@@ -77,7 +79,8 @@ studies:
   # ---- eloralintide and combination
   - {nct: NCT06230523, display_name: Eloralintide Phase 2, program: ENLIGHTEN, drugs: [{slug: eloralintide}], primary_pmid: "41207310",
      design_features: {comparator_type: PLACEBO, treatment_weeks: 48}}
-  - {nct: NCT06603571, display_name: EloraTZP Phase 2b, program: EloraTZP, drugs: [{slug: eloralintide-tirzepatide}, {slug: eloralintide}, {slug: tirzepatide}],
+  # Tirzepatide alone is the comparator: the registry lists "Tirzepatide Dose 3" as ACTIVE_COMPARATOR.
+  - {nct: NCT06603571, display_name: EloraTZP Phase 2b, program: EloraTZP, drugs: [{slug: eloralintide-tirzepatide}, {slug: eloralintide}, {slug: tirzepatide, role: COMPARATOR}],
      design_features: {comparator_type: PLACEBO_AND_ACTIVE, treatment_weeks: 48, administration: "eloralintide and tirzepatide given as separate injections"}}
   - {nct: NCT07321886, display_name: ENLIGHTEN-1, program: ENLIGHTEN, drugs: [{slug: eloralintide}], design_features: {comparator_type: PLACEBO}}
   - {nct: NCT07282600, display_name: ENLIGHTEN-2, program: ENLIGHTEN, drugs: [{slug: eloralintide}], design_features: {comparator_type: PLACEBO}}
