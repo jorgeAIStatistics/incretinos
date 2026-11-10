@@ -1,0 +1,208 @@
+# Full-text documents read by incretinos.fulltext, and what is extracted from each.
+#
+# This file only says WHERE to look (a table label, a row label pattern, an anchor phrase) and how the place maps
+# onto the evidence model (study, endpoint, comparison). Every number, label, footnote and quote is read from the
+# document by the parsers; a value that is not printed there stays NULL. Each `expect` string must be found in the
+# document exactly where it is configured, otherwise nothing is extracted from that place and the limitation is
+# recorded on the document (and raised as a review-queue item).
+#
+# Every row extracted from these documents is origin FULLTEXT and PENDING_HUMAN_REVIEW. FULLTEXT rows stay out of
+# every analytic surface until a reviewer approves them.
+
+documents:
+  # --------------------------------------------------------------------------------------------- FDA review
+  - key: fda:nda220934:multidiscipline-review
+    kind: PDF
+    title: "NDA 220934 FOUNDAYO (orforglipron) — NDA/BLA Multidisciplinary Review and Evaluation"
+    publisher: U.S. Food and Drug Administration
+    application_number: NDA 220934
+    service: fdadocs
+    path: /nda/2026/220934Orig1s000MultidisciplineR.pdf
+    url: https://www.accessdata.fda.gov/drugsatfda_docs/nda/2026/220934Orig1s000MultidisciplineR.pdf
+    fixture: fdadocs/nda/2026/220934Orig1s000MultidisciplineR.excerpt.pdf
+    tier: REGULATORY_REVIEW
+    related_sources: [web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul]
+    # accessdata.fda.gov returns no licence. The review is a US-government work for the sections FDA wrote; the
+    # review's own disclaimer says the sections labelled "Data" and "The Applicant's Position" are completed by the
+    # applicant. The PDF is therefore NOT stored; only tables whose source line names an FDA analysis are extracted.
+    licence: null
+    licence_basis: >-
+      No licence returned by accessdata.fda.gov. FDA-authored text is a US-government work (17 U.S.C. § 105); the review's
+      disclaimer states that sections labelled "Data" and "The Applicant's Position" are completed by the Applicant and
+      do not necessarily reflect FDA's positions. Mixed authorship: the full PDF is not stored. Extraction is restricted
+      to tables whose source line reads "Source: FDA analysis" and to sentences under "The FDA's Assessment".
+    us_government_work: false
+    extraction_scope: "FDA-analysis tables (source line 'Source: FDA analysis') and sentences under 'The FDA's Assessment' only"
+    # Pages read (1-based PDF page index of the document as retrieved). The offline fixture is an excerpt of exactly
+    # these pages with every glyph run outside the extracted tables, the passages below and the running header and
+    # footer blanked (see incretinos.fulltext.pdf.excerpt).
+    pages: [121, 122, 123, 126, 135, 139, 140, 152, 155, 167, 172, 173]
+    not_extracted:
+      - "FDA Tables 35–39 (exposure, overview of adverse events, deaths, serious adverse events by organ class) pool ATTAIN-1 and ATTAIN-2: a pooled two-trial value belongs to no single registered study or arm in this evidence model, so they are not extracted."
+      - "FDA Tables 25, 32 and 33 (cardiometabolic and glycemic key secondary endpoints) are FDA-analysis tables the extractor reads, but they are not configured for extraction in this pass."
+      - "FDA Tables 20 and 27 (subject disposition) and Tables 22 and 29 (sites by country) are not configured for extraction in this pass."
+    estimands:
+      fda-tre:
+        label: TREATMENT_REGIMEN
+        basis: INFERRED_FROM_ANALYSIS_DESCRIPTION
+        passage: fda-estimand
+        description: >-
+          Not stated in the table caption or footnotes. FDA's Assessment of the statistical analysis plan (Section 8.1.1)
+          agrees with the treatment-regimen estimand for the evaluation of efficacy endpoints, and states that all
+          efficacy results in the review use FDA's preferred multiple imputation.
+    passages:
+      - id: fda-estimand
+        page: 121
+        starts_with: "FDA agrees with use of treatment-regimen estimand"
+        claim: {topic: estimand, studies: [NCT05869903]}
+      - id: fda-imputation-disagreement
+        page: 121
+        starts_with: "FDA disagrees with the Applicant’s imputation approaches for the primary analysis"
+        claim: {topic: missing_data_handling, studies: [NCT05869903]}
+      - id: fda-multiplicity
+        page: 123
+        starts_with: "FDA agrees with the Applicant’s multiplicity control strategy"
+        claim: {topic: multiplicity, studies: [NCT05869903]}
+      - id: fda-all-results-mi
+        page: 123
+        starts_with: "Note that all efficacy results reported in this review were based on"
+        claim: {topic: missing_data_handling, studies: [NCT05869903, NCT05872620]}
+      - id: fda-attain2-sap
+        page: 152
+        starts_with: "Refer to the statistical analysis plan and amendments in Section 8.1.1"
+        claim: {topic: statistical_analysis_plan, studies: [NCT05872620]}
+    tables:
+      - label: FDA Table 21
+        page: 126
+        study: NCT05869903
+        expect: "Summary of Observed/Missing Data at Week 72, ATTAIN-1"
+        extract:
+          - {kind: footnote_claims, topic: missing_data_handling, rows: ["^On treatment$", "^Off treatment$"]}
+      - label: FDA Table 23
+        page: 135
+        study: NCT05869903
+        expect: "Primary Analysis: Percentage Change in Body Weight at Week 72, ATTAIN-1"
+        estimand: fda-tre
+        endpoint: {title: "Percentage change in body weight from baseline to Week 72 (FDA primary analysis)", category: WEIGHT_PCT_CHANGE, role: PRIMARY, timepoint_weeks: 72}
+        extract:
+          - {kind: arm_estimates, row: "^Estimate \\(%\\), LSMean \\(SE\\)$"}
+          - {kind: differences, row: "^Difference from placebo, \\(95% CI\\)$", p_row: "^p-value$", reference: "^Placebo"}
+      - label: FDA Table 24
+        page: 139
+        study: NCT05869903
+        expect: "Key Secondary Endpoints: Body Weight Loss and Waist Circumference at Week 72, ATTAIN-1"
+        estimand: fda-tre
+        extract:
+          - {kind: differences, group: "^≥5% body weight loss$", row: "^Difference from placebo, \\(95% CI\\)$", p_row: "^p-value$", reference: "^Placebo",
+             endpoint: {title: "≥5% body weight reduction at Week 72 (FDA analysis)", category: WEIGHT_RESPONDER, threshold: 5, role: KEY_SECONDARY, timepoint_weeks: 72}}
+          - {kind: differences, group: "^≥10% body weight loss$", row: "^Difference from placebo, \\(95% CI\\)$", p_row: "^p-value$", reference: "^Placebo",
+             endpoint: {title: "≥10% body weight reduction at Week 72 (FDA analysis)", category: WEIGHT_RESPONDER, threshold: 10, role: KEY_SECONDARY, timepoint_weeks: 72}}
+          - {kind: differences, group: "^≥15% body weight loss$", row: "^Difference from placebo, \\(95% CI\\)$", p_row: "^p-value$", reference: "^Placebo",
+             endpoint: {title: "≥15% body weight reduction at Week 72 (FDA analysis)", category: WEIGHT_RESPONDER, threshold: 15, role: KEY_SECONDARY, timepoint_weeks: 72}}
+          - {kind: differences, group: "^≥20% body weight loss$", row: "^Difference from placebo, \\(95% CI\\)$", p_row: "^p-value$", reference: "^Placebo",
+             endpoint: {title: "≥20% body weight reduction at Week 72 (FDA analysis)", category: WEIGHT_RESPONDER, threshold: 20, role: KEY_SECONDARY, timepoint_weeks: 72}}
+          - {kind: differences, group: "^Waist circumference \\(cm\\)", row: "^Difference from placebo, \\(95% CI\\)$", p_row: "^p-value$", reference: "^Placebo",
+             endpoint: {title: "Change in waist circumference from baseline to Week 72 (FDA analysis)", category: WAIST_CHANGE, role: KEY_SECONDARY, timepoint_weeks: 72}}
+      - label: FDA Table 28
+        page: 155
+        study: NCT05872620
+        expect: "Summary of Observed/Missing Data at Week 72, ATTAIN-2"
+        extract:
+          - {kind: footnote_claims, topic: missing_data_handling, rows: ["^On treatment$", "^Off treatment$"]}
+      - label: FDA Table 30
+        page: 167
+        study: NCT05872620
+        expect: "Primary Analysis: Percentage Change in Body Weight at Week 72, ATTAIN-2"
+        estimand: fda-tre
+        estimand_note: "ATTAIN-2: FDA's Assessment of the ATTAIN-2 statistical analysis plan refers to Section 8.1.1 (PDF page 152)."
+        endpoint: {title: "Percentage change in body weight from baseline to Week 72 (FDA primary analysis)", category: WEIGHT_PCT_CHANGE, role: PRIMARY, timepoint_weeks: 72}
+        extract:
+          - {kind: arm_estimates, row: "^Estimate \\(%\\), LSMean \\(SE\\)$"}
+          - {kind: differences, row: "^Difference from placebo, \\(95% CI\\)$", p_row: "^p-value$", reference: "^Placebo"}
+      - label: FDA Table 31
+        page: 172
+        study: NCT05872620
+        expect: "Key Secondary Endpoints: Body Weight Loss and Waist Circumference at Week 72, ATTAIN-2"
+        estimand: fda-tre
+        estimand_note: "ATTAIN-2: FDA's Assessment of the ATTAIN-2 statistical analysis plan refers to Section 8.1.1 (PDF page 152)."
+        extract:
+          - {kind: differences, group: "^≥5% Body weight loss$", row: "^Difference from placebo, \\(95% CI\\)$", p_row: "^p-value$", reference: "^Placebo",
+             endpoint: {title: "≥5% body weight reduction at Week 72 (FDA analysis)", category: WEIGHT_RESPONDER, threshold: 5, role: KEY_SECONDARY, timepoint_weeks: 72}}
+          - {kind: differences, group: "^≥10% Body weight loss$", row: "^Difference from placebo, \\(95% CI\\)$", p_row: "^p-value$", reference: "^Placebo",
+             endpoint: {title: "≥10% body weight reduction at Week 72 (FDA analysis)", category: WEIGHT_RESPONDER, threshold: 10, role: KEY_SECONDARY, timepoint_weeks: 72}}
+          - {kind: differences, group: "^≥15% Body weight loss$", row: "^Difference from placebo, \\(95% CI\\)$", p_row: "^p-value$", reference: "^Placebo",
+             endpoint: {title: "≥15% body weight reduction at Week 72 (FDA analysis)", category: WEIGHT_RESPONDER, threshold: 15, role: KEY_SECONDARY, timepoint_weeks: 72}}
+          - {kind: differences, group: "^≥20% Body weight loss$", row: "^Difference from placebo, \\(95% CI\\)$", p_row: "^p-value$", reference: "^Placebo",
+             endpoint: {title: "≥20% body weight reduction at Week 72 (FDA analysis)", category: WEIGHT_RESPONDER, threshold: 20, role: OTHER_PRESPECIFIED, timepoint_weeks: 72}}
+          - {kind: differences, group: "^Waist circumference \\(cm\\)", row: "^Difference from placebo, \\(95% CI\\)$", p_row: "^p-value$", reference: "^Placebo",
+             endpoint: {title: "Change in waist circumference from baseline to Week 72 (FDA analysis)", category: WAIST_CHANGE, role: KEY_SECONDARY, timepoint_weeks: 72}}
+
+  # --------------------------------------------------------------------------------------------- Europe PMC
+  - key: pmc:PMC13451520
+    kind: JATS
+    pmcid: PMC13451520
+    tier: PEER_REVIEWED
+    study: NCT05822830
+    # The article is a post hoc analysis of one subgroup of SURMOUNT-5. Its results are subgroup evidence, never the
+    # trial's primary result.
+    population: {kind: SUBGROUP_POST_HOC, label: "participants with study-defined prediabetes at randomization (post hoc analysis)"}
+    estimands:
+      pmc-efficacy:
+        label: EFFICACY
+        basis: STATED_BY_SOURCE
+        sentence: {section: "Statistical analyses", anchor: "using the efficacy estimand was used for this analysis"}
+    claims:
+      - {topic: missing_data_handling, section: "Statistical analyses", anchor: "Missing data at Week 72 due to early treatment discontinuation"}
+      - {topic: study_design, section: "Endpoint", anchor: "while all other endpoints were post hoc"}
+    denominators: {table: "Table 1", treatment: "^Tirzepatide", comparator: "^Semaglutide"}
+    sentences:
+      - id: hba1c-etd
+        section: "Results > Changes in glycemic parameters"
+        anchor: "Mean HbA1c reductions were significantly greater with tirzepatide vs semaglutide"
+        statistic: {lead: "estimated treatment difference [95% confidence interval]", param_type: "Estimated treatment difference (LSM)"}
+        endpoint: {title: "Change from baseline in HbA1c at Week 72 (prediabetes subgroup, post hoc)", category: HBA1C_CHANGE, role: POST_HOC, timepoint_weeks: 72}
+        method: {section: "Statistical analyses", anchor: "were assessed using mixed model for repeated measures"}
+      - id: hba1c-lt57-rd
+        section: "Results > Changes in glycemic parameters"
+        anchor: "The risk difference (95% confidence interval) for the proportion of participants achieving an HbA1c target"
+        statistic: {lead: "achieving an HbA1c target < 5.7% with tirzepatide vs semaglutide was", param_type: "Risk difference"}
+        endpoint: {title: "Participants achieving HbA1c < 5.7% at Week 72 (prediabetes subgroup, post hoc)", category: HBA1C_RESPONDER, role: POST_HOC, timepoint_weeks: 72}
+      - id: normoglycemia-rd
+        section: "Results > Changes in glycemic parameters"
+        anchor: "The risk difference (95% confidence interval) for the proportion of participants achieving an HbA1c target"
+        statistic: {lead: "achieving an HbA1c target < 5.7% and FSG < 100 mg/dL with tirzepatide vs semaglutide was", param_type: "Risk difference"}
+        endpoint: {title: "Participants achieving HbA1c < 5.7% and FSG < 100 mg/dL (normoglycemia) at Week 72 (prediabetes subgroup, post hoc)", category: HBA1C_RESPONDER, role: POST_HOC, timepoint_weeks: 72}
+      - id: body-weight-etd
+        section: "Abstract > Results"
+        anchor: "Mean percent body weight reduction was significantly greater with tirzepatide"
+        statistic: {lead: "ETD", param_type: "Estimated treatment difference (LSM)"}
+        endpoint: {title: "Percent change from baseline in body weight at Week 72 (prediabetes subgroup)", category: WEIGHT_PCT_CHANGE, role: POST_HOC, timepoint_weeks: 72}
+        method: {section: "Statistical analyses", anchor: "were assessed using mixed model for repeated measures"}
+      - id: whtr-etd
+        section: "Results > Changes in body weight-related parameters"
+        anchor: "as well as significant reductions in WHtR"
+        statistic: {lead: "ETD:", param_type: "Estimated treatment difference (LSM)"}
+        endpoint: {title: "Change from baseline in waist-to-height ratio at Week 72 (prediabetes subgroup, post hoc)", category: OTHER, role: POST_HOC, timepoint_weeks: 72}
+        method: {section: "Statistical analyses", anchor: "were assessed using mixed model for repeated measures"}
+    not_extracted:
+      - "Results > Changes in body weight-related parameters: the risk differences for the five body-weight thresholds are printed as one list ('22.7% (14.3, 31.0), 32.2% (23.2, 41.3), ... for each respective threshold'); their attribution to thresholds rests on list order across two sentences, so they are not extracted."
+      - "Results > Changes in glycemic parameters: the FSG and fasting-insulin between-group values are printed without naming the statistic ('significantly greater with tirzepatide (−1.85 mg/dL [−3.49, −0.20]; ...)'), so they are not extracted."
+
+  - key: pmc:PMC13375559
+    kind: JATS
+    pmcid: PMC13375559
+    tier: PEER_REVIEWED
+    study: NCT06584916
+    tables:
+      - label: Table 2
+        expect: "AEs in participants before rescue safety set"
+        extract:
+          - {kind: adverse_events, row: "^SAEs$", term: "Serious adverse events", is_serious: true, measure_kind: PARTICIPANTS_WITH_EVENT, category: SERIOUS,
+             columns: ["^Orforglipron", "^Placebo"], period: "before rescue (safety set, per the table caption)"}
+
+  - key: pmc:PMC13453602
+    kind: JATS
+    pmcid: PMC13453602
+    tier: PEER_REVIEWED
+    study: NCT05869903
+    population: {kind: SUBGROUP_POST_HOC, label: "participants aged ≥65 years (post hoc subgroup analysis of ATTAIN-1 and ATTAIN-2)"}

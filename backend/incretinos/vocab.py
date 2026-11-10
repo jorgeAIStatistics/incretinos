@@ -16,6 +16,7 @@ class DirectionBasis(StrEnum):
     ARM_TYPE = "REGISTRY_ARM_TYPE"  # exactly one group is a registry comparator arm (placebo / active comparator)
     PLACEBO_GROUP = "PLACEBO_GROUP_TITLE"  # exactly one group is titled as placebo only; no registry arm type available
     CURATED = "CURATED_SOURCE_STATEMENT"  # contrast written "A vs B" by the curated source entry
+    DOCUMENT = "DOCUMENT_STATEMENT"  # a full-text document states the contrast (row label "Difference from placebo", "A vs B")
     NOT_STATED = "NOT_STATED"  # the source does not say which group is the reference; labels are in posted order
 
 

@@ -12,6 +12,9 @@ module and no engine, report, route or assistant module should have to remember 
   ``study.results``, counts and sub-queries) silently excludes rows whose verification status is
   REJECTED, and rows under a review hold (rejected earlier, changed since, not yet decided again). Inspection code that must see them opts in for one statement with
   ``.execution_options(include_rejected=True)`` or for a block with ``rejected_visible(session)``.
+* Unreviewed full-text evidence is quarantined the same way. A row of origin FULLTEXT was read from a document by a
+  parser; it reaches analytic surfaces only once a reviewer has approved it (HUMAN_VERIFIED). The review workbench
+  sees it through ``rejected_visible``; the automated checks through ``INCLUDE_UNREVIEWED_FULLTEXT``.
 * Rebuilding derived data never destroys human-authored state. ``reset_derived_data`` empties the
   evidence tables and leaves review decisions, evidence version history, the audit log, source
   snapshots and change events alone. Only ``drop_schema`` destroys them, and the CLI reaches it only
@@ -27,7 +30,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import and_, create_engine, event, false, inspect, text, update
+from sqlalchemy import and_, create_engine, event, false, inspect, or_, text, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, ORMExecuteState, Session, sessionmaker, with_loader_criteria
 from starlette.requests import Request
@@ -61,6 +64,9 @@ _SessionLocal: sessionmaker[Session] | None = None
 
 #: Execution option / ``session.info`` key that lets a statement or a session see rejected evidence.
 INCLUDE_REJECTED = "include_rejected"
+#: ``session.info`` key that lets a session see FULLTEXT rows no reviewer has approved yet (rejected rows stay hidden).
+#: Only the automated checks use it: they must evaluate a parsed row before anyone decides on it.
+INCLUDE_UNREVIEWED_FULLTEXT = "include_unreviewed_fulltext"
 
 #: Tables ``reset_derived_data`` never empties: provenance history and everything a person wrote.
 PRESERVED_ON_RESET: tuple[str, ...] = (
@@ -185,25 +191,28 @@ def get_db(request: Request = None) -> Iterator[Session]:
 # --------------------------------------------------------------------------- rejected evidence is invisible
 
 
-@lru_cache(maxsize=1)
-def _rejected_criteria() -> tuple[Any, ...]:
+@lru_cache(maxsize=2)
+def _rejected_criteria(include_unreviewed_fulltext: bool = False) -> tuple[Any, ...]:
+    from .enums import Origin, VerificationStatus
     from .models import REVIEWABLE_MODELS
     from .review.policy import EXCLUDED_STATUSES
 
     excluded = sorted(EXCLUDED_STATUSES)
-    # A held row (rejected earlier; its content changed since and nobody has decided on it again) is excluded
-    # exactly like a rejected one. The column is NOT NULL with a false default, so the comparison is total.
-    return tuple(
-        with_loader_criteria(
-            model, and_(model.verification_status.not_in(excluded), model.review_hold.is_(false())), include_aliases=True, propagate_to_loaders=False
-        )
-        for model in REVIEWABLE_MODELS.values()
-    )
+    criteria = []
+    for model in REVIEWABLE_MODELS.values():
+        # A held row (rejected earlier; its content changed since and nobody has decided on it again) is excluded
+        # exactly like a rejected one. The column is NOT NULL with a false default, so the comparison is total.
+        clause = and_(model.verification_status.not_in(excluded), model.review_hold.is_(false()))
+        if not include_unreviewed_fulltext and hasattr(model, "fulltext_extraction_id"):
+            # A machine-parsed full-text row stays out of analytic use until a person approves it. ``origin`` is NOT NULL.
+            clause = and_(clause, or_(model.origin != Origin.FULLTEXT.value, model.verification_status == VerificationStatus.HUMAN_VERIFIED.value))
+        criteria.append(with_loader_criteria(model, clause, include_aliases=True, propagate_to_loaders=False))
+    return tuple(criteria)
 
 
 @event.listens_for(Session, "do_orm_execute")
 def _hide_rejected_evidence(state: ORMExecuteState) -> None:
-    """The single choke point that keeps rejected evidence out of every analytic surface.
+    """The single choke point that keeps rejected (and unreviewed full-text) evidence out of every analytic surface.
 
     Applied to each SELECT separately (top-level queries and relationship loads alike), so a
     collection loaded lazily from an object obeys the same rule as a query. Column refreshes of an
@@ -215,7 +224,7 @@ def _hide_rejected_evidence(state: ORMExecuteState) -> None:
         return
     if state.execution_options.get(INCLUDE_REJECTED) or state.session.info.get(INCLUDE_REJECTED):
         return
-    state.statement = state.statement.options(*_rejected_criteria())
+    state.statement = state.statement.options(*_rejected_criteria(bool(state.session.info.get(INCLUDE_UNREVIEWED_FULLTEXT))))
 
 
 @contextmanager
@@ -253,7 +262,7 @@ def session_memo(session: Session, name: str, build: Any) -> Any:
     an inspection block read is never handed to analytic code.
     """
     memo = session.info.setdefault(_MEMO, {})
-    key = (name, bool(session.info.get(INCLUDE_REJECTED)))
+    key = (name, bool(session.info.get(INCLUDE_REJECTED)), bool(session.info.get(INCLUDE_UNREVIEWED_FULLTEXT)))
     if key not in memo:
         memo[key] = build(session)
     return memo[key]

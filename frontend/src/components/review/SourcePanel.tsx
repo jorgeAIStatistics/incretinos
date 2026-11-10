@@ -5,6 +5,7 @@ import { Callout, Disclosure, Missing, TierBadge } from "@/components/ui";
 import { titleCase } from "@/lib/api";
 import { type EvidenceDetail, fieldLabel, highlightNumbers, shortHash, stamp, storedNumbers } from "@/lib/review";
 import { Block, Fields, JsonBlock, MarkedText, Stored } from "./bits";
+import { FullTextPanel } from "./FullTextPanel";
 
 /*
  * LEFT panel: the original source and its context. What the reviewer checks the record against: the source, the
@@ -18,6 +19,7 @@ const ANCHOR_SHORT: Record<string, string> = {
   NOT_ANCHORED: "Not found in the source",
   NO_QUOTE: "No quote curated",
   STRUCTURED_PAYLOAD: "Read from the stored registry JSON",
+  FULLTEXT_EXTRACTION: "Parsed from full-text cells: not verified",
 };
 
 export function SourcePanel({ detail }: { detail: EvidenceDetail }) {
@@ -62,6 +64,8 @@ export function SourcePanel({ detail }: { detail: EvidenceDetail }) {
           </Callout>
         )}
       </Block>
+
+      {detail.fulltext ? <FullTextPanel ft={detail.fulltext} /> : null}
 
       {registry ? (
         <Block title="Registry record at the stored location" level={3} testId="registry-fragment">

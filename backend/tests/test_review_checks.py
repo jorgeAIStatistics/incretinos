@@ -20,7 +20,7 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from incretinos.db import Base
+from incretinos.db import INCLUDE_UNREVIEWED_FULLTEXT, Base
 from incretinos.models import (
     AdverseEvent,
     Drug,
@@ -28,6 +28,8 @@ from incretinos.models import (
     Estimand,
     EvidenceClaim,
     EvidenceSource,
+    FullTextDocument,
+    FullTextExtraction,
     OutcomeResult,
     StatisticalAnalysis,
     Study,
@@ -270,7 +272,52 @@ def _efficacy_result(w: World) -> dict[str, Any]:
     return dict(source=w.paper, value=-22.5, estimand=w.estimand("EFFICACY"), locator_quote=quote, **NO_INTERVAL)
 
 
+_GOOD_EXTRACTION: dict[str, Any] = {
+    "value_source": "table cell (jats-xml/table-grid)",
+    "arm_match": {"status": "UNIQUE", "header": "Tirzepatide 15 mg N = 630", "arm_label": "tirzepatide 15 mg", "basis": "the heading names tirzepatide and the dose 15 mg"},
+    "unit": {"value": "%", "found_in": ["row label"]},
+    "estimand": {"label": "EFFICACY", "in_table": True, "stated_in": "caption or footnote of the table"},
+    "interval": "PARSED",
+}
+
+
+def _fulltext(w: World, *, linked: bool = True, **quality: Any) -> OutcomeResult:
+    """A result read from a full-text table, with the parser's quality assessment (the good one, changed by ``quality``)."""
+    w.s.info[INCLUDE_UNREVIEWED_FULLTEXT] = True  # the checks see unreviewed full-text rows, as they do inside reconcile
+    row = w.result(source=w.paper)
+    row.origin = "FULLTEXT"
+    if linked:
+        document = FullTextDocument(key=f"pmc:PMC{row.id}", kind="JATS", title="A full text", limitations=[], details={}, full_text_storable=True,
+                                    full_text_stored=True, fetch_status="FETCHED", parse_status="PARSED")
+        w.s.add(document)
+        w.s.flush()
+        extraction = FullTextExtraction(document_id=document.id, evidence_type="result", target="arm value", cells=[{"role": "value", "text": "-20.9"}],
+                                        parse_method="jats-xml/table-grid", parse_version="1", quality={**_GOOD_EXTRACTION, **quality}, confidence="HIGH")
+        w.s.add(extraction)
+        w.s.flush()
+        row.fulltext_extraction_id = extraction.id
+    w.s.flush()
+    return row
+
+
+def _match(status: str) -> dict[str, Any]:
+    return {**_GOOD_EXTRACTION["arm_match"], "status": status, "candidates": ["tirzepatide 15 mg", "tirzepatide 15 mg (cohort 2)"] if status == "AMBIGUOUS" else []}
+
+
 CASES: dict[str, Case] = {
+    "FULLTEXT_LINK_MISSING": (lambda w: _fulltext(w, linked=False), lambda w: _fulltext(w), ("no extraction record",)),
+    "FULLTEXT_ARM_AMBIGUOUS": (lambda w: _fulltext(w, arm_match=_match("AMBIGUOUS")), lambda w: _fulltext(w), ("fits several registered arms", "'tirzepatide 15 mg'")),
+    "FULLTEXT_ARM_INDIRECT": (lambda w: _fulltext(w, arm_match=_match("UNIQUE_BY_DRUG_ONLY")), lambda w: _fulltext(w), ("unique by drug only",)),
+    "FULLTEXT_UNIT_NOT_FOUND": (lambda w: _fulltext(w, unit={"value": None, "found_in": ["not found"]}), lambda w: _fulltext(w), ("No unit is printed",)),
+    "FULLTEXT_ESTIMAND_NOT_IN_TABLE": (
+        lambda w: _fulltext(w, estimand={"label": "TREATMENT_REGIMEN", "in_table": False, "stated_in": "document text outside the table, PDF page 121"}),
+        lambda w: _fulltext(w),
+        ("TREATMENT_REGIMEN", "PDF page 121"),
+    ),
+    "FULLTEXT_SUBGROUP_POST_HOC": (lambda w: _fulltext(w, subgroup="SUBGROUP_POST_HOC", population="participants with prediabetes"), lambda w: _fulltext(w),
+                                   ("participants with prediabetes", "primary result")),
+    "FULLTEXT_IRREGULAR_CELL": (lambda w: _fulltext(w, interval="PARSED_IRREGULAR: the closing bracket is printed twice"), lambda w: _fulltext(w), ("printed twice",)),
+    "FULLTEXT_VALUE_FROM_TEXT": (lambda w: _fulltext(w, value_source="running text (a sentence of the Results section), not a table"), lambda w: _fulltext(w), ("sentence",)),
     # code: (record that must carry the flag, record that must not, words the explanation must quote)
     "QUOTE_MISSING": (lambda w: w.result(locator_quote=None), lambda w: w.result(), ("tirzepatide 15 mg",)),
     "NUMBER_NOT_IN_QUOTE": (lambda w: w.result(value=-0.9, ci_low=None, ci_high=None, ci_level=None), lambda w: w.result(), ("-0.9", "inside the number -20.9")),

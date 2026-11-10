@@ -63,7 +63,7 @@ from typing import Any
 from sqlalchemy import bindparam, false, insert, or_, select, text, update
 from sqlalchemy.orm import Session
 
-from ..db import INCLUDE_REJECTED
+from ..db import INCLUDE_REJECTED, INCLUDE_UNREVIEWED_FULLTEXT
 from ..enums import ActorKind, ReviewDecisionKind, ReviewStatus, VerificationStatus
 from ..ingestion.snapshots import audit, enqueue_review
 from ..models import (
@@ -78,7 +78,7 @@ from ..models import (
     utcnow,
 )
 from . import identity
-from .anchoring import ANCHOR_CACHE, STRUCTURED_PAYLOAD, AnchorResult, anchor
+from .anchoring import ANCHOR_CACHE, FULLTEXT_EXTRACTION, STRUCTURED_PAYLOAD, AnchorResult, anchor
 from .identity import EvidenceRecord, SnapshotRef
 from .policy import (
     DECISION_KINDS,
@@ -592,7 +592,10 @@ def retire_legacy_queue_items(session: Session) -> int:
 def _mechanical_statuses(session: Session, records: list[EvidenceRecord]) -> list[AnchorResult]:
     """Mechanical status of every record; curated quotes are anchored against the newest source snapshot."""
     machine = AnchorResult(MACHINE_EXTRACTED, STRUCTURED_PAYLOAD)
-    needed = sorted({r.snapshot_ref.id for r in records if not r.is_registry and r.snapshot_ref is not None and r.quote})
+    # A value read from a full-text document by a parser is never mechanically verified, whatever its quote: finding the
+    # quoted cells in the stored text would only show the parser read its own input. It waits for a person.
+    parsed = AnchorResult(PENDING, FULLTEXT_EXTRACTION)
+    needed = sorted({r.snapshot_ref.id for r in records if not r.is_registry and r.origin != identity.FULLTEXT and r.snapshot_ref is not None and r.quote})
     excerpts: dict[int, tuple[str, ...]] = {}
     for start in range(0, len(needed), 400):
         chunk = needed[start : start + 400]
@@ -609,6 +612,8 @@ def _mechanical_statuses(session: Session, records: list[EvidenceRecord]) -> lis
     for record in records:
         if record.is_registry:
             out.append(machine)
+        elif record.origin == identity.FULLTEXT:
+            out.append(parsed)
         elif record.snapshot_ref is None:
             out.append(anchor(record.quote, None, ()))
         else:
@@ -671,6 +676,10 @@ def _automated_flags(session: Session, report: ReconcileReport, run_checks: bool
     if evaluate is None:
         report.checks = "NOT_INSTALLED"
         return {}
+    # The checks run as analytic code (rejected rows hidden), but they must see full-text rows nobody has approved yet:
+    # flagging those rows is what they are for.
+    previous = session.info.get(INCLUDE_UNREVIEWED_FULLTEXT)
+    session.info[INCLUDE_UNREVIEWED_FULLTEXT] = True
     try:
         with session.begin_nested():
             found = evaluate(session) or {}
@@ -678,6 +687,11 @@ def _automated_flags(session: Session, report: ReconcileReport, run_checks: bool
         report.checks, report.checks_error = "FAILED", f"{type(exc).__name__}: {exc}"[:500]
         audit(session, "review.checks_failed", target_type="review", error=report.checks_error)
         return None
+    finally:
+        if previous is None:
+            session.info.pop(INCLUDE_UNREVIEWED_FULLTEXT, None)
+        else:
+            session.info[INCLUDE_UNREVIEWED_FULLTEXT] = previous
     report.checks = "RAN"
     return found
 

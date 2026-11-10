@@ -99,6 +99,9 @@ class ActorKind(StrEnum):
 class Origin(StrEnum):
     REGISTRY = "REGISTRY"  # produced by an ingestion adapter
     CURATED = "CURATED"  # produced from the curated evidence files
+    # Machine-parsed from a full-text document (a JATS table or sentence, an FDA review PDF table). Always
+    # PENDING_HUMAN_REVIEW mechanically, and kept out of every analytic surface until a reviewer approves it.
+    FULLTEXT = "FULLTEXT"
 
 
 class RegulatoryStatus(StrEnum):

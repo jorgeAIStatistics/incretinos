@@ -269,11 +269,11 @@ def _status_writers() -> tuple[dict[str, list[str]], dict[str, set[str]]]:
 def test_only_the_review_lifecycle_can_write_a_human_status():
     """Static proof that there is no second writer of HUMAN_VERIFIED or REJECTED anywhere in the codebase."""
     writes, mentions = _status_writers()
-    # 1. Modules that store a verification status at all: the two loaders and the review lifecycle. Nothing else.
-    assert set(writes) == {"ingestion/ctgov.py", "curation/loader.py", "review/lifecycle.py"}, writes
+    # 1. Modules that store a verification status at all: the three loaders and the review lifecycle. Nothing else.
+    assert set(writes) == {"ingestion/ctgov.py", "curation/loader.py", "fulltext/loader.py", "review/lifecycle.py"}, writes
     # 2. The loaders never name HUMAN_VERIFIED or REJECTED, so whatever they store cannot be one of them
     #    (and the ORM refuses the assignment anyway: test_the_orm_refuses_to_assign_a_human_status).
-    assert "ingestion/ctgov.py" not in mentions and "curation/loader.py" not in mentions, mentions
+    assert not {"ingestion/ctgov.py", "curation/loader.py"} & set(mentions) and not any(m.startswith("fulltext/") for m in mentions), mentions
     # 3. The lifecycle writes with exactly two statements: the derived status, and the protective hold on rejected rows.
     lifecycle = (PACKAGE / "review" / "lifecycle.py").read_text(encoding="utf-8")
     assert lifecycle.count('verification_status=bindparam("b_status")') == 1 and lifecycle.count("values(verification_status=REJECTED)") == 1

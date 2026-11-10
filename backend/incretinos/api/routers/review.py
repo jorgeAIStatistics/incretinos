@@ -144,7 +144,7 @@ class SourceBlock(_Out):
 
 
 class AnchoringBlock(_Out):
-    basis: Literal["FULL_TEXT", "VERIFIED_EXCERPT", "NOT_ANCHORED", "NO_QUOTE", "STRUCTURED_PAYLOAD"]
+    basis: Literal["FULL_TEXT", "VERIFIED_EXCERPT", "NOT_ANCHORED", "NO_QUOTE", "STRUCTURED_PAYLOAD", "FULLTEXT_EXTRACTION"]
     basis_label: str
     quote: str | None = None
     locator: str | None = None
@@ -378,6 +378,78 @@ class AuditOut(_Out):
     detail: dict[str, Any] = {}
 
 
+class FullTextDocumentOut(_Out):
+    key: str
+    kind: str
+    title: str
+    url: str | None = None
+    pmcid: str | None = None
+    pmid: str | None = None
+    doi: str | None = None
+    application_number: str | None = None
+    licence: str | None = Field(None, description="The licence exactly as the source's API returned it (null when none was returned).")
+    licence_url: str | None = None
+    licence_basis: str | None = None
+    open_access_flag: str | None = None
+    full_text_storable: bool
+    full_text_stored: bool
+    storage_basis: str | None = None
+    content_hash: str | None = None
+    byte_size: int | None = None
+    page_count: int | None = None
+    retrieved_at: datetime | None = None
+    fetch_status: str
+    parse_status: str
+    extraction_scope: str | None = None
+    limitations: list[dict[str, Any]] = []
+
+
+class ExtractedTableOut(_Out):
+    label: str
+    caption: str | None = None
+    locator: str
+    section: str | None = None
+    element_id: str | None = None
+    page_start: int | None = None
+    page_end: int | None = None
+    printed_page: str | None = None
+    authorship: str
+    source_line: str | None = None
+    header_rows: list[list[dict[str, Any]]] = []
+    body_rows: list[dict[str, Any]] = []
+    footnotes: list[dict[str, Any]] = []
+    abbreviations: dict[str, str] = {}
+    units: list[dict[str, Any]] = []
+    n_columns: int = 0
+    parse_method: str
+    parse_version: str
+    structural_notes: list[str] = []
+    content_hash: str | None = None
+
+
+class FullTextExtractionOut(_Out):
+    target: str
+    row_label: str | None = None
+    column_header: str | None = None
+    comparator_header: str | None = None
+    cells: list[dict[str, Any]] = Field([], description="Every cell (or sentence) used, with its row and column index, labels, verbatim text and role.")
+    passage: dict[str, Any] | None = None
+    parse_method: str
+    parse_version: str
+    quality: dict[str, Any] = Field({}, description="The parser's assessment of its own reading. It describes the extraction; it is not evidence that the value is right.")
+    confidence: str
+    notes: str | None = None
+
+
+class FullTextBlock(_Out):
+    document: FullTextDocumentOut | None = None
+    table: ExtractedTableOut | None = None
+    extraction: FullTextExtractionOut | None = None
+    used_cells: list[list[int]] = Field([], description="[row index, column index] of every body cell used (row indices are into table.body_rows).")
+    used_header_columns: list[int] = []
+    note: str
+
+
 class EvidenceDetail(_Out):
     evidence_type: str
     id: int
@@ -391,6 +463,7 @@ class EvidenceDetail(_Out):
     source: SourceBlock | None = None
     anchoring: AnchoringBlock
     registry: RegistryBlock | None = None
+    fulltext: FullTextBlock | None = Field(None, description="For FULLTEXT rows: document, licence, table as extracted, cells used, parsing method, quality assessment.")
     values: dict[str, Any] = Field(description="The extracted values exactly as stored; null means the source did not report it.")
     confidence_interval: ConfidenceInterval | None = None
     missing_fields: list[str] = []
@@ -558,7 +631,7 @@ def list_evidence(
     endpoint_category: Annotated[str | None, Query(max_length=30)] = None,
     risk_level: Annotated[list[Literal["HIGH", "MEDIUM", "LOW", "NONE"]] | None, Query()] = None,
     missing_field: Annotated[str | None, Query(max_length=60)] = None,
-    origin: Literal["REGISTRY", "CURATED"] | None = None,
+    origin: Literal["REGISTRY", "CURATED", "FULLTEXT"] | None = None,
     changed_since_last_seen: bool | None = None,
     changed_since_review: bool | None = None,
     has_open_request: bool | None = None,

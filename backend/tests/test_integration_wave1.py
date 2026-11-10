@@ -75,7 +75,8 @@ def test_reconcile_stores_what_the_checks_report_for_every_record(seeded, db):
 def test_the_review_api_returns_the_flags_and_filters_and_sorts_by_risk(client, db):
     stored: Counter[str] = Counter()
     for model in REVIEWABLE_MODELS.values():
-        stored.update({level: n for level, n in db.execute(select(model.risk_level, func.count()).group_by(model.risk_level))})
+        # The review list holds every row, full-text rows that analytic queries do not see yet included.
+        stored.update({level: n for level, n in db.execute(select(model.risk_level, func.count()).group_by(model.risk_level).execution_options(include_rejected=True))})
     first = client.get("/api/review/evidence", params={"limit": 1}).json()
     assert first["facets"]["risk_level"] == dict(stored) and sum(stored.values()) == first["total"]
     for level in RISK_ORDER:
@@ -94,7 +95,7 @@ def test_the_review_api_returns_the_flags_and_filters_and_sorts_by_risk(client, 
     # Sorting by risk puts HIGH first and is the exact reverse when descending, over the whole list.
     by_risk = everything(evidence_type="analysis", sort="risk")
     ranks = [RISK_ORDER.index(r["risk_level"]) for r in by_risk]
-    assert len(by_risk) == db.scalar(select(func.count()).select_from(StatisticalAnalysis)) and ranks == sorted(ranks) and ranks[0] == 0 and ranks[-1] == 3
+    assert len(by_risk) == db.scalar(select(func.count()).select_from(StatisticalAnalysis).execution_options(include_rejected=True)) and ranks == sorted(ranks) and ranks[0] == 0 and ranks[-1] == 3
     assert [r["evidence_key"] for r in everything(evidence_type="analysis", sort="risk", descending=True)] == [r["evidence_key"] for r in by_risk][::-1]
     # Filters combine: HIGH curated results only.
     high_curated = everything(evidence_type="result", origin="CURATED", risk_level="HIGH")
@@ -204,6 +205,7 @@ def test_the_three_session_2_revisions_form_one_line_in_the_agreed_order():
 
     scripts = ScriptDirectory.from_config(alembic_config())
     assert [(s.revision, s.down_revision) for s in scripts.walk_revisions()] == [
+        ("cb85e55cbfb4", "a86fa2bc0685"),  # full-text documents, extracted tables and the cell-level link (P1 evidence completeness)
         ("a86fa2bc0685", "141983e167b9"),  # review hold, decision lineage and reviewer identity (P0 lifecycle fix wave)
         ("141983e167b9", "17814f6d32bf"),  # stored arm role (P0 data fix wave)
         ("17814f6d32bf", "9b4e73774dde"),  # foreign-key indexes (hardening)

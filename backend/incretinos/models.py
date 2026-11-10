@@ -87,6 +87,21 @@ class ReviewableMixin:
         )
 
 
+class FullTextLinkMixin:
+    """The exact cells (or sentence) of a full-text document a FULLTEXT-origin row was extracted from.
+
+    NULL on every registry and curated row. Set by ``incretinos.fulltext`` on the rows it creates; the extraction
+    holds the document, the table, the row label and column header of the cells used, the parsing method and
+    the quality assessment. Evidence rows are rebuilt by every load, so this is an ordinary foreign key.
+    """
+
+    @declared_attr
+    def fulltext_extraction_id(cls) -> Mapped[int | None]:  # noqa: N805 - SQLAlchemy declared attribute
+        return mapped_column(
+            ForeignKey("fulltext_extraction.id", name=f"fk_{cls.__tablename__}_fulltext_extraction", ondelete="SET NULL"), index=True
+        )
+
+
 # --------------------------------------------------------------------------- provenance
 
 
@@ -630,7 +645,7 @@ class IntercurrentEventStrategy(Base):
     estimand: Mapped[Estimand] = relationship(back_populates="strategies")
 
 
-class OutcomeResult(ReviewableMixin, Base):
+class OutcomeResult(ReviewableMixin, FullTextLinkMixin, Base):
     __tablename__ = "outcome_result"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -669,12 +684,13 @@ class OutcomeResult(ReviewableMixin, Base):
 
     study: Mapped[Study] = relationship(back_populates="results")
     endpoint: Mapped[Endpoint] = relationship()
+    fulltext_extraction: Mapped[FullTextExtraction | None] = relationship()
     arm: Mapped[StudyArm | None] = relationship()
     estimand: Mapped[Estimand | None] = relationship()
     source: Mapped[EvidenceSource | None] = relationship()
 
 
-class StatisticalAnalysis(ReviewableMixin, Base):
+class StatisticalAnalysis(ReviewableMixin, FullTextLinkMixin, Base):
     __tablename__ = "statistical_analysis"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -722,13 +738,14 @@ class StatisticalAnalysis(ReviewableMixin, Base):
 
     study: Mapped[Study] = relationship(back_populates="analyses")
     endpoint: Mapped[Endpoint] = relationship()
+    fulltext_extraction: Mapped[FullTextExtraction | None] = relationship()
     estimand: Mapped[Estimand | None] = relationship()
     treatment_arm: Mapped[StudyArm | None] = relationship(foreign_keys=[treatment_arm_id])
     comparator_arm: Mapped[StudyArm | None] = relationship(foreign_keys=[comparator_arm_id])
     source: Mapped[EvidenceSource | None] = relationship()
 
 
-class AdverseEvent(ReviewableMixin, Base):
+class AdverseEvent(ReviewableMixin, FullTextLinkMixin, Base):
     __tablename__ = "adverse_event"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -760,6 +777,7 @@ class AdverseEvent(ReviewableMixin, Base):
 
     study: Mapped[Study] = relationship(back_populates="adverse_events")
     arm: Mapped[StudyArm | None] = relationship()
+    fulltext_extraction: Mapped[FullTextExtraction | None] = relationship()
     source: Mapped[EvidenceSource | None] = relationship()
 
 
@@ -842,7 +860,7 @@ class StudyPublication(Base):
 # --------------------------------------------------------------------------- claims & gaps
 
 
-class EvidenceClaim(ReviewableMixin, Base):
+class EvidenceClaim(ReviewableMixin, FullTextLinkMixin, Base):
     """A non-numeric assertion (mechanism, status, design fact, limitation) with its support."""
 
     __tablename__ = "evidence_claim"
@@ -864,6 +882,7 @@ class EvidenceClaim(ReviewableMixin, Base):
     drug: Mapped[Drug | None] = relationship()
     study: Mapped[Study | None] = relationship()
     source: Mapped[EvidenceSource | None] = relationship()
+    fulltext_extraction: Mapped[FullTextExtraction | None] = relationship()
 
 
 class EvidenceGap(Base):
@@ -953,6 +972,122 @@ class DiscoveredTrial(Base):
     interventions: Mapped[list[str]] = mapped_column(JSON, default=list)
     drug_slugs: Mapped[list[str]] = mapped_column(JSON, default=list)
     source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id"), index=True)
+
+
+# --------------------------------------------------------------------------- full-text documents
+
+
+class FullTextDocument(Base):
+    """A full-text document (a JATS article from Europe PMC, an FDA review PDF) and what may be kept of it.
+
+    The licence is stored exactly as the source's API returned it (``licence``), together with how it was
+    established (``licence_basis``). ``full_text_storable`` is this platform's reading of that licence: only
+    CC BY, CC0 and US-government public-domain works may be stored in full. A document that cannot be
+    stored keeps its metadata, its hash, the table cells that were extracted and short locator quotes.
+    ``limitations`` lists, in words, everything that could not be fetched or parsed reliably. Rebuilt on every
+    load from the fixtures (or the live sources); its key is stable.
+    """
+
+    __tablename__ = "fulltext_document"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String(120), unique=True, index=True)  # e.g. pmc:PMC13451520
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("evidence_source.id", name="fk_fulltext_document_source", ondelete="SET NULL"), index=True)
+    kind: Mapped[str] = mapped_column(String(10))  # JATS | PDF
+    title: Mapped[str] = mapped_column(Text)
+    url: Mapped[str | None] = mapped_column(Text)
+    pmcid: Mapped[str | None] = mapped_column(String(20))
+    pmid: Mapped[str | None] = mapped_column(String(12))
+    doi: Mapped[str | None] = mapped_column(String(200))
+    application_number: Mapped[str | None] = mapped_column(String(40))
+    licence: Mapped[str | None] = mapped_column(Text)  # as returned by the source's API, verbatim
+    licence_url: Mapped[str | None] = mapped_column(Text)
+    licence_basis: Mapped[str | None] = mapped_column(Text)
+    open_access_flag: Mapped[str | None] = mapped_column(String(10))  # e.g. Europe PMC isOpenAccess, verbatim
+    full_text_storable: Mapped[bool] = mapped_column(Boolean, default=False)
+    full_text_stored: Mapped[bool] = mapped_column(Boolean, default=False)
+    storage_basis: Mapped[str | None] = mapped_column(Text)
+    content_hash: Mapped[str | None] = mapped_column(String(64))  # SHA-256 of the document bytes as retrieved
+    byte_size: Mapped[int | None] = mapped_column(Integer)
+    page_count: Mapped[int | None] = mapped_column(Integer)
+    version_label: Mapped[str | None] = mapped_column(Text)
+    retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    fetch_status: Mapped[str] = mapped_column(String(20), default="NOT_FETCHED")  # FETCHED | NOT_FETCHED | FAILED | LICENCE_BLOCKED
+    parse_status: Mapped[str] = mapped_column(String(20), default="NOT_ATTEMPTED")  # PARSED | PARTIAL | FAILED | NOT_ATTEMPTED
+    extraction_scope: Mapped[str | None] = mapped_column(Text)
+    limitations: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+    source: Mapped[EvidenceSource | None] = relationship()
+    tables: Mapped[list[ExtractedTable]] = relationship(back_populates="document", cascade="all, delete-orphan", order_by="ExtractedTable.id")
+
+
+class ExtractedTable(Base):
+    """One table as it was parsed: labels, header rows with spans, body rows with stub labels, footnotes, units.
+
+    The cells are stored whatever the document's licence (they are the facts that were extracted); the
+    surrounding text is not. ``structural_notes`` describes, in words, anything about the structure the parser
+    could not settle (a wrapped label, a column it could not place, a cell without a column).
+    """
+
+    __tablename__ = "extracted_table"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("fulltext_document.id", name="fk_extracted_table_document", ondelete="CASCADE"), index=True)
+    key: Mapped[str] = mapped_column(String(200), unique=True)
+    label: Mapped[str] = mapped_column(Text)  # "FDA Table 23", "Table 1"
+    caption: Mapped[str | None] = mapped_column(Text)
+    locator: Mapped[str] = mapped_column(Text)  # human-readable: page(s) or JATS element and section
+    section: Mapped[str | None] = mapped_column(Text)
+    element_id: Mapped[str | None] = mapped_column(String(80))
+    page_start: Mapped[int | None] = mapped_column(Integer)  # PDF page index, 1-based, of the document as retrieved
+    page_end: Mapped[int | None] = mapped_column(Integer)
+    printed_page: Mapped[str | None] = mapped_column(String(20))  # the page number printed on the page
+    authorship: Mapped[str] = mapped_column(String(30), default="UNKNOWN")  # FDA_ANALYSIS | PUBLICATION | APPLICANT | UNKNOWN
+    source_line: Mapped[str | None] = mapped_column(Text)  # e.g. "Source: FDA analysis; adsl.xpt, advs.xpt"
+    header_rows: Mapped[list[list[dict[str, Any]]]] = mapped_column(JSON, default=list)
+    body_rows: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    footnotes: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    abbreviations: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
+    units: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    n_columns: Mapped[int] = mapped_column(Integer, default=0)
+    parse_method: Mapped[str] = mapped_column(String(60))
+    parse_version: Mapped[str] = mapped_column(String(20))
+    structural_notes: Mapped[list[str]] = mapped_column(JSON, default=list)
+    content_hash: Mapped[str] = mapped_column(String(64))
+
+    document: Mapped[FullTextDocument] = relationship(back_populates="tables")
+
+
+class FullTextExtraction(Base):
+    """The link from one FULLTEXT evidence row to the exact cells (or sentence) it was read from.
+
+    ``cells`` lists every cell used, with its row index, column index, row label, column header, verbatim text
+    and the role it played (value, interval, p-value, denominator ...). ``quality`` is the parser's assessment
+    of its own reading (header-to-arm match, interval pattern, where the unit and the estimand were found).
+    It describes the extraction; it is never evidence that the value is right.
+    """
+
+    __tablename__ = "fulltext_extraction"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("fulltext_document.id", name="fk_fulltext_extraction_document", ondelete="CASCADE"), index=True)
+    table_id: Mapped[int | None] = mapped_column(ForeignKey("extracted_table.id", name="fk_fulltext_extraction_table", ondelete="CASCADE"), index=True)
+    evidence_type: Mapped[str] = mapped_column(String(20))
+    target: Mapped[str] = mapped_column(Text)  # what was read, e.g. "difference from placebo with 95% CI"
+    row_label: Mapped[str | None] = mapped_column(Text)
+    column_header: Mapped[str | None] = mapped_column(Text)
+    comparator_header: Mapped[str | None] = mapped_column(Text)
+    cells: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    passage: Mapped[dict[str, Any] | None] = mapped_column(JSON)  # sentence extractions: section, paragraph id, sentence
+    parse_method: Mapped[str] = mapped_column(String(60))
+    parse_version: Mapped[str] = mapped_column(String(20))
+    quality: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    confidence: Mapped[str] = mapped_column(String(10), default="LOW")  # HIGH | MEDIUM | LOW: a description of the parse, never proof
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    document: Mapped[FullTextDocument] = relationship()
+    table: Mapped[ExtractedTable | None] = relationship()
 
 
 # --------------------------------------------------------------------------- review guard rails

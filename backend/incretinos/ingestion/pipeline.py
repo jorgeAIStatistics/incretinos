@@ -57,7 +57,7 @@ from .transport import FixtureMissing, Transport, TransportError, build_transpor
 DEMO_CHANGE_NCT = "NCT07321886"
 
 #: Steps after which evidence rows or their sources may differ, so the review lifecycle must reconcile.
-RECONCILE_AFTER = frozenset({"ctgov", "openfda-label", "curated-evidence", "review-reconcile"})
+RECONCILE_AFTER = frozenset({"ctgov", "openfda-label", "curated-evidence", "fulltext", "review-reconcile"})
 #: Steps that read evidence analytically and must not see rejected rows.
 ANALYTIC_STEPS = frozenset({"gap-engine"})
 
@@ -95,6 +95,7 @@ class IngestReport:
     faers: list[dict[str, Any]] = field(default_factory=list)
     discovered: int = 0
     curated: dict[str, Any] = field(default_factory=dict)
+    fulltext: dict[str, Any] = field(default_factory=dict)
     failures: list[dict[str, str]] = field(default_factory=list)
     # Review lifecycle: counts from the last reconcile of the run, and every stored row whose content changed.
     review: dict[str, Any] = field(default_factory=dict)
@@ -124,6 +125,7 @@ class Pipeline:
         self.faers = OpenFDAFaersAdapter(self.transport)
         self.report = IngestReport(mode=self.transport.mode)
         self._reconciled = False
+        self._record = record
 
     # -- helpers
     def reconcile_review(self) -> ReconcileReport:
@@ -343,6 +345,14 @@ class Pipeline:
         self.report.curated = stats
         return stats
 
+    def ingest_fulltext(self) -> dict:
+        """Full-text documents (curation/data/fulltext.yaml): FULLTEXT rows, each PENDING_HUMAN_REVIEW, with cell-level provenance."""
+        from ..fulltext.loader import FullTextStep
+
+        stats = FullTextStep(self.session, self.transport, curated_dir=self.settings.curated_dir, fixture_dir=self.settings.fixture_dir, record=self._record).run()
+        self.report.fulltext = stats
+        return stats
+
     def refresh_gaps(self) -> dict:
         from ..engines.gaps import refresh_gaps
 
@@ -362,7 +372,12 @@ class Pipeline:
             self._run("openfda-faers", self.ingest_faers)
         if "discover" not in skip:
             self._run("ctgov-discovery", self.discover)
-        self._run("curated-evidence", self.load_curated)
+        fulltext = "fulltext" not in skip
+        # The full-text step maps document columns onto the arms the curated load annotates, so it runs after it; the full
+        # reconcile then follows the full-text step (the curated step only re-hides rejections in between).
+        self._run("curated-evidence", self.load_curated, review="hold" if fulltext else None)
+        if fulltext:
+            self._run("fulltext", self.ingest_fulltext)
         if not self._reconciled:
             # The curated load failed and was rolled back: reconcile what is there rather than leave rows unkeyed.
             self._run("review-reconcile", lambda: {})

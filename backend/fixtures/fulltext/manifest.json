@@ -1,0 +1,156 @@
+{
+ "documents": {
+  "fda:nda220934:multidiscipline-review": {
+   "bytes": 18947507,
+   "excerpt_pages": [
+    121,
+    122,
+    123,
+    126,
+    135,
+    139,
+    140,
+    152,
+    155,
+    167,
+    172,
+    173
+   ],
+   "fixture": "fdadocs/nda/2026/220934Orig1s000MultidisciplineR.excerpt.pdf",
+   "fixture_sha256": "3a71e26570969c000a2b1069377fb57019a11bdb67145a93a83bfa203b0ea0e2",
+   "kept_bands": {
+    "121": [
+     [
+      288.0,
+      341.5
+     ],
+     [
+      250.4,
+      341.5
+     ],
+     [
+      325.5,
+      341.5
+     ],
+     [
+      325.5,
+      341.5
+     ]
+    ],
+    "122": [],
+    "123": [
+     [
+      647.8,
+      677.6
+     ],
+     [
+      596.4,
+      639.9
+     ]
+    ],
+    "126": [
+     [
+      247.7,
+      415.1
+     ]
+    ],
+    "135": [
+     [
+      331.7,
+      487.6
+     ]
+    ],
+    "139": [
+     [
+      160.7,
+      525.2
+     ]
+    ],
+    "140": [
+     [
+      533.5,
+      715.0
+     ]
+    ],
+    "152": [
+     [
+      328.7,
+      368.5
+     ]
+    ],
+    "155": [
+     [
+      235.4,
+      402.8
+     ]
+    ],
+    "167": [
+     [
+      442.2,
+      586.6
+     ]
+    ],
+    "172": [
+     [
+      160.6,
+      450.0
+     ]
+    ],
+    "173": [
+     [
+      524.3,
+      715.0
+     ]
+    ]
+   },
+   "note": "Page excerpt of the document as retrieved. Every glyph run outside the kept bands (the extracted FDA-analysis tables, the configured sentences under 'The FDA's Assessment' with their heading, and the running header and footer) is blanked, so the fixture carries no applicant-authored text. Page numbers are those of the original document.",
+   "page_count": 564,
+   "retrieved_at": "2026-11-10T03:47:29+00:00",
+   "sha256": "ab9f15b75d5b1b56f072f956f2acabd04e18c1d5f3515593db342c5367dc5142",
+   "status": 200,
+   "url": "https://www.accessdata.fda.gov/drugsatfda_docs/nda/2026/220934Orig1s000MultidisciplineR.pdf"
+  }
+ },
+ "resources": {
+  "europepmc/fulltext/PMC13375559.xml": {
+   "bytes": 121711,
+   "recorded": true,
+   "retrieved_at": "2026-11-10T03:47:29+00:00",
+   "sha256": "79c916477d306025035c99b586bda612c1935b5b9e52b55b970e736a04690fbe",
+   "status": 200,
+   "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13375559/fullTextXML"
+  },
+  "europepmc/fulltext/PMC13451520.xml": {
+   "bytes": 110039,
+   "recorded": true,
+   "retrieved_at": "2026-11-10T03:47:29+00:00",
+   "sha256": "3c608fdabe7b5216f91fd4186d899ea7c7b6deab1f8d49fc736186e0406b6817",
+   "status": 200,
+   "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13451520/fullTextXML"
+  },
+  "europepmc/search/PMC13375559.json": {
+   "bytes": 10007,
+   "recorded": true,
+   "retrieved_at": "2026-11-10T03:47:29+00:00",
+   "sha256": "35e0fa11db0baf4e921214a6c5bbe01922be7974889f57e516f8517f9580f91d",
+   "status": 200,
+   "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=PMCID:PMC13375559&resultType=core&format=json"
+  },
+  "europepmc/search/PMC13451520.json": {
+   "bytes": 6655,
+   "recorded": true,
+   "retrieved_at": "2026-11-10T03:47:29+00:00",
+   "sha256": "beadf4409e119e636fe3e610dd18abad2dc2d78669b309da2aae262139f38a21",
+   "status": 200,
+   "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=PMCID:PMC13451520&resultType=core&format=json"
+  },
+  "europepmc/search/PMC13453602.json": {
+   "bytes": 6290,
+   "recorded": true,
+   "retrieved_at": "2026-11-10T03:47:29+00:00",
+   "sha256": "9ca4001b9cbb9835672520282ac44542f8288ee912b94de88d5a6914f1dfa4e4",
+   "status": 200,
+   "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=PMCID:PMC13453602&resultType=core&format=json"
+  }
+ }
+}
