@@ -1019,7 +1019,7 @@ def test_openapi_schema_describes_the_review_api():
     schemas = spec["components"]["schemas"]
     assert {"EvidenceDetail", "EvidenceListItem", "EvidenceDecisionRequest", "EvidenceDecisionResponse", "ReviewSummary", "SourceBlock", "AnchoringBlock", "RegistryBlock"} <= set(schemas)
     request = schemas["EvidenceDecisionRequest"]
-    assert set(request["required"]) == {"decision", "reviewer", "rationale", "expected_fingerprint"} and request["additionalProperties"] is False
+    assert set(request["required"]) == {"decision", "rationale", "expected_fingerprint"} and request["additionalProperties"] is False  # reviewer: required under the shared token only
     assert set(request["properties"]["decision"]["enum"]) == {"APPROVE", "REJECT", "REQUEST_INFO", "FLAG_WRONG_ATTRIBUTION", "PROPOSE_CORRECTION"}
     decide = spec["paths"]["/api/review/evidence/{evidence_type}/{row_id}/decisions"]["post"]
     assert any(p["name"] == "x-reviewer-token" for p in decide["parameters"])
@@ -1638,21 +1638,41 @@ def test_reset_keeps_review_history_and_wiping_it_needs_its_own_flag(lab, tmp_pa
         assert session.execute(text("SELECT review_status, reviewer_note, drug_id IS NOT NULL FROM evidence_gap WHERE key = :k"), {"k": gap_key}).one() == ("CONFIRMED", "kept by a reviewer", 1)
         assert session.scalar(select(ReviewQueueItem.status).where(ReviewQueueItem.dedupe_key == "curated:legacy")) == "RETIRED"  # reconcile retires legacy items
 
-    # Wiping review history is a separate, explicit flag; a ledger backup is written first.
+    # Wiping review history is a separate, explicit flag; everything it drops is backed up first, and the wipe is recorded.
+    with lab.session() as session:
+        before_wipe = {t: session.execute(text(f"SELECT COUNT(*) FROM {t}")).scalar() for t in ("review_decision", "audit_event", "evidence_version", "change_event")}
+        session.add(ReviewDecision(target_type="review_queue_item", target_id=1, decision="NEEDS_INFO", reviewer="Dr. Queue Reviewer", rationale="queue decision kept by the backup"))
+        session.commit()
+    existing = set(get_settings().cache_dir.parent.glob("wipe-backup-*"))
     wiped = CliRunner().invoke(cli, ["seed", "--reset", "--wipe-review-history"])
     assert wiped.exit_code == 0, wiped.output[-1500:]
-    backups = list(get_settings().cache_dir.parent.glob("review-ledger-before-wipe-*.json"))
+    backups = sorted(set(get_settings().cache_dir.parent.glob("wipe-backup-*")) - existing)
     try:
-        assert backups and json.loads(backups[-1].read_text(encoding="utf-8"))["n_decisions"] == 5
+        assert len(backups) == 1
+        backup = backups[0]
+        manifest = json.loads((backup / "manifest.json").read_text(encoding="utf-8"))
+        # Every kind of decision, the audit log and the version history are in the backup, row for row.
+        assert manifest["row_counts"]["review_decision"] == before_wipe["review_decision"] + 1
+        for table in ("audit_event", "evidence_version", "change_event"):
+            assert manifest["row_counts"][table] >= before_wipe[table] and (backup / "tables" / f"{table}.jsonl").is_file()
+        lines = (backup / "tables" / "review_decision.jsonl").read_text(encoding="utf-8").splitlines()
+        assert any(json.loads(line)["rationale"] == "queue decision kept by the backup" for line in lines)
+        assert manifest["decisions"]["queue_or_gap:NEEDS_INFO"] == 1 and manifest["ledger_decisions"] == 5
+        assert json.loads((backup / "review-ledger.json").read_text(encoding="utf-8"))["n_decisions"] == 5
+        assert "are NOT applied to the new database" in wiped.output and "review-ledger.json" in wiped.output
         summary = lab.client.get("/api/review/summary").json()
         assert summary["decisions_recorded"] == 0 and summary["by_status"][HUMAN_VERIFIED] == 0 and summary["by_status"][REJECTED] == 0
-        # ... and the backup restores it.
-        restored = CliRunner().invoke(cli, ["review", "import", str(backups[-1])])
+        # The fresh database says that a history existed, where it went, and its checksum.
+        [event] = lab.audit("review.history_wiped")
+        assert event["detail"]["backup_directory"] == str(backup) and event["detail"]["ledger_decisions"] == 5 and event["detail"]["manifest_sha256"]
+        assert event["detail"]["row_counts"]["review_decision"] == before_wipe["review_decision"] + 1
+        # ... and the backup restores the evidence decisions.
+        restored = CliRunner().invoke(cli, ["review", "import", str(backup / "review-ledger.json")])
         assert restored.exit_code == 0 and json.loads(restored.stdout)["imported"] == 5
         _assert_review_state(lab, rows)
     finally:
         for backup in backups:
-            backup.unlink()
+            shutil.rmtree(backup)
 
 
 def test_review_status_command_reports_the_ledger(lab):
@@ -1980,14 +2000,18 @@ def test_a_change_of_supporting_text_alone_asks_for_a_recheck_only_where_a_revie
 
     report = lab.check_updates({REGISTRY_FIXTURE: reword})
     changed = {c["evidence_key"]: c for c in report.evidence_changes}
-    assert len(changed) == 4 and all(not c["value_changed"] for c in changed.values())  # the four arms of that outcome measure
-    assert all([f["field"] for f in c["changed_fields"]] == ["analysis_method"] for c in changed.values())
+    # The four arm results of that outcome measure and its three analyses: the outcome's description is part of the endpoint
+    # a reviewer signs off on (it is in the fingerprint), and for the results it is also their analysis method.
+    assert sorted(c["evidence_type"] for c in changed.values()) == ["analysis"] * 3 + ["result"] * 4 and all(not c["value_changed"] for c in changed.values())
+    assert all([f["field"] for f in c["changed_fields"]] == (["analysis_method", "endpoint.description"] if c["evidence_type"] == "result" else ["endpoint.description"])
+               for c in changed.values())
     detail = lab.by_key(approved)
     assert detail["status"]["verification_status"] == RECHECK and detail["values"]["value"] == -22.5
-    assert [d["field"] for d in detail["changed_since_review"]["diff"]] == ["analysis_method"]
-    assert lab.client.get("/api/review/evidence", params={"changed_since_last_seen": True}).json()["total"] == 4
+    assert [d["field"] for d in detail["changed_since_review"]["diff"]] == ["analysis_method", "endpoint.description"]
+    assert lab.client.get("/api/review/evidence", params={"changed_since_last_seen": True}).json()["total"] == 7
     event = next(e for e in lab.changes() if e["source"]["key"] == f"ctgov:{SURMOUNT_1}")
     listed = [c for c in event["changes"] if c.get("evidence_key")]
-    assert {c["evidence_key"] for c in listed} == {approved["evidence_key"]} and listed[0]["field"] == "result.analysis_method" and listed[0]["significance"] == "MEDIUM"
-    assert "3 further row(s) changed in label or classification only" in event["summary"] and event["significance"] != "HIGH"
+    assert {c["evidence_key"] for c in listed} == {approved["evidence_key"]} and [c["field"] for c in listed] == ["result.analysis_method", "result.endpoint.description"]
+    assert all(c["significance"] == "MEDIUM" for c in listed)
+    assert "6 further row(s) changed in label or classification only" in event["summary"] and event["significance"] != "HIGH"
     assert len(lab.audit("review.evidence_changed")) == 1
