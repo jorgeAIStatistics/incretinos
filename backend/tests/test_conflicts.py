@@ -348,3 +348,15 @@ def test_every_group_explains_itself(db, nct):
             assert detail["next_actions"], group.group_id
         if group.cls == C.INSUFFICIENT:
             assert detail["missing_details"], group.group_id
+
+
+def test_unreviewed_fulltext_rows_take_part_in_no_conflict_group(db):
+    """FULLTEXT rows (parsed from the FDA review or a Europe PMC article) are PENDING_HUMAN_REVIEW and stay out of every group until a
+    reviewer approves them (the session rule in incretinos.db); the review dossier says so instead of classifying them."""
+    from incretinos.models import REVIEWABLE_MODELS
+
+    fulltext = {f"{etype}:{row_id}" for etype, model in REVIEWABLE_MODELS.items() if etype in C.EVIDENCE_TYPES and hasattr(model, "fulltext_extraction_id")
+                for (row_id,) in db.execute(select(model.id).execution_options(include_rejected=True).where(model.origin == "FULLTEXT"))}
+    assert fulltext, "the seed carries FULLTEXT rows"
+    in_groups = {r.ref for g in C.all_groups(db) for r in g.rows}
+    assert in_groups and not fulltext & in_groups

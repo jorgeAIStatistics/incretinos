@@ -54,8 +54,9 @@ export function DrillNote({ links }: { links: MetricLinks }) {
   );
 }
 
-function pageName(href: string): string {
+export function pageName(href: string): string {
   if (href.startsWith("/review")) return "Evidence Review";
+  if (href.startsWith("/conflicts")) return "Source Conflicts";
   if (href.startsWith("/gaps")) return "the Evidence Gap Tracker";
   if (href.startsWith("/sources")) return "Sources & Audit";
   return "another page";

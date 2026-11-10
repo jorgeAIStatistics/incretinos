@@ -15,6 +15,7 @@ import numpy as np
 import pytest
 from sqlalchemy import and_, exists, func, or_, select
 
+from incretinos.engines import conflicts as conflict_engine
 from incretinos.engines import quality
 from incretinos.models import (
     REVIEWABLE_MODELS,
@@ -23,7 +24,6 @@ from incretinos.models import (
     Drug,
     Endpoint,
     Estimand,
-    EvidenceGap,
     EvidenceSource,
     EvidenceVersion,
     LabelRecord,
@@ -153,8 +153,13 @@ def independent_counts(db, as_of: datetime) -> dict[str, tuple[int, int]]:
     queue = c(select(func.count()).select_from(q))
     out["queue_open"] = (c(select(func.count()).select_from(q).where(q.c.status == "OPEN")), queue)
     out["queue_in_review"] = (c(select(func.count()).select_from(q).where(q.c.status == "IN_REVIEW")), queue)
-    conflicts = c(select(func.count()).select_from(_t(EvidenceGap)).where(_t(EvidenceGap).c.gap_nature == "SOURCE_CONFLICT"))
-    out["source_conflicts"] = (conflicts, conflicts)
+    # Source conflicts are classified by the conflict engine, not by this module: the quality page must count exactly the
+    # groups /conflicts lists, class by class, over every multi-source group.
+    classes = Counter(g.cls for g in conflict_engine.all_groups(db))
+    groups = sum(classes.values())
+    for metric_id, cls in (("source_conflicts", "TRUE_CONFLICT"), ("source_conflicts_insufficient", "INSUFFICIENT_INFORMATION"),
+                           ("source_conflicts_explainable", "EXPLAINABLE_DIFFERENCE"), ("source_conflicts_consistent", "CONSISTENT")):
+        out[metric_id] = (classes[cls], groups)
     return out
 
 
@@ -270,7 +275,8 @@ def test_every_metric_links_to_exactly_the_records_it_counted(client, facts):
         if metric["links"]["page"]:
             assert _page_total(client, metric["links"]["page"]) == metric["count"], (metric["id"], metric["links"]["page"])
     pages = {m["id"] for m in overview["metrics"] if m["links"]["page"]}
-    assert {"status_pending_human_review", "status_rejected", "open_requests", "source_conflicts", "queue_open", "orphaned_decisions"} <= pages
+    assert {"status_pending_human_review", "status_rejected", "open_requests", "source_conflicts", "source_conflicts_insufficient", "source_conflicts_explainable",
+            "source_conflicts_consistent", "queue_open", "orphaned_decisions"} <= pages
     # Parametrised metrics: every listed value drills to its own count.
     for d in overview["distributions"]["flag_codes"] + overview["distributions"]["retrieval_age"]:
         assert quality.records(facts, d["links"]["records"]["api"]["params"]["metric"], value=d["value"], limit=1)["total"] == d["count"]
@@ -322,15 +328,44 @@ def test_breakdown_cells_match_their_records_for_every_group(facts):
                 assert [listed["total"], listed["denominator"]] == group["counts"][metric_id], (by, group["value"], metric_id)
 
 
-def test_source_conflict_drill_down_matches_the_gap_tracker_per_molecule(client, facts):
-    groups = {g["value"]: g["counts"]["source_conflicts"] for g in quality.breakdown(facts, "drug")["groups"]}
-    assert any(count for count, _ in groups.values())
-    for slug, (count, _) in groups.items():
-        if count:
-            link = quality.links(quality.METRICS["source_conflicts"], None, {"drug": slug})
-            assert link["href"].startswith("/gaps?nature=SOURCE_CONFLICT") and _page_total(client, link["page"]) == count, slug
-    # A filter the gap tracker cannot apply never produces a page link that would show a different set.
-    assert quality.links(quality.METRICS["source_conflicts"], None, {"study": "NCT04184622"})["page"] is None
+def test_source_conflict_drill_down_matches_the_conflicts_page_per_molecule_and_trial(client, db, facts):
+    """Each conflict metric counts the groups /conflicts lists under the same class and filter (engines/conflicts.py classifies them)."""
+    # Conflict groups carry the trial's tracked molecules only (an arm drug that is not a tracked molecule, which /conflicts
+    # refuses as a filter, never has a group), so the page link is checked for every tracked molecule.
+    tracked = {slug for (slug,) in db.connection().execute(select(_t(Drug).c.slug))}
+    by_drug = {g["value"]: g["counts"] for g in quality.breakdown(facts, "drug")["groups"]}
+    assert all(counts[m][0] == 0 for slug, counts in by_drug.items() if slug not in tracked for m in by_drug[slug] if m.startswith("source_conflicts"))
+    by_drug = {slug: counts for slug, counts in by_drug.items() if slug in tracked}
+    assert any(counts["source_conflicts"][0] for counts in by_drug.values())
+    for metric_id in ("source_conflicts", "source_conflicts_insufficient", "source_conflicts_explainable", "source_conflicts_consistent"):
+        cls = quality.METRICS[metric_id].page[1]["class"]
+        for slug, counts in by_drug.items():
+            count = counts[metric_id][0]
+            link = quality.links(quality.METRICS[metric_id], None, {"drug": slug})
+            assert link["href"].startswith(f"/conflicts?class={cls}") and _page_total(client, link["page"]) == count, (metric_id, slug)
+        # The /conflicts page filters by trial as well, so a trial's count also opens exactly its groups.
+        link = quality.links(quality.METRICS[metric_id], None, {"study": "NCT05869903"})
+        assert link["page"] is not None and "study=NCT05869903" in link["href"]
+        assert _page_total(client, link["page"]) == quality.records(facts, metric_id, filters={"study": "NCT05869903"}, limit=1)["total"]
+    # Every listed group opens on /conflicts, and the four classes partition the multi-source groups.
+    rows = quality.records(facts, "source_conflicts", limit=500)["rows"]
+    assert rows and all(r["kind"] == "conflict" and r["links"][0]["href"].startswith("/conflicts?group=NCT") for r in rows)
+    metrics = _overview_metrics(facts)
+    assert sum(metrics[m]["count"] for m in ("source_conflicts", "source_conflicts_insufficient", "source_conflicts_explainable", "source_conflicts_consistent")) \
+        == metrics["source_conflicts"]["denominator"] == client.get("/api/conflicts", params={"limit": 1}).json()["all_groups"]
+
+
+def test_unreviewed_fulltext_rows_count_in_review_status_and_nowhere_else(db, facts):
+    """A FULLTEXT row (read from a document by a parser) is counted in the review-status dimension, PENDING_HUMAN_REVIEW, and is
+    kept out of every analytic count until a reviewer approves it (incretinos.db)."""
+    fulltext = {(etype, key) for etype, model in REVIEWABLE_MODELS.items() if "origin" in _t(model).c
+                for (key,) in db.connection().execute(select(_t(model).c.evidence_key).where(_t(model).c.origin == "FULLTEXT"))}
+    assert fulltext, "the seed carries full-text rows"
+    everything = {(i.evidence_type, i.f.get("evidence_key")) for i in facts.universes[quality.ALL_EVIDENCE]}
+    analytic = {(i.evidence_type, i.f.get("evidence_key")) for i in facts.universes[quality.EVIDENCE]}
+    assert fulltext <= everything and not fulltext & analytic
+    pending = {(r["evidence_type"], r["evidence_key"]) for r in quality.records(facts, "status_pending_human_review", limit=5000)["rows"]}
+    assert fulltext <= pending
 
 
 # --------------------------------------------------------------------------- rejected rows: counted in review status, not in completeness

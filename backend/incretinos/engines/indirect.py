@@ -22,8 +22,17 @@ Every requirement is reported as PASS, FAIL or CANNOT_ASSESS with the stored evi
 
 * comparator, network, estimand, outcome definition, effect scale, follow-up, contrast reliability, variance — any
   status other than PASS refuses the calculation and says why;
-* population comparability, effect modifiers and transitivity — FAIL refuses; CANNOT_ASSESS does not refuse but is
-  shown as an UNVERIFIED ASSUMPTION beside the result (never hidden).
+* population comparability, effect modifiers, transitivity and agreement with other public sources — FAIL refuses;
+  CANNOT_ASSESS does not refuse but is shown as an UNVERIFIED ASSUMPTION beside the result (never hidden).
+
+Open source conflicts (``engines.conflicts``). An input contrast whose multi-source group is classified TRUE_CONFLICT
+(another public source reports the same quantity — same trial, groups, endpoint, time point, estimand and baseline — with
+a value that differs beyond the printed precision) fails "Reliable contrast estimates" and so refuses the calculation:
+until the conflict is reconciled nobody can say which value the contrast is. A group classified
+INSUFFICIENT_INFORMATION (the values differ, but a detail needed to tell whether they are the same quantity is not
+stored) is CANNOT_ASSESS on "No open source conflict" and is shown beside any result as an unverified assumption. This
+is the conservative reading of the group's class, not of the input row's own pairs: a three-source group with a true
+conflict between two other sources still refuses. Explainable differences and agreement raise nothing.
 
 This is not a network meta-analysis: exactly two trials, one common comparator, one contrast each.
 """
@@ -39,9 +48,11 @@ from scipy import stats as sps
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..db import session_memo
 from ..enums import EstimandLabel, EvidenceTier, Origin, VerificationStatus
 from ..models import Drug, Formulation, OutcomeResult, StatisticalAnalysis, Study, StudyArm
 from ..review.policy import canonical_status, exclusion_reason, is_usable
+from . import conflicts as conflict_engine
 from .comparability import _SPECIAL_POPULATIONS, _analysis_baseline_class
 from .findings import (
     BASELINE_CLASS_LABEL,
@@ -64,7 +75,7 @@ REFERENCE = ("Bucher HC, Guyatt GH, Griffith LE, Walter SD. The results of direc
 #: Requirements that must PASS for a calculation. Anything else (FAIL or CANNOT_ASSESS) refuses.
 HARD_CHECKS = ("network", "comparator", "estimand", "outcome", "effect_scale", "follow_up", "reliability", "variance")
 #: Requirements whose CANNOT_ASSESS is shown as an unverified assumption; their FAIL refuses.
-ASSUMPTION_CHECKS = ("population", "effect_modifiers", "transitivity")
+ASSUMPTION_CHECKS = ("population", "effect_modifiers", "transitivity", "source_agreement")
 
 #: Statuses a contrast may have to enter a calculation: registry-posted and machine-extracted from a hashed snapshot, or
 #: approved by an attested human decision. A curated value anchored to a quote, or anything awaiting review, is not enough.
@@ -259,6 +270,20 @@ def _arm_rows(row: StatisticalAnalysis, arm_id: int | None) -> list[OutcomeResul
 # --------------------------------------------------------------------------- one contrast, described from stored fields only
 
 
+def _analysis_conflicts(session: Session) -> dict[int, dict[str, Any]]:
+    """analysis id -> the source-conflict group it belongs to (engines.conflicts), for every stored between-arm analysis in one."""
+    out: dict[int, dict[str, Any]] = {}
+    for study in session.scalars(select(Study).order_by(Study.id)):
+        for group in conflict_engine.study_groups(session, study, ("analysis",)):
+            for row in group.rows:
+                own = {c["class"] for c in group.comparisons if row.ref in (c["a"], c["b"])}
+                own_cls = next((k for k in conflict_engine.CLASSES if k in own), None)
+                out[row.id] = {"group_id": group.group_id, "group_class": group.cls, "group_class_label": conflict_engine.CLASS_LABEL[group.cls],
+                               "class": own_cls, "href": f"/conflicts?group={group.group_id}", "explanation": group.explanation(),
+                               "other_sources": sorted({r.who for r in group.rows if r.ref != row.ref})}
+    return out
+
+
 def describe_contrast(session: Session, row: StatisticalAnalysis, names: dict[str, str] | None = None) -> dict[str, Any]:
     """Everything the requirements read about one stored between-arm analysis, with its provenance."""
     names = names if names is not None else _drug_names(session)
@@ -319,6 +344,7 @@ def describe_contrast(session: Session, row: StatisticalAnalysis, names: dict[st
         "exclusion_reason": exclusion_reason(row.verification_status, row.review_hold),
         "origin": row.origin,
         "tier": row.tier,
+        "source_conflict": session_memo(session, "indirect_analysis_conflicts", _analysis_conflicts).get(row.id),
         "source": dto["source"],
         "source_location": row.source_location,
         "locator_quote": row.locator_quote,
@@ -525,7 +551,39 @@ def _reliability_problems(s: dict[str, Any]) -> tuple[list[str], list[str]]:
         unknown.append("its interval, estimate and p-value could not be checked against each other")
     if s["estimate"] is None:
         fails.append("no estimate is stored")
+    conflict = s.get("source_conflict")
+    if conflict and conflict["group_class"] == conflict_engine.TRUE_CONFLICT:
+        # An open true conflict: another source reports the same quantity with a different value, so which value this contrast
+        # is remains a question for reconciliation (engines.conflicts). The calculation waits for it.
+        fails.append(f"another public source reports the same quantity with a different value (source conflict group {conflict['group_id']}, "
+                     "classified true conflict); it must be reconciled before this contrast enters a calculation")
     return fails, unknown
+
+
+def _check_source_agreement(a: dict[str, Any], b: dict[str, Any]) -> Check:
+    """No open source conflict on either input: TRUE_CONFLICT fails (and refuses, as under reliability); INSUFFICIENT_INFORMATION cannot be assessed."""
+    label = "No open source conflict"
+
+    def shown(s: dict[str, Any]) -> str:
+        c = s.get("source_conflict")
+        return "no other stored source reports this contrast" if not c else f"{c['group_class_label'].lower()} ({', '.join(c['other_sources']) or 'other source'})"
+
+    evidence = {side: s.get("source_conflict") for side, s in (("a", a), ("b", b))}
+    true_conflicts = [f"contrast {side} (group {s['source_conflict']['group_id']})" for side, s in (("A", a), ("B", b))
+                      if s.get("source_conflict") and s["source_conflict"]["group_class"] == conflict_engine.TRUE_CONFLICT]
+    insufficient = [f"contrast {side} (group {s['source_conflict']['group_id']}: {s['source_conflict']['explanation']})" for side, s in (("A", a), ("B", b))
+                    if s.get("source_conflict") and s["source_conflict"]["group_class"] == conflict_engine.INSUFFICIENT]
+    if true_conflicts:
+        return Check("source_agreement", label, FAIL, shown(a), shown(b),
+                     "Another public source reports the same quantity with a value that differs beyond the printed precision for " + "; ".join(true_conflicts)
+                     + ". Which value is right is an open reconciliation question, so no calculation is made.", evidence)
+    if insufficient:
+        return Check("source_agreement", label, CANNOT_ASSESS, shown(a), shown(b),
+                     "Another public source reports a different value for what may be the same quantity, and the stored records cannot tell whether it is: "
+                     + "; ".join(insufficient) + " That the input value is the one the other source would also report is an unverified assumption.", evidence)
+    return Check("source_agreement", label, PASS, shown(a), shown(b),
+                 "No other stored public source reports either contrast with an unexplained difference (any other source agrees at its printed precision or "
+                 "differs for a reason the stored records state).", evidence)
 
 
 def _check_reliability(a: dict[str, Any], b: dict[str, Any]) -> Check:
@@ -734,7 +792,7 @@ def evaluate(a: dict[str, Any], b: dict[str, Any], level: float = 0.95, toleranc
     modifiers_check = _check_effect_modifiers(a, b, modifiers)
     checks = [_check_network(a, b), _check_comparator(a, b), _check_estimand(a, b), _check_outcome(a, b), _check_scale(a, b),
               _check_follow_up(a, b, tolerance_weeks, justification), _check_reliability(a, b), variance, population, modifiers_check,
-              _check_transitivity(a, b, population, modifiers_check, modifiers)]
+              _check_transitivity(a, b, population, modifiers_check, modifiers), _check_source_agreement(a, b)]
     by_key = {c.key: c for c in checks}
     refusals = [f"{c.label}: {c.detail}" for c in checks if (c.key in HARD_CHECKS and c.status != PASS) or (c.key in ASSUMPTION_CHECKS and c.status == FAIL)]
     assumptions = [{"key": c.key, "label": c.label, "detail": c.detail} for c in checks if c.key in ASSUMPTION_CHECKS and c.status == CANNOT_ASSESS]

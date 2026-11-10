@@ -182,7 +182,12 @@ def test_surmount1_attain1_is_calculated_from_the_stored_rows_only(db):
     assert _check(out, "population")["status"] == indirect.PASS
     # What cannot be verified is shown, not hidden.
     assert _check(out, "effect_modifiers")["status"] == indirect.CANNOT_ASSESS and _check(out, "transitivity")["status"] == indirect.CANNOT_ASSESS
-    assert {x["key"] for x in out["unverified_assumptions"]} == {"effect_modifiers", "transitivity"}
+    # SURMOUNT-1 15 mg is also reported by the label (estimand not named), a difference the conflict engine cannot reconcile from the
+    # stored records (INSUFFICIENT_INFORMATION): shown as an unverified assumption, never hidden, and not a refusal.
+    agreement = _check(out, "source_agreement")
+    assert agreement["status"] == indirect.CANNOT_ASSESS and agreement["evidence"]["a"]["group_class"] == "INSUFFICIENT_INFORMATION"
+    assert agreement["evidence"]["b"] is None  # no other stored source reports the ATTAIN-1 36 mg contrast
+    assert {x["key"] for x in out["unverified_assumptions"]} == {"effect_modifiers", "transitivity", "source_agreement"}
     modifiers = {m["key"]: m for m in out["effect_modifiers"]}
     assert {"baseline_weight", "baseline_bmi", "sex", "age", "diabetes_status", "background_therapy", "dose_escalation", "follow_up", "region"} <= set(modifiers)
     assert modifiers["baseline_bmi"]["a"] == "not stored" and modifiers["background_therapy"]["assessment"] == "NOT_STORED"
@@ -280,7 +285,44 @@ FAIL_PATHS = [
     ("major imbalance in age", [("population.age_mean_years", 60.0)], "effect_modifiers", indirect.FAIL),
     ("same trial", [("study_id", None)], "network", indirect.FAIL),
     ("same drug", [("drug", "tirzepatide"), ("drug_name", "Tirzepatide")], "network", indirect.FAIL),
+    ("open true source conflict", [("source_conflict", {"group_id": "NCT05869903-0000000000000000", "group_class": "TRUE_CONFLICT", "group_class_label": "True conflict",
+                                                         "class": "TRUE_CONFLICT", "href": "/conflicts?group=NCT05869903-0000000000000000",
+                                                         "explanation": "x", "other_sources": ["Regulatory label"]})], "reliability", indirect.FAIL),
+    ("open true source conflict (agreement)", [("source_conflict", {"group_id": "NCT05869903-0000000000000000", "group_class": "TRUE_CONFLICT",
+                                                                    "group_class_label": "True conflict", "class": "CONSISTENT", "href": "/conflicts",
+                                                                    "explanation": "x", "other_sources": []})], "source_agreement", indirect.FAIL),
 ]
+
+
+def test_an_unreconciled_source_difference_is_an_unverified_assumption_not_a_refusal(valid_pair):
+    a, b = copy.deepcopy(valid_pair[0]), copy.deepcopy(valid_pair[1])
+    b["source_conflict"] = {"group_id": "NCT05869903-0000000000000000", "group_class": "INSUFFICIENT_INFORMATION", "group_class_label": "Insufficient information",
+                            "class": "INSUFFICIENT_INFORMATION", "href": "/conflicts", "explanation": "x", "other_sources": ["Regulatory label"]}
+    out = indirect.evaluate(a, b)
+    assert out["feasible"] and _check(out, "reliability")["status"] == indirect.PASS
+    assert _check(out, "source_agreement")["status"] == indirect.CANNOT_ASSESS and "source_agreement" in {x["key"] for x in out["unverified_assumptions"]}
+    # Explainable differences and agreement raise nothing.
+    for cls in ("EXPLAINABLE_DIFFERENCE", "CONSISTENT"):
+        a["source_conflict"] = b["source_conflict"] = {**b["source_conflict"], "group_class": cls}
+        assert _check(indirect.evaluate(a, b), "source_agreement")["status"] == indirect.PASS
+
+
+def test_fulltext_analyses_enter_no_calculation_until_human_verified(db):
+    """FULLTEXT rows (FDA review, Europe PMC) are PENDING_HUMAN_REVIEW: invisible to the engine through the session rule, and refused
+    by the reliability requirement even when read in an inspection block."""
+    from incretinos.db import rejected_visible
+
+    fulltext_ids = list(db.scalars(select(StatisticalAnalysis.id).execution_options(include_rejected=True).where(StatisticalAnalysis.origin == "FULLTEXT")))
+    assert fulltext_ids, "the seed carries FULLTEXT between-arm analyses"
+    assert not set(fulltext_ids) & {r.id for r in indirect._contrast_rows(db, None)}
+    db.expunge_all()
+    with pytest.raises(LookupError):
+        indirect.assess(db, fulltext_ids[0], _ids(db)["sm1_15"])
+    db.expunge_all()
+    with rejected_visible(db):
+        side = indirect.describe_contrast(db, db.get(StatisticalAnalysis, fulltext_ids[0]))
+    assert side["verification_status"] == "PENDING_HUMAN_REVIEW"
+    assert any("awaits a human decision" in f for f in indirect._reliability_problems(side)[0])
 
 
 @pytest.mark.parametrize("name,changes,key,status", FAIL_PATHS, ids=[p[0] for p in FAIL_PATHS])

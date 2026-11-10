@@ -5,7 +5,8 @@ What this module answers, one dimension at a time and never as one number:
 * review status         how far each stored record has been checked, and what is waiting for a person
 * completeness          which reported quantities the source left out (interval, n, estimand, unit, method ...)
 * source authority      what kind of source the evidence comes from (context for reading it, not a quality grade)
-* reliability signals   what the automated checks flag, and where public sources disagree
+* reliability signals   what the automated checks flag, and how the conflict engine classifies the places where several
+                        public sources report the same quantity (``incretinos.engines.conflicts``)
 * precision             whether an interval was reported, and how wide reported intervals are (descriptive)
 * freshness             when each source was retrieved, whether it changed, and whether it is due a refresh
 
@@ -47,7 +48,6 @@ from ..models import (
     Endpoint,
     Estimand,
     EvidenceClaim,
-    EvidenceGap,
     EvidenceSource,
     EvidenceVersion,
     ExposureEquivalence,
@@ -64,6 +64,7 @@ from ..models import (
 from ..review import queries as review_queries
 from ..review.checks import CHECKS
 from ..review.policy import STATUS_LABEL, canonical_status
+from . import conflicts as conflict_engine
 from .findings import CATEGORY_LABEL
 
 # --------------------------------------------------------------------------- vocabulary
@@ -172,7 +173,7 @@ UNIVERSE_LABEL = {
     ORPHANS: "Recorded decisions whose evidence no longer exists",
     CHANGES: "Detected source changes",
     QUEUE: "Review-queue items",
-    CONFLICTS: "Recorded source conflicts",
+    CONFLICTS: "Groups of rows from several public sources reporting the same quantity (classified by the conflict engine)",
 }
 _ALL_DIMS = tuple(BREAKDOWNS)
 UNIVERSE_DIMS: dict[str, tuple[str, ...]] = {
@@ -462,23 +463,23 @@ def _section_text(value: Any) -> str | None:
 
 
 def source_conflicts(session: Session) -> list[Item]:
-    """Recorded disagreements between public sources: the one integration point for the conflict dimension.
+    """Every multi-source group the conflict engine classifies: the one integration point for the conflict dimension.
 
-    Today these are the evidence gaps whose nature is SOURCE_CONFLICT (engines/gaps.py, rule G12). When the conflict
-    engine (``incretinos.engines.conflicts``) is merged, this function is the only place to change: return one Item
-    per recorded conflict, grouped by molecule and trial, linking to /conflicts.
+    One Item per group of rows from different public sources that purport to report the same quantity
+    (``incretinos.engines.conflicts.all_groups``), grouped by molecule (the trial's drugs that are not only comparators,
+    as /conflicts filters them) and by trial, carrying the group's class and linking to the group on /conflicts. Rows
+    rejected or held in review, and full-text rows no reviewer has approved, take part in no group (``incretinos.db``).
     """
     items = []
-    for gap in session.execute(select(EvidenceGap.id, EvidenceGap.key, EvidenceGap.question, EvidenceGap.review_status, EvidenceGap.related_ncts, Drug.slug)
-                               .outerjoin(Drug, Drug.id == EvidenceGap.drug_id).where(EvidenceGap.gap_nature == "SOURCE_CONFLICT").order_by(EvidenceGap.id)):
-        ncts = tuple(n for n in (gap.related_ncts or []) if isinstance(n, str))
-        groups = _groups([gap.slug] if gap.slug else None)
-        if ncts:
-            groups["study"] = ncts
-        query = {"nature": "SOURCE_CONFLICT", **({"drug": gap.slug} if gap.slug else {})}
-        items.append(Item(kind="conflict", key=f"gap:{gap.key}", label=gap.question, groups=groups,
-                          f={"id": gap.id, "review_status": gap.review_status, "related_ncts": list(ncts), "drug": gap.slug},
-                          links=[{"label": "Open in the Evidence Gap Tracker", "href": f"/gaps?{urlencode(query)}"}]))
+    for group in conflict_engine.all_groups(session):
+        title = group.title()
+        where = ", ".join(p for p in (title["arm"], title["time_point"]) if p)
+        label = f"{group.study['display_name'] or group.study['nct_id']}: {title['quantity']}" + (f" ({where})" if where else "")
+        items.append(Item(kind="conflict", key=f"conflict:{group.group_id}", label=label, groups=_groups(group.drugs, group.study["nct_id"]),
+                          f={"group_id": group.group_id, "class": group.cls, "class_label": conflict_engine.CLASS_LABEL[group.cls],
+                             "evidence_type": group.evidence_type, "category": group.category, "n_rows": len(group.rows), "n_sources": group.sources,
+                             "study_nct": group.study["nct_id"], "study_name": group.study["display_name"], "explanation": group.explanation()},
+                          links=[{"label": "Open the group in Source Conflicts", "href": f"/conflicts?{urlencode({'group': group.group_id})}"}]))
     return items
 
 
@@ -722,8 +723,15 @@ def _queue_note(item: Item, _: str | None) -> str | None:
 
 
 def _conflict_note(item: Item, _: str | None) -> str | None:
-    trials = ", ".join(item.f["related_ncts"]) or "no trial named"
-    return f"Review status {item.f['review_status']}; trials {trials}."
+    kind = conflict_engine.EVIDENCE_TYPE_LABEL.get(item.f["evidence_type"], item.f["evidence_type"])
+    return f"{item.f['class_label']}; {kind.lower()}; {item.f['n_sources']} sources, {item.f['n_rows']} rows; trial {item.f['study_nct']}."
+
+
+def _conflict_metric(metric_id: str, cls: str, label: str, rule: str) -> Metric:
+    """A count of multi-source groups of one class, with /conflicts filtered to the same class as its exact equivalent."""
+    filters = {"drug": "drug", "study": "study"}
+    return Metric(metric_id, "reliability", label, rule, CONFLICTS, "groups", _every, lambda i, _, c=cls: i.f["class"] == c, "multi-source groups",
+                  page=("/conflicts", {"class": cls}, filters, "/api/conflicts", {"class": cls}, filters, "total"), note=_conflict_note)
 
 
 def _tier_note(item: Item, _: str | None) -> str | None:
@@ -830,9 +838,18 @@ def _metrics() -> list[Metric]:
                "records", _every, lambda i, _: i.f.get("risk") in (None, "NONE"), "records in analytic use"),
         Metric("flag_code", "reliability", "Records carrying one check code", "Records in analytic use that carry the named automated check code (review/checks.py).",
                EVIDENCE, "records", _every, lambda i, code: any(f.get("code") == code for f in i.f.get("flags", [])), "records in analytic use", param="code", note=_flag_note),
-        Metric("source_conflicts", "reliability", "Recorded source conflicts", "Disagreements between public sources recorded by the gap engine (gap nature SOURCE_CONFLICT), "
-               "whatever their triage status.", CONFLICTS, "conflicts", _every, lambda i, _: True, "recorded source conflicts",
-               page=("/gaps", {"nature": "SOURCE_CONFLICT"}, {"drug": "drug"}, "/api/gaps", {"nature": "SOURCE_CONFLICT"}, {"drug": "drug"}, "total"), note=_conflict_note),
+        _conflict_metric("source_conflicts", conflict_engine.TRUE_CONFLICT, "Source conflicts: true conflicts",
+                         "Groups in which two public sources report the same quantity (same trial, randomized group, endpoint, time point, estimand and "
+                         "baseline) and the values differ by more than the precision the sources printed (engines/conflicts.py). Each is a question for "
+                         "reconciliation, not an error identified in either source."),
+        _conflict_metric("source_conflicts_insufficient", conflict_engine.INSUFFICIENT, "Source differences that cannot be reconciled from the stored records",
+                         "Groups whose values differ and in which a detail needed to tell whether the sources report the same quantity (for example the "
+                         "estimand) is not stored."),
+        _conflict_metric("source_conflicts_explainable", conflict_engine.EXPLAINABLE, "Source differences with a stated explanation",
+                         "Groups whose values differ for a reason the stored records state (estimand, baseline, analysis set, follow-up or endpoint "
+                         "definition). Not a contradiction."),
+        _conflict_metric("source_conflicts_consistent", conflict_engine.CONSISTENT, "Sources that agree",
+                         "Groups whose values agree at the precision the sources printed."),
         # ---- precision
         Metric("result_with_interval", "precision", "Results with a reported interval", "Result rows with both ci_low and ci_high stored.", EVIDENCE, "results", result,
                lambda i, _: i.f.get("ci_low") is not None and i.f.get("ci_high") is not None, "results in analytic use", note=_interval_note),
@@ -1131,7 +1148,8 @@ ASSESSMENT_SECTIONS: dict[str, tuple[str, ...]] = {
                      "analysis_no_method", "analysis_multiplicity_not_stated", "analysis_estimand_not_stated", "ae_no_denominator", "drug_no_trial_ae_denominators",
                      "drug_no_label_safety"),
     "authority": ("authority_rows", "press_release_only"),
-    "reliability": ("risk_high", "risk_medium", "risk_low", "risk_none", "source_conflicts"),
+    "reliability": ("risk_high", "risk_medium", "risk_low", "risk_none", "source_conflicts", "source_conflicts_insufficient", "source_conflicts_explainable",
+                    "source_conflicts_consistent"),
     "precision": ("result_with_interval", "analysis_with_interval"),
     "review_status": ("review_rows", "status_machine_extracted", "status_quote_anchored", "status_pending_human_review", "status_human_verified", "status_rejected",
                       "status_source_changed_recheck_required", "status_other", "review_hold", "open_requests"),

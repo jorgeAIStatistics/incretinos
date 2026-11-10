@@ -22,7 +22,7 @@ const SECTION_METRICS: Record<QualityDimensionId, string[]> = {
   review_status: ["review_rows", "status_machine_extracted", "status_quote_anchored", "status_pending_human_review", "status_human_verified", "status_rejected", "status_source_changed_recheck_required", "status_other", "review_hold", "open_requests", "orphaned_decisions", "change_events_open", "queue_open", "queue_in_review"],
   completeness: ["result_no_ci", "result_no_n", "result_no_unit", "result_estimand_not_stated", "result_estimand_inferred", "result_estimand_stated", "analysis_no_method", "analysis_multiplicity_not_stated", "analysis_no_method_or_multiplicity", "analysis_estimand_not_stated", "ae_no_denominator", "drug_no_trial_ae_denominators", "drug_no_label_safety", "drug_incomplete_safety"],
   authority: ["authority_rows", "authority_sources", "press_release_only"],
-  reliability: ["risk_high", "risk_medium", "risk_low", "risk_none", "source_conflicts"],
+  reliability: ["risk_high", "risk_medium", "risk_low", "risk_none", "source_conflicts", "source_conflicts_insufficient", "source_conflicts_explainable", "source_conflicts_consistent"],
   precision: ["result_with_interval", "analysis_with_interval"],
   freshness: ["sources_changed", "sources_refresh_due"],
 };

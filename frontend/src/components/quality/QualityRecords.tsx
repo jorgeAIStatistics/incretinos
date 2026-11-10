@@ -8,6 +8,7 @@ import { formatCount } from "@/lib/format";
 import { useQueryParams } from "@/lib/hooks";
 import { usePagedList } from "@/lib/paging";
 import { BREAKDOWN_IDS, type QualityRecord, type QualityRecordsExtra, shareText } from "@/lib/quality";
+import { pageName } from "./parts";
 
 /*
  * The records behind one quality count: exactly the rows the metric counted under the filters in the address, with
@@ -134,7 +135,7 @@ export function QualityRecords() {
               <>
                 {" "}
                 <Link href={m.links.page.href} className="font-medium">
-                  Open the same {formatCount(m.count)} records in {m.links.page.href.startsWith("/review") ? "Evidence Review" : m.links.page.href.startsWith("/gaps") ? "the Evidence Gap Tracker" : "Sources & Audit"}
+                  Open the same {formatCount(m.count)} records in {pageName(m.links.page.href)}
                 </Link>
                 .
               </>
