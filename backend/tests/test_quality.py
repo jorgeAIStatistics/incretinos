@@ -46,8 +46,12 @@ def _t(model):
 
 
 def _usable(table):
-    """The analytic-use rule, written out independently: not REJECTED and not on review hold."""
-    return and_(table.c.verification_status != "REJECTED", table.c.review_hold.is_(False))
+    """The analytic-use rule, written out independently: not REJECTED and not on review hold; a full-text row (origin
+    FULLTEXT, read from a document by a parser) only once a reviewer has approved it (HUMAN_VERIFIED)."""
+    rule = and_(table.c.verification_status != "REJECTED", table.c.review_hold.is_(False))
+    if "fulltext_extraction_id" in table.c:
+        rule = and_(rule, or_(table.c.origin != "FULLTEXT", table.c.verification_status == "HUMAN_VERIFIED"))
+    return rule
 
 
 def _count(db, stmt) -> int:
