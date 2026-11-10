@@ -17,9 +17,36 @@ Only this module writes them, in two statements. ``_write_rows`` stores what ``e
 returned, and ``effective_status`` returns one of the two statuses only for a decision that passes
 ``policy.is_decisive`` (recorded by a human actor, with the attestation flag) on the row's current
 fingerprint. ``hold_rejections`` re-hides rows whose latest decisive decision is a rejection while a
-load is still in progress; it can only write REJECTED and only where such a decision exists. The ORM
-refuses any other assignment (``models.HumanStatusWriteError``) and validation rule V16 re-derives
-the status of every such row from the ledger.
+load is still in progress; it can only write REJECTED (or the exclusion hold) and only where such a
+decision exists. The ORM refuses any other assignment (``models.HumanStatusWriteError``), validation
+rule V16 re-derives the status of every such row from the ledger, and ``reconcile`` audits every
+stored status it has to repair (``review.status_repaired``, with the stored and the derived value).
+
+A rejection outlives a change of content
+----------------------------------------
+A row whose latest decisive decision is a rejection made on another version is shown as
+SOURCE_CHANGED_RECHECK_REQUIRED *and* held out of every analytic surface (``review_hold``) until a
+person decides on the current version. Whatever changed (a note, a classification, a value), nothing
+a reviewer excluded comes back by itself.
+
+Decisions follow a relabel
+--------------------------
+A decision is attached to its evidence key, then through the natural key (see ``attach_decisions``),
+and finally, when neither exists any more, through a *content anchor* (``identity.content_anchor``:
+same study, origin, source, quote / locator and reported values). A sponsor retitling an outcome
+measure or a group, or a curator rewording a label, changes the key without changing the measurement;
+the decision is carried to the row that now holds the measurement, which then needs a recheck (and is
+held when the decision was a rejection). The link is stored on that row's version
+(``evidence_version.inherited_decision_ids``) and kept for as long as the key lives. A decision that
+matches nothing is an orphan: listed in the review summary and raised as a review-queue item, never
+deleted and never silently dropped.
+
+Concurrency
+-----------
+Every writer of decisions or derived statuses (``record_decision``, ``reconcile``, ledger import)
+first takes the review lock (``lock_review_state``): a table lock on PostgreSQL, the database write
+lock on SQLite. The decision history is read, and the decision is dated, only after that, so the
+status written always agrees with the full history.
 """
 
 from __future__ import annotations
@@ -30,10 +57,10 @@ import uuid
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import bindparam, insert, or_, select, update
+from sqlalchemy import bindparam, false, insert, or_, select, text, update
 from sqlalchemy.orm import Session
 
 from ..db import INCLUDE_REJECTED
@@ -55,6 +82,10 @@ from .anchoring import ANCHOR_CACHE, STRUCTURED_PAYLOAD, AnchorResult, anchor
 from .identity import EvidenceRecord, SnapshotRef
 from .policy import (
     DECISION_KINDS,
+    DECISIVE_DECISIONS,
+    HUMAN_DECISION_STATUSES,
+    IDENTITY_BASES,
+    IDENTITY_SELF_DECLARED,
     MECHANICAL_STATUSES,
     REJECTING_DECISIONS,
     REQUEST_DECISIONS,
@@ -62,6 +93,8 @@ from .policy import (
     CheckFlag,
     canonical_status,
     is_decisive,
+    is_usable,
+    normalise_reviewer,
     rationale_problem,
     reviewer_problem,
     risk_level,
@@ -90,8 +123,13 @@ REASON_TEXT = {
     SUPPORT_NOT_FOUND: "Approved by a reviewer, but the source changed afterwards and the quote can no longer be found in its current version.",
     CHANGED_SINCE_APPROVAL: "A reviewer approved an earlier version; the stored content has changed since.",
     REJECTED_IN_REVIEW: "Rejected by a reviewer on this exact content. Excluded from every comparison, summary and report.",
-    CHANGED_SINCE_REJECTION: "A reviewer rejected an earlier version; the stored content has changed since and must be looked at again.",
+    CHANGED_SINCE_REJECTION: "A reviewer rejected an earlier version; the stored content has changed since and must be looked at again. "
+                             "It stays excluded from every comparison, summary and report until a reviewer decides on the current version.",
 }
+
+#: ``review_decision.ledger_match`` of an imported decision that matched no known evidence version and carried no
+#: verifiable content: kept as history, reported as orphaned, never applied.
+LEDGER_UNMATCHED = "UNMATCHED"
 
 CHANGE_ENTRY_LIMIT = 400  # field-level entries listed in one change event; the totals are always exact
 REPORT_LIST_LIMIT = 200
@@ -116,10 +154,15 @@ class DecisionFact:
     source_content_hash: str | None = None
     reviewer: str = ""
     uid: str | None = None
+    applicable: bool = True  # False for an imported decision that matched no known version (never applied)
 
     @property
     def decisive(self) -> bool:
         return is_decisive(self.decision, self.actor_kind, self.attested)
+
+    @property
+    def order(self) -> tuple[datetime, int]:
+        return (self.decided_at, self.id)
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,6 +171,7 @@ class StatusOutcome:
     reason: str
     decision: DecisionFact | None = None  # the decisive decision the status rests on
     open_requests: tuple[DecisionFact, ...] = ()
+    hold: bool = False  # excluded from analytic use although the status is not REJECTED (a rejection of another version)
 
     @property
     def carried_forward(self) -> bool:
@@ -169,6 +213,7 @@ def effective_status(
       6  APPROVE                    older fingerprint any                     any                    -> SOURCE_CHANGED_RECHECK_REQUIRED   EVIDENCE_CHANGED_SINCE_APPROVAL
       7  REJECT / FLAG_WRONG_ATTR.  this fingerprint  any                     any                    -> REJECTED                          REJECTED_IN_REVIEW
       8  REJECT / FLAG_WRONG_ATTR.  older fingerprint any                     any                    -> SOURCE_CHANGED_RECHECK_REQUIRED   EVIDENCE_CHANGED_SINCE_REJECTION
+                                                                                                        + hold (still excluded from use)
       9  REQUEST_INFO / PROPOSE_CORRECTION, whenever made                                            -> no effect on the status; listed in ``open_requests``
                                                                                                         while newer than the latest decisive decision
      10  APPROVE / REJECT / FLAG by a non-human actor, or without attestation                        -> no effect at all (row 1 applies if nothing else exists)
@@ -179,28 +224,27 @@ def effective_status(
     only while the source version the reviewer saw is the current one (row 2); once the source
     changes there is nothing mechanical to carry the approval forward (row 5).
 
-    A rejected row stays rejected whatever happens to the source (row 7): only a change of the stored
-    content itself (row 8) or a later decision ends a rejection, and row 8 never returns the row to a
-    mechanical status silently.
+    A rejected row stays rejected whatever happens to the source (row 7). A change of the stored content
+    itself (row 8) asks for a recheck but does NOT end the exclusion: the row is held out of every analytic
+    surface (``hold``) until a person records a decisive decision on the current version. Only a later
+    decision ends a rejection.
     """
     mechanical = canonical_status(mechanical) or PENDING
     if mechanical not in MECHANICAL_STATUSES:
         raise ValueError(f"'{mechanical}' is not a mechanical status")
-    ordered = sorted(decisions, key=lambda d: (d.decided_at, d.id))
+    ordered = sorted((d for d in decisions if d.applicable), key=lambda d: d.order)
     latest: DecisionFact | None = None
     for candidate in ordered:
         if candidate.decisive:
             latest = candidate
-    requests = tuple(
-        d for d in ordered if d.decision in REQUEST_DECISIONS and (latest is None or (d.decided_at, d.id) > (latest.decided_at, latest.id))
-    )
+    requests = tuple(d for d in ordered if d.decision in REQUEST_DECISIONS and (latest is None or d.order > latest.order))
     if latest is None:
         return StatusOutcome(mechanical, NO_DECISION, None, requests)
     on_current = latest.fingerprint == fingerprint
     if latest.decision in REJECTING_DECISIONS:
         if on_current:
             return StatusOutcome(REJECTED, REJECTED_IN_REVIEW, latest, requests)
-        return StatusOutcome(RECHECK, CHANGED_SINCE_REJECTION, latest, requests)
+        return StatusOutcome(RECHECK, CHANGED_SINCE_REJECTION, latest, requests, hold=True)
     if not on_current:
         return StatusOutcome(RECHECK, CHANGED_SINCE_APPROVAL, latest, requests)
     if latest.source_content_hash == source_content_hash:
@@ -211,7 +255,9 @@ def effective_status(
 
 
 def attach_decisions(
-    rows: Iterable[tuple[str, str, str, str]], decisions: Sequence[DecisionFact]
+    rows: Iterable[tuple[str, str, str, str]],
+    decisions: Sequence[DecisionFact],
+    inherited: dict[tuple[str, str], Iterable[int]] | None = None,
 ) -> tuple[dict[tuple[str, str], tuple[DecisionFact, ...]], list[DecisionFact]]:
     """Give every live row its decision history; return the decisions that belong to no live row.
 
@@ -226,31 +272,101 @@ def attach_decisions(
       they were made on an earlier version of the same quantity, so the row needs a recheck instead of
       silently returning to a mechanical status.
 
-    Detached decisions that no row takes are orphans: reported, never deleted.
+    ``inherited`` maps a live row to the ids of detached decisions carried to it through the content anchor
+    (``anchor_matches``; stored on the row's version by ``reconcile``). A decision already attached by key or
+    natural key is never inherited as well.
+
+    Detached decisions that no row takes are orphans: reported, never deleted. An imported decision that is
+    not ``applicable`` (it matched no known version) is always an orphan.
     """
     rows = list(rows)
     live = {(evidence_type, key) for evidence_type, key, _, _ in rows}
     own: dict[tuple[str, str], list[DecisionFact]] = defaultdict(list)
     detached: dict[tuple[str, str | None], list[DecisionFact]] = defaultdict(list)
+    inapplicable: list[DecisionFact] = []
     for decision in decisions:
-        if (decision.evidence_type, decision.evidence_key) in live:
+        if not decision.applicable:
+            inapplicable.append(decision)
+        elif (decision.evidence_type, decision.evidence_key) in live:
             own[(decision.evidence_type, decision.evidence_key)].append(decision)
         else:
             detached[(decision.evidence_type, decision.natural_key)].append(decision)
-    attached: dict[tuple[str, str], tuple[DecisionFact, ...]] = {}
     taken: set[int] = set()
+    by_row: dict[tuple[str, str], list[DecisionFact]] = {}
     for evidence_type, key, natural_key, fingerprint in rows:
         mine = own.get((evidence_type, key), [])
         loose = detached.get((evidence_type, natural_key)) if natural_key else None
-        inherited: list[DecisionFact] = []
+        through_natural: list[DecisionFact] = []
         if loose:
             same_content = [d for d in loose if d.fingerprint == fingerprint]
-            inherited = same_content if (mine or same_content) else list(loose)
-            taken.update(id(d) for d in inherited)
-        if mine or inherited:
-            attached[(evidence_type, key)] = tuple(sorted([*mine, *inherited], key=lambda d: (d.decided_at, d.id)))
-    orphans = [d for group in detached.values() for d in group if id(d) not in taken]
-    return attached, sorted(orphans, key=lambda d: (d.decided_at, d.id))
+            through_natural = same_content if (mine or same_content) else list(loose)
+            taken.update(id(d) for d in through_natural)
+        by_row[(evidence_type, key)] = [*mine, *through_natural]
+    if inherited:
+        loose_by_id = {d.id: d for group in detached.values() for d in group if id(d) not in taken}
+        carried: set[int] = set()
+        for row_key, ids in inherited.items():
+            if row_key not in by_row:
+                continue
+            extra = [loose_by_id[i] for i in ids if i in loose_by_id]
+            by_row[row_key] += extra
+            carried.update(id(d) for d in extra)
+        taken |= carried
+    attached = {k: tuple(sorted(v, key=lambda d: d.order)) for k, v in by_row.items() if v}
+    orphans = [d for group in detached.values() for d in group if id(d) not in taken] + inapplicable
+    return attached, sorted(orphans, key=lambda d: d.order)
+
+
+@dataclass(frozen=True, slots=True)
+class AnchorMatch:
+    """A detached decision carried to the live row that now holds the same measurement."""
+
+    decision: DecisionFact
+    evidence_type: str
+    evidence_key: str  # the live row it is carried to
+    distance: int  # fields that differ between the reviewed version and the live row (labels, classifications)
+    ambiguous: bool  # several live rows were equally close; the decision is carried to each of them
+
+
+def anchor_matches(
+    orphans: Sequence[DecisionFact],
+    reviewed_snapshots: dict[int, list[dict[str, Any]]],
+    live: Iterable[tuple[str, str, dict[str, Any]]],
+) -> list[AnchorMatch]:
+    """Match detached decisions to live rows through the content anchor. Pure.
+
+    ``reviewed_snapshots`` gives, per decision id, the snapshot(s) of the content that decision is known to apply
+    to (the version it was made on, and the latest version it was carried to before). ``live`` is (evidence type,
+    evidence key, snapshot) of every live row. A row is a candidate when its anchor equals the anchor of one of
+    those snapshots; among candidates the ones closest to the reviewed content (fewest differing fields) are
+    chosen. Several equally close rows all receive the decision (``ambiguous``): carrying a rejection to one row
+    too many asks a person to look; carrying it to none would put the rejected value back into use.
+    """
+    index: dict[tuple[str, str], list[tuple[str, dict[str, Any]]]] = defaultdict(list)
+    for evidence_type, key, snapshot in live:
+        anchor_value = identity.content_anchor(evidence_type, snapshot)
+        if anchor_value is not None:
+            index[(evidence_type, anchor_value)].append((key, snapshot))
+    out: list[AnchorMatch] = []
+    for decision in orphans:
+        if not decision.applicable:
+            continue
+        best: dict[str, int] = {}
+        for reviewed in reviewed_snapshots.get(decision.id, ()):
+            anchor_value = identity.content_anchor(decision.evidence_type, reviewed)
+            if anchor_value is None:
+                continue
+            for key, snapshot in index.get((decision.evidence_type, anchor_value), ()):
+                distance = identity.snapshot_distance(reviewed, snapshot)
+                if key not in best or distance < best[key]:
+                    best[key] = distance
+        if not best:
+            continue
+        closest = min(best.values())
+        chosen = sorted(key for key, distance in best.items() if distance == closest)
+        for key in chosen:
+            out.append(AnchorMatch(decision, decision.evidence_type, key, closest, len(chosen) > 1))
+    return out
 
 
 # --------------------------------------------------------------------------- reading the ledger
@@ -261,43 +377,53 @@ def _utc(value: datetime) -> datetime:
     return value.replace(tzinfo=UTC) if value.tzinfo is None else value
 
 
+_FACT_COLUMNS = (
+    ReviewDecision.id, ReviewDecision.decision, ReviewDecision.fingerprint, ReviewDecision.actor_kind, ReviewDecision.attested, ReviewDecision.created_at,
+    ReviewDecision.evidence_type, ReviewDecision.evidence_key, ReviewDecision.natural_key, ReviewDecision.source_content_hash, ReviewDecision.reviewer,
+    ReviewDecision.uid, ReviewDecision.ledger_match,
+)
+
+
+def _fact(r: Any) -> DecisionFact:
+    return DecisionFact(decision=r.decision, fingerprint=r.fingerprint, actor_kind=r.actor_kind, attested=r.attested, decided_at=_utc(r.created_at), id=r.id,
+                        evidence_type=r.evidence_type, evidence_key=r.evidence_key, natural_key=r.natural_key, source_content_hash=r.source_content_hash,
+                        reviewer=r.reviewer, uid=r.uid, applicable=r.ledger_match != LEDGER_UNMATCHED)
+
+
 def load_decision_facts(session: Session) -> list[DecisionFact]:
     d = ReviewDecision
-    rows = session.execute(
-        select(d.id, d.decision, d.fingerprint, d.actor_kind, d.attested, d.created_at, d.evidence_type, d.evidence_key, d.natural_key, d.source_content_hash, d.reviewer, d.uid)
-        .where(d.evidence_type.is_not(None), d.evidence_key.is_not(None))
-        .order_by(d.created_at, d.id)
-    ).all()
-    return [
-        DecisionFact(decision=r.decision, fingerprint=r.fingerprint, actor_kind=r.actor_kind, attested=r.attested, decided_at=_utc(r.created_at), id=r.id,
-                     evidence_type=r.evidence_type, evidence_key=r.evidence_key, natural_key=r.natural_key, source_content_hash=r.source_content_hash,
-                     reviewer=r.reviewer, uid=r.uid)
-        for r in rows
-    ]
+    rows = session.execute(select(*_FACT_COLUMNS).where(d.evidence_type.is_not(None), d.evidence_key.is_not(None)).order_by(d.created_at, d.id)).all()
+    return sorted((_fact(r) for r in rows), key=lambda f: f.order)
+
+
+def current_inherited(session: Session) -> dict[tuple[str, str], list[int]]:
+    """Decisions carried to live rows through the content anchor, as stored by the last reconcile."""
+    v = EvidenceVersion
+    return {
+        (t, k): list(ids) for t, k, ids in session.execute(
+            select(v.evidence_type, v.evidence_key, v.inherited_decision_ids).where(v.is_current.is_(True), v.inherited_decision_ids.is_not(None))
+        ) if ids
+    }
 
 
 def decisions_for(session: Session, evidence_type: str, evidence_key: str | None, natural_key: str | None) -> tuple[DecisionFact, ...]:
     """The decision history of one evidence row, attached exactly as ``reconcile`` attaches it."""
     if not evidence_key:
         return ()
-    d = ReviewDecision
+    d, v = ReviewDecision, EvidenceVersion
+    inherited_ids: list[int] = []
+    for ids in session.scalars(select(v.inherited_decision_ids).where(v.is_current.is_(True), v.evidence_type == evidence_type, v.evidence_key == evidence_key)):
+        inherited_ids += list(ids or [])
     condition = d.evidence_key == evidence_key if natural_key is None else or_(d.evidence_key == evidence_key, d.natural_key == natural_key)
-    rows = session.execute(
-        select(d.id, d.decision, d.fingerprint, d.actor_kind, d.attested, d.created_at, d.evidence_type, d.evidence_key, d.natural_key, d.source_content_hash, d.reviewer, d.uid)
-        .where(d.evidence_type == evidence_type, condition).order_by(d.created_at, d.id)
-    ).all()
+    if inherited_ids:
+        condition = or_(condition, d.id.in_(inherited_ids))
+    rows = session.execute(select(*_FACT_COLUMNS).where(d.evidence_type == evidence_type, condition).order_by(d.created_at, d.id)).all()
     if not rows:
         return ()
-    facts = [
-        DecisionFact(decision=r.decision, fingerprint=r.fingerprint, actor_kind=r.actor_kind, attested=r.attested, decided_at=_utc(r.created_at), id=r.id,
-                     evidence_type=r.evidence_type, evidence_key=r.evidence_key, natural_key=r.natural_key, source_content_hash=r.source_content_hash,
-                     reviewer=r.reviewer, uid=r.uid)
-        for r in rows
-    ]
-    v = EvidenceVersion
+    facts = [_fact(r) for r in rows]
     scope = v.evidence_key == evidence_key if natural_key is None else or_(v.evidence_key == evidence_key, v.natural_key == natural_key)
     live = session.execute(select(v.evidence_type, v.evidence_key, v.natural_key, v.fingerprint).where(v.is_current.is_(True), v.evidence_type == evidence_type, scope)).all()
-    attached, _ = attach_decisions([tuple(r) for r in live], facts)
+    attached, _ = attach_decisions([tuple(r) for r in live], facts, {(evidence_type, evidence_key): inherited_ids} if inherited_ids else None)
     return attached.get((evidence_type, evidence_key), ())
 
 
@@ -341,6 +467,13 @@ class ReconcileReport:
     transitions: list[dict[str, Any]] = field(default_factory=list)
     carried_forward: list[dict[str, Any]] = field(default_factory=list)
     orphaned_decisions: list[dict[str, Any]] = field(default_factory=list)
+    anchored_decisions: list[dict[str, Any]] = field(default_factory=list)
+    held_rows: int = 0
+    exclusions_changed: int = 0
+    repairs_total: int = 0  # stored human statuses / holds the ledger does not support (written outside the lifecycle)
+    decisions_reapplied: int = 0  # stored mechanical statuses where the ledger yields a human one (in-place reloads, or tampering)
+    repairs: list[dict[str, Any]] = field(default_factory=list)
+    orphan_queue_items: int = 0
     open_requests: int = 0
     key_collisions: dict[str, int] = field(default_factory=dict)
     change_event_ids: list[int] = field(default_factory=list)
@@ -353,7 +486,8 @@ class ReconcileReport:
     @property
     def changed_anything(self) -> bool:
         return bool(self.new_versions or self.rows_updated or self.transitions_total or self.disappeared_keys or self.carried_forward
-                    or self.retired_queue_items or self.population_entries_reanchored)
+                    or self.retired_queue_items or self.population_entries_reanchored or self.anchored_decisions or self.repairs_total
+                    or self.decisions_reapplied or self.orphan_queue_items)
 
     def as_dict(self) -> dict[str, Any]:
         return dict(self.__dict__)
@@ -364,9 +498,37 @@ class ReconcileReport:
             "rows": self.rows, "statuses": self.statuses, "new_versions": self.new_versions, "first_seen_keys": self.first_seen_keys,
             "rows_updated": self.rows_updated, "changed": self.changed_total, "value_changes": self.value_changes, "transitions": self.transitions_total,
             "carried_forward": len(self.carried_forward), "orphaned_decisions": len(self.orphaned_decisions), "open_requests": self.open_requests,
+            "orphaned_rejections": sum(1 for o in self.orphaned_decisions if o.get("decision") in REJECTING_DECISIONS),
+            "decisions_carried_by_anchor": len(self.anchored_decisions), "held_rows": self.held_rows, "exclusions_changed": self.exclusions_changed,
+            "status_repairs": self.repairs_total, "decisions_reapplied": self.decisions_reapplied, "orphan_queue_items": self.orphan_queue_items,
             "disappeared_keys": self.disappeared_keys, "key_collisions": self.key_collisions, "change_events": self.change_event_ids,
             "retired_queue_items": self.retired_queue_items, "checks": self.checks, "seconds": self.seconds,
         }
+
+
+#: Summary counters that add up over the steps of one load (``aggregate_summaries``).
+_SUMMED = ("new_versions", "first_seen_keys", "rows_updated", "changed", "value_changes", "transitions", "carried_forward", "decisions_carried_by_anchor",
+           "exclusions_changed", "status_repairs", "decisions_reapplied", "orphan_queue_items", "disappeared_keys", "retired_queue_items", "seconds")
+
+
+def aggregate_summaries(steps: list[tuple[str, dict[str, Any]]]) -> dict[str, Any]:
+    """One summary for a load that reconciled after several steps (check-updates: registry, then labels).
+
+    Counters of what happened (new versions, re-keyed rows, transitions, ...) are summed over the steps; counters of
+    the resulting state (rows, statuses, orphans, open requests, held rows) are those of the last step. Each
+    step's own summary is kept under ``steps``.
+    """
+    if not steps:
+        return {}
+    last = steps[-1][1]
+    total = dict(last)
+    for name in _SUMMED:
+        values = [summary.get(name) for _, summary in steps if isinstance(summary.get(name), int | float)]
+        if values:
+            total[name] = round(sum(values), 3) if name == "seconds" else sum(values)
+    total["change_events"] = [e for _, summary in steps for e in summary.get("change_events") or []]
+    total["steps"] = [{"step": step, **summary} for step, summary in steps]
+    return total
 
 
 @dataclass(slots=True)
@@ -395,6 +557,8 @@ class _Version:
     collision_level: int
     last_seen_at: datetime | None
     supersedes_id: int | None
+    review_hold: bool | None
+    inherited_decision_ids: list[int] | None
 
 
 _VERSION_COLUMNS = tuple(_Version.__dataclass_fields__)  # type: ignore[attr-defined]
@@ -568,6 +732,135 @@ def _risk(flags: list[dict[str, Any]]) -> str:
     return risk_level([CheckFlag(str(f.get("code")), str(f.get("severity")), "") for f in flags])
 
 
+def lock_review_state(session: Session) -> None:
+    """Serialise every writer of decisions and derived statuses for the rest of the transaction.
+
+    PostgreSQL: a SHARE ROW EXCLUSIVE lock on ``review_decision`` (it conflicts with itself and with the row
+    inserts of another decision, and leaves plain reads alone). SQLite: a no-op write, which makes the driver open
+    the transaction and take the database's write lock now rather than at the first real write, so the history
+    read afterwards cannot change before this transaction commits. Idempotent within a transaction.
+    """
+    dialect = session.get_bind().dialect.name
+    if dialect == "postgresql":
+        session.execute(text("LOCK TABLE review_decision IN SHARE ROW EXCLUSIVE MODE"))
+    else:
+        session.execute(update(ReviewDecision.__table__).where(false()).values(decision=ReviewDecision.__table__.c.decision))
+    session.expire_all()
+
+
+def _reviewed_snapshots(session: Session, orphans: Sequence[DecisionFact], versions: list[_Version]) -> dict[int, list[dict[str, Any]]]:
+    """Per orphaned decision: the snapshot it was made on, and the snapshot of the last version it was carried to."""
+    wanted = {(d.evidence_type, d.evidence_key, d.fingerprint or "") for d in orphans if d.applicable}
+    ids = {v.id for v in versions if (v.evidence_type, v.evidence_key, v.fingerprint) in wanted}
+    carriers: dict[int, _Version] = {}
+    orphan_ids = {d.id for d in orphans}
+    for v in versions:
+        for decision_id in v.inherited_decision_ids or ():
+            if decision_id in orphan_ids:
+                held = carriers.get(decision_id)
+                if held is None or (v.last_seen_at or datetime.min.replace(tzinfo=UTC), v.id) > (held.last_seen_at or datetime.min.replace(tzinfo=UTC), held.id):
+                    carriers[decision_id] = v
+    ids |= {v.id for v in carriers.values()}
+    cache = _fetch_snapshots(session, ids, {})
+    by_identity = {(v.evidence_type, v.evidence_key, v.fingerprint): v.id for v in versions if v.id in cache}
+    out: dict[int, list[dict[str, Any]]] = {}
+    for d in orphans:
+        snaps = []
+        own = by_identity.get((d.evidence_type, d.evidence_key, d.fingerprint or ""))
+        if own is not None and cache.get(own):
+            snaps.append(cache[own])
+        carrier = carriers.get(d.id)
+        if carrier is not None and cache.get(carrier.id):
+            snaps.append(cache[carrier.id])
+        if snaps:
+            out[d.id] = snaps
+    return out
+
+
+def _attach_with_anchors(
+    session: Session, records: list[EvidenceRecord], decisions: list[DecisionFact], versions: list[_Version]
+) -> tuple[dict[tuple[str, str], tuple[DecisionFact, ...]], list[DecisionFact], dict[tuple[str, str], list[int]], list[AnchorMatch]]:
+    """Attach decisions by key, natural key and content anchor. Returns (attached, orphans, inherited ids per row, new anchor matches).
+
+    A row keeps the decisions it inherited before (from the version its key had when last seen): once carried
+    to a key, a decision stays with that key for as long as the key lives, whatever happens to its content.
+    """
+    rows = [(r.evidence_type, r.evidence_key, r.natural_key, r.fingerprint) for r in records]
+    current = {(v.evidence_type, v.evidence_key): v for v in versions if v.is_current}
+    latest: dict[tuple[str, str], _Version] = {}
+    for v in versions:
+        key = (v.evidence_type, v.evidence_key)
+        held = latest.get(key)
+        if held is None or (v.last_seen_at or datetime.min.replace(tzinfo=UTC), v.id) > (held.last_seen_at or datetime.min.replace(tzinfo=UTC), held.id):
+            latest[key] = v
+    prior: dict[tuple[str, str], list[int]] = {}
+    for record in records:
+        key = (record.evidence_type, record.evidence_key)
+        version = current.get(key) or latest.get(key)
+        if version is not None and version.inherited_decision_ids:
+            prior[key] = list(version.inherited_decision_ids)
+    attached, orphans = attach_decisions(rows, decisions, prior)
+    matches: list[AnchorMatch] = []
+    if any(d.applicable for d in orphans):
+        reviewed = _reviewed_snapshots(session, orphans, versions)
+        if reviewed:
+            matches = anchor_matches(orphans, reviewed, ((r.evidence_type, r.evidence_key, r.snapshot) for r in records))
+    if not matches:
+        return attached, orphans, {k: sorted(set(v) & {d.id for d in attached.get(k, ())}) for k, v in prior.items()}, []
+    inherited = {k: list(v) for k, v in prior.items()}
+    for match in matches:
+        inherited.setdefault((match.evidence_type, match.evidence_key), []).append(match.decision.id)
+    attached, orphans = attach_decisions(rows, decisions, inherited)
+    kept = {k: sorted(set(v) & {d.id for d in attached.get(k, ())}) for k, v in inherited.items()}
+    return attached, orphans, kept, matches
+
+
+ORPHAN_QUEUE_TYPE = "ORPHANED_DECISION"
+
+
+def _orphan_dedupe_key(decision: DecisionFact) -> str:
+    return f"orphaned-decision:{decision.uid or decision.id}"
+
+
+def _sync_orphan_queue(session: Session, orphans: list[dict[str, Any]], orphan_facts: list[DecisionFact]) -> int:
+    """Raise one review-queue item per orphaned decision (once), and retire items whose decision applies again.
+
+    A rejection that no longer reaches any row is the dangerous case: the value it excluded may be back under
+    another identity. Such items are HIGH priority.
+    """
+    existing = {
+        item.dedupe_key: item for item in session.scalars(select(ReviewQueueItem).where(ReviewQueueItem.item_type == ORPHAN_QUEUE_TYPE))
+        if item.dedupe_key
+    }
+    raised = 0
+    wanted: set[str] = set()
+    for entry, fact in zip(orphans, orphan_facts, strict=True):
+        key = _orphan_dedupe_key(fact)
+        wanted.add(key)
+        if key in existing:
+            continue
+        rejecting = fact.decision in REJECTING_DECISIONS and fact.decisive
+        priority = "HIGH" if rejecting else ("MEDIUM" if fact.decision in DECISIVE_DECISIONS else "LOW")
+        what = entry.get("label") or f"{fact.evidence_type} {fact.evidence_key[:12]}"
+        reason = (
+            f"A {fact.decision} decision by {fact.reviewer} on {what} no longer applies to any stored evidence: its evidence key is gone and no "
+            "current row holds the same measurement (same study, source, quote and values)."
+            + (" The value it excluded may be in use again under another identity: find it and decide on it." if rejecting else "")
+            + ("" if fact.applicable else " It was imported from a ledger without content that matches any known evidence version.")
+        )
+        enqueue_review(session, item_type=ORPHAN_QUEUE_TYPE, target_type="review_decision", target_id=fact.id, title=f"Orphaned review decision: {what}"[:300],
+                       reason=reason, priority=priority, payload={k: v for k, v in entry.items() if k != "decided_at"} | {"decided_at": entry.get("decided_at")},
+                       dedupe_key=key)
+        raised += 1
+    for key, item in existing.items():
+        if key not in wanted and item.status in (ReviewStatus.OPEN.value, ReviewStatus.IN_REVIEW.value):
+            item.status = ReviewStatus.RETIRED.value
+            audit(session, "review.orphan_resolved", target_type="review_queue_item", target_id=item.id, decision_id=item.target_id,
+                  note="The decision applies to stored evidence again (its key came back or a matching row was found).")
+            raised += 1
+    return raised
+
+
 def reconcile(session: Session, *, run_checks: bool = True) -> ReconcileReport:
     """Bring every reviewable row, the version history and the derived statuses in line with the ledger.
 
@@ -592,8 +885,9 @@ def reconcile(session: Session, *, run_checks: bool = True) -> ReconcileReport:
     and expired, not committed: the caller owns the transaction.
     """
     started = time.perf_counter()
-    now = utcnow()
     session.flush()
+    lock_review_state(session)
+    now = utcnow()
     report = ReconcileReport()
     report.retired_queue_items = retire_legacy_queue_items(session)
 
@@ -604,9 +898,8 @@ def reconcile(session: Session, *, run_checks: bool = True) -> ReconcileReport:
     check_flags = _automated_flags(session, report, run_checks)
 
     decisions = load_decision_facts(session)
-    attached, orphans = attach_decisions(((r.evidence_type, r.evidence_key, r.natural_key, r.fingerprint) for r in records), decisions)
-
     versions = _load_versions(session)
+    attached, orphans, inherited, matches = _attach_with_anchors(session, records, decisions, versions)
     by_identity = {(v.evidence_type, v.evidence_key, v.fingerprint): v for v in versions}
     current = {(v.evidence_type, v.evidence_key): v for v in versions if v.is_current}
     # For a key that has no current version (its row disappeared, or the evidence tables were reset), the version
@@ -648,6 +941,7 @@ def reconcile(session: Session, *, run_checks: bool = True) -> ReconcileReport:
             mechanical=anchor_result.status, decisions=attached.get(key, ()), fingerprint=record.fingerprint, structured=record.is_registry, source_content_hash=source_hash
         )
         statuses[outcome.status] += 1
+        report.held_rows += int(outcome.hold)
         report.open_requests += len(outcome.open_requests)
         if record.collision_level:
             collisions[record.evidence_type] += 1
@@ -671,15 +965,37 @@ def reconcile(session: Session, *, run_checks: bool = True) -> ReconcileReport:
 
         stored = record.stored
         snapshot_id = ref.id if ref else None
-        if (stored.evidence_key, stored.fingerprint, stored.verification_status, stored.base_verification_status, stored.source_snapshot_id, stored.check_flags, stored.risk_level) != (
-            record.evidence_key, record.fingerprint, outcome.status, anchor_result.status, snapshot_id, flags, risk
-        ):
+        if (stored.evidence_key, stored.fingerprint, stored.verification_status, stored.base_verification_status, stored.source_snapshot_id, stored.check_flags, stored.risk_level,
+                stored.review_hold) != (record.evidence_key, record.fingerprint, outcome.status, anchor_result.status, snapshot_id, flags, risk, outcome.hold):
             if stored.evidence_key is not None and stored.evidence_key != record.evidence_key:
                 key_clears[record.evidence_type].append({"b_id": record.row_id})
             row_updates[record.evidence_type].append({
                 "b_id": record.row_id, "b_key": record.evidence_key, "b_fingerprint": record.fingerprint, "b_status": outcome.status,
-                "b_base": anchor_result.status, "b_snapshot": snapshot_id, "b_flags": flags, "b_risk": risk,
+                "b_base": anchor_result.status, "b_snapshot": snapshot_id, "b_flags": flags, "b_risk": risk, "b_hold": outcome.hold,
             })
+            # A row this lifecycle already keyed, with unchanged content, whose stored status or hold is not what its decision history yields
+            # and was not what it yielded at the last pass either. Restored here, and audited with both values so the repair never erases
+            # the evidence of what was stored. UNSUPPORTED_HUMAN_STATUS (a human status or a hold that no decision supports, or one that
+            # contradicts the ledger) can only have been written outside the lifecycle: raw SQL, a bulk update, a concurrent writer.
+            # DECISION_REAPPLIED is a mechanical status where the ledger says otherwise, which is also what a loader that rewrites a row
+            # in place (curated claims) leaves behind.
+            if (stored.evidence_key == record.evidence_key and stored.fingerprint == record.fingerprint
+                    and (canonical_status(stored.verification_status) != outcome.status or stored.review_hold != outcome.hold)
+                    and previous is not None and previous.effective_status == outcome.status and bool(previous.review_hold) == outcome.hold):
+                unsupported = stored.verification_status in HUMAN_DECISION_STATUSES or stored.review_hold
+                repair = {
+                    "evidence_type": record.evidence_type, "evidence_key": record.evidence_key, "row_id": record.row_id, "label": record.label,
+                    "kind": "UNSUPPORTED_HUMAN_STATUS" if unsupported else "DECISION_REAPPLIED",
+                    "stored_status": stored.verification_status, "stored_hold": stored.review_hold, "derived_status": outcome.status, "derived_hold": outcome.hold,
+                    "reason": outcome.reason, "decision_id": outcome.decision.id if outcome.decision else None,
+                }
+                report.repairs_total += int(unsupported)
+                report.decisions_reapplied += int(not unsupported)
+                audit(session, "review.status_repaired", target_type=record.evidence_type, target_id=record.evidence_key,
+                      before={"verification_status": stored.verification_status, "review_hold": stored.review_hold},
+                      after={"verification_status": outcome.status, "review_hold": outcome.hold}, **{k: v for k, v in repair.items() if k not in ("evidence_type", "evidence_key")})
+                if len(report.repairs) < REPORT_LIST_LIMIT:
+                    report.repairs.append(repair)
 
         index_values = {
             "natural_key": record.natural_key, "label": record.label, "study_nct": record.study_nct, "study_name": record.study_name,
@@ -687,6 +1003,7 @@ def reconcile(session: Session, *, run_checks: bool = True) -> ReconcileReport:
             "tier": record.tier, "source_type": record.source_type, "source_key": record.source_key, "collision_level": record.collision_level,
             "effective_status": outcome.status, "mechanical_status": anchor_result.status, "risk_level": risk, "check_flags": flags,
             "last_source_content_hash": source_hash, "last_source_snapshot_version": ref.version_no if ref else None,
+            "review_hold": outcome.hold, "inherited_decision_ids": inherited.get(key) or None,
         }
         if version is None:
             version_inserts.append((record, index_values, previous))
@@ -708,12 +1025,15 @@ def reconcile(session: Session, *, run_checks: bool = True) -> ReconcileReport:
         if previous is not None and previous is not version:
             demote.add(previous.id)
             changed.append((record, previous, outcome.status))
-        if previous is not None and previous.effective_status and previous.effective_status != outcome.status:
+        if previous is not None and previous.effective_status and is_usable(previous.effective_status, previous.review_hold) != is_usable(outcome.status, outcome.hold):
+            report.exclusions_changed += 1
+        if previous is not None and previous.effective_status and (previous.effective_status != outcome.status or bool(previous.review_hold) != outcome.hold):
             report.transitions_total += 1
             entry = {
                 "evidence_type": record.evidence_type, "evidence_key": record.evidence_key, "label": record.label, "study": record.study_nct,
                 "from": previous.effective_status, "to": outcome.status, "reason": outcome.reason, "fingerprint_before": previous.fingerprint,
                 "fingerprint_after": record.fingerprint, "decision_id": outcome.decision.id if outcome.decision else None,
+                "hold_before": bool(previous.review_hold), "hold_after": outcome.hold,
             }
             audit(session, "review.status_changed", target_type=record.evidence_type, target_id=record.evidence_key, **entry)
             if len(report.transitions) < REPORT_LIST_LIMIT:
@@ -732,14 +1052,36 @@ def reconcile(session: Session, *, run_checks: bool = True) -> ReconcileReport:
     for entry in report.carried_forward:
         audit(session, "review.approval_carried_forward", target_type=entry["evidence_type"], target_id=entry["evidence_key"], **entry)
 
+    # Decisions carried to another key through the content anchor in this pass (new links only: a link kept from an earlier pass
+    # is not reported again). Each is audited with the key it was made on and the key it now applies to.
+    for match in matches:
+        target = (match.evidence_type, match.evidence_key)
+        before = current.get(target) or last_known.get(target)
+        if before is not None and match.decision.id in (before.inherited_decision_ids or ()):
+            continue
+        origin_version = by_identity.get((match.decision.evidence_type, match.decision.evidence_key, match.decision.fingerprint or ""))
+        record = next((r for r in records if (r.evidence_type, r.evidence_key) == target), None)
+        entry = {
+            "decision_id": match.decision.id, "decision_uid": match.decision.uid, "decision": match.decision.decision, "reviewer": match.decision.reviewer,
+            "evidence_type": match.evidence_type, "from_evidence_key": match.decision.evidence_key, "to_evidence_key": match.evidence_key,
+            "from_label": origin_version.label if origin_version else None, "to_label": record.label if record else None,
+            "study": record.study_nct if record else None, "fields_differing": match.distance, "ambiguous": match.ambiguous,
+            "excluded": match.decision.decision in REJECTING_DECISIONS,
+        }
+        report.anchored_decisions.append(entry)
+        if entry["excluded"]:
+            report.exclusions_changed += 1
+        audit(session, "review.decision_carried_by_anchor", target_type=match.evidence_type, target_id=match.evidence_key, **entry)
+
     for decision in orphans:
         seen = by_identity.get((decision.evidence_type, decision.evidence_key, decision.fingerprint or ""))
         report.orphaned_decisions.append({
             "decision_id": decision.id, "uid": decision.uid, "evidence_type": decision.evidence_type, "evidence_key": decision.evidence_key,
             "fingerprint": decision.fingerprint, "decision": decision.decision, "reviewer": decision.reviewer,
             "decided_at": decision.decided_at.isoformat() if decision.decided_at else None, "label": seen.label if seen else None,
-            "study": seen.study_nct if seen else None,
+            "study": seen.study_nct if seen else None, "applicable": decision.applicable,
         })
+    report.orphan_queue_items = _sync_orphan_queue(session, report.orphaned_decisions, orphans)
 
     report.rows = len(records)
     report.by_type = dict(Counter(r.evidence_type for r in records))
@@ -771,7 +1113,8 @@ def hold_rejections(session: Session) -> int:
     if not any(d.decision in REJECTING_DECISIONS for d in decisive):
         return 0
     records = identity.load_records(session)
-    attached, _ = attach_decisions(((r.evidence_type, r.evidence_key, r.natural_key, r.fingerprint) for r in records), decisive)
+    # The same attachment as reconcile, content anchor included: a rejected value that a relabel moved to a new key is hidden too.
+    attached, _, _, _ = _attach_with_anchors(session, records, decisive, _load_versions(session))
     held: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for record in records:
         facts = attached.get((record.evidence_type, record.evidence_key))
@@ -788,8 +1131,8 @@ def hold_rejections(session: Session) -> int:
 def _write_rows(session: Session, key_clears: dict[str, list[dict[str, Any]]], row_updates: dict[str, list[dict[str, Any]]]) -> None:
     """Store the derived state of evidence rows: the one statement that can write HUMAN_VERIFIED.
 
-    ``b_status`` is always the value ``effective_status`` returned (``hold_rejections`` is the only
-    other writer of a human status, and it can only write REJECTED). Keys that move to another row
+    ``b_status`` and ``b_hold`` are always the values ``effective_status`` returned (``hold_rejections`` is
+    the only other writer of a human status or a hold, and it can only write REJECTED or set the hold). Keys that move to another row
     are cleared first so the unique index never sees two rows with one key mid-update.
     """
     for evidence_type, params in key_clears.items():
@@ -801,7 +1144,7 @@ def _write_rows(session: Session, key_clears: dict[str, list[dict[str, Any]]], r
             update(table).where(table.c.id == bindparam("b_id")).values(
                 evidence_key=bindparam("b_key"), fingerprint=bindparam("b_fingerprint"), verification_status=bindparam("b_status"),
                 base_verification_status=bindparam("b_base"), source_snapshot_id=bindparam("b_snapshot"), check_flags=bindparam("b_flags"),
-                risk_level=bindparam("b_risk"),
+                risk_level=bindparam("b_risk"), review_hold=bindparam("b_hold"),
             ),
             params,
         )
@@ -1016,6 +1359,10 @@ class RecordedDecision:
     status_before: str
     status_after: str
     reason: str
+    hold_before: bool = False
+    hold_after: bool = False
+    identity_basis: str = IDENTITY_SELF_DECLARED
+    gaps_refreshed: int | None = None
 
 
 def record_decision(
@@ -1030,17 +1377,29 @@ def record_decision(
     expected_fingerprint: str,
     proposed_correction: dict[str, Any] | None = None,
     actor_kind: str = ActorKind.HUMAN.value,
+    identity_basis: str = IDENTITY_SELF_DECLARED,
 ) -> RecordedDecision:
     """Record one decision on one exact evidence version and apply its effect, without committing.
 
-    The decision row, the new status of the evidence row (for a decisive decision) and the audit
-    event are written together; the caller commits once. Raises a ``ReviewError`` subclass and writes
-    nothing when the request is not acceptable.
+    The decision row, the new status of the evidence row (for a decisive decision), the gaps that depend on
+    the row's usability and the audit event are written together; the caller commits once. Raises a
+    ``ReviewError`` subclass and writes nothing when the request is not acceptable.
+
+    Ordering and concurrency: the review lock is taken first (``lock_review_state``); the row, its decision
+    history and the clock are read after it. The decision is dated no earlier than the latest decision already
+    in the row's history (if the clock or an imported decision says otherwise, the date is moved forward by
+    the smallest step and the adjustment is audited), so the decision just recorded is always the row's latest.
+    The status written is then derived from the full history, this decision included, exactly as reconcile
+    derives it.
     """
     if evidence_type not in REVIEWABLE_TYPES:
         raise EvidenceNotFound(f"Unknown evidence type '{evidence_type}'")
     if decision not in DECISION_KINDS:
         raise InvalidDecision(f"Unknown decision '{decision}'")
+    if identity_basis not in IDENTITY_BASES:
+        raise InvalidDecision(f"Unknown identity basis '{identity_basis}'")
+    if not isinstance(attested, bool):
+        raise InvalidDecision("The attestation must be the boolean true or false.")
     for problem in (reviewer_problem(reviewer), rationale_problem(rationale)):
         if problem:
             raise InvalidDecision(problem)
@@ -1053,9 +1412,17 @@ def record_decision(
         raise InvalidDecision("A proposed correction must name the fields to correct and quote the supporting passage.")
     if decision != ReviewDecisionKind.PROPOSE_CORRECTION.value and proposed_correction:
         raise InvalidDecision("proposed_correction is only accepted with the PROPOSE_CORRECTION decision.")
+    if proposed_correction:
+        problem = correction_problem(proposed_correction)
+        if problem:
+            raise InvalidDecision(problem)
 
     model = REVIEWABLE_MODELS[evidence_type]
-    row = session.get(model, row_id, execution_options={INCLUDE_REJECTED: True})
+    lock_review_state(session)
+    table = model.__table__
+    if session.get_bind().dialect.name == "postgresql":
+        session.execute(select(table.c.id).where(table.c.id == row_id).with_for_update())
+    row = session.get(model, row_id, execution_options={INCLUDE_REJECTED: True}, populate_existing=True)
     if row is None:
         raise EvidenceNotFound(f"No {evidence_type} with id {row_id}")
     if not row.evidence_key or not row.fingerprint:
@@ -1078,40 +1445,93 @@ def record_decision(
     snapshot = session.get(SourceSnapshot, row.source_snapshot_id) if row.source_snapshot_id else None
     source_key = session.scalar(select(EvidenceSource.key).where(EvidenceSource.id == row.source_id)) if getattr(row, "source_id", None) else None
     source_hash = snapshot.content_hash if snapshot else None
-    decided_at = utcnow()
-    status_before = row.verification_status
-    status_after, reason = status_before, "REQUEST_RECORDED"
-    if decisive_kind:
-        # Derived exactly as reconcile derives it: the row's whole decision history plus this decision.
-        fact = DecisionFact(decision=decision, fingerprint=row.fingerprint, actor_kind=actor_kind, attested=bool(attested), decided_at=decided_at,
-                            id=2**62, evidence_type=evidence_type, evidence_key=row.evidence_key, natural_key=version.natural_key, source_content_hash=source_hash)
-        history = decisions_for(session, evidence_type, row.evidence_key, version.natural_key)
-        outcome = effective_status(
-            mechanical=row.base_verification_status if row.base_verification_status in MECHANICAL_STATUSES else PENDING, decisions=[*history, fact],
-            fingerprint=row.fingerprint, structured=getattr(row, "origin", None) == identity.REGISTRY, source_content_hash=source_hash,
-        )
-        status_after, reason = outcome.status, outcome.reason
+    history = decisions_for(session, evidence_type, row.evidence_key, version.natural_key)
+    clock = utcnow()
+    decided_at = clock
+    latest_known = max((d.decided_at for d in history), default=None)
+    if latest_known is not None and latest_known >= decided_at:
+        decided_at = latest_known + timedelta(microseconds=1)
+    status_before, hold_before = row.verification_status, bool(row.review_hold)
+    mechanical = row.base_verification_status if row.base_verification_status in MECHANICAL_STATUSES else PENDING
+    structured = getattr(row, "origin", None) == identity.REGISTRY
+    # Derived exactly as reconcile derives it: the row's whole decision history, read under the lock, plus this decision.
+    fact = DecisionFact(decision=decision, fingerprint=row.fingerprint, actor_kind=actor_kind, attested=attested, decided_at=decided_at, id=2**62,
+                        evidence_type=evidence_type, evidence_key=row.evidence_key, natural_key=version.natural_key, source_content_hash=source_hash)
+    outcome = effective_status(mechanical=mechanical, decisions=[*history, fact], fingerprint=row.fingerprint, structured=structured, source_content_hash=source_hash)
+    status_after, hold_after = outcome.status, outcome.hold
+    reason = outcome.reason if decisive_kind else "REQUEST_RECORDED"
     recorded = ReviewDecision(
-        target_type=evidence_type, target_id=row.id, decision=decision, reviewer=" ".join(reviewer.split()), rationale=rationale.strip(), uid=str(uuid.uuid4()),
+        target_type=evidence_type, target_id=row.id, decision=decision, reviewer=normalise_reviewer(reviewer), rationale=rationale.strip(), uid=str(uuid.uuid4()),
         created_at=decided_at, evidence_type=evidence_type, evidence_key=row.evidence_key, natural_key=version.natural_key, fingerprint=row.fingerprint,
         evidence_version_id=version.id, source_key=source_key, source_content_hash=source_hash, source_snapshot_version=snapshot.version_no if snapshot else None,
-        proposed_correction=proposed_correction, actor_kind=actor_kind, attested=bool(attested), status_before=status_before, status_after=status_after,
+        proposed_correction=proposed_correction, actor_kind=actor_kind, attested=attested, status_before=status_before, status_after=status_after,
+        identity_basis=identity_basis,
     )
     session.add(recorded)
     session.flush()
-    if status_after != status_before:
+    # The stored history, re-read with the new row in it, must yield the same status: the decision is the latest one.
+    check = effective_status(mechanical=mechanical, decisions=decisions_for(session, evidence_type, row.evidence_key, version.natural_key),
+                             fingerprint=row.fingerprint, structured=structured, source_content_hash=source_hash)
+    if (check.status, check.hold) != (status_after, hold_after):  # pragma: no cover - guarded by the lock and the dating rule above
+        raise ReviewError("The decision history changed while the decision was being recorded; nothing was written. Try again.")
+    if (status_after, hold_after) != (status_before, hold_before):
         _write_rows(session, {}, {evidence_type: [{
-            "b_id": row.id, "b_key": row.evidence_key, "b_fingerprint": row.fingerprint, "b_status": status_after,
+            "b_id": row.id, "b_key": row.evidence_key, "b_fingerprint": row.fingerprint, "b_status": status_after, "b_hold": hold_after,
             "b_base": row.base_verification_status, "b_snapshot": row.source_snapshot_id, "b_flags": row.check_flags, "b_risk": row.risk_level,
         }]})
-        version.effective_status = status_after
+        session.execute(update(EvidenceVersion.__table__).where(EvidenceVersion.__table__.c.id == version.id).values(effective_status=status_after, review_hold=hold_after))
+    usability_changed = is_usable(status_before, hold_before) != is_usable(status_after, hold_after)
     audit(
         session, "review.evidence_decision", actor=recorded.reviewer, target_type=evidence_type, target_id=row.evidence_key, decision=decision,
         decision_id=recorded.id, decision_uid=recorded.uid, evidence_type=evidence_type, evidence_key=row.evidence_key, fingerprint=row.fingerprint,
-        label=version.label, study=version.study_nct, status_before=status_before, status_after=status_after, reason=reason, source_key=source_key,
-        source_content_hash=recorded.source_content_hash, attested=bool(attested), actor_kind=actor_kind, rationale=recorded.rationale,
-        has_proposed_correction=bool(proposed_correction),
+        label=version.label, study=version.study_nct, status_before=status_before, status_after=status_after, hold_before=hold_before, hold_after=hold_after,
+        reason=reason, source_key=source_key, source_content_hash=recorded.source_content_hash, attested=attested, actor_kind=actor_kind,
+        identity_basis=identity_basis, rationale=recorded.rationale, has_proposed_correction=bool(proposed_correction),
+        **({"clock_adjusted_from": clock.isoformat(), "dated": decided_at.isoformat()} if decided_at != clock else {}),
     )
     session.flush()
-    session.expire(row)
-    return RecordedDecision(recorded.id, recorded.uid, evidence_type, row.evidence_key, row.fingerprint, decision, status_before, status_after, reason)
+    session.expire_all()
+    gaps = refresh_dependent_gaps(session) if usability_changed else None
+    return RecordedDecision(recorded.id, recorded.uid, evidence_type, row.evidence_key, row.fingerprint, decision, status_before, status_after, reason,
+                            hold_before, hold_after, identity_basis, gaps)
+
+
+def refresh_dependent_gaps(session: Session) -> int:
+    """Recompute the rule-detected evidence gaps in the current transaction (they quote evidence values).
+
+    Called whenever a decision or a reconcile changes whether some row may be used, so no gap keeps describing
+    a value a reviewer excluded (or misses one that was readmitted). Reviewer triage on gaps is preserved by the
+    gap engine. Returns the number of gaps detected.
+    """
+    from ..engines.gaps import refresh_gaps_after_review
+
+    return refresh_gaps_after_review(session)
+
+
+_CORRECTION_TEXT_LIMIT = 2000
+_CORRECTION_FIELD_LIMIT = 200
+
+
+def correction_problem(proposed: dict[str, Any]) -> str | None:
+    """Why a proposed correction cannot be stored, or None. JSON-safe values only: finite numbers, bounded text."""
+    import math
+
+    changes = proposed.get("changes")
+    if not isinstance(changes, dict) or not changes or len(changes) > 40:
+        return "A proposed correction must name between 1 and 40 fields."
+    for name, value in changes.items():
+        if not isinstance(name, str) or not name or len(name) > _CORRECTION_FIELD_LIMIT:
+            return "A corrected field name must be text of at most 200 characters."
+        if isinstance(value, float) and not math.isfinite(value):
+            return f"The proposed value of {name} is not a finite number."
+        if isinstance(value, int) and not isinstance(value, bool) and abs(value) > 2**53:
+            return f"The proposed value of {name} is out of range."
+        if isinstance(value, str) and len(value) > _CORRECTION_TEXT_LIMIT:
+            return f"The proposed value of {name} is too long ({_CORRECTION_TEXT_LIMIT} characters at most)."
+        if value is not None and not isinstance(value, str | int | float | bool):
+            return f"The proposed value of {name} must be text, a number, true/false or null."
+    for name, limit in (("supporting_quote", 4000), ("note", 2000)):
+        value = proposed.get(name)
+        if value is not None and (not isinstance(value, str) or len(value) > limit):
+            return f"The {name.replace('_', ' ')} must be text of at most {limit} characters."
+    return None

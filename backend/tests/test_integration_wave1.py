@@ -204,6 +204,7 @@ def test_the_three_session_2_revisions_form_one_line_in_the_agreed_order():
 
     scripts = ScriptDirectory.from_config(alembic_config())
     assert [(s.revision, s.down_revision) for s in scripts.walk_revisions()] == [
+        ("a86fa2bc0685", "141983e167b9"),  # review hold, decision lineage and reviewer identity (P0 lifecycle fix wave)
         ("141983e167b9", "17814f6d32bf"),  # stored arm role (P0 data fix wave)
         ("17814f6d32bf", "9b4e73774dde"),  # foreign-key indexes (hardening)
         ("9b4e73774dde", "65bce81e7f45"),  # evidence review lifecycle

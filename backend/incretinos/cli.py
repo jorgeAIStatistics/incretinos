@@ -28,7 +28,7 @@ _RESET_HELP = (
 )
 _WIPE_HELP = (
     "With --reset: ALSO destroy review decisions, evidence version history, the audit log, source snapshots and change events by dropping "
-    "every table. Irreversible; a ledger backup of the decisions is written first."
+    "every table. A full backup of every table and a decision ledger are written first, and the wipe is recorded in the new database."
 )
 
 
@@ -54,38 +54,108 @@ def _migrate(reset: bool = False, wipe_review_history: bool = False) -> None:
     * no flag: run the migrations (creates the schema, or upgrades an older one in place);
     * ``--reset``: run the migrations, then empty the derived tables. Review decisions, evidence version
       history, the audit log, source snapshots and change events are kept;
-    * ``--reset --wipe-review-history``: back up the decision ledger, drop every table, run the migrations.
+    * ``--reset --wipe-review-history``: back up every table and the decision ledger, drop every table, run the
+      migrations, and record the wipe (with the backup's location and checksums) in the new audit log.
     """
     typer.echo(describe_settings_sources(), err=True)
     if wipe_review_history and not reset:
         raise typer.BadParameter("--wipe-review-history only has an effect together with --reset.")
+    wiped: dict | None = None
     if reset and wipe_review_history:
-        backup = _backup_ledger_before_wipe()
+        wiped = _backup_before_wipe()
         drop_schema()
-        typer.echo("Dropped every table, including review decisions, version history, the audit log and source snapshots." + (f" Decision ledger backed up to {backup}." if backup else ""), err=True)
+        typer.echo("Dropped every table, including review decisions, version history, the audit log and source snapshots." +
+                   (f" Everything was backed up first to {wiped['directory']}." if wiped else ""), err=True)
     _schema_at_head()
+    if wiped:
+        _record_wipe(wiped)
     if reset and not wipe_review_history:
         with session_scope() as session:
             removed = reset_derived_data(session)
         typer.echo(f"Emptied {sum(1 for n in removed.values() if n)} derived table(s) ({sum(removed.values())} rows). Review decisions, version history, audit log and snapshots were kept.", err=True)
 
 
-def _backup_ledger_before_wipe() -> Path | None:
-    """Write the decision ledger next to the database cache before a wipe. Returns the file, or None if there is nothing to save."""
+def _backup_before_wipe() -> dict | None:
+    """Back up everything ``drop_schema`` is about to destroy. Returns what was written, or None for an empty database.
+
+    Written to ``<var>/wipe-backup-<UTC timestamp>/``:
+
+    * ``tables/<table>.jsonl``: every row of every application table (review decisions of all kinds, the audit log,
+      evidence versions, change events, queue items, gap triage, source snapshots, and the derived tables too);
+    * ``review-ledger.json``: the evidence decisions as an importable ledger (``incretinos review import``);
+    * ``manifest.json``: row counts and the sha256 of each file.
+
+    Nothing is dropped unless the backup was written completely (an exception here aborts the command).
+    """
+    import hashlib
+
     from sqlalchemy import func, inspect, select
 
+    from .db import Base
     from .models import ReviewDecision
     from .review.ledger import write_ledger
 
-    inspector = inspect(get_engine())
-    if not inspector.has_table("review_decision") or "uid" not in {c["name"] for c in inspector.get_columns("review_decision")}:
-        return None  # no evidence-level decisions can exist in this database
+    engine = get_engine()
+    present = set(inspect(engine).get_table_names())
+    tables = [t for t in Base.metadata.sorted_tables if t.name in present]
+    if not tables:
+        return None
+    directory = get_settings().cache_dir.parent / f"wipe-backup-{datetime.now(UTC).strftime('%Y%m%dT%H%M%S%fZ')}"
+    (directory / "tables").mkdir(parents=True, exist_ok=False)
+    files: dict[str, str] = {}
+    counts: dict[str, int] = {}
+
+    def digest(path: Path) -> str:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+
+    with engine.connect() as connection:
+        for table in tables:
+            existing = {c["name"] for c in inspect(engine).get_columns(table.name)}
+            columns = [c for c in table.columns if c.name in existing]  # an older schema may lack newer columns
+            path = directory / "tables" / f"{table.name}.jsonl"
+            n = 0
+            with path.open("w", encoding="utf-8") as out:
+                for row in connection.execute(select(*columns)).mappings():
+                    out.write(json.dumps(dict(row), ensure_ascii=False, default=str) + "\n")
+                    n += 1
+            counts[table.name] = n
+            files[f"tables/{table.name}.jsonl"] = digest(path)
+    decisions: dict[str, int] = {}
+    ledger_decisions = 0
+    if "review_decision" in present:
+        existing = {c["name"] for c in inspect(engine).get_columns("review_decision")}
+        if "uid" in existing:
+            with session_scope() as session:
+                for kind, evidence_type, n in session.execute(
+                    select(ReviewDecision.decision, ReviewDecision.evidence_type, func.count()).group_by(ReviewDecision.decision, ReviewDecision.evidence_type)
+                ):
+                    label = f"{'evidence' if evidence_type else 'queue_or_gap'}:{kind}"
+                    decisions[label] = decisions.get(label, 0) + n
+                ledger_decisions = write_ledger(session, directory / "review-ledger.json")
+            files["review-ledger.json"] = digest(directory / "review-ledger.json")
+    manifest = {"created_at": datetime.now(UTC).isoformat(), "database": _database_label(), "row_counts": counts, "decisions": decisions,
+                "ledger_decisions": ledger_decisions, "files": files}
+    (directory / "manifest.json").write_text(json.dumps(manifest, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    return {**manifest, "directory": str(directory), "manifest_sha256": digest(directory / "manifest.json")}
+
+
+def _record_wipe(wiped: dict) -> None:
+    """Leave a trace of the wipe in the fresh database and say how to restore the decisions."""
+    from .ingestion.snapshots import audit
+
+    rejections = sum(n for label, n in wiped["decisions"].items() if label in ("evidence:REJECT", "evidence:FLAG_WRONG_ATTRIBUTION"))
     with session_scope() as session:
-        if not session.scalar(select(func.count()).select_from(ReviewDecision).where(ReviewDecision.evidence_type.is_not(None))):
-            return None
-        target = get_settings().cache_dir.parent / f"review-ledger-before-wipe-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}.json"
-        write_ledger(session, target)
-    return target
+        audit(session, "review.history_wiped", actor="operator", target_type="database", target_id=wiped["database"],
+              backup_directory=wiped["directory"], manifest_sha256=wiped["manifest_sha256"], files=wiped["files"], row_counts=wiped["row_counts"],
+              decisions=wiped["decisions"], ledger_decisions=wiped["ledger_decisions"],
+              note="Review history was dropped with `--reset --wipe-review-history`. Decisions are not re-applied automatically.")
+    typer.echo(f"The wipe is recorded in the new audit log (review.history_wiped). Backup: {wiped['directory']}", err=True)
+    if wiped["ledger_decisions"]:
+        typer.echo(
+            f"NOTE: {wiped['ledger_decisions']} evidence decision(s), {rejections} of them rejection(s), are NOT applied to the new database. "
+            f"Rejected values are back in every analytic surface until you run: incretinos review import {wiped['directory']}/review-ledger.json",
+            err=True,
+        )
 
 
 @app.command("init-db")
@@ -123,18 +193,28 @@ def seed(
 def check_updates(live: bool = typer.Option(False, help="Query the live registry (otherwise fixtures).")) -> None:
     """Re-fetch watched registry records and labels; report changed sources and changed stored evidence for review."""
     from .ingestion.pipeline import Pipeline
+    from .review.lifecycle import aggregate_summaries, refresh_dependent_gaps
 
     settings = get_settings()
     with session_scope() as session:
         pipeline = Pipeline(session, settings, offline=not live)
         # Each step commits together with its reconcile pass (see Pipeline._run): re-extracted rows are re-keyed,
-        # decisions re-applied and changed values reported before anything is visible to readers.
-        pipeline._run("ctgov", lambda: pipeline.ingest_studies(demo_change=False))
-        pipeline._run("openfda-label", pipeline.ingest_labels)
+        # decisions re-applied and changed values reported before anything is visible to readers. Every step's
+        # reconcile summary is kept: the registry step is where re-keying and orphaned decisions show up.
+        steps: list[tuple[str, dict]] = []
+        for name, step in (("ctgov", lambda: pipeline.ingest_studies(demo_change=False)), ("openfda-label", pipeline.ingest_labels)):
+            before = pipeline.report.review
+            pipeline._run(name, step)
+            if pipeline.report.review is not before and pipeline.report.review:
+                steps.append((name, pipeline.report.review))
+        review = aggregate_summaries(steps)
+        if review.get("exclusions_changed"):
+            review["gaps_refreshed"] = refresh_dependent_gaps(session)
+            session.commit()
         typer.echo(json.dumps({
             "changes": pipeline.report.changes,
             "evidence_changes": pipeline.report.evidence_changes,
-            "review": pipeline.report.review,
+            "review": review,
             "failures": pipeline.report.failures,
         }, indent=1, default=str))
     if pipeline.report.failures:
@@ -235,6 +315,11 @@ def review_status(as_json: bool = typer.Option(False, "--json", help="Print the 
         typer.echo(f"  {evidence_type:<14} " + ", ".join(f"{status} {n}" for status, n in sorted(counts.items())))
     typer.echo(f"Open requests: {summary['open_requests_total']}   changed since review: {summary['changed_since_review_total']}   "
                f"changed since last seen: {summary['changed_since_last_seen_total']}   orphaned decisions: {summary['orphaned_decisions_total']}")
+    typer.echo(f"Held out of use after a rejection (awaiting a new decision): {summary['held_total']}   "
+               f"decisions carried to a relabelled row: {summary['decisions_carried_by_anchor_total']}")
+    if summary["orphaned_rejections_total"]:
+        typer.echo(f"WARNING: {summary['orphaned_rejections_total']} orphaned rejection(s): the excluded value may be in use again under another identity "
+                   "(see the ORPHANED_DECISION items in the review queue).")
     for orphan in summary["orphaned_decisions"][:20]:
         typer.echo(f"  orphaned: {orphan['decision']} by {orphan['reviewer']} on {orphan['evidence_type']} {orphan['evidence_key'][:12]}… ({orphan['label'] or 'evidence no longer stored'})")
     if summary["identity_collisions"]:
@@ -244,14 +329,36 @@ def review_status(as_json: bool = typer.Option(False, "--json", help="Print the 
 
 
 @review_app.command("reconcile")
-def review_reconcile(as_json: bool = typer.Option(False, "--json", help="Print the full report, including every changed row, as JSON.")) -> None:
-    """Re-key evidence, re-validate anchoring, re-derive every status from the decision ledger and report what changed. Idempotent."""
-    from .review.lifecycle import reconcile
+def review_reconcile(
+    as_json: bool = typer.Option(False, "--json", help="Print the full report, including every changed row, as JSON."),
+    check: bool = typer.Option(False, "--check", help="Dry run: report what reconcile would change, roll everything back, and exit 1 when a stored "
+                               "human status or hold is not supported by the decision ledger."),
+) -> None:
+    """Re-key evidence, re-validate anchoring, re-derive every status from the decision ledger and report what changed. Idempotent.
+
+    Every stored status it has to correct is audited (review.status_repaired) with the stored and the derived value.
+    """
+    from .db import get_sessionmaker
+    from .review.lifecycle import reconcile, refresh_dependent_gaps
 
     _schema_at_head()
+    if check:
+        session = get_sessionmaker()()
+        try:
+            outcome = reconcile(session)
+        finally:
+            session.rollback()
+            session.close()
+        typer.echo(json.dumps({**outcome.summary(), "repairs": outcome.repairs, "dry_run": True}, indent=1, default=str))
+        if outcome.repairs_total:
+            raise typer.Exit(code=1)
+        return
     with session_scope() as session:
         outcome = reconcile(session)
-    typer.echo(json.dumps(outcome.as_dict() if as_json else outcome.summary(), indent=1, default=str))
+        summary = outcome.summary()
+        if outcome.exclusions_changed:
+            summary["gaps_refreshed"] = refresh_dependent_gaps(session)
+    typer.echo(json.dumps({**outcome.as_dict(), **summary} if as_json else {**summary, "repairs": outcome.repairs}, indent=1, default=str))
 
 
 @review_app.command("export")

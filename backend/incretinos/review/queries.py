@@ -36,7 +36,7 @@ from ..models import (
     Study,
     StudyArm,
 )
-from . import identity
+from . import identity, regulatory
 from .anchoring import ANCHOR_BASIS_LABEL, FULL_TEXT, STRUCTURED_PAYLOAD, anchor
 from .lifecycle import (
     REASON_TEXT,
@@ -49,11 +49,14 @@ from .lifecycle import (
 )
 from .policy import (
     DECISIVE_DECISIONS,
+    IDENTITY_LABEL,
     MECHANICAL_STATUSES,
+    REJECTING_DECISIONS,
     REVIEWABLE_TYPES,
     RISK_ORDER,
     STATUS_ATTENTION_ORDER,
     STATUS_LABEL,
+    exclusion_reason,
     is_decisive,
     is_usable,
 )
@@ -62,6 +65,7 @@ RECHECK = VerificationStatus.SOURCE_CHANGED_RECHECK_REQUIRED.value
 _OPT_IN = {INCLUDE_REJECTED: True}
 
 SORT_KEYS = ("status", "risk", "study", "last_change")
+DOSSIER_DECISION_LIMIT = 200  # most recent decisions listed in one dossier; the total is always given
 FACETS = ("evidence_type", "status", "tier", "source_type", "drug", "risk_level", "endpoint_category", "origin", "missing_field")
 
 
@@ -89,6 +93,8 @@ class IndexRow:
     supersedes_id: int | None
     current_since: datetime | None
     search_text: str | None
+    review_hold: bool | None
+    inherited_decision_ids: list[int] | None
 
     @property
     def drugs(self) -> list[str]:
@@ -102,7 +108,7 @@ class IndexRow:
 _INDEX_COLUMNS = (
     "id", "evidence_type", "evidence_key", "natural_key", "fingerprint", "label", "study_nct", "study_name", "drug_slugs", "origin", "source_key",
     "source_type", "tier", "endpoint_category", "missing_fields", "collision_level", "mechanical_status", "effective_status", "risk_level",
-    "supersedes_id", "current_since", "search_text",
+    "supersedes_id", "current_since", "search_text", "review_hold", "inherited_decision_ids",
 )
 
 
@@ -125,7 +131,8 @@ class ReviewState:
 
 def review_state(session: Session, rows: list[IndexRow]) -> ReviewState:
     decisions = load_decision_facts(session)
-    attached, orphans = attach_decisions(((r.evidence_type, r.evidence_key, r.natural_key, r.fingerprint) for r in rows), decisions)
+    inherited = {(r.evidence_type, r.evidence_key): r.inherited_decision_ids for r in rows if r.inherited_decision_ids}
+    attached, orphans = attach_decisions(((r.evidence_type, r.evidence_key, r.natural_key, r.fingerprint) for r in rows), decisions, inherited)
     open_requests: dict[tuple[str, str], tuple[DecisionFact, ...]] = {}
     latest: dict[tuple[str, str], DecisionFact] = {}
     decided: dict[tuple[str, str], set[str]] = {}
@@ -309,7 +316,8 @@ def _row_ids(session: Session, rows: list[IndexRow]) -> dict[tuple[str, str], in
 def _decision_brief(fact: DecisionFact | None) -> dict[str, Any] | None:
     if fact is None:
         return None
-    return {"decision_id": fact.id, "decision": fact.decision, "reviewer": fact.reviewer, "decided_at": fact.decided_at, "fingerprint": fact.fingerprint}
+    return {"decision_id": fact.id, "decision": fact.decision, "reviewer": fact.reviewer, "decided_at": fact.decided_at, "fingerprint": fact.fingerprint,
+            "evidence_key": fact.evidence_key}
 
 
 def list_evidence(session: Session, filters: EvidenceFilters, *, sort: str = "status", descending: bool = False, limit: int = 50, offset: int = 0) -> dict[str, Any]:
@@ -343,7 +351,8 @@ def list_evidence(session: Session, filters: EvidenceFilters, *, sort: str = "st
             "drugs": row.drugs, "origin": row.origin, "source_key": row.source_key, "source_type": row.source_type, "tier": row.tier,
             "tier_label": _tier_label(row.tier), "endpoint_category": row.endpoint_category, "verification_status": row.effective_status,
             "status_label": STATUS_LABEL.get(row.effective_status or "", row.effective_status), "base_verification_status": row.mechanical_status,
-            "usable": is_usable(row.effective_status), "risk_level": row.risk_level or "NONE", "n_flags": len(flags), "flag_codes": [str(f.get("code")) for f in flags],
+            "usable": is_usable(row.effective_status, row.review_hold), "review_hold": bool(row.review_hold),
+            "exclusion_reason": exclusion_reason(row.effective_status, row.review_hold), "risk_level": row.risk_level or "NONE", "n_flags": len(flags), "flag_codes": [str(f.get("code")) for f in flags],
             "missing_fields": row.missing, "changed_since_last_seen": _changed_since_last_seen(row, state), "changed_since_review": row.effective_status == RECHECK,
             "changed_at": row.current_since if row.supersedes_id is not None else None, "first_seen_at": first_seen_at,
             "open_requests": len(state.open_requests.get(key, ())), "last_decision": _decision_brief(state.latest_decisive.get(key)),
@@ -394,7 +403,21 @@ def summarize(session: Session, *, list_limit: int = 100) -> dict[str, Any]:
     for fact in state.orphans:
         label, study = orphan_labels.get((fact.evidence_type, fact.evidence_key, fact.fingerprint or ""), (None, None))
         orphans.append({"decision_id": fact.id, "uid": fact.uid, "evidence_type": fact.evidence_type, "evidence_key": fact.evidence_key, "fingerprint": fact.fingerprint,
-                        "decision": fact.decision, "reviewer": fact.reviewer, "decided_at": fact.decided_at, "label": label, "study_nct": study})
+                        "decision": fact.decision, "reviewer": fact.reviewer, "decided_at": fact.decided_at, "label": label, "study_nct": study,
+                        "applicable": fact.applicable, "excluded_value_may_be_in_use": fact.decisive and fact.decision in REJECTING_DECISIONS})
+    # Rejections first: each may mean a value a reviewer excluded is in use again under another identity.
+    orphans.sort(key=lambda o: (not o["excluded_value_may_be_in_use"], -o["decision_id"]))
+    by_id = {d.id: d for facts in state.attached.values() for d in facts}
+    carried = []
+    for r in rows:
+        for decision_id in r.inherited_decision_ids or ():
+            fact = by_id.get(decision_id)
+            if fact is None:
+                continue
+            carried.append({"decision_id": fact.id, "decision": fact.decision, "reviewer": fact.reviewer, "decided_at": fact.decided_at, "evidence_type": r.evidence_type,
+                            "from_evidence_key": fact.evidence_key, "to_evidence_key": r.evidence_key, "to_label": r.label, "study_nct": r.study_nct,
+                            "to_status": r.effective_status, "review_hold": bool(r.review_hold)})
+    carried.sort(key=lambda c: (not c["review_hold"], -c["decision_id"]))
     changed_since_review = [
         {"evidence_type": r.evidence_type, "evidence_key": r.evidence_key, "label": r.label, "study_nct": r.study_nct, "changed_at": r.current_since,
          "last_decision": _decision_brief(state.latest_decisive.get((r.evidence_type, r.evidence_key)))}
@@ -415,7 +438,11 @@ def summarize(session: Session, *, list_limit: int = 100) -> dict[str, Any]:
         "open_requests_total": len(open_requests),
         "open_requests": open_requests[:list_limit],
         "orphaned_decisions_total": len(orphans),
+        "orphaned_rejections_total": sum(1 for o in orphans if o["excluded_value_may_be_in_use"]),
         "orphaned_decisions": orphans[:list_limit],
+        "held_total": sum(1 for r in rows if r.review_hold),
+        "decisions_carried_by_anchor_total": len(carried),
+        "decisions_carried_by_anchor": carried[:list_limit],
         "changed_since_review_total": len(changed_since_review),
         "changed_since_review": changed_since_review[:list_limit],
         "changed_since_last_seen_total": sum(1 for r in rows if _changed_since_last_seen(r, state)),
@@ -591,9 +618,12 @@ def _study_block(study: Study | None) -> tuple[dict[str, Any] | None, dict[str, 
 
 def _drug_blocks(session: Session, slugs: list[str | None], formulation_keys: list[str | None]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     wanted = [s for s in dict.fromkeys(slugs) if s]
+    rows = session.scalars(select(Drug).where(Drug.slug.in_(wanted))).all() if wanted else []
+    claims = regulatory.status_claims(session, [d.slug for d in rows])
     drugs = [
-        {"slug": d.slug, "name": d.name, "code_name": d.code_name, "regulatory_status": d.regulatory_status, "sponsor": d.sponsor, "route": d.route}
-        for d in (session.scalars(select(Drug).where(Drug.slug.in_(wanted))).all() if wanted else [])
+        {"slug": d.slug, "name": d.name, "code_name": d.code_name, "regulatory_status": regulatory.regulatory_view(d, claims.get(d.slug))["regulatory_status"],
+         "sponsor": d.sponsor, "route": d.route}
+        for d in rows
     ]
     keys = [k for k in dict.fromkeys(formulation_keys) if k]
     formulations = [
@@ -608,7 +638,7 @@ def _related(evidence_type: str, row: Any, relation: str) -> dict[str, Any]:
     base = {
         "evidence_type": evidence_type, "id": row.id, "evidence_key": row.evidence_key, "relation": relation, "verification_status": row.verification_status,
         "tier": getattr(row, "tier", None), "source_key": source.key if source else None, "origin": getattr(row, "origin", None),
-        "usable": is_usable(row.verification_status),
+        "usable": is_usable(row.verification_status, getattr(row, "review_hold", False)),
     }
     if evidence_type == "result":
         base.update({"label": f"{row.endpoint.title} — {row.arm_label}", "values": {
@@ -698,6 +728,8 @@ def _decision_out(decision: ReviewDecision, row: Any) -> dict[str, Any]:
         "source_key": decision.source_key, "source_content_hash": decision.source_content_hash, "source_snapshot_version": decision.source_snapshot_version,
         "status_before": decision.status_before, "status_after": decision.status_after, "proposed_correction": decision.proposed_correction,
         "recorded_under_other_key": decision.evidence_key != row.evidence_key, "imported": decision.imported_from is not None,
+        "imported_from": decision.imported_from, "ledger_match": decision.ledger_match, "identity_basis": decision.identity_basis,
+        "identity_label": IDENTITY_LABEL.get(decision.identity_basis or ""),
     }
 
 
@@ -789,10 +821,11 @@ def evidence_detail(session: Session, evidence_type: str, row: Any) -> dict[str,
         "reconciled": bool(row.evidence_key and row.fingerprint and current is not None),
         "status": {
             "verification_status": status, "label": STATUS_LABEL.get(status, status), "base_verification_status": row.base_verification_status,
-            "base_label": STATUS_LABEL.get(row.base_verification_status or "", row.base_verification_status), "usable": is_usable(status),
+            "base_label": STATUS_LABEL.get(row.base_verification_status or "", row.base_verification_status), "usable": is_usable(status, row.review_hold),
+            "review_hold": bool(row.review_hold), "exclusion_reason": exclusion_reason(status, row.review_hold),
             "reason": outcome.reason if outcome else None, "reason_text": REASON_TEXT.get(outcome.reason) if outcome else None,
-            "derived_status": outcome.status if outcome else None,
-            "decided_by": _decision_brief(decided_by), "open_requests": [_decision_out(d, row) for d in decisions if d.id in open_ids],
+            "derived_status": outcome.status if outcome else None, "derived_hold": outcome.hold if outcome else None,
+            "decided_by": _decision_brief(decided_by), "open_requests": [_decision_out(d, row) for d in decisions if d.id in open_ids][:DOSSIER_DECISION_LIMIT],
         },
         "source": _source_block(session, source, snapshot),
         "anchoring": _anchoring_block(row, quote, locator, snapshot, structured),
@@ -813,6 +846,7 @@ def evidence_detail(session: Session, evidence_type: str, row: Any) -> dict[str,
             for v in versions
         ],
         "changed_since_review": changed_since_review,
-        "decisions": [_decision_out(d, row) for d in decisions],
+        "decisions": [_decision_out(d, row) for d in decisions[:DOSSIER_DECISION_LIMIT]],
+        "decisions_total": len(decisions),
         "audit": [{"id": e.id, "at": e.at, "actor": e.actor, "action": e.action, "detail": e.detail} for e in audit_rows],
     }

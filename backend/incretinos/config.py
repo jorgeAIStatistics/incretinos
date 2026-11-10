@@ -17,8 +17,11 @@ Where settings come from, in order of precedence:
 
 from __future__ import annotations
 
+import hashlib
 import hmac
+import json
 import os
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
@@ -40,6 +43,55 @@ def _header_bytes(value: str) -> bytes:
         return value.encode("latin-1")
     except UnicodeEncodeError:
         return value.encode("utf-8", "surrogatepass")
+
+
+class ReviewerCredentialsError(ValueError):
+    """The per-reviewer credentials file is missing or malformed."""
+
+
+@dataclass(frozen=True)
+class ReviewerIdentity:
+    """Who is making a request that passed the reviewer check, and how that was established.
+
+    ``name`` is set when the token is a personal reviewer token (the name comes from the server's credentials
+    file and cannot be chosen by the client). It is None under the shared development token, where the client
+    states a name itself and every decision is labelled as self-declared.
+    """
+
+    name: str | None
+    basis: str  # policy.IDENTITY_AUTHENTICATED | policy.IDENTITY_SELF_DECLARED
+
+
+_SHA256_HEX = frozenset("0123456789abcdef")
+
+
+@lru_cache(maxsize=4)
+def _read_reviewers_file(path: str, mtime_ns: int, size: int) -> tuple[tuple[str, bytes], ...]:
+    """{reviewer name: sha256 hex of that reviewer's token} -> ((name, digest bytes), ...). Cached per file version."""
+    from .review.policy import normalise_reviewer, reviewer_problem
+
+    try:
+        document = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ReviewerCredentialsError(f"INCRETINOS_REVIEWERS_FILE {path} is not a readable JSON document: {exc}") from exc
+    if not isinstance(document, dict) or not document:
+        raise ReviewerCredentialsError(f"INCRETINOS_REVIEWERS_FILE {path} must be a non-empty JSON object {{reviewer name: sha256 hex of the token}}")
+    out: list[tuple[str, bytes]] = []
+    seen_names: set[str] = set()
+    seen_digests: set[str] = set()
+    for raw_name, digest in document.items():
+        name = normalise_reviewer(raw_name)
+        problem = reviewer_problem(name)
+        if problem:
+            raise ReviewerCredentialsError(f"INCRETINOS_REVIEWERS_FILE {path}: reviewer {raw_name!r}: {problem}")
+        if not isinstance(digest, str) or len(digest) != 64 or not set(digest.lower()) <= _SHA256_HEX:
+            raise ReviewerCredentialsError(f"INCRETINOS_REVIEWERS_FILE {path}: the value for {name!r} must be the 64-character sha256 hex digest of the token")
+        if name.casefold() in seen_names or digest.lower() in seen_digests:
+            raise ReviewerCredentialsError(f"INCRETINOS_REVIEWERS_FILE {path}: duplicate reviewer name or token digest ({name!r})")
+        seen_names.add(name.casefold())
+        seen_digests.add(digest.lower())
+        out.append((name, bytes.fromhex(digest.lower())))
+    return tuple(out)
 
 
 class Settings(BaseSettings):
@@ -65,7 +117,13 @@ class Settings(BaseSettings):
     openfda_api_key: str | None = None
 
     # Mutating endpoints (review decisions, gap triage) need this token. Unset => the API cannot write at all.
+    # A single shared token is a DEVELOPMENT mode: whoever holds it types a reviewer name, and every decision is
+    # labelled "self-declared". For real review, set reviewers_file instead.
     reviewer_token: str | None = None
+    # Per-reviewer credentials: a JSON file {"Reviewer Name": "<sha256 hex of that reviewer's token>"}. When set,
+    # only these personal tokens can write, the reviewer name is taken from the matching entry (a name sent by the
+    # client must equal it), and the shared reviewer_token is not accepted.
+    reviewers_file: Path | None = None
 
     # Optional LLM assistant. "none" keeps the deterministic assistant only.
     llm_provider: str = "none"
@@ -92,6 +150,50 @@ class Settings(BaseSettings):
 
     http_timeout_s: float = 30.0
     http_max_retries: int = 5
+
+    @property
+    def review_enabled(self) -> bool:
+        """True when some credential can write: personal reviewer tokens, or the shared development token."""
+        return bool(self.reviewers_file or self.reviewer_token)
+
+    def reviewer_credentials(self) -> tuple[tuple[str, bytes], ...]:
+        """The configured personal tokens as (name, sha256 digest). Raises ReviewerCredentialsError when unusable."""
+        if not self.reviewers_file:
+            return ()
+        path = Path(self.reviewers_file).expanduser()
+        try:
+            stat = path.stat()
+        except OSError as exc:
+            raise ReviewerCredentialsError(f"INCRETINOS_REVIEWERS_FILE points to {path}, which cannot be read: {exc}") from exc
+        return _read_reviewers_file(str(path.resolve()), stat.st_mtime_ns, stat.st_size)
+
+    def authenticate_reviewer(self, candidate: str | None) -> ReviewerIdentity | None:
+        """The identity a reviewer token establishes, or None. Never raises on odd header bytes.
+
+        With a credentials file, every configured digest is compared (constant time, no short-circuit) and the
+        shared token is ignored. Without one, the shared token gives a self-declared identity.
+        """
+        from .review.policy import IDENTITY_AUTHENTICATED, IDENTITY_SELF_DECLARED
+
+        if not candidate:
+            return None
+        if self.reviewers_file:
+            try:
+                credentials = self.reviewer_credentials()
+            except ReviewerCredentialsError:
+                return None  # a broken credentials file never falls back to the shared token
+            digests = {hashlib.sha256(_header_bytes(candidate)).digest(), hashlib.sha256(candidate.encode("utf-8", "surrogatepass")).digest()}
+            found: str | None = None
+            for name, expected in credentials:
+                hit = False
+                for digest in digests:
+                    hit |= hmac.compare_digest(digest, expected)
+                if hit and found is None:
+                    found = name
+            return ReviewerIdentity(found, IDENTITY_AUTHENTICATED) if found is not None else None
+        if self.reviewer_token_matches(candidate):
+            return ReviewerIdentity(None, IDENTITY_SELF_DECLARED)
+        return None
 
     def reviewer_token_matches(self, candidate: str | None) -> bool:
         """Constant-time comparison that never raises, whatever bytes the header carried."""

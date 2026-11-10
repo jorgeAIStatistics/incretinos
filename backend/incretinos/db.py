@@ -10,7 +10,7 @@ module and no engine, report, route or assistant module should have to remember 
   caller does can be persisted.
 * Rejected evidence is invisible. Every ORM SELECT (including relationship loads such as
   ``study.results``, counts and sub-queries) silently excludes rows whose verification status is
-  REJECTED. Inspection code that must see them opts in for one statement with
+  REJECTED, and rows under a review hold (rejected earlier, changed since, not yet decided again). Inspection code that must see them opts in for one statement with
   ``.execution_options(include_rejected=True)`` or for a block with ``rejected_visible(session)``.
 * Rebuilding derived data never destroys human-authored state. ``reset_derived_data`` empties the
   evidence tables and leaves review decisions, evidence version history, the audit log, source
@@ -27,7 +27,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import create_engine, event, inspect, text, update
+from sqlalchemy import and_, create_engine, event, false, inspect, text, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, ORMExecuteState, Session, sessionmaker, with_loader_criteria
 from starlette.requests import Request
@@ -77,8 +77,12 @@ PRESERVED_ON_RESET: tuple[str, ...] = (
 
 
 def _compact_json(value: Any) -> str:
-    """JSON columns without padding or \\u escapes: the version history stores one document per evidence row."""
-    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    """JSON columns without padding or \\u escapes: the version history stores one document per evidence row.
+
+    NaN and Infinity are refused: they are not JSON, PostgreSQL rejects them and a ledger holding them cannot be
+    restored. A caller that may receive them validates first (the review API does).
+    """
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
 
 
 def make_engine(url: str) -> Engine:
@@ -163,8 +167,8 @@ def session_scope() -> Iterator[Session]:
 
 
 def request_may_write(method: str, reviewer_token: str | None) -> bool:
-    """The whole write boundary of the HTTP API: a non-GET request that carries the configured reviewer token."""
-    return method.upper() not in SAFE_METHODS and get_settings().reviewer_token_matches(reviewer_token)
+    """The whole write boundary of the HTTP API: a non-GET request that carries a configured reviewer credential."""
+    return method.upper() not in SAFE_METHODS and get_settings().authenticate_reviewer(reviewer_token) is not None
 
 
 def get_db(request: Request = None) -> Iterator[Session]:
@@ -187,8 +191,12 @@ def _rejected_criteria() -> tuple[Any, ...]:
     from .review.policy import EXCLUDED_STATUSES
 
     excluded = sorted(EXCLUDED_STATUSES)
+    # A held row (rejected earlier; its content changed since and nobody has decided on it again) is excluded
+    # exactly like a rejected one. The column is NOT NULL with a false default, so the comparison is total.
     return tuple(
-        with_loader_criteria(model, model.verification_status.not_in(excluded), include_aliases=True, propagate_to_loaders=False)
+        with_loader_criteria(
+            model, and_(model.verification_status.not_in(excluded), model.review_hold.is_(false())), include_aliases=True, propagate_to_loaders=False
+        )
         for model in REVIEWABLE_MODELS.values()
     )
 
@@ -342,8 +350,8 @@ def upgrade_schema(revision: str = "head") -> None:
             "that did not use migrations. To keep its contents (sources, snapshots, audit log, review decisions), check "
             "that the schema matches the first migration, then run `alembic stamp 10d1699882ea && alembic upgrade head`, "
             "`alembic check` and `incretinos review reconcile`. To discard it, run `incretinos seed --reset --wipe-review-history` "
-            "(this drops every table, including recorded review decisions and the audit log; a ledger backup of evidence "
-            "decisions is written first), or delete a disposable SQLite file and seed again."
+            "(this drops every table, including recorded review decisions and the audit log; a full backup of every table "
+            "and a decision ledger are written first, and the wipe is recorded in the new database), or delete a disposable SQLite file and seed again."
         )
     command.upgrade(alembic_config(), revision)
 
@@ -378,7 +386,7 @@ def drop_schema() -> None:
 
     This destroys review decisions, evidence version history, the audit log, source snapshots and change
     events along with the derived data. The CLI calls it only for ``--reset --wipe-review-history`` (after
-    writing a ledger backup); the test suite calls it to start from nothing.
+    backing up every table and the decision ledger); the test suite calls it to start from nothing.
     """
     from . import models  # noqa: F401  (register mappers)
 

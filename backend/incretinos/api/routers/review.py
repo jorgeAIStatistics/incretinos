@@ -2,9 +2,11 @@
 
 A reviewer decides on one exact evidence version: the row identified by its evidence key and the
 content identified by its fingerprint. Reads are public and free of side effects (the product holds
-public data only); recording a decision needs the reviewer token and writes the decision, the new
-status and an audit event in one transaction. The token is compared and discarded: it is never
-logged, stored or echoed.
+public data only); recording a decision needs a reviewer credential and writes the decision, the new
+status, the refreshed evidence gaps and an audit event in one transaction. The token is compared and
+discarded: it is never logged, stored or echoed. With personal reviewer tokens the reviewer name is the
+server's; under the shared development token it is the client's and every decision says so
+(``identity_basis``).
 
 Rejected evidence is visible here, labelled, because this is where it is inspected. It is hidden
 from every analytic endpoint by the session-level rule in ``incretinos.db``.
@@ -16,9 +18,10 @@ from datetime import datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
 from sqlalchemy.orm import Session
 
+from ...config import ReviewerIdentity
 from ...db import get_db, rejected_visible
 from ...review import queries
 from ...review.lifecycle import (
@@ -29,8 +32,16 @@ from ...review.lifecycle import (
     NotReconciled,
     record_decision,
 )
-from ...review.policy import REVIEWABLE_TYPES, STATUS_LABEL, STORED_STATUSES, canonical_status, is_usable
-from ..auth import require_reviewer
+from ...review.policy import (
+    IDENTITY_LABEL,
+    REVIEWABLE_TYPES,
+    STATUS_LABEL,
+    STORED_STATUSES,
+    canonical_status,
+    exclusion_reason,
+    is_usable,
+)
+from ..auth import require_reviewer, reviewer_name
 
 router = APIRouter(prefix="/api/review", tags=["review"])
 
@@ -61,6 +72,7 @@ class DecisionBrief(_Out):
     reviewer: str
     decided_at: datetime
     fingerprint: str | None = None
+    evidence_key: str | None = Field(None, description="The evidence key the decision was recorded under (another key when it followed a relabel).")
 
 
 class EvidenceListItem(_Out):
@@ -83,6 +95,8 @@ class EvidenceListItem(_Out):
     status_label: str | None = None
     base_verification_status: str | None = None
     usable: bool
+    review_hold: bool = Field(False, description="Excluded from analytic use although not REJECTED: a rejection of an earlier version awaits a new decision.")
+    exclusion_reason: str | None = None
     risk_level: str
     n_flags: int
     flag_codes: list[str] = []
@@ -169,6 +183,10 @@ class DecisionOut(_Out):
     proposed_correction: dict[str, Any] | None = None
     recorded_under_other_key: bool = False
     imported: bool = False
+    imported_from: str | None = None
+    ledger_match: str | None = None
+    identity_basis: str | None = Field(None, description="How the reviewer name was established: AUTHENTICATED_REVIEWER_TOKEN, SELF_DECLARED_SHARED_TOKEN or IMPORTED_UNRECORDED.")
+    identity_label: str | None = None
 
 
 class StatusBlock(_Out):
@@ -177,9 +195,12 @@ class StatusBlock(_Out):
     base_verification_status: str | None = None
     base_label: str | None = None
     usable: bool
+    review_hold: bool = Field(False, description="Excluded from every analytic surface until a reviewer decides on the current version.")
+    exclusion_reason: str | None = None
     reason: str | None = None
     reason_text: str | None = None
     derived_status: str | None = Field(None, description="What the decision history yields now; equals verification_status once reconciled.")
+    derived_hold: bool | None = None
     decided_by: DecisionBrief | None = None
     open_requests: list[DecisionOut] = []
 
@@ -391,6 +412,7 @@ class EvidenceDetail(_Out):
     versions: list[VersionOut] = []
     changed_since_review: ChangedSinceReview | None = None
     decisions: list[DecisionOut] = []
+    decisions_total: int = Field(0, description="Every decision in the history; the list holds the most recent ones.")
     audit: list[AuditOut] = []
 
 
@@ -425,6 +447,22 @@ class OrphanedDecision(_Out):
     decided_at: datetime
     label: str | None = None
     study_nct: str | None = None
+    applicable: bool = Field(True, description="False for an imported decision that matched no known evidence version: never applied.")
+    excluded_value_may_be_in_use: bool = Field(False, description="A rejection that reaches no stored row: the value it excluded may be back under another identity.")
+
+
+class AnchoredDecision(_Out):
+    decision_id: int
+    decision: str
+    reviewer: str
+    decided_at: datetime
+    evidence_type: str
+    from_evidence_key: str
+    to_evidence_key: str
+    to_label: str | None = None
+    study_nct: str | None = None
+    to_status: str | None = None
+    review_hold: bool = False
 
 
 class ChangedRow(_Out):
@@ -446,26 +484,38 @@ class ReviewSummary(_Out):
     open_requests_total: int
     open_requests: list[OpenRequest]
     orphaned_decisions_total: int
+    orphaned_rejections_total: int = Field(0, description="Orphaned rejections: the value each one excluded may be in use again. Each has a HIGH review-queue item.")
     orphaned_decisions: list[OrphanedDecision] = Field(description="Decisions whose evidence no longer exists. Kept as history; never deleted.")
+    held_total: int = Field(0, description="Rows excluded from use because a rejection of an earlier version awaits a new decision.")
+    decisions_carried_by_anchor_total: int = 0
+    decisions_carried_by_anchor: list[AnchoredDecision] = Field([], description="Decisions that followed a relabel to the row now holding the same measurement.")
     changed_since_review_total: int
     changed_since_review: list[ChangedRow]
     changed_since_last_seen_total: int
     identity_collisions: int
     unreconciled_rows: dict[str, int]
     review_enabled: bool
+    reviewer_identity: Literal["PERSONAL_TOKENS", "SHARED_TOKEN_SELF_DECLARED", "READ_ONLY"] = "READ_ONLY"
+
+
+CorrectionValue = Annotated[str, Field(max_length=2000)] | Annotated[float, Field(allow_inf_nan=False)] | Annotated[StrictInt, Field(ge=-(2**53), le=2**53)] | StrictBool | None
 
 
 class ProposedCorrection(Strict):
-    changes: dict[str, str | float | int | bool | None] = Field(min_length=1, max_length=40, description="Field name (as in the row's snapshot) -> proposed value.")
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+    changes: dict[Annotated[str, Field(min_length=1, max_length=200)], CorrectionValue] = Field(
+        min_length=1, max_length=40, description="Field name (as in the row's snapshot) -> proposed value: text (2,000 characters at most), a finite number, true/false or null."
+    )
     supporting_quote: str = Field(min_length=5, max_length=4000, description="The passage in the source that supports the correction, verbatim.")
     note: str | None = Field(None, max_length=2000)
 
 
 class EvidenceDecisionRequest(Strict):
     decision: Literal["APPROVE", "REJECT", "REQUEST_INFO", "FLAG_WRONG_ATTRIBUTION", "PROPOSE_CORRECTION"]
-    reviewer: str = Field(min_length=2, max_length=120)
+    reviewer: str | None = Field(None, min_length=2, max_length=120, description="Required under the shared development token. With a personal reviewer token the name is the token's; omit it.")
     rationale: str = Field(min_length=1, max_length=4000, description="What was checked against the source. Boilerplate is refused.")
-    attest_human_review: bool = Field(False, description="Must be true for APPROVE, REJECT and FLAG_WRONG_ATTRIBUTION: a person checked this evidence against its source.")
+    attest_human_review: StrictBool = Field(False, description="Must be the JSON boolean true for APPROVE, REJECT and FLAG_WRONG_ATTRIBUTION: a person checked this evidence against its source.")
     expected_fingerprint: str = Field(pattern=r"^[0-9a-f]{64}$", description="The fingerprint of the version that was reviewed. A mismatch means the evidence changed.")
     proposed_correction: ProposedCorrection | None = None
 
@@ -482,8 +532,14 @@ class EvidenceDecisionResponse(_Out):
     status_after: str
     status_label: str | None = None
     usable: bool
+    review_hold: bool = False
+    exclusion_reason: str | None = None
     reason: str
     reason_text: str | None = None
+    reviewer: str
+    identity_basis: str
+    identity_label: str | None = None
+    gaps_refreshed: int | None = Field(None, description="Number of evidence gaps after the refresh this decision triggered (null when the row's usability did not change).")
 
 
 # --------------------------------------------------------------------------- endpoints
@@ -554,14 +610,15 @@ def evidence_by_id(evidence_type: EvidenceType, row_id: RowId, db: Db) -> dict[s
 
 @router.post("/evidence/{evidence_type}/{row_id}/decisions", response_model=EvidenceDecisionResponse)
 def decide_on_evidence(
-    evidence_type: EvidenceType, row_id: RowId, body: EvidenceDecisionRequest, db: Db, _: Annotated[str, Depends(require_reviewer)]
+    evidence_type: EvidenceType, row_id: RowId, body: EvidenceDecisionRequest, db: Db, identity: Annotated[ReviewerIdentity, Depends(require_reviewer)]
 ) -> dict[str, Any]:
-    """Record a decision on this exact evidence version. One transaction: decision, status, audit event."""
+    """Record a decision on this exact evidence version. One transaction: decision, status, dependent gaps, audit event."""
+    reviewer = reviewer_name(identity, body.reviewer)
     try:
         recorded = record_decision(
-            db, evidence_type=evidence_type, row_id=row_id, decision=body.decision, reviewer=body.reviewer, rationale=body.rationale,
+            db, evidence_type=evidence_type, row_id=row_id, decision=body.decision, reviewer=reviewer, rationale=body.rationale,
             attested=body.attest_human_review, expected_fingerprint=body.expected_fingerprint,
-            proposed_correction=body.proposed_correction.model_dump() if body.proposed_correction else None,
+            proposed_correction=body.proposed_correction.model_dump() if body.proposed_correction else None, identity_basis=identity.basis,
         )
     except EvidenceNotFound as exc:
         db.rollback()
@@ -579,8 +636,11 @@ def decide_on_evidence(
     return {
         "decision_id": recorded.decision_id, "uid": recorded.uid, "evidence_type": evidence_type, "id": row_id, "evidence_key": recorded.evidence_key,
         "fingerprint": recorded.fingerprint, "decision": recorded.decision, "status_before": recorded.status_before, "status_after": recorded.status_after,
-        "status_label": STATUS_LABEL.get(recorded.status_after), "usable": is_usable(recorded.status_after), "reason": recorded.reason,
+        "status_label": STATUS_LABEL.get(recorded.status_after), "usable": is_usable(recorded.status_after, recorded.hold_after),
+        "review_hold": recorded.hold_after, "exclusion_reason": exclusion_reason(recorded.status_after, recorded.hold_after), "reason": recorded.reason,
         "reason_text": REASON_TEXT.get(recorded.reason, "Recorded as an open request; the verification status is unchanged."),
+        "reviewer": reviewer, "identity_basis": recorded.identity_basis, "identity_label": IDENTITY_LABEL.get(recorded.identity_basis),
+        "gaps_refreshed": recorded.gaps_refreshed,
     }
 
 
@@ -589,4 +649,6 @@ def review_summary(db: Db) -> dict[str, Any]:
     """Counts by status, type, tier and drug; open requests; orphaned decisions; rows changed since review."""
     from ...config import get_settings
 
-    return {**queries.summarize(db), "review_enabled": bool(get_settings().reviewer_token)}
+    settings = get_settings()
+    mode = "PERSONAL_TOKENS" if settings.reviewers_file else ("SHARED_TOKEN_SELF_DECLARED" if settings.reviewer_token else "READ_ONLY")
+    return {**queries.summarize(db), "review_enabled": settings.review_enabled, "reviewer_identity": mode}

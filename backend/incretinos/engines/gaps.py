@@ -423,6 +423,26 @@ def refresh_gaps(session: Session) -> int:
     return len(drafts)
 
 
+def refresh_gaps_after_review(session: Session) -> int:
+    """Refresh hook for the review lifecycle: recompute the gaps after a decision changed what evidence may be used.
+
+    The gaps quote evidence values (G12 lists the conflicting reported values), so a value a reviewer rejects must
+    leave them in the same transaction as the decision. Detection always runs with analytic visibility: even when
+    the caller's session was opened for inspection (rejected rows visible), the gaps are computed as every analytic
+    surface would see the evidence.
+    """
+    from ..db import INCLUDE_REJECTED
+
+    previous = session.info.pop(INCLUDE_REJECTED, None)
+    try:
+        session.flush()
+        session.expire_all()
+        return refresh_gaps(session)
+    finally:
+        if previous is not None:
+            session.info[INCLUDE_REJECTED] = previous
+
+
 def priority(gap: EvidenceGap, weights: dict[str, float] | None = None) -> dict[str, Any]:
     weights = {**DEFAULT_WEIGHTS, **(weights or {})}
     total = sum(max(0.0, w) for w in weights.values()) or 1.0
