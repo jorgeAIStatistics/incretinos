@@ -3,9 +3,10 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { type ChartRow, type Facet, ChartFrame, ChartTable, FacetedChart, ReportsTrend } from "@/components/charts";
-import { Badge, Button, Callout, ErrorNote, Loading, PageHeader, Panel, Section, Select, SourceLine } from "@/components/ui";
+import { Badge, Button, Callout, ErrorNote, ErrorState, Loading, PageHeader, Panel, SearchField, Section, Select, SourceLine } from "@/components/ui";
 import { apiPost, fmt, titleCase, useApi } from "@/lib/api";
-import { useRows } from "@/lib/paging";
+import { useRows, useWholeList } from "@/lib/paging";
+import { formatCount } from "@/lib/format";
 import { armGroup, byRoleThenDose } from "@/lib/rows";
 
 // Incidence within the trial is the natural first view; the other measure kinds follow in the order the API lists them.
@@ -37,7 +38,7 @@ function RiskContrast({ rows, table }: { rows: any[]; table: string | null }) {
   return (
     <Panel className="mt-3 min-w-0">
       <div data-testid="risk-contrast">
-        <p className="text-[13.5px] font-semibold text-ink">Risk contrast between two arms of this trial</p>
+        <h3 className="text-[13.5px] font-semibold text-ink">Risk contrast between two arms of this trial</h3>
         {table ? <p className="mt-0.5 text-[12.5px] text-ink-2">Arms of one table only: {table}</p> : null}
         <p className="mt-0.5 text-[12.5px] text-ink-3">
           Arm B is the reference: the difference is A − B and the ratio is A ÷ B.{" "}
@@ -47,7 +48,7 @@ function RiskContrast({ rows, table }: { rows: any[]; table: string | null }) {
           <Select label="Arm A" value={a} onChange={pick(setA)} options={[{ value: "", label: "Select arm A…" }, ...options]} />
           <Select label="Arm B (reference)" value={b} onChange={pick(setB)} options={[{ value: "", label: "Select the reference arm…" }, ...options]} />
         </div>
-        <div className="mt-3"><Button variant="ghost" onClick={run} disabled={!armA || !armB || a === b}>Calculate risk difference (A − B) and risk ratio (A ÷ B)</Button></div>
+        <div className="mt-3"><Button variant="ghost" onClick={run} disabled={!armA || !armB || a === b}>Calculate the risk contrast</Button></div>
         {error ? <div className="mt-2"><ErrorNote message={error} /></div> : null}
         {contrast && armA && armB ? (
           <div className="mt-3 border-t border-hairline pt-3" data-testid="risk-contrast-result">
@@ -69,25 +70,35 @@ function RiskContrast({ rows, table }: { rows: any[]; table: string | null }) {
 
 function TrialEvents({ drug }: { drug: string }) {
   // One light request tells which trials hold which kinds of adverse-event rows, so the page opens on data rather than on an empty chart.
-  const { data: summary, error: summaryError } = useApi(`/safety/trial-ae?drug=${drug}&limit=1`);
+  const summaryRequest = useApi(`/safety/trial-ae?drug=${drug}&limit=1`);
+  const summary = summaryRequest.data;
   const coverage: any[] = summary?.coverage ?? [];
   const incidence = (c: any) => c.by_measure_kind?.[PREFERRED_KIND]?.arm_level_rows ?? 0;
   const [pickedNct, setNct] = useState<string | null>(null);
   const [pickedKind, setKind] = useState<string | null>(null);
   const [pickedTerm, setTerm] = useState<string | null>(null);
+  const [termQuery, setTermQuery] = useState("");
   const best = coverage.reduce<any>((top, c) => (!top || incidence(c) > incidence(top) || (incidence(c) === incidence(top) && c.rows > top.rows) ? c : top), null);
   const trial = coverage.find((c) => c.nct_id === pickedNct) ?? best;
   const nct: string | null = trial?.nct_id ?? null;
   const kinds: [string, any][] = trial ? Object.entries<any>(trial.by_measure_kind).sort(([x], [y]) => Number(y === PREFERRED_KIND) - Number(x === PREFERRED_KIND)) : [];
   const kind = kinds.some(([k]) => k === pickedKind) ? pickedKind : (kinds[0]?.[0] ?? null);
-  const { data: terms } = useApi(nct ? `/safety/terms?nct=${nct}` : null);
+  // Every term of the trial, read page by page: a trial can post well over a thousand serious-event terms, and the rare
+  // ones are the ones a safety reviewer looks for. The largest page the API allows keeps this to one request for most trials.
+  const termsRequest = useWholeList<any, { study?: { nct_id: string } }>(nct ? `/safety/terms?nct=${nct}&limit=5000` : null, { cap: 50_000 });
+  const terms = termsRequest.data && termsRequest.data.extra.study?.nct_id === nct ? termsRequest.data : null;
   // A term can be listed twice (once in the serious-event table, once in the other-event table): it is offered once and drawn as two panels.
-  const termOptions: any[] = terms?.study?.nct_id === nct ? terms.terms.filter((t: any, i: number, all: any[]) => t.measure_kind === kind && all.findIndex((x) => x.term === t.term && x.measure_kind === kind) === i) : [];
+  const termOptions: any[] = terms ? terms.rows.filter((t: any, i: number, all: any[]) => t.measure_kind === kind && all.findIndex((x) => x.term === t.term && x.measure_kind === kind) === i) : [];
   const term: string | null = termOptions.some((t) => t.term === pickedTerm) ? pickedTerm : (termOptions[0]?.term ?? null);
-  const { data, error, loading } = useApi(nct && kind && term ? `/safety/trial-ae?nct=${nct}&measure_kind=${kind}&term=${encodeURIComponent(term)}` : null);
+  const needle = termQuery.trim().toLowerCase();
+  const matching = needle ? termOptions.filter((t) => t.term.toLowerCase().includes(needle)) : termOptions;
+  // The selected term stays in the list while a search hides it, so the select never shows a value it does not offer.
+  const shownTerms = term && !matching.some((t) => t.term === term) ? [termOptions.find((t) => t.term === term), ...matching] : matching;
+  const request = useApi(nct && kind && term ? `/safety/trial-ae?nct=${nct}&measure_kind=${kind}&term=${encodeURIComponent(term)}` : null);
+  const data = request.data;
   const mine = (data?.rows ?? []).filter((r: any) => r.term === term && r.nct_id === nct && r.measure_kind === kind);
 
-  if (summaryError) return <ErrorNote message={summaryError} />;
+  if (summaryRequest.status === "error") return <ErrorState title="The adverse-event tables of this agent could not be loaded" message={summaryRequest.error ?? ""} onRetry={summaryRequest.reload} />;
   if (!summary) return <Loading rows={4} />;
   if (!coverage.length) return <Callout tone="muted" title="No trial adverse-event tables are on record for this agent.">Registry-posted results or curated publications are needed for within-trial incidence.</Callout>;
 
@@ -143,17 +154,36 @@ function TrialEvents({ drug }: { drug: string }) {
   const calculatedCount = allRows.filter((r) => r.calculated).length;
   return (
     <div data-testid="trial-events">
-      <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="mb-3 flex flex-wrap items-start gap-3">
         <Select
           label="Trial"
           value={nct ?? ""}
-          onChange={(v) => { setNct(v); setKind(null); setTerm(null); }}
+          onChange={(v) => { setNct(v); setKind(null); setTerm(null); setTermQuery(""); }}
           options={coverage.map((c) => ({ value: c.nct_id, label: `${c.display_name} — ${incidence(c) ? `${c.by_measure_kind[PREFERRED_KIND].arm_level_terms} event terms` : "no incidence table"}` }))}
+          className="w-full sm:w-auto"
         />
-        <Select label="What is being counted" value={kind ?? ""} onChange={(v) => { setKind(v); setTerm(null); }} options={kinds.map(([value, entry]) => ({ value, label: entry.label }))} />
-        <Select label="Event / term" value={term ?? ""} onChange={setTerm} options={termOptions.length ? termOptions.map((t) => ({ value: t.term, label: t.term })) : [{ value: "", label: terms ? "No terms of this kind" : "Loading terms…" }]} />
+        {/* The option names the count; the parenthetical of the measure's label is shown below, so the select stays narrow enough to show its value in full. */}
+        <Select label="What is being counted" value={kind ?? ""} onChange={(v) => { setKind(v); setTerm(null); }} options={kinds.map(([value, entry]) => ({ value, label: String(entry.label).replace(/\s*\(.*\)\s*$/, "") }))} hint={/\((.*)\)\s*$/.exec(String(kinds.find(([k]) => k === kind)?.[1]?.label ?? ""))?.[1]} className="w-full sm:w-auto" />
       </div>
-      {error ? <ErrorNote message={error} /> : null}
+      <div className="mb-3 grid grid-cols-1 items-start gap-3 sm:grid-cols-[16rem_minmax(0,1fr)]" data-testid="term-picker">
+        <SearchField label="Find an event term" value={termQuery} onChange={setTermQuery} placeholder="e.g. pancreatitis…" />
+        <Select
+          label="Event / term"
+          value={term ?? ""}
+          onChange={setTerm}
+          options={shownTerms.length ? shownTerms.map((t) => ({ value: t.term, label: t.term })) : [{ value: "", label: termsRequest.status === "error" ? "Terms could not be loaded" : terms ? (needle ? "No term matches the search" : "No terms of this kind") : "Loading terms…" }]}
+          hint={
+            terms ? (
+              <span data-testid="term-count">
+                {needle ? `${formatCount(matching.length)} of ${formatCount(termOptions.length)} terms of this kind match “${termQuery.trim()}”` : `All ${formatCount(termOptions.length)} terms of this kind are listed`}
+                {terms.truncated ? ` — only ${formatCount(terms.rows.length)} of the trial's ${formatCount(terms.total)} term entries could be read` : ""}.
+              </span>
+            ) : undefined
+          }
+        />
+      </div>
+      {termsRequest.status === "error" ? <div className="mb-3"><ErrorNote message={`The event terms of this trial could not be loaded. ${termsRequest.error ?? ""}`} onRetry={termsRequest.reload} /></div> : null}
+      {request.status === "error" ? <div className="mb-3"><ErrorNote message={`The adverse events for this term could not be loaded. ${request.error ?? ""}`} onRetry={request.reload} /></div> : null}
       <ChartFrame
         title={term ? `${term} — ${kindLabel}` : kindLabel}
         subtitle={
@@ -164,7 +194,7 @@ function TrialEvents({ drug }: { drug: string }) {
         }
         table={<ChartTable rows={allRows} unit="%" valueHeader="% of participants" />}
       >
-        {allRows.length ? <FacetedChart facets={facets} note={`Shown as ${facets.length} separate panels: the rows come from different sources, observation periods or event tables (serious and other) and are not added together or compared with one another.`} /> : <p className="py-5 text-[13px] text-ink-3">{loading || (term === null && !terms) ? "Loading…" : "Not reported for this trial."}</p>}
+        {allRows.length ? <FacetedChart facets={facets} note={`Shown as ${facets.length} separate panels: the rows come from different sources, observation periods or event tables (serious and other) and are not added together or compared with one another.`} /> : termsRequest.status === "error" || request.status === "error" ? <p className="py-5 text-[13px] text-ink-3">Not shown: the request above failed. Nothing is implied about whether this event was reported.</p> : request.status === "loading" || (term === null && !terms) ? <Loading rows={3} label="Loading adverse events…" /> : <p className="py-5 text-[13px] text-ink-3">Not reported for this trial.</p>}
       </ChartFrame>
       {/* A contrast is offered within one table only: arms of different sources, periods or event tables are never contrasted. */}
       {[...panels.entries()].map(([key, panel]) => (
@@ -189,7 +219,7 @@ function LabelText({ title, text }: { title: string; text: string }) {
 function Safety() {
   const params = useSearchParams();
   const router = useRouter();
-  const { data: drugs, error: drugsError } = useRows<any>("/drugs");
+  const { data: drugs, error: drugsError, reload: reloadDrugs } = useRows<any>("/drugs");
   const tracked = (drugs ?? []).filter((d) => d.tier_group !== "COMPARATOR");
   const drug = params.get("drug") ?? tracked[0]?.slug ?? null;
   const record = (drugs ?? []).find((d) => d.slug === drug);
@@ -211,22 +241,21 @@ function Safety() {
           className="w-60"
         />
       </PageHeader>
-      {drugsError ? <ErrorNote message={drugsError} /> : null}
-      {spontaneous.error ? <ErrorNote message={spontaneous.error} /> : null}
-      {!drug ? <Loading rows={6} /> : (
+      {drugsError ? <div className="mb-4"><ErrorState title="The molecule list could not be loaded" message={drugsError} onRetry={reloadDrugs} /></div> : null}
+      {!drug ? (drugsError ? null : drugs ? <Callout tone="muted" title="No tracked molecule is on record.">Safety evidence is shown per molecule once one has been ingested.</Callout> : <Loading rows={6} />) : (
         <>
           <Section title="Regulatory warnings and label changes" hint="From FDA-approved prescribing information; changes are detected by comparing stored label versions.">
-            {labelRequest.error ? <ErrorNote message={labelRequest.error} /> : !labels ? <Loading rows={3} /> : labels.labels.length ? (
+            {labelRequest.status === "error" ? <ErrorNote message={`The FDA labeling could not be loaded. ${labelRequest.error ?? ""}`} onRetry={labelRequest.reload} /> : !labels ? <Loading rows={3} /> : labels.labels.length ? (
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 {labels.labels.map((l: any) => (
                   <Panel key={l.brand} className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2"><span className="text-[14.5px] font-semibold">{l.brand}</span><span className="text-[12px] text-ink-3">label version {l.label_version} · effective {l.effective_time}</span></div>
+                    <div className="flex flex-wrap items-center gap-2"><h3 className="text-[14.5px] font-semibold">{l.brand}</h3><span className="text-[12px] text-ink-3">label version {l.label_version} · effective {l.effective_time}</span></div>
                     {l.boxed_warning ? (
                       <div className="mt-2 rounded border border-ink bg-surface px-3 py-2 text-[12.5px] leading-snug text-ink" data-testid="boxed-warning"><LabelText title="Boxed warning" text={l.boxed_warning} /></div>
                     ) : <p className="mt-2 text-[12.5px] text-ink-3">No boxed warning in this label.</p>}
                     {l.recent_major_changes ? (
                       <div className="mt-2 text-[12.5px] text-ink-2" data-testid="recent-major-changes">
-                        <p className="font-semibold text-ink">Recent major changes</p>
+                        <h4 className="font-semibold text-ink">Recent major changes</h4>
                         <ul className="mt-0.5 list-disc space-y-0.5 pl-5">{String(l.recent_major_changes).split(/(?<=\b\d{1,2}\/\d{4})\s+/).map((item, i) => <li key={i}>{item}</li>)}</ul>
                       </div>
                     ) : null}
@@ -248,7 +277,7 @@ function Safety() {
           </Section>
 
           <Section id="spontaneous" title="Spontaneous reports (FAERS)" hint="Counts of voluntary reports that mention the drug.">
-            {!sp ? (spontaneous.error ? null : <Loading rows={4} />) : (
+            {spontaneous.status === "error" ? <ErrorState title="The spontaneous-report series could not be loaded" message={spontaneous.error ?? ""} onRetry={spontaneous.reload} /> : !sp ? <Loading rows={4} /> : (
               <>
                 <Callout tone="warn" title="Why these numbers are not incidence — and not evidence of causation">
                   <ul className="mt-1 list-disc space-y-1 pl-5">{(sp.caveats ?? []).map((c: string) => <li key={c}>{c}</li>)}</ul>
@@ -262,12 +291,12 @@ function Safety() {
                         <ReportsTrend data={sp.reports_by_quarter} />
                       </ChartFrame>
                       <Panel className="mt-4" pad={false}>
-                        <p className="px-4 pt-3 text-[13.5px] font-semibold">Most frequently reported terms ({sp.top_reactions.length} listed)</p>
+                        <h3 className="px-4 pt-3 text-[13.5px] font-semibold">Most frequently reported terms ({sp.top_reactions.length} listed)</h3>
                         <div className="max-h-[300px] overflow-auto" tabIndex={0} role="region" aria-label="Most frequently reported terms"><table className="tbl"><thead><tr><th>MedDRA preferred term</th><th className="r">Reports mentioning term</th></tr></thead><tbody>{sp.top_reactions.map((r: any) => <tr key={r.term}><td>{titleCase(r.term)}</td><td className="r num">{r.count.toLocaleString()}</td></tr>)}</tbody></table></div>
                       </Panel>
                     </div>
                     <Panel pad={false} className="min-w-0">
-                      <div className="px-4 pt-3"><p className="text-[13.5px] font-semibold">Disproportionality screen</p><p className="mt-0.5 text-[12.5px] text-ink-3">{sp.disproportionality_caveats[0]}</p></div>
+                      <div className="px-4 pt-3"><h3 className="text-[13.5px] font-semibold">Disproportionality screen</h3><p className="mt-0.5 text-[12.5px] text-ink-3">{sp.disproportionality_caveats[0]}</p></div>
                       <div className="mt-2 max-h-[560px] overflow-auto" tabIndex={0} role="region" aria-label="Disproportionality screen"><table className="tbl"><thead><tr><th>Term</th><th className="r">Reports (drug)</th><th className="r">PRR (ratio)</th><th className="r">ROR (ratio)</th></tr></thead>
                         <tbody>{sp.disproportionality_screen.map((r: any) => (
                           <tr key={r.term}>
