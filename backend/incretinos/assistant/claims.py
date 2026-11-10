@@ -32,8 +32,11 @@ _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])[\"')\]]*\s+(?=[\"'(\[]*[A-Z0-9\[])")
 _WORD_RE = re.compile(r"[A-Za-z][A-Za-z0-9]*(?:[-/'][A-Za-z0-9]+)*")
 _STRONG_SEPARATOR = re.compile(r";|,?\s+\bwhereas\b|,?\s+\bwhile\b|,\s+\band\b|\s+\band\b|,?\s+\bbut\b|\bversus\b|\bvs\b|\bcompared (?:with|to)\b|\bthan\b", re.IGNORECASE)
 _CLAUSE_SEPARATOR = re.compile(r";|,?\s+\bwhereas\b|,?\s+\bwhile\b|,\s+\band\b|,\s+\bbut\b", re.IGNORECASE)
+_HEADING = re.compile(r"^((?:in summary|summary|overview|in brief|in short|to summari[sz]e|key findings)\s*:)\s+(?=\S)", re.IGNORECASE)
 _LIST_GAP = re.compile(r"^[\s,]*(?:and|or)?\s*$", re.IGNORECASE)
 # "superior to X", "non-inferior to X", "outperformed X", "beyond X": the arm that follows is the comparator
+_COMPARISON_OF = re.compile(r"\bcompar(?:ison|ing|ed)\s+(?:of\s+)?(?:the\s+)?(?:oral\s+)?$", re.IGNORECASE)
+_COMPARISON_OF_GAP = re.compile(r"\s*(?:with|to|and|versus|vs\.?|against)\s+(?:the\s+)?(?:oral\s+|once[- ]weekly\s+|subcutaneous\s+)?", re.IGNORECASE)
 _COMPARATOR_CUE = re.compile(
     r"(?:\b(?:superior|inferior|non-?inferior|equivalent|comparable|similar|identical|preferable)\s+to|\b(?:better|worse)\s+than|\boutperform(?:ed|s|ing)?|\bbeat(?:s|ing)?|\bsurpass(?:ed|es|ing)?|\bexceed(?:ed|s|ing)?|\bbeyond|\bover)"
     r"\s+(?:that of\s+|those with\s+|those of\s+|that with\s+)?(?:the\s+)?(?:oral\s+)?$"
@@ -126,6 +129,7 @@ def normalise(text: str) -> str:
     text = re.sub(r"\bper cent\b", "percent", text, flags=re.IGNORECASE)
     text = re.sub(r"(?<=\d)\s*%", "%", text)
     text = lx.NUMBER_WORD_RE.sub(lambda m: str(lx.number_word_value(m)), text)
+    text = lx.NUMBER_WORD_AFTER_RE.sub(lambda m: f"{m.group('lead')} {lx.number_word_value(m)}", text)  # "at week eighty"
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -135,6 +139,8 @@ def split_sentences(draft: str) -> list[str]:
     for pattern, replacement in _ABBREVIATIONS:
         text = pattern.sub(replacement, text)
     parts = [p.strip() for p in _SENTENCE_SPLIT.split(text) if p.strip()]
+    # a leading heading ("In summary: ...") is a sentence of its own
+    parts = [piece for part in parts for piece in (_HEADING.split(part, maxsplit=1)[1:] if _HEADING.match(part) else [part]) if piece.strip()]
     sentences: list[str] = []
     for part in parts:
         leading = re.match(r"^((?:\s*\[\s*C\d+(?:\s*[,;]\s*C\d+)*\s*\])+)\s*(.*)$", part, re.DOTALL)
@@ -191,15 +197,19 @@ class ArmMention:
     end: int
     text: str
     dose_unit: str = "mg"
+    dose_units: dict[str, str] = field(default_factory=dict)  # per component of a combination ("bimagrumab 30 mg/kg + semaglutide 2.4 mg")
 
     def as_dict(self) -> dict[str, Any]:
         return {"drugs": self.drugs, "doses": self.doses, "role": self.role, "text": self.text}
+
+    def unit_of(self, key: str) -> str:
+        return self.dose_units.get(key, self.dose_unit)
 
     def split_doses(self) -> list[ArmMention]:
         """One arm per dose for a list such as "tirzepatide 5, 10 and 15 mg"."""
         if len(self.drugs) != 1 or len(self.doses.get(self.drugs[0], [])) < 2:
             return [self]
-        return [ArmMention(list(self.drugs), {self.drugs[0]: [dose]}, self.role, self.start, self.end, self.text, self.dose_unit) for dose in self.doses[self.drugs[0]]]
+        return [ArmMention(list(self.drugs), {self.drugs[0]: [dose]}, self.role, self.start, self.end, self.text, self.dose_unit, dict(self.dose_units)) for dose in self.doses[self.drugs[0]]]
 
 
 @dataclass
@@ -247,6 +257,11 @@ class StructuredClaim:
     missing: list[str] = field(default_factory=list)
     exhaustive: list[str] = field(default_factory=list)
     negators: list[str] = field(default_factory=list)
+    causal: list[str] = field(default_factory=list)  # "led to", "because of": causation asserted
+    subgroup: list[str] = field(default_factory=list)  # words of "adults with <subgroup>"
+    event_count: int | None = None  # "801 of 6586 participants": the 801
+    carried_arms: bool = False  # the arms were carried over from an earlier clause, not written in this one
+    orientation_flipped: bool = False  # set by the verifier: comparator written as subject, with the comparative turned round
     residual_terms: list[str] = field(default_factory=list)
     problems: list[str] = field(default_factory=list)  # structural ambiguity found while reading
     # filled by the verifier
@@ -261,12 +276,13 @@ class StructuredClaim:
             self.arms or self.studies or self.unknown_studies or self.endpoints or self.magnitude is not None or self.magnitude_range or self.timepoints_weeks or self.population
             or self.estimand or self.ci or self.counts or self.p_value or self.phases or self.dates or self.numbers or self.statistical or self.endpoint_role or self.tier
             or self.verification or self.regulatory or self.missing or self.exhaustive or self.residual_terms or self.direction or self.threshold is not None or self.dispersion or self.unread
-            or self.ni_margin is not None or self.parameter
+            or self.ni_margin is not None or self.parameter or self.negators or self.causal or self.subgroup or self.event_count is not None
         )
 
     def as_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["arms"] = [arm.as_dict() for arm in self.arms]
+        data.pop("carried_arms", None)
         return {key: value for key, value in data.items() if value not in (None, [], {}, False, "")}
 
 
@@ -276,6 +292,8 @@ class SentenceReading:
     cited: list[str]
     claims: list[StructuredClaim]
     instruction: str | None = None  # injected or imperative text found in the sentence
+    anaphor: str | None = None  # "It", "Its", "That dose": refers to the previous sentence's subject
+    study_anaphor: str | None = None  # "That trial", "The study"
     hypothetical: bool = False
     comparative: bool = False
     problems: list[str] = field(default_factory=list)
@@ -372,6 +390,7 @@ def _scan_mentions(text: str, vocab: Vocabulary) -> _Reader:
     for pattern, weeks in lx.WORDED_TIME_RES:
         r.scan(pattern, "TIME", lambda m, weeks=weeks: {"weeks": weeks, "exact": False, "text": m.group(0)})
     r.scan(lx.DOSE_RE, "DOSE", lambda m: {"values": [float(v) for v in re.findall(lx.UNUM, m.group("vals"))], "unit": m.group("unit").lower().replace("milligrams", "mg").replace("milligram", "mg").replace("μ", "µ")})
+    r.scan(lx.COUNT_OF_RE, "COUNT_OF", lambda m: {"value": int(m.group("val")), "n": int(m.group("n"))})
     for pattern in lx.COUNT_RES:
         r.scan(pattern, "COUNT", lambda m: {"value": int(m.group("val"))})
     r.scan(lx.PHASE_RE, "PHASE", lambda m: {"phases": [_phase(p) for p in (m.group("p"), m.group("p2")) if p]})
@@ -484,7 +503,7 @@ def _build_arms(r: _Reader, vocab: Vocabulary) -> list[ArmMention]:
     arms: list[ArmMention] = []
     markers = r.of("CMP")
     pairs = r.of("PAIR")
-    previous_end = 0
+    previous_end, previous_start = 0, None
     for entry in raw:
         components = expand_drugs(entry["slug"]) if entry["slug"] else []
         if entry["slug"] in COMBINATION_COMPONENTS:
@@ -497,10 +516,13 @@ def _build_arms(r: _Reader, vocab: Vocabulary) -> list[ArmMention]:
         if not entry.get("forced_role"):
             if any(previous_end <= m.start and m.end <= entry["start"] for m in markers) or _COMPARATOR_CUE.search(text[max(previous_end, entry["start"] - 48) : entry["start"]]):
                 role = "COMPARATOR"
+            elif previous_start is not None and _COMPARISON_OF_GAP.fullmatch(text[previous_end : entry["start"]]) and _COMPARISON_OF.search(text[max(0, previous_start - 40) : previous_start]):
+                role = "COMPARATOR"  # "comparison of orforglipron 12 mg with oral semaglutide 7 mg"
             elif any(previous_end <= p.start and p.end <= entry["start"] for p in pairs):
                 role = "PAIR"
-        arms.append(ArmMention(components, dose_map, role, entry["start"], entry["end"], text[entry["start"] : entry["end"]], entry.get("unit", "mg")))
-        previous_end = entry["end"]
+        unit = entry.get("unit", "mg")
+        arms.append(ArmMention(components, dose_map, role, entry["start"], entry["end"], text[entry["start"] : entry["end"]], unit, {key: unit for key in dose_map}))
+        previous_end, previous_start = entry["end"], entry["start"]
     return arms
 
 
@@ -515,7 +537,8 @@ def _merge_arms(arms: list[ArmMention], text: str) -> list[ArmMention]:
                 doses = {key: list(value) for key, value in last.doses.items()}
                 for key, value in arm.doses.items():
                     doses.setdefault(key, []).extend(v for v in value if v not in doses.get(key, []))
-                merged[-1] = ArmMention(list(dict.fromkeys([*last.drugs, *arm.drugs])), doses, last.role, last.start, arm.end, text[last.start : arm.end], last.dose_unit)
+                units = {**{key: arm.unit_of(key) for key in arm.doses}, **{key: last.unit_of(key) for key in last.doses}}
+                merged[-1] = ArmMention(list(dict.fromkeys([*last.drugs, *arm.drugs])), doses, last.role, last.start, arm.end, text[last.start : arm.end], last.dose_unit, units)
                 continue
             if gap is not None and last.role == "PAIR" and lx.LOOSE_CONNECTOR_RE.fullmatch(gap):
                 arm.role = "PAIR"  # "difference between X and Y": two sides, orientation not stated
@@ -571,7 +594,7 @@ _NEITHER_ITEMS = [("CI", r"confidence interval|\bCI\b"), ("N", r"number (?:of pa
 _STATISTICAL = {"SUPERIORITY", "NEG_SUPERIORITY", "HYPOTHETICAL_SUPERIORITY", "SIGNIFICANT", "NOT_SIGNIFICANT", "NOMINAL", "NO_DIFFERENCE", "NI_MET", "NI_NOT_MET", "NI_TEST", "CI_INCLUDES_NULL", "CI_EXCLUDES_NULL"}
 
 
-def _claim_from(r: _Reader, mentions: list[Mention], arms: list[ArmMention], span_text: str, cited: list[str], free_words: list[tuple[int, int, str]]) -> StructuredClaim:
+def _claim_from(r: _Reader, mentions: list[Mention], arms: list[ArmMention], span_text: str, cited: list[str], free_words: list[tuple[int, int, str]], subgroup_at: frozenset[int] = frozenset()) -> StructuredClaim:
     claim = StructuredClaim(text=span_text.strip(), cited=cited, arms=arms)
     by_kind: dict[str, list[Mention]] = {}
     for mention in mentions:
@@ -620,6 +643,11 @@ def _claim_from(r: _Reader, mentions: list[Mention], arms: list[ArmMention], spa
             claim.problems.append("more than one responder threshold in one clause")
     claim.timepoints_weeks = list(dict.fromkeys(round(m.data["weeks"], 3) for m in sorted(by_kind.get("TIME", []), key=lambda m: m.start)))
     claim.counts = list(dict.fromkeys(m.data["value"] for m in by_kind.get("COUNT", [])))
+    if by_kind.get("COUNT_OF"):
+        claim.event_count = by_kind["COUNT_OF"][0].data["value"]
+        claim.counts = list(dict.fromkeys([*claim.counts, *(m.data["n"] for m in by_kind["COUNT_OF"])]))
+        if len(by_kind["COUNT_OF"]) > 1:
+            claim.problems.append("more than one 'n of N' count in one clause")
     if by_kind.get("DISPERSION"):
         claim.dispersion = dict(by_kind["DISPERSION"][0].data)
     margins = [m.data["value"] for m in by_kind.get("MARGIN", [])]
@@ -645,6 +673,15 @@ def _claim_from(r: _Reader, mentions: list[Mention], arms: list[ArmMention], spa
             claim.endpoints.append({"family": name[3:], "text": mention.data["text"].lower(), "variant": mention.data.get("variant")})
         elif name == "EXHAUSTIVE":
             claim.exhaustive.append(mention.data["text"].lower())
+        elif name == "CAUSAL":
+            claim.causal.append(mention.data["text"].lower())
+        elif name == "RANKING":
+            claim.statistical.append({"name": "RANKING", "text": mention.data["text"].lower()})
+        elif name == "RESPONDER_PROPORTION":
+            # "the proportion of participants ... was 20.9%": a share of people, never a mean change
+            claim.endpoints.append({"family": "RESPONDER", "text": mention.data["text"].lower(), "variant": None})
+            if claim.unit == "PCT":
+                claim.unit = "PCT_PEOPLE"
         elif name == "NEITHER_REPORTED":
             named = [item for item, pattern in _NEITHER_ITEMS if re.search(pattern, mention.data["text"], re.IGNORECASE)]
             if len(named) < 2:
@@ -653,8 +690,10 @@ def _claim_from(r: _Reader, mentions: list[Mention], arms: list[ArmMention], spa
     if by_kind.get("THRESHOLD"):
         claim.endpoints.append({"family": "RESPONDER", "text": by_kind["THRESHOLD"][0].data["text"].lower(), "variant": None})
     claim.unread = [m.data["text"] for m in by_kind.get("UNREAD", [])]
-    for _, _, word in free_words:
+    for start, _, word in free_words:
         low = word.lower()
+        if start in subgroup_at and low not in lx.NEUTRAL and low not in lx.NEGATORS:
+            claim.subgroup.append(low)
         if low in lx.NEGATORS or low.endswith("n't"):
             claim.negators.append(low)
         else:
@@ -706,15 +745,41 @@ def read_sentence(sentence: str, vocab: Vocabulary | None = None) -> SentenceRea
     cited_all = list(dict.fromkeys(cid for m in markers for cid in m.data["ids"]))
     plain = MARKER_RE.sub(lambda m: " " * len(m.group(0)), text)
     instruction = None
-    hit = lx.INSTRUCTION_RE.search(plain) or lx.IMPERATIVE_RE.search(plain)
+    hit = lx.INSTRUCTION_RE.search(plain) or lx.IMPERATIVE_RE.search(plain) or lx.RECOMMENDATION_RE.search(plain)
     if hit:
         instruction = hit.group(0).strip()
     hypothetical = bool(lx.HYPOTHETICAL_FRAME_RE.search(plain))
+    anaphor = lx.ANAPHOR_RE.search(plain)
+    study_anaphor = lx.STUDY_ANAPHOR_RE.search(plain)
 
     arms_all = _merge_arms(_build_arms(r, vocab), text)
     content = [m for m in r.mentions if m.kind not in ("MARKER", "DRUG", "DOSE", "PLACEBO_ADJUSTED")]
-    words = [(m.start(), m.end(), m.group(0)) for m in _WORD_RE.finditer(plain) if r.free(m.start(), m.end())]
-    anchors = r.of("MAG", "RANGE")
+    # Words nothing has read. A compound read only in part ("Reviewer-confirmed", "Expert-checked") leaves its other parts to check.
+    words: list[tuple[int, int, str]] = []
+    for m in _WORD_RE.finditer(plain):
+        if r.free(m.start(), m.end()):
+            words.append((m.start(), m.end(), m.group(0)))
+            continue
+        for part in re.finditer(r"[A-Za-z0-9]+", m.group(0)):
+            start, end = m.start() + part.start(), m.start() + part.end()
+            if r.free(start, end) and re.match(r"[A-Za-z]", part.group(0)) and len(part.group(0)) > 1:  # not the "s" of "ACHIEVE-3's"
+                words.append((start, end, part.group(0)))
+    subgroup_at: set[int] = set()
+    for match in lx.SUBGROUP_RE.finditer(plain):
+        for start, _end, word in (w for w in words if w[0] >= match.end()):
+            between = plain[match.end() : start]
+            if not r.free(match.end(), start) or re.search(r"[,;.()]", between):
+                break
+            low = word.lower()
+            if low in ("and", "or", "a", "an"):
+                continue
+            if low in lx.NEUTRAL or low in lx.NEGATORS or len(subgroup_at) >= 6:
+                break
+            subgroup_at.add(start)
+    subgroup_at_frozen = frozenset(subgroup_at)
+    # "801 of 6586" is a value of its own clause too, unless it stands in brackets after a value ("8.4% (801 of 6586)")
+    depth_at = _depths(text)
+    anchors = sorted([*r.of("MAG", "RANGE"), *(m for m in r.of("COUNT_OF") if depth_at[m.start] == 0)], key=lambda m: m.start)
 
     def cited_for(start: int, end: int) -> list[str]:
         own = list(dict.fromkeys(cid for m in markers if start <= m.start < end for cid in m.data["ids"]))
@@ -733,7 +798,7 @@ def read_sentence(sentence: str, vocab: Vocabulary | None = None) -> SentenceRea
     )
     if list_mode:
         # "X and Y produced a and b, respectively": pair by position; everything else is shared
-        shared = [m for m in content if m.kind not in ("MAG", "RANGE", "CI", "CMP", "PAIR")]
+        shared = [m for m in content if m.kind not in ("MAG", "RANGE", "COUNT_OF", "CI", "CMP", "PAIR")]
         times = [m for m in shared if m.kind == "TIME"]
         zip_times = len(times) == len(anchors) and len({round(t.data["weeks"], 3) for t in times}) > 1
         for index, (arm, anchor) in enumerate(zip(arms_all, anchors, strict=True)):
@@ -743,7 +808,7 @@ def read_sentence(sentence: str, vocab: Vocabulary | None = None) -> SentenceRea
             unit_mentions = [anchor, *own_ci, *(m for m in shared if not (zip_times and m.kind == "TIME"))]
             if zip_times:
                 unit_mentions.append(times[index])
-            claims.append(_claim_from(r, unit_mentions, [arm], text, cited_all, words))
+            claims.append(_claim_from(r, unit_mentions, [arm], text, cited_all, words, subgroup_at_frozen))
     else:
         if len(anchors) >= 2:
             points = _split_points(r, anchors)
@@ -766,7 +831,7 @@ def read_sentence(sentence: str, vocab: Vocabulary | None = None) -> SentenceRea
         for start, end in zip(bounds, bounds[1:], strict=False):
             unit_mentions = [m for m in content if start <= m.start < end]
             unit_arms = [a for a in arms_all if start <= a.start < end]
-            has_anchor = any(m.kind in ("MAG", "RANGE") for m in unit_mentions)
+            has_anchor = any(m.kind in ("MAG", "RANGE", "COUNT_OF") for m in unit_mentions)
             if start > 0 and has_anchor and unit_arms:
                 # a contrast word opening a valued clause ("... versus 3.1% with placebo") separates two results; it is not a comparator relation
                 first = min(unit_arms, key=lambda a: a.start)
@@ -780,18 +845,24 @@ def read_sentence(sentence: str, vocab: Vocabulary | None = None) -> SentenceRea
                     arm.drugs = [drug]
                     arm.doses = {drug: arm.doses.get("", [])}
             own_treatment = [a for a in unit_arms if a.role != "COMPARATOR"]
+            carried_arms = False
             if not own_treatment and previous_treatment and start > 0:
                 unit_arms = [*previous_treatment, *unit_arms]
+                carried_arms = True
             elif own_treatment:
                 previous_treatment = own_treatment
             unit_words = [w for w in words if start <= w[0] < end]
-            claim = _claim_from(r, unit_mentions, unit_arms, text[start:end], cited_for(start, end), unit_words)
+            claim = _claim_from(r, unit_mentions, unit_arms, text[start:end], cited_for(start, end), unit_words, subgroup_at_frozen)
+            claim.carried_arms = carried_arms
             carried = (claims[-1].base_direction or claims[-1].direction) if claims else None
-            if claim.base_direction is None and not claim.magnitude_signed and carried in ("DECREASE", "INCREASE"):
+            # the verb carries over only into a clause that has a value of its own ("..., 17.8 points more than placebo"),
+            # never into a clause that states something else ("...; retatrutide remains investigational")
+            if has_anchor and claim.base_direction is None and not claim.magnitude_signed and carried in ("DECREASE", "INCREASE"):
                 # "lost 20.9% versus 3.1% with placebo", "reduced weight by 20.9%, 17.8 points more than placebo":
                 # the verb carries over, and a comparative of this clause ("less than") still turns it round
                 claim.base_direction = carried
                 claim.direction = {"DECREASE": "INCREASE", "INCREASE": "DECREASE"}[carried] if claim.comparative_polarity == "DOWN" else carried
             claims.append(claim)
     comparative = any(c.comparative or any(s["name"] == "SUPERIORITY" for s in c.statistical) for c in claims) and any(m.data["text"] in ("than", "versus", "vs", "compared with", "compared to", "relative to", "against") for m in r.of("CMP"))
-    return SentenceReading(text=sentence, cited=cited_all, claims=claims, instruction=instruction, hypothetical=hypothetical, comparative=comparative, problems=problems)
+    return SentenceReading(text=sentence, cited=cited_all, claims=claims, instruction=instruction, hypothetical=hypothetical, comparative=comparative, problems=problems,
+                           anaphor=anaphor.group(0).strip() if anaphor else None, study_anaphor=study_anaphor.group(0).strip() if study_anaphor else None)
