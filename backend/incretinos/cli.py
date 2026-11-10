@@ -211,7 +211,10 @@ def serve(host: str = "127.0.0.1", port: int = 8000, reload: bool = False) -> No
     import uvicorn
 
     typer.echo(describe_settings_sources(), err=True)
-    uvicorn.run("incretinos.api.main:app", host=host, port=port, reload=reload)
+    # proxy_headers=False: uvicorn would otherwise replace the client address with X-Forwarded-For for every
+    # connection from 127.0.0.1, which is where the web application's proxy connects from, and the browser can
+    # forge that header. Trusted proxies are declared to the application instead (RATE_LIMIT_TRUSTED_PROXIES).
+    uvicorn.run("incretinos.api.main:app", host=host, port=port, reload=reload, proxy_headers=False)
 
 
 # --------------------------------------------------------------------------- review

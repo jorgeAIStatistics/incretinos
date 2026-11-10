@@ -30,7 +30,6 @@ from dataclasses import dataclass
 from typing import Annotated, Any, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request
-from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -112,7 +111,7 @@ from ..reports.export import comparison_report_markdown, study_report_markdown
 from ..review.policy import STATUS_LABEL, canonical_status, is_usable, reviewer_problem
 from ..vocab import norm_arm_label
 from .auth import require_reviewer
-from .limits import limit_assistant, limit_simulation
+from .limits import RequestBodyLimitMiddleware, RouteBudgetMiddleware, limit_assistant, limit_simulation
 from .routers.review import router as review_router
 
 settings = get_settings()
@@ -167,6 +166,10 @@ app = FastAPI(
     redoc_url="/redoc" if settings.docs_enabled else None,
     openapi_url="/openapi.json" if settings.docs_enabled else None,
 )
+# Innermost first. Both run before routing: an oversized body is refused before it is read or parsed, and a used-up
+# query budget before any work is done.
+app.add_middleware(RequestBodyLimitMiddleware)
+app.add_middleware(RouteBudgetMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in settings.cors_origins.split(",") if o.strip()],
@@ -214,24 +217,41 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.include_router(review_router)
 
 
-def _json_safe(value: Any) -> Any:
-    """A validation error echoes the rejected input. NaN and infinities are not valid JSON, so they are spelled out."""
-    if isinstance(value, float) and not math.isfinite(value):
-        return "NaN" if math.isnan(value) else ("Infinity" if value > 0 else "-Infinity")
-    if isinstance(value, dict):
-        return {str(k): _json_safe(v) for k, v in value.items()}
-    if isinstance(value, list | tuple):
-        return [_json_safe(v) for v in value]
-    if isinstance(value, BaseException):
-        return str(value)
-    return value
+# A validation error names where the request is wrong and why, never what was sent: the rejected input can be as
+# large as the body limit, and echoing it multiplied the cost of a bad request (and could hold text that cannot be
+# encoded). The message is FastAPI's usual ``{"detail": [{"type", "loc", "msg"}]}``.
+MAX_VALIDATION_ERRORS = 20
+_MAX_ERROR_TEXT = 300
+_MAX_LOCATION_TEXT = 80
+
+
+def _error_text(value: Any, limit: int) -> str:
+    """Bounded text that always encodes as UTF-8 (a lone surrogate is spelled out as ``\\udXXXX``)."""
+    text = str(value)
+    if len(text) > limit:
+        text = text[:limit] + "…"
+    return text.encode("utf-8", "backslashreplace").decode("utf-8")
+
+
+def _location(part: Any) -> int | str:
+    return part if isinstance(part, int) and not isinstance(part, bool) else _error_text(part, _MAX_LOCATION_TEXT)
+
+
+def validation_detail(errors: list[Any]) -> list[dict[str, Any]]:
+    detail: list[dict[str, Any]] = [
+        {"type": _error_text(e.get("type", "value_error"), 60), "loc": [_location(p) for p in e.get("loc", ())], "msg": _error_text(e.get("msg", ""), _MAX_ERROR_TEXT)}
+        for e in errors[:MAX_VALIDATION_ERRORS]
+    ]
+    if len(errors) > MAX_VALIDATION_ERRORS:
+        detail.append({"type": "too_many_errors", "loc": [], "msg": f"{len(errors) - MAX_VALIDATION_ERRORS} further errors are not listed."})
+    return detail
 
 
 @app.exception_handler(RequestValidationError)
 async def invalid_request(_: Request, exc: RequestValidationError) -> JSONResponse:
-    """422 in FastAPI's usual shape. Without this, a body containing NaN or Infinity is rejected by validation but the
-    error report itself cannot be serialised, and the client receives a 500 instead of the reason."""
-    return JSONResponse(status_code=422, content={"detail": jsonable_encoder(_json_safe(exc.errors()))})
+    """422 with the location, type and message of each problem (at most MAX_VALIDATION_ERRORS of them) and no
+    input values. It can always be serialised, whatever the input held (NaN, Infinity, lone surrogates)."""
+    return JSONResponse(status_code=422, content={"detail": validation_detail(exc.errors())})
 
 
 Db = Annotated[Session, Depends(get_db)]

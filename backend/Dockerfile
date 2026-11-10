@@ -26,5 +26,7 @@ ENV INCRETINOS_FIXTURE_DIR=/app/fixtures INCRETINOS_CURATED_DIR=/app/incretinos/
     INCRETINOS_MIGRATIONS_DIR=/app/alembic INCRETINOS_BENCHMARK_DIR=/app/benchmarks/claims INCRETINOS_ENV_FILE=none
 EXPOSE 8000
 # Migrate (the same code path as `incretinos init-db` anywhere else), seed from offline fixtures when the database
-# is empty, then serve. exec makes the server PID 1 so that it receives the stop signal.
-CMD ["sh", "-c", "incretinos init-db && python -m incretinos.bootstrap && exec uvicorn incretinos.api.main:app --host 0.0.0.0 --port 8000"]
+# is empty, then serve. exec makes the server PID 1 so that it receives the stop signal. --no-proxy-headers: the
+# client address is the socket peer; X-Forwarded-For is read by the application, and only from the proxies listed
+# in INCRETINOS_RATE_LIMIT_TRUSTED_PROXIES.
+CMD ["sh", "-c", "incretinos init-db && python -m incretinos.bootstrap && exec uvicorn incretinos.api.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers"]

@@ -18,11 +18,12 @@ Where settings come from, in order of precedence:
 from __future__ import annotations
 
 import hmac
+import ipaddress
 import os
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
@@ -79,16 +80,40 @@ class Settings(BaseSettings):
     # Interactive API documentation (/docs, /redoc, /openapi.json). Off unless asked for.
     docs_enabled: bool = False
 
-    # In-process request budgets for the two expensive unauthenticated endpoints, per client and per
-    # process (they multiply by the number of worker processes). 0 disables a budget.
+    # In-process request budgets for the expensive unauthenticated endpoints, per client and per process (they
+    # multiply by the number of worker processes). 0 disables a budget. "query" covers the heaviest open reads
+    # (validation report, findings, analyses, trial adverse events, the evidence review list and summary).
     rate_limit_enabled: bool = True
     rate_limit_simulation_per_minute: int = Field(30, ge=0, le=100_000)
     rate_limit_assistant_per_minute: int = Field(60, ge=0, le=100_000)
-    # Number of trusted reverse proxies in front of the API that APPEND the client address to X-Forwarded-For.
-    # 0 = identify clients by the socket peer address and ignore the header; n = use the n-th address from the
-    # right. The bundled Next.js proxy does not append anything (it forwards whatever the browser sent), so
-    # behind it this must stay 0, and all of its users then share one budget.
+    rate_limit_query_per_minute: int = Field(120, ge=0, le=100_000)
+    # Reverse proxies whose X-Forwarded-For is believed: comma-separated IP addresses or CIDR networks.
+    # Empty (the default) = clients are identified by the socket peer address and the header is never read,
+    # whoever sends it. The bundled Next.js proxy forwards whatever the browser sent, so it must NOT be listed.
+    rate_limit_trusted_proxies: str = ""
+    # Used only for a request whose socket peer is one of the trusted proxies above: the number of proxies that
+    # APPEND the client address, so the client is the n-th address from the right. 0 = walk the header from the
+    # right and take the first address that is not itself a trusted proxy.
     rate_limit_proxy_hops: int = Field(0, ge=0, le=10)
+
+    # Largest request body accepted, in bytes, checked before the body is parsed (413 otherwise). The first is
+    # the ceiling for every route a caller can reach without the reviewer token (calculation routes have tighter
+    # limits of their own, set by what their schemas can hold: api/limits.py); the second applies to the reviewer
+    # write routes, and only when a reviewer token header is present.
+    max_request_body_bytes: int = Field(64 * 1024, ge=1024, le=16 * 1024 * 1024)
+    max_review_body_bytes: int = Field(256 * 1024, ge=1024, le=16 * 1024 * 1024)
+
+    @field_validator("rate_limit_trusted_proxies")
+    @classmethod
+    def _proxies_are_addresses(cls, value: str) -> str:
+        """A misspelt proxy address must fail at start-up, not silently trust nobody (or everybody)."""
+        for part in (p.strip() for p in value.split(",")):
+            if part:
+                try:
+                    ipaddress.ip_network(part, strict=False)
+                except ValueError as exc:
+                    raise ValueError(f"INCRETINOS_RATE_LIMIT_TRUSTED_PROXIES: {part!r} is not an IP address or network") from exc
+        return value
 
     http_timeout_s: float = 30.0
     http_max_retries: int = 5
