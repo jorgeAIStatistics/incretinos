@@ -51,7 +51,10 @@ test("vertical slice: trial → publication → results → comparison → cited
   await expect(result).toContainText("there is no randomization between these groups");
   await expect(result).toContainText("TRIUMPH-5");
   await expect(result).toContainText("Do not state or imply that");
-  await expect(result).toContainText("Confidence interval: not available");
+  // Week 80 against week 72 are not the same quantity (CMP-2): no A − B is formed, and the page says why in the
+  // comparison's own words. (Where a difference is formed it states that no interval is available: see below.)
+  await expect(page.getByTestId("descriptive-difference")).toHaveCount(0);
+  await expect(result).toContainText("No arithmetic difference is given: assessment time point (week 80 versus week 72)");
   await shot(page, "04-comparison-laboratory");
 
   const href = await page.getByRole("link", { name: /Export cited report/ }).getAttribute("href");
@@ -59,6 +62,7 @@ test("vertical slice: trial → publication → results → comparison → cited
   expect(report.ok()).toBeTruthy();
   const markdown = await report.text();
   expect(markdown).toContain("DESCRIPTIVE CROSS-STUDY COMPARISON");
+  expect(markdown).toContain("Not computed. No arithmetic difference is given: assessment time point (week 80 versus week 72)");
   expect(markdown).toContain("## Sources");
   expect(markdown).toContain("pubmed.ncbi.nlm.nih.gov/35658024");
   expect(markdown).toContain("content hash:");
@@ -70,6 +74,7 @@ test("within-trial comparison shows the registry analysis; estimand mismatch is 
   await expect(page.getByTestId("classification")).toHaveText("Direct randomized comparison");
   await expect(page.getByTestId("comparison-result")).toContainText("Reported between-arm analysis");
   await expect(page.getByTestId("comparison-result")).toContainText("95% CI");
+  await expect(page.getByTestId("descriptive-difference")).toContainText("Confidence interval: not available");
 
   await page.goto("/compare");
   await page.getByRole("link", { name: /ATTAIN-1 36 mg: efficacy estimand vs treatment-regimen estimand/ }).click();

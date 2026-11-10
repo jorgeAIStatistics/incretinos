@@ -139,6 +139,11 @@ test("DEMO A: a pending curated result is checked against its source and rejecte
   await expect(history.getByTestId("decision-entry")).toHaveCount(1);
   await expect(history).toContainText(new RegExp(`Reject\\s+by ${REVIEWER}`));
   await expect(history).toContainText(rationale);
+  // The server's account of the decision: how the reviewer was named (the shared e2e token: self-declared) and why
+  // the row is now excluded.
+  await expect(history.getByTestId("decision-identity")).toContainText("Self-declared");
+  await expect(page.getByTestId("exclusion-reason")).toContainText("Rejected in review");
+  await expect(page.getByTestId("last-recorded")).toContainText(`as ${REVIEWER}`);
   await expect(page.getByTestId("audit-trail").getByTestId("audit-entry").filter({ hasText: "review.evidence_decision" })).toContainText(REVIEWER);
 
   const after = await detailOf(request, target.evidence_key);
@@ -271,4 +276,29 @@ test("on a phone the record is shown in tabs without sideways scrolling", async 
   await page.goto("/review");
   await expect(page.getByTestId("queue-record-link").first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+});
+
+test("the legacy review queue on the Sources page links each item to the Evidence Review workbench", async ({ page, request }) => {
+  const queue = await (await request.get("/api/review-queue?limit=50")).json();
+  const items: { item_type: string; payload: { source_key?: string } | null }[] = queue.rows ?? queue;
+  const sourceChange = items.find((i) => i.item_type === "SOURCE_CHANGE" && i.payload?.source_key);
+  test.skip(!sourceChange, "no source-change item in the e2e queue");
+  await page.goto("/sources?tab=changes");
+  const link = page.getByTestId("legacy-open-in-review").first();
+  await expect(link).toHaveText("Open in Evidence Review");
+  await expect(link).toHaveAttribute("href", `/review?source_key=${encodeURIComponent(sourceChange!.payload!.source_key!)}`);
+  await link.click();
+  await expect(page).toHaveURL(/\/review\?source_key=/);
+  await expect(page.getByRole("heading", { level: 1, name: "Evidence Review" })).toBeVisible();
+
+  // An orphaned review decision (its evidence no longer exists) links to the review summary. The item is added to
+  // the answer in the browser only.
+  await page.route("**/api/review-queue?*", async (route) => {
+    const body = await (await route.fetch()).json();
+    const orphan = { id: 990001, item_type: "ORPHANED_DECISION", target_type: "review_decision", target_id: 1, title: "Orphaned review decision: injected by the test", reason: "Injected in the browser.", priority: "HIGH", status: "OPEN", payload: {}, created_at: "2026-11-09T00:00:00Z" };
+    await route.fulfill({ json: Array.isArray(body) ? [orphan, ...body] : { ...body, rows: [orphan, ...body.rows], total: (body.total ?? body.rows.length) + 1 } });
+  });
+  await page.goto("/sources?tab=changes");
+  const row = page.getByRole("row").filter({ hasText: "Orphaned review decision: injected by the test" });
+  await expect(row.getByTestId("legacy-open-in-review")).toHaveAttribute("href", "/review#review-summary");
 });

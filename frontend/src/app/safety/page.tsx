@@ -108,7 +108,8 @@ function TrialEvents({ drug }: { drug: string }) {
     return {
       key: String(r.id),
       label: r.arm_label,
-      meta: [r.arm_role === "UNCLASSIFIED" && r.arm_role_basis ? r.arm_role_basis : null].filter(Boolean) as string[],
+      // An arm that is neither placebo, comparator nor study drug says why (an unclassified arm, or a treatment sequence).
+      meta: [(r.arm_role === "UNCLASSIFIED" || r.arm_role === "SEQUENCE") && r.arm_role_basis ? r.arm_role_basis : null].filter(Boolean) as string[],
       value: r.percent_reported ?? r.percent_calculated,
       unit: "%",
       group: armGroup(r),

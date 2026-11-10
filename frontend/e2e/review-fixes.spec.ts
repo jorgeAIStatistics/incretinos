@@ -138,9 +138,27 @@ test("WEB-02: where one source reports both estimands, each arm's two rows come 
 
 test("WEB-03: a control arm stored as its own endpoint record stays on the chart of its active arms", async ({ page, request }) => {
   const study = await json(request, "/studies/NCT05869903");
-  const groups = study.endpoint_groups.filter((g: any) => g.category === "WEIGHT_PCT_CHANGE" && g.origin === "CURATED");
+  const isLabelRow = (r: any) => r.tier === "REGULATORY_LABEL" && r.estimand_label === "TREATMENT_REGIMEN" && isPercentChange(r.unit) && r.value != null;
+  const curated = (body: any) => body.endpoint_groups.filter((g: any) => g.category === "WEIGHT_PCT_CHANGE" && g.origin === "CURATED");
+  if (new Set(curated(study).flatMap((g: any) => g.results).filter(isLabelRow).map((r: any) => r.endpoint_id)).size < 2) {
+    // The data repair (DR-1) stores the label's table as one endpoint record. The split this test is about (placebo in
+    // one record, the active arms in another that differs only in multiplicity control) is recreated in the browser
+    // only, exactly as the seed held it before the repair.
+    const split = (body: any) => {
+      const source = curated(body).find((g: any) => g.results.some((r: any) => isLabelRow(r) && /placebo/i.test(r.arm_label)));
+      const control = source.results.filter((r: any) => isLabelRow(r) && /placebo/i.test(r.arm_label));
+      const copyId = 990000 + source.endpoint_id;
+      source.results = source.results.filter((r: any) => !control.includes(r));
+      const other = source.multiplicity_controlled === "YES" ? "NOT_STATED" : "YES";
+      body.endpoint_groups.push({ ...source, endpoint_id: copyId, multiplicity_controlled: other, analyses: [], results: control.map((r: any) => ({ ...r, endpoint_id: copyId, multiplicity_controlled: other })) });
+      return body;
+    };
+    split(study);
+    await page.route("**/api/studies/NCT05869903", async (route) => route.fulfill({ json: split(await (await route.fetch()).json()) }));
+  }
+  const groups = curated(study);
   // The FDA label's table is stored as two records: placebo in one, the three active arms in the other.
-  const label = groups.flatMap((g: any) => g.results).filter((r: any) => r.tier === "REGULATORY_LABEL" && r.estimand_label === "TREATMENT_REGIMEN" && isPercentChange(r.unit) && r.value != null);
+  const label = groups.flatMap((g: any) => g.results).filter(isLabelRow);
   expect(new Set(label.map((r: any) => r.endpoint_id)).size, "the label's rows are stored as more than one endpoint record").toBeGreaterThan(1);
   await page.goto("/trials/NCT05869903");
   const hero = page.getByTestId("hero-chart");

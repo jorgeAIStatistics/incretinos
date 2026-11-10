@@ -195,7 +195,20 @@ test("WEB-02: a posted confidence level that is not a level is named as invalid,
 test("FE-1: an estimate the API does not establish as a difference or a ratio is written as neither", async ({ page, request }) => {
   const analyses = (await json(request, "/analyses?limit=1500")).rows;
   // For example a parameter named "Estimated treatment difference" with its unit recorded as "ratio" (bioequivalence).
-  const odd = analyses.find((a: any) => a.effect_scale?.scale === "NOT_ESTABLISHED" && a.unit === "ratio" && a.estimate != null && a.comparator_label);
+  let odd = analyses.find((a: any) => a.effect_scale?.scale === "NOT_ESTABLISHED" && a.unit === "ratio" && a.estimate != null && a.comparator_label);
+  if (!odd) {
+    // The data repair (DR-8) gave the seed's ratios of geometric means their own parameter type, so the API now
+    // establishes every stored scale. The page must still follow the API: one ratio analysis is answered, in the
+    // browser only, as an estimate whose scale the API does not establish.
+    const ratio = analyses.find((a: any) => a.unit === "ratio" && a.estimate != null && a.comparator_label);
+    expect(ratio, "an analysis with a ratio unit to present as not established").toBeTruthy();
+    odd = { ...ratio, effect_scale: { ...ratio.effect_scale, scale: "NOT_ESTABLISHED", basis: "Injected by the test: the API does not establish this estimate as a difference or a ratio." } };
+    await page.route(`**/api/studies/${odd.nct_id}`, async (route) => {
+      const body = await (await route.fetch()).json();
+      for (const g of body.endpoint_groups) g.analyses = g.analyses.map((a: any) => (a.id === odd.id ? { ...a, effect_scale: odd.effect_scale } : a));
+      await route.fulfill({ json: body });
+    });
+  }
   expect(odd, "an analysis whose scale the API calls not established").toBeTruthy();
   await page.goto(`/trials/${odd.nct_id}`);
   const group = page.locator(`[data-endpoint-ids~="${odd.endpoint_id}"]`);
@@ -512,8 +525,8 @@ test("WEB-05: arm roles come from data — semaglutide arms are active comparato
   await field(events, "Trial").selectOption("NCT05616013");
   await field(events, "Event / term").selectOption("Nausea");
   await expect(events.getByTestId("chart-row")).toHaveCount(arms.length);
-  const roleName: Record<string, string> = { PLACEBO: "Placebo", ACTIVE_COMPARATOR: "Active comparator", STUDY_DRUG: "Study drug", UNCLASSIFIED: "Arm role not classified" };
-  const groupName: Record<string, string> = { PLACEBO: "control", ACTIVE_COMPARATOR: "comparator", STUDY_DRUG: "active", UNCLASSIFIED: "other" };
+  const roleName: Record<string, string> = { PLACEBO: "Placebo", ACTIVE_COMPARATOR: "Active comparator", STUDY_DRUG: "Study drug", SEQUENCE: "Treatment sequence", UNCLASSIFIED: "Arm role not classified" };
+  const groupName: Record<string, string> = { PLACEBO: "control", ACTIVE_COMPARATOR: "comparator", STUDY_DRUG: "active", SEQUENCE: "sequence", UNCLASSIFIED: "other" };
   for (const r of arms) {
     const row = events.locator(`[data-testid="chart-row"][data-row-key="${r.id}"]`);
     await expect(row).toContainText(r.arm_label);
@@ -535,8 +548,11 @@ test("WEB-05: arm roles come from data — semaglutide arms are active comparato
   await expect(legend).toContainText("† Calculated here from the reported counts; not a percentage reported by the source");
   await expect(legend).not.toContainText("Placebo");
   await expect(events.getByTestId("ae-caption")).toContainText("Every percentage shown here was calculated from the reported counts");
-  // A switch arm registered as placebo is explained, not coloured as placebo.
-  await expect(events.getByTestId("chart-row").filter({ hasText: "Placebo/30 mg/kg Bimagrumab" })).toContainText("It is not treated as placebo");
+  // A switch arm registered as placebo is explained, not coloured as placebo. Since the data repair it is stored as a
+  // treatment sequence (arm role SEQUENCE): placebo in one period, the study drug in another.
+  const switchArm = events.getByTestId("chart-row").filter({ hasText: "Placebo/30 mg/kg Bimagrumab" });
+  await expect(switchArm).toContainText("it is neither a placebo arm nor an arm of that drug");
+  await expect(switchArm).toHaveAttribute("data-group", "sequence");
 
   // With no pure placebo arm there is no default reference arm, and no contrast is offered until the reader picks both arms.
   const contrast = events.getByTestId("risk-contrast");
