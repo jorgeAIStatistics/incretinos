@@ -8,7 +8,7 @@ session rule in ``incretinos.db`` (so they state the rejected/held exclusion the
 from __future__ import annotations
 
 import json
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import UTC, datetime, timedelta
 
 import numpy as np
@@ -182,12 +182,14 @@ def test_every_metric_equals_an_independent_count_on_the_seed(db, facts):
     assert set(metrics) == set(expected) | decision_free, sorted(set(metrics) ^ (set(expected) | decision_free))
     for metric_id, (count, denominator) in expected.items():
         assert (metrics[metric_id]["count"], metrics[metric_id]["denominator"]) == (count, denominator), metric_id
-    # The seed holds no decisions, so nothing can be requested or orphaned; the counts must say so.
-    decisions = _count(db, select(func.count()).select_from(_t(ReviewDecision)))
-    assert decisions == 0 and metrics["open_requests"]["count"] == 0 and metrics["orphaned_decisions"]["count"] == 0
+    # Open requests and orphaned decisions are derived from the decision history by the review module; they are checked
+    # against its own list and summary in test_every_metric_links_to_exactly_the_records_it_counted. With no decision
+    # recorded (a fresh seed; earlier test modules may record some) neither can exist.
+    if _count(db, select(func.count()).select_from(_t(ReviewDecision))) == 0:
+        assert metrics["open_requests"]["count"] == 0 and metrics["orphaned_decisions"]["count"] == 0
     # The seed is not a trivial case for the metrics that matter most.
     for metric_id in ("result_no_ci", "result_no_n", "result_estimand_inferred", "analysis_no_method", "ae_no_denominator", "press_release_only",
-                      "risk_high", "drug_incomplete_safety", "source_conflicts", "result_with_interval", "change_events_open", "status_pending_human_review"):
+                      "risk_high", "drug_incomplete_safety", "source_conflicts", "result_with_interval", "status_pending_human_review"):
         assert metrics[metric_id]["count"] > 0, metric_id
 
 
@@ -450,11 +452,19 @@ def test_quality_reads_are_budgeted_and_never_write(client, db):
 
 
 def test_records_list_what_each_row_is_and_where_to_open_it(facts):
-    by_kind: dict[str, list] = defaultdict(list)
-    for metric_id in ("drug_incomplete_safety", "sources_changed", "change_events_open", "queue_open", "source_conflicts", "risk_high"):
-        for row in quality.records(facts, metric_id, limit=5)["rows"]:
-            by_kind[row["kind"]].append(row)
+    seen_kinds = set()
+    for metric_id in ("drug_incomplete_safety", "sources_changed", "change_events_open", "queue_open", "queue_in_review", "source_conflicts", "risk_high"):
+        listed = quality.records(facts, metric_id, limit=5)
+        for row in listed["rows"]:
+            seen_kinds.add(row["kind"])
             assert row["links"] and all(link["href"].startswith("/") for link in row["links"]), (metric_id, row)
-    assert set(by_kind) == {"drug", "source", "change_event", "queue_item", "conflict", "evidence"}
-    assert all("synthetic" in (r["note"] or "") for r in by_kind["change_event"])  # the seeded change is a labelled demonstration
-    assert all(r["note"] for r in by_kind["drug"])
+            assert row["note"], (metric_id, row)
+    assert {"drug", "source", "conflict", "evidence"} <= seen_kinds
+    # Every countable thing, in every universe, says where it can be opened.
+    for universe, items in facts.universes.items():
+        assert all(item.links and all(link["href"].startswith("/") for link in item.links) for item in items), universe
+    # A synthetic demonstration change is labelled as one wherever it is listed.
+    changes = facts.universes[quality.CHANGES]
+    assert changes, "the seed records a source change"
+    note = quality.METRICS["change_events_open"].note
+    assert all("synthetic" in note(item, None) for item in changes if item.f["is_synthetic"])

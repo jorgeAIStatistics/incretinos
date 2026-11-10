@@ -188,6 +188,8 @@ def _query_samples(samples: dict) -> dict[str, dict[str, object]]:
         "/api/safety/terms": {"nct": "NCT04184622"},
         "/api/design/eligibility-compare": {"a": "NCT07321886", "b": "NCT07392190"},
         "/api/reports/comparison": {"a": samples["a"], "b": samples["b"]},
+        "/api/quality/records": {"metric": "result_no_ci"},
+        "/api/quality/assessment": {"drug": "tirzepatide"},
     }
 
 
