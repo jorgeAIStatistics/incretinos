@@ -23,6 +23,7 @@ path from those notes into the product, and it is deliberately conservative:
   generated a second time;
 * a ratio of geometric least-squares means is stored as such (param_type), not as a treatment difference;
 * a non-inferiority conclusion (ni_met) is set only from a quote of the cited source that states it in words;
+* so is a superiority conclusion (superiority_met), never from an interval or a p-value;
 * the adverse-event measure kind is read from the endpoint's own wording with parenthetical
   disclaimers set aside, so "incidence of dysesthesia (... NOT discontinuation)" is an incidence;
 * an estimand record is written per source. It is STATED_BY_SOURCE only when a quote from that
@@ -279,6 +280,31 @@ def settle_ni_met(row: dict) -> None:
         row["ni_met"] = "YES"
     else:
         row["notes"] = ((row.get("notes") or "") + " " + NI_NOT_STATED_NOTE).strip()
+
+
+#: Words in which a source states that superiority was shown for the comparison it reports.
+_SUPERIORITY_CONCLUSION = re.compile(
+    r"\bsignificantly\s+(?:reduced|lowered|decreased|improved|increased)\b"
+    r"|\b(?:was|were|is|are|proved|shown to be|found to be)\s+superior\b"
+    r"|\bsuperiority\s+(?:was|were)\s+(?:met|achieved|demonstrated|shown|established|confirmed)\b"
+    r"|\bdemonstrat\w*\s+(?:the\s+)?superiority\b",
+    re.IGNORECASE,
+)
+_NEGATED_CONCLUSION = re.compile(r"\b(?:not|no|did not|failed to|without)\b[^.;]{0,40}\b(?:significant\w*|superior\w*)", re.IGNORECASE)
+SUPERIORITY_NOT_STATED_NOTE = (
+    "superiority_met is left NOT_STATED: no quote from the cited source states in words that superiority was shown "
+    "(an interval or p-value is not read as the conclusion) — needs human curation."
+)
+
+
+def settle_superiority_met(row: dict) -> None:
+    """Set superiority_met YES only when the row's own quote states the conclusion in words, never from numbers."""
+    text = " ".join([row.get("quote") or "", *row.get("extra_quotes", [])])
+    if _SUPERIORITY_CONCLUSION.search(text) and not _NEGATED_CONCLUSION.search(text):
+        row["superiority_tested"] = "YES"
+        row["superiority_met"] = "YES"
+    else:
+        row["notes"] = ((row.get("notes") or "") + " " + SUPERIORITY_NOT_STATED_NOTE).strip()
 
 
 def is_reduction_magnitude(endpoint_text: str, unit_raw: str, value: object) -> bool:
@@ -632,6 +658,8 @@ def convert(notes_dir: Path = NOTES_DIR, data_dir: Path = DATA_DIR) -> dict:
                 continue
             if is_contrast and row.get("hypothesis_type") == "NON_INFERIORITY":
                 settle_ni_met(row)
+            if is_contrast and row.get("hypothesis_type") == "SUPERIORITY":
+                settle_superiority_met(row)
             est_key = estimand_entry(bucket, est_label, key, nct, quote) if est_label else None
             if est_key:
                 row = {"endpoint": row["endpoint"], "estimand": est_key, **{k: v for k, v in row.items() if k != "endpoint"}}

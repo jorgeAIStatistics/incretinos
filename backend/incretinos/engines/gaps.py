@@ -28,6 +28,7 @@ from ..models import (
     Study,
     StudyDrug,
 )
+from ..vocab import is_placebo_arm
 from .conflicts import (
     CLASS_LABEL,
     TRUE_CONFLICT,
@@ -53,6 +54,7 @@ NATURE_LABEL = {
     GapNature.EVIDENCE_IN_GENERATION.value: "Evidence in generation — a registered study addressing this is ongoing.",
     GapNature.NOT_KNOWN_TO_BE_STUDIED.value: "No study found among tracked registry records — not proof that none exists.",
     GapNature.METHODOLOGICAL.value: "Methodological — data exist but cannot answer the question as analysed.",
+    GapNature.NOT_YET_EXTRACTED.value: "Not yet extracted — a publication linked to the study is on record, but its results are not in analytic use here.",
     GapNature.SOURCE_CONFLICT.value: "Source conflict — public sources disagree.",
     GapNature.RECORD_CHANGE.value: "Record change — a tracked source changed and awaits review.",
 }
@@ -84,6 +86,16 @@ def _names(studies: list[Study]) -> str:
 
 def _has_any_results(study: Study) -> bool:
     return bool(study.has_results) or any(r.origin == "CURATED" for r in study.results) or any(a.origin == "CURATED" for a in study.analyses)
+
+
+def _linked_publications(study: Study) -> list[str]:
+    """Publications linked to the study, as "PMID n (title)" — a linked paper may report results the database lacks."""
+    return [f"PMID {link.publication.pmid} ({(link.publication.title or '')[:90]})" for link in study.publication_links if link.publication.pmid]
+
+
+def _unextracted_note(studies: list[Study]) -> str:
+    notes = [f"{s.display_name} ({s.nct_id}): {'; '.join(_linked_publications(s))}" for s in studies if _linked_publications(s)]
+    return (" Publications linked to these studies are on record — " + " · ".join(notes) + " — so results may be public without being extracted here.") if notes else ""
 
 
 def _ongoing(study: Study) -> bool:
@@ -179,17 +191,26 @@ def detect_gaps(session: Session, today: date | None = None) -> list[GapDraft]:
             continue
 
         # 1 long-term safety / durability of follow-up
+        # Long-term evidence must be controlled: a week counts only when a placebo or active-comparator arm of the same
+        # study reports at that week too. Later uncontrolled assessments (extensions, single-arm follow-up) are named.
         longest: tuple[float, Study] | None = None
+        longest_any: tuple[float, Study] | None = None
         for study in with_results:
+            control_weeks = {r.timepoint_weeks for r in study.results if r.timepoint_weeks and r.arm is not None and (is_placebo_arm(r.arm) or r.arm.arm_role == "ACTIVE_COMPARATOR")}
             weeks = [r.timepoint_weeks for r in study.results if r.timepoint_weeks]
-            if weeks and (longest is None or max(weeks) > longest[0]):
-                longest = (max(weeks), study)
+            controlled = [w for w in weeks if w in control_weeks]
+            if controlled and (longest is None or max(controlled) > longest[0]):
+                longest = (max(controlled), study)
+            if weeks and (longest_any is None or max(weeks) > longest_any[0]):
+                longest_any = (max(weeks), study)
+        uncontrolled_note = (f" A later assessment without a concurrent control arm is on record (week {longest_any[0]:.0f} in {longest_any[1].display_name}); it is not counted as controlled long-term evidence."
+                             if longest_any and (longest is None or longest_any[0] > longest[0]) else "")
         long_ongoing = [s for s in studies if _ongoing(s) and (feats(s).get("outcomes_trial") or feats(s).get("maintenance"))]
         if longest is None or longest[0] < 104:
             gaps.append(GapDraft(
                 key=f"{drug.slug}:long-term-safety", rule_id="G01_LONG_TERM", drug_id=drug.id, program=None, category="LONG_TERM_SAFETY",
                 question=f"Are safety and efficacy results beyond two years available for {name}?",
-                available_evidence=(f"Longest reported assessment among tracked studies: week {longest[0]:.0f} in {longest[1].display_name}." if longest else "No reported results among tracked studies."),
+                available_evidence=(f"Longest controlled assessment among tracked studies: week {longest[0]:.0f} in {longest[1].display_name}." if longest else "No controlled results among tracked studies.") + uncontrolled_note,
                 missing_evidence="Controlled follow-up of two years or more with systematic adverse-event ascertainment.",
                 gap_nature=(GapNature.EVIDENCE_IN_GENERATION if long_ongoing else GapNature.NOT_KNOWN_TO_BE_STUDIED).value,
                 clinical_importance=5, evidence_certainty="LOW", tractability=2,
@@ -205,7 +226,9 @@ def detect_gaps(session: Session, today: date | None = None) -> list[GapDraft]:
             gaps.append(GapDraft(
                 key=f"{drug.slug}:direct-comparative", rule_id="G02_DIRECT_COMPARISON", drug_id=drug.id, program=None, category="COMPARATIVE_EVIDENCE",
                 question=f"Is there randomized head-to-head evidence comparing {name} with another active therapy?",
-                available_evidence=("Registered active-comparator trials without public results: " + _names(active_pending) + "." if active_pending else "Only placebo-controlled trials among tracked studies."),
+                available_evidence=("Registered active-comparator trials without results in analytic use here: " + _names(active_pending) + "." + _unextracted_note(active_pending) if active_pending else
+                                    "No tracked trial compares it with another active therapy. Tracked studies: "
+                                    + "; ".join(f"{s.display_name} ({'dose comparison' if feats(s).get('comparator_type') == 'ACTIVE_DOSE' else (feats(s).get('comparator_type') or 'comparator not stated').lower().replace('_', ' ')})" for s in studies) + "."),
                 missing_evidence="Results of a randomized active-comparator trial.",
                 gap_nature=(GapNature.EVIDENCE_IN_GENERATION if any(_ongoing(s) for s in active_pending) else GapNature.PUBLIC_REPORTING_GAP if active_pending else GapNature.NOT_KNOWN_TO_BE_STUDIED).value,
                 clinical_importance=4, evidence_certainty="VERY_LOW", tractability=3,
@@ -288,9 +311,9 @@ def detect_gaps(session: Session, today: date | None = None) -> list[GapDraft]:
             gaps.append(GapDraft(
                 key=f"{drug.slug}:treatment-withdrawal", rule_id="G07_WITHDRAWAL", drug_id=drug.id, program=None, category="MAINTENANCE_AFTER_WITHDRAWAL",
                 question=f"What happens to body weight after {name} is stopped, and is maintenance studied?",
-                available_evidence=("Registered maintenance/withdrawal studies without results in stored sources: " + _names(withdrawal) + "." if withdrawal else "No randomized-withdrawal or maintenance study among tracked studies."),
+                available_evidence=("Registered maintenance/withdrawal studies with no results in analytic use here: " + _names(withdrawal) + "." + _unextracted_note(withdrawal) if withdrawal else "No randomized-withdrawal or maintenance study among tracked studies."),
                 missing_evidence="Randomized-withdrawal or maintenance results with weight change measured from the withdrawal baseline.",
-                gap_nature=(GapNature.EVIDENCE_IN_GENERATION if any(_ongoing(s) for s in withdrawal) else GapNature.PUBLIC_REPORTING_GAP if withdrawal else GapNature.NOT_KNOWN_TO_BE_STUDIED).value,
+                gap_nature=(GapNature.EVIDENCE_IN_GENERATION if any(_ongoing(s) for s in withdrawal) else GapNature.NOT_YET_EXTRACTED if any(_linked_publications(s) for s in withdrawal) else GapNature.PUBLIC_REPORTING_GAP if withdrawal else GapNature.NOT_KNOWN_TO_BE_STUDIED).value,
                 clinical_importance=4, evidence_certainty="VERY_LOW", tractability=3,
                 analytic_approach="Randomized-withdrawal design; report change from the randomization baseline separately from change from study entry.",
                 data_required="Withdrawal-period weight trajectories by arm.", source_ids=_sources(withdrawal), related_ncts=[s.nct_id for s in withdrawal]))
@@ -360,7 +383,16 @@ def detect_gaps(session: Session, today: date | None = None) -> list[GapDraft]:
 
         # 11 completed without public results / press-release only
         for study in studies:
-            if (study.overall_status or "") == "COMPLETED" and not _has_any_results(study):
+            if (study.overall_status or "") == "COMPLETED" and not _has_any_results(study) and _linked_publications(study):
+                gaps.append(GapDraft(
+                    key=f"{drug.slug}:unreported:{study.nct_id}", rule_id="G11_UNREPORTED", drug_id=drug.id, program=study.program, category="RESULTS_NOT_EXTRACTED",
+                    question=f"Are the results of {study.display_name} ({study.nct_id}) in the linked publication(s), and should they be extracted?",
+                    available_evidence="Registry status COMPLETED; no posted registry results and no results in analytic use here. Linked publication(s) on record: " + "; ".join(_linked_publications(study)) + ".",
+                    missing_evidence="Extraction of the publication's results with locator quotes, followed by human review. This is not evidence that results are unpublished.",
+                    gap_nature=GapNature.NOT_YET_EXTRACTED.value, clinical_importance=3, evidence_certainty="VERY_LOW", tractability=5,
+                    analytic_approach="Read the linked publication; curate its results (or extract them where the licence allows) and send them to review.",
+                    data_required="The linked publication's results.", source_ids=_sources([study]), related_ncts=[study.nct_id]))
+            elif (study.overall_status or "") == "COMPLETED" and not _has_any_results(study):
                 months = _months_since(study.primary_completion_date, today)
                 gaps.append(GapDraft(
                     key=f"{drug.slug}:unreported:{study.nct_id}", rule_id="G11_UNREPORTED", drug_id=drug.id, program=study.program, category="RESULTS_NOT_PUBLIC",

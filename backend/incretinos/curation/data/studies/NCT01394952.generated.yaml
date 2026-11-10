@@ -46,6 +46,8 @@ analyses:
   source: openfda-label:trulicity
   quote: 'significantly reduced the risk of first occurrence of primary composite endpoint of CV death, non-fatal MI, or non-fatal stroke (HR: 0.88, 95% CI 0.79, 0.99)'
   notes: 'Label footnote: components of MACE listed descriptively; CIs not adjusted for multiplicity.'
+  superiority_tested: 'YES'
+  superiority_met: 'YES'
 adverse_events: []
 claims:
 - key: note:retatrutide-tirzepatide:F216

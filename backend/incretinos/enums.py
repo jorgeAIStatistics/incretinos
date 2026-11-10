@@ -303,6 +303,7 @@ class GapNature(StrEnum):
     EVIDENCE_IN_GENERATION = "EVIDENCE_IN_GENERATION"  # a registered study is ongoing
     NOT_KNOWN_TO_BE_STUDIED = "NOT_KNOWN_TO_BE_STUDIED"  # no registered study located in tracked sources
     METHODOLOGICAL = "METHODOLOGICAL"  # data exist but cannot answer the question as analysed
+    NOT_YET_EXTRACTED = "NOT_YET_EXTRACTED"  # a publication linked to the study is on record; its results are not in use here
     SOURCE_CONFLICT = "SOURCE_CONFLICT"
     RECORD_CHANGE = "RECORD_CHANGE"
 

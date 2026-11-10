@@ -27,7 +27,7 @@ Status as of 2026-11-10, at the merge of the last Session 2 wave (branch `s2/int
 | Check | Result |
 |---|---|
 | `ruff check incretinos tests scripts` | clean |
-| Backend tests | 1,156 passed on SQLite; 1,156 passed on PostgreSQL 17 (`INCRETINOS_TEST_DATABASE_URL`, throwaway container) |
+| Backend tests | 1,161 passed on SQLite; 1,161 passed on PostgreSQL 17 (`INCRETINOS_TEST_DATABASE_URL`, throwaway container) |
 | Alembic | one head (`cb85e55cbfb4`); upgrade, `alembic check` (no drift), downgrade to base and upgrade again clean on SQLite and PostgreSQL; downgrade of `cb85e55cbfb4` on a seeded database removes the FULLTEXT rows |
 | Fresh seed | 45 trials, 27,760 reviewable rows: 26,999 machine-extracted, 494 quote-anchored, 267 pending human review, 0 human-verified, 0 decisions |
 | Claim benchmarks | dev 100% detection / 0.0% false rejection; dev-review 100% / 4.0%; heldout (v1) 100% / 0.0%; **heldout-v2 (blind) 99.3% (147/148) / 19.2% (14/73)** |
@@ -57,7 +57,6 @@ The hosted CI run on `576030d` succeeded (earlier documents that called CI "writ
 | Item | Why it matters |
 |---|---|
 | Human review | 0 human-verified rows. Nothing in the product may be cited as verified by a person |
-| Gap rules `XS-06`, `XS-07`, `XS-13` | ACHIEVE-2 and ATTAIN-MAINTAIN are reported as having no results although results are stored; a missing-superiority gap cannot clear |
 | Splitting `api/main.py` (`F19`) | 1,552 lines; only Session 2 features are in routers |
 | Hash-pinned dependencies | `constraints.txt` pins versions, not hashes |
 | Scheduled ingestion soak and real registry change detection over time | The seeded change example is synthetic |
@@ -66,7 +65,7 @@ The hosted CI run on `576030d` succeeded (earlier documents that called CI "writ
 ## Next milestone
 
 1. **A real reviewer pass** with personal tokens, in this order: the 24 true conflicts (each is a reconciliation question), the 65 full-text rows (they enter no analysis until approved), the 206 HIGH-risk flagged rows.
-2. **Fix the three gap rules** (`XS-06`, `XS-07`, `XS-13`) with tests on ACHIEVE-2, ATTAIN-MAINTAIN and SURPASS-CVOT.
+2. **Extract the linked ACHIEVE-2 and ATTAIN-MAINTAIN publications** that the gap tracker now reports as *not yet extracted*.
 3. **Reduce the verifier's false rejections** without loosening detection, measured on a new blind set (heldout-v3); heldout-v2 becomes development data once its misses are studied.
 4. **Extend full-text extraction** to the FDA review's configured-out key secondary tables (25, 32, 33).
 5. **Run the merged code on the hosted CI**, including the container-image job.

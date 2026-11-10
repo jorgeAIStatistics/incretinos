@@ -12,7 +12,7 @@ import { rowsOf, usePagedList } from "@/lib/paging";
 import type { DrugSummary, Gap, GapListExtra } from "@/lib/types";
 
 /** Presentation only: which tone and icon a reason gets. The wording itself comes from the API. */
-const NATURE_TONE: Record<string, Tone> = { PUBLIC_REPORTING_GAP: "warn", EVIDENCE_IN_GENERATION: "info", NOT_KNOWN_TO_BE_STUDIED: "muted", METHODOLOGICAL: "muted", SOURCE_CONFLICT: "critical", RECORD_CHANGE: "warn" };
+const NATURE_TONE: Record<string, Tone> = { PUBLIC_REPORTING_GAP: "warn", EVIDENCE_IN_GENERATION: "info", NOT_KNOWN_TO_BE_STUDIED: "muted", METHODOLOGICAL: "muted", NOT_YET_EXTRACTED: "info", SOURCE_CONFLICT: "critical", RECORD_CHANGE: "warn" };
 
 /** The API's reason labels read "Short name — explanation". The short name is the part before the dash. */
 const shortReason = (label: string | null | undefined, code: string): string => (label ? label.split(" — ")[0] : enumLabel(code));
