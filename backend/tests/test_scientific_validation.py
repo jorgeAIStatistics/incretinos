@@ -421,7 +421,9 @@ def test_retatrutide_vs_tirzepatide_is_not_head_to_head(db):
     assert not comparison.reported_analyses
     assert [t["display_name"] for t in comparison.head_to_head_trials] == ["TRIUMPH-5"] and comparison.head_to_head_trials[0]["has_results"] is False
     assert any("superior" in s for s in comparison.prohibited_statements) and any("statistically significant" in s for s in comparison.prohibited_statements)
-    assert comparison.descriptive_difference["ci_status"] == "NOT_AVAILABLE" and "not an estimate of comparative efficacy" in comparison.descriptive_difference["note"]
+    # Week 80 against week 72: values at different weeks are not one quantity, so no A − B is formed (CMP-2).
+    assert comparison.descriptive_difference is None
+    assert any(r.startswith("No arithmetic difference is given") and "week 80 versus week 72" in r for r in comparison.reasons)
     assert any("TRIUMPH-5" in r for r in comparison.requirements)
 
 
@@ -1091,3 +1093,338 @@ def test_rejected_evidence_is_excluded_from_comparisons_and_profiles(db):
     assert get_finding(db, high.result_id) is None
     with rejected_visible(db):
         assert get_finding(db, high.result_id).verification_status == "REJECTED"
+
+
+# ---- INT-2 (review 1): the language guard, rebuilt with clause-scoped negation and broad claim coverage
+#
+# Each probe is (text, context). The context names the evidence the sentence would be describing, exactly as
+# guard_statement is told it by its callers. The reviewer's 50 probes come first: the 7 honest statements the old
+# guard flagged and the 14 claims it missed are quoted from the review; the remaining 29 are the review's other
+# probes of the same kinds (its script was not kept). Then 60 more, half honest and half claims.
+
+_CROSS = {"cross_trial": True}
+_NI = {"hypothesis_type": "NON_INFERIORITY", "superiority_met": "NOT_STATED"}
+_EXPLORATORY = {"exploratory": True}
+_SPONTANEOUS = {"data_family": "SPONTANEOUS"}
+_LEAN = {"lean_mass": True}
+_NONE: dict = {}
+
+REVIEW1_HONEST = [
+    # flagged by the old guard
+    ("Whether retatrutide is more effective than tirzepatide is unknown.", _CROSS),
+    ("A head-to-head trial would be needed to establish superiority.", _CROSS),
+    ("Claims of superiority would require a randomized comparison.", _CROSS),
+    ("It would be wrong to say that retatrutide beats tirzepatide.", _CROSS),
+    ("Calling either agent superior would overstate the evidence.", _CROSS),
+    ("Without a randomized comparison, no one can say which drug is more effective.", _CROSS),
+    ("Any suggestion that retatrutide outperforms tirzepatide is unsupported.", _CROSS),
+    # passed by the old guard
+    ("Superiority was not demonstrated.", _CROSS),
+    ("There is no evidence that retatrutide is superior to tirzepatide.", _CROSS),
+    ("These cross-trial values do not show that either drug is better.", _CROSS),
+    ("It is not known whether retatrutide is more effective than tirzepatide.", _CROSS),
+    ("No statistically significant difference can be claimed across trials.", _CROSS),
+    ("The two values may be tabulated side by side with their study context.", _CROSS),
+    ("Neither superiority nor a statistically significant difference may be claimed.", _CROSS),
+    ("The trials were not randomized against each other.", _CROSS),
+    ("Retatrutide is not superior, better, or more effective than tirzepatide on this evidence.", _CROSS),
+    ("Do not rank the two drugs by these values.", _CROSS),
+    ("Cross-trial differences may reflect populations rather than treatments.", _CROSS),
+    ("Superiority of retatrutide over tirzepatide has not been shown.", _CROSS),
+    ("The difference was non-significant.", _CROSS),
+    ("Statistical significance cannot be inferred from two separate trials.", _CROSS),
+    ("No head-to-head trial has compared retatrutide with tirzepatide.", _CROSS),
+    ("Orforglipron was non-inferior to insulin glargine; superiority was not demonstrated.", _NI),
+    ("Report counts cannot be read as incidence and do not show that the drug causes the event.", _SPONTANEOUS),
+    ("DXA lean mass decreased; this is not a direct measure of muscle loss.", _LEAN),
+]
+
+REVIEW1_CLAIMS = [
+    # missed by the old guard
+    ("Tirzepatide is inferior to retatrutide.", _CROSS),
+    ("Patients lose more weight on retatrutide than on tirzepatide.", _CROSS),
+    ("Retatrutide is roughly twice as effective as tirzepatide.", _CROSS),
+    ("Retatrutide has a clear edge over tirzepatide in weight reduction.", _CROSS),
+    ("Retatrutide wins on weight loss.", _CROSS),
+    ("Never before has a drug outperformed tirzepatide the way retatrutide does.", _CROSS),
+    ("No other incretin comes close to retatrutide.", _CROSS),
+    ("There is no comparison: retatrutide is far better.", _CROSS),
+    ("Retatrutide is the preferred treatment for obesity.", _NONE),
+    ("Tirzepatide reduced cardiovascular events by 8% versus dulaglutide.", _NI),
+    ("Tirzepatide lowered the risk of MACE compared with dulaglutide.", _NI),
+    ("This exploratory endpoint shows that tirzepatide improves sleep apnea.", _EXPLORATORY),
+    ("Tirzepatide triggers pancreatitis, as FAERS reports show.", _SPONTANEOUS),
+    ("Patients on tirzepatide lost lean mass, that is, muscle.", _LEAN),
+    # caught by the old guard
+    ("Retatrutide is superior to tirzepatide.", _CROSS),
+    ("Retatrutide outperformed tirzepatide.", _CROSS),
+    ("Retatrutide is more effective than tirzepatide.", _CROSS),
+    ("The difference between retatrutide and tirzepatide was statistically significant.", _CROSS),
+    ("Retatrutide achieved larger weight loss than tirzepatide (p<0.05).", _CROSS),
+    ("Without doubt, retatrutide is superior to tirzepatide.", _CROSS),
+    ("Orforglipron was superior to insulin glargine on MACE-4.", _NI),
+    ("Orforglipron demonstrated a reduction in all-cause death.", _EXPLORATORY),
+    ("These reports prove tirzepatide causes gastroparesis.", _SPONTANEOUS),
+    ("Participants lost muscle on tirzepatide.", _LEAN),
+    ("Patients should switch to retatrutide.", _NONE),
+]
+
+MORE_HONEST = [
+    ("Superiority over tirzepatide would need a randomized head-to-head trial.", _CROSS),
+    ("Whether one drug leads to more weight loss than the other cannot be judged from these trials.", _CROSS),
+    ("It is unclear whether retatrutide outperforms tirzepatide.", _CROSS),
+    ("Nobody can tell from separate trials which agent is more potent.", _CROSS),
+    ("It would be misleading to call retatrutide the stronger drug.", _CROSS),
+    ("Statements that retatrutide beats tirzepatide are not supported by a randomized comparison.", _CROSS),
+    ("Any claim that tirzepatide is inferior would be premature.", _CROSS),
+    ("The reported mean was numerically larger in TRIUMPH-1 than in SURMOUNT-1, but the trials differ.", _CROSS),
+    ("Weight loss was greater with tirzepatide than with placebo in SURMOUNT-1.", _CROSS),
+    ("More than half of participants lost at least 15% of body weight.", _CROSS),
+    ("A trial designed to show superiority of retatrutide over tirzepatide has not been reported.", _CROSS),
+    ("Retatrutide was not shown to be more effective than tirzepatide, and no trial has compared them.", _CROSS),
+    ("The difference between the trials may reflect their populations, not the drugs.", _CROSS),
+    ("Superiority was not tested in ACHIEVE-4; only non-inferiority was.", _NI),
+    ("Orforglipron was non-inferior to insulin glargine for MACE-4.", _NI),
+    ("The hazard ratio is compatible with benefit, no difference or harm.", _NI),
+    ("Non-inferiority does not mean that tirzepatide reduced cardiovascular events.", _NI),
+    ("A reduction in MACE was not established.", _NI),
+    ("This exploratory endpoint is hypothesis-generating and does not confirm an effect.", _EXPLORATORY),
+    ("The exploratory result needs confirmation in a dedicated trial.", _EXPLORATORY),
+    ("An effect on sleep apnea severity has not been demonstrated in a confirmatory analysis.", _EXPLORATORY),
+    ("FAERS counts cannot show that tirzepatide causes pancreatitis.", _SPONTANEOUS),
+    ("Spontaneous reports do not establish an incidence of pancreatitis.", _SPONTANEOUS),
+    ("FAERS received 120 reports of pancreatitis for tirzepatide.", _SPONTANEOUS),
+    ("Whether tirzepatide triggers pancreatitis is not established by these reports.", _SPONTANEOUS),
+    ("DXA lean mass fell by 10%; lean mass is not the same as skeletal muscle.", _LEAN),
+    ("Lean mass declined; whether skeletal muscle declined was not measured.", _LEAN),
+    ("Participants lost weight, including fat mass and lean mass.", _LEAN),
+    ("This platform does not recommend any treatment.", _NONE),
+    ("Treatment decisions belong to the patient and the clinician.", _NONE),
+]
+
+MORE_CLAIMS = [
+    ("Retatrutide is clearly the better drug.", _CROSS),
+    ("Retatrutide surpasses tirzepatide for weight loss.", _CROSS),
+    ("Tirzepatide falls short of retatrutide.", _CROSS),
+    ("Retatrutide is the most effective incretin.", _CROSS),
+    ("Retatrutide ranks first among incretins.", _CROSS),
+    ("Tirzepatide lags behind retatrutide on weight reduction.", _CROSS),
+    ("Retatrutide produced deeper weight loss than tirzepatide.", _CROSS),
+    ("Participants lost less weight with tirzepatide than with retatrutide.", _CROSS),
+    ("Retatrutide is as effective as tirzepatide.", _CROSS),
+    ("Retatrutide is unmatched among obesity drugs.", _CROSS),
+    ("The weight-loss gap between the trials is due to retatrutide's triple agonism.", _CROSS),
+    ("Retatrutide cannot be beaten on weight loss.", _CROSS),
+    ("Nothing comes close to retatrutide.", _CROSS),
+    ("Retatrutide is way better than tirzepatide, not just numerically.", _CROSS),
+    ("Retatrutide gave significantly more weight loss than tirzepatide.", _CROSS),
+    ("Retatrutide has the advantage over tirzepatide.", _CROSS),
+    ("Retatrutide is three times as potent as tirzepatide.", _CROSS),
+    ("Tirzepatide is less effective than retatrutide.", _CROSS),
+    ("Orforglipron protected against cardiovascular events compared with insulin glargine.", _NI),
+    ("Tirzepatide cut the risk of death versus dulaglutide.", _NI),
+    ("MACE was reduced with orforglipron relative to insulin glargine.", _NI),
+    ("Tirzepatide showed a 12% lower risk of MACE than dulaglutide.", _NI),
+    ("The exploratory analysis proves that bimagrumab preserves lean mass.", _EXPLORATORY),
+    ("This post hoc result confirms a benefit on kidney function.", _EXPLORATORY),
+    ("FAERS data show that tirzepatide leads to gastroparesis.", _SPONTANEOUS),
+    ("Spontaneous reports demonstrate an event rate of 3 per 1,000 patients.", _SPONTANEOUS),
+    ("Tirzepatide caused muscle wasting in the DXA substudy.", _LEAN),
+    ("The lean-mass loss, i.e. muscle, was 10%.", _LEAN),
+    ("Patients can use tirzepatide 15 mg for weight loss.", _NONE),
+    ("Tirzepatide is the drug of choice for obesity.", _NONE),
+]
+
+
+def test_int2_probe_sets_have_the_stated_sizes():
+    assert (len(REVIEW1_HONEST), len(REVIEW1_CLAIMS), len(MORE_HONEST), len(MORE_CLAIMS)) == (25, 25, 30, 30)
+
+
+@pytest.mark.parametrize(("text", "context"), REVIEW1_HONEST + MORE_HONEST)
+def test_int2_honest_statements_are_not_flagged(text, context):
+    assert not guard_statement(text, **context), text
+
+
+@pytest.mark.parametrize(("text", "context"), REVIEW1_CLAIMS + MORE_CLAIMS)
+def test_int2_claims_are_flagged(text, context):
+    assert guard_statement(text, **context), text
+
+
+# ---- Review 1, comparability track: CMP-1..3, INT-1, INT-3, FE-1 and WEB-17 (API side)
+
+SM_OSA_TRIAL, ORFO_P2, ATTAIN2 = "NCT05412004", "NCT05051579", "NCT05872620"
+
+
+def _all_pairs(db, nct: str) -> list:
+    study = db.scalar(select(Study).where(Study.nct_id == nct))
+    rows = [r for r in sorted(study.results, key=lambda x: x.id) if r.endpoint.category == "WEIGHT_PCT_CHANGE" and r.scope == "ARM" and r.value is not None
+            and " minus " not in r.arm_label and not (r.arm is not None and r.arm.is_pooled)]
+    findings = [build_finding(db, r) for r in rows]
+    return [(a, b, compare_findings(db, a, b)) for i, a in enumerate(findings) for b in findings[i + 1:]]
+
+
+def test_cmp1_only_a_direct_comparison_quotes_a_between_arm_analysis(db, client):
+    """CMP-1: an ATTAIN-1 registry value beside a press-release value is descriptive; no analysis is presented as 'establishing' a difference."""
+    registry_placebo = _pick(db, ATTAIN1, arm_is="Placebo", tier="REGISTRY_RESULTS", weeks=72)
+    press_6mg = _pick(db, ATTAIN1, arm="6 mg", tier="PRESS_RELEASE", weeks=72)
+    comparison = compare_findings(db, registry_placebo, press_6mg)
+    assert comparison.classification == "DESCRIPTIVE CROSS-STUDY COMPARISON" and comparison.relationship == "RANDOMIZED_ARMS_OF_ONE_TRIAL"
+    assert comparison.reported_analyses == [] and comparison.other_analyses
+    assert all(x["mismatch"] for x in comparison.other_analyses)
+    body = client.post("/api/compare", json={"a": registry_placebo.result_id, "b": press_6mg.result_id}).json()
+    assert body["analysis_interpretations"] == [] and body["comparison"]["reported_analyses"] == []
+    # The invariant over every within-trial weight pair of the trials the review enumerated.
+    for nct in (ATTAIN1, ATTAIN2, SM4):
+        for _a, _b, c in _all_pairs(db, nct):
+            assert not c.reported_analyses or c.classification == "DIRECT RANDOMIZED COMPARISON", (nct, _a.result_id, _b.result_id)
+
+
+def test_cmp1_a_direct_registry_pair_still_quotes_its_analysis(db):
+    high = _pick(db, SM1, arm="15 mg", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72)
+    placebo = _pick(db, SM1, arm="placebo", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72)
+    comparison = compare_findings(db, high, placebo)
+    assert comparison.classification == "DIRECT RANDOMIZED COMPARISON" and comparison.reported_analyses
+    assert all(x["source"]["id"] == high.source["id"] for x in comparison.reported_analyses)
+
+
+def test_cmp2_no_difference_across_assessment_weeks_or_analysed_populations(db):
+    """CMP-2: SURMOUNT-1 placebo at week 72 (everyone) against 15 mg at week 176 (prediabetes subset)."""
+    placebo_72 = _pick(db, SM1, arm_is="Placebo", tier="REGISTRY_RESULTS", weeks=72)
+    high_176 = _pick(db, SM1, arm="15 mg", tier="REGISTRY_RESULTS", weeks=176)
+    comparison = compare_findings(db, placebo_72, high_176)
+    assert comparison.descriptive_difference is None
+    reason = next(r for r in comparison.reasons if r.startswith("No arithmetic difference is given"))
+    assert "assessment time point (week 72 versus week 176)" in reason and "analysis population" in reason
+    # Over every weight pair of SURMOUNT-1 and ATTAIN-1: a difference only at one week (±1) and one analysed population.
+    for nct in (SM1, ATTAIN1):
+        for a, b, c in _all_pairs(db, nct):
+            if c.descriptive_difference is not None:
+                assert abs(a.timepoint_weeks - b.timepoint_weeks) <= 1, (a.result_id, b.result_id)
+                assert _factor(c, "analysis_population").assessment != "MAJOR_DIFFERENCE"
+
+
+def test_cmp2_note_does_not_call_two_arms_of_one_trial_unrandomized(db):
+    publication_6mg = _pick(db, ATTAIN1, arm="6 mg", tier="PEER_REVIEWED", weeks=72)
+    review_12mg = _pick(db, ATTAIN1, arm="12 mg", tier="REGULATORY_REVIEW", weeks=72)
+    comparison = compare_findings(db, publication_6mg, review_12mg)
+    assert comparison.relationship == "RANDOMIZED_ARMS_OF_ONE_TRIAL"
+    note = comparison.descriptive_difference["note"]
+    assert "not randomized against each other" not in note and "two arms of one randomized trial" in note and "source document" in note
+
+
+def test_cmp3_values_from_two_documents_are_not_a_direct_comparison(db):
+    """CMP-3: a publication value and an FDA-review value of two ATTAIN-1 arms are not one reported analysis."""
+    publication_6mg = _pick(db, ATTAIN1, arm="6 mg", tier="PEER_REVIEWED", weeks=72)
+    review_12mg = _pick(db, ATTAIN1, arm="12 mg", tier="REGULATORY_REVIEW", weeks=72)
+    comparison = compare_findings(db, publication_6mg, review_12mg)
+    assert comparison.classification == "DESCRIPTIVE CROSS-STUDY COMPARISON"
+    source = _factor(comparison, "source_document")
+    assert source.assessment == "MAJOR_DIFFERENCE" and publication_6mg.source["key"] in source.explanation and review_12mg.source["key"] in source.explanation
+    assert any("source document" in r for r in comparison.reasons)
+    placebo = _pick(db, TRIUMPH1, arm_is="placebo", tier="PEER_REVIEWED")
+    press_12mg = _pick(db, TRIUMPH1, arm="12 mg", tier="PRESS_RELEASE")
+    triumph = compare_findings(db, placebo, press_12mg)
+    assert triumph.classification != "DIRECT RANDOMIZED COMPARISON" and triumph.reported_analyses == []
+
+
+def test_cmp3_an_analysis_from_a_third_document_is_never_quoted(db):
+    """Both SURMOUNT-4 values come from one press release: the registry's analysis is listed, not quoted as theirs."""
+    continued = _pick(db, SM4, arm="tirzepatide MTD (continued)", tier="PRESS_RELEASE")
+    switched = _pick(db, SM4, arm="placebo (switched)", tier="PRESS_RELEASE", weeks=continued.timepoint_weeks)
+    comparison = compare_findings(db, continued, switched)
+    assert comparison.classification == "DIRECT RANDOMIZED COMPARISON" and comparison.reported_analyses == []
+    assert comparison.other_analyses and all(any("reported by another source" in m for m in x["mismatch"]) for x in comparison.other_analyses)
+    for _a, _b, c in _all_pairs(db, ATTAIN1) + _all_pairs(db, SM4):
+        if c.classification == "DIRECT RANDOMIZED COMPARISON":
+            assert _a.source["id"] == _b.source["id"]
+            assert all(x["source"]["id"] == _a.source["id"] for x in c.reported_analyses)
+
+
+def test_int1_an_interval_that_contradicts_its_own_p_value_supports_no_conclusion():
+    """INT-1: SURMOUNT-OSA hsCRP −0.71 (−1.21 to −0.22) with p 0.752; Orforglipron BMI −3.8 (−4.6 to 3.0) with p <0.001."""
+    osa = interpret_analysis(_dto(estimate=-0.71, ci_low=-1.21, ci_high=-0.22, p_value_text="0.752", p_value_status="REPORTED"))
+    assert osa["establishes"] == [] and osa["ci_excludes_no_difference"] is None
+    assert osa["internal_consistency"]["status"] == "P_VALUE_DISAGREES_WITH_INTERVAL"
+    assert any("in either direction" in s and "0.752" in s for s in osa["does_not_establish"])
+    typo = interpret_analysis(_dto(estimate=-3.8, ci_low=-4.6, ci_high=3.0, p_value_text="<0.001", p_value_status="REPORTED"))
+    assert typo["establishes"] == [] and not any(s.startswith("A between-arm difference") for s in typo["does_not_establish"])  # no "the CI includes 0" conclusion
+    assert typo["internal_consistency"]["status"] == "P_VALUE_AND_ESTIMATE_DISAGREE_WITH_INTERVAL"
+    # A consistent record is read as before; a p-value printed at the threshold is not read as a disagreement.
+    agree = interpret_analysis(_dto(estimate=-2.0, ci_low=-3.0, ci_high=-1.0, p_value_text="<0.001", p_value_status="REPORTED"))
+    assert agree["establishes"] and agree["internal_consistency"]["status"] == "CONSISTENT"
+    rounding = interpret_analysis(_dto(estimate=-1.0, ci_low=-2.0, ci_high=-0.01, p_value_text="0.05", p_value_status="REPORTED"))
+    assert rounding["internal_consistency"]["status"] == "CONSISTENT" and rounding["establishes"]
+
+
+def test_int1_the_three_inconsistent_seeded_analyses_are_labelled(db):
+    flagged = {}
+    for analysis in db.scalars(select(StatisticalAnalysis)):
+        dto = analysis_dto(analysis)
+        if dto["internal_consistency"]["status"] not in ("CONSISTENT", "NOT_CHECKABLE"):
+            flagged[(analysis.study.nct_id, analysis.estimate, analysis.p_value_text)] = dto
+    assert set(flagged) == {(SM_OSA_TRIAL, -0.71, "0.752"), (SM_OSA_TRIAL, -1.04, "0.350"), (ORFO_P2, -3.8, "<0.001")}
+    for dto in flagged.values():
+        assert any(label["code"] == "INTERNALLY_INCONSISTENT" for label in dto["labels"])
+        reading = interpret_analysis(dto)
+        assert reading["establishes"] == [] and reading["ci_excludes_no_difference"] is None
+        assert dto["estimate"] in (-0.71, -1.04, -3.8)  # shown as stored; nothing is corrected
+
+
+def test_int3_a_sign_opposite_to_the_arm_values_is_never_an_established_direction(db):
+    """INT-3: a BELIEVE contrast named by the registry, whose arm values are made to give the opposite sign (in memory only)."""
+    believe = db.scalar(select(Study).where(Study.nct_id == BELIEVE))
+    analysis = next(a for a in believe.analyses if a.direction_basis == "REGISTRY_GROUP_DESCRIPTION" and a.estimate == -14.5)
+    before = analysis_dto(analysis)["direction"]
+    assert before["established"] and before["basis_kind"] == "STATED_BY_REGISTRY_AND_CONFIRMED_BY_ARM_VALUES"
+    with db.no_autoflush:
+        rows = [r for r in believe.results if r.endpoint_id == analysis.endpoint_id and r.estimand_id == analysis.estimand_id and r.value is not None
+                and (analysis.timepoint_weeks is None or r.timepoint_weeks in (None, analysis.timepoint_weeks))]
+        treatment = next(r for r in rows if r.arm_id == analysis.treatment_arm_id)
+        comparator = next(r for r in rows if r.arm_id == analysis.comparator_arm_id)
+        treatment.value = comparator.value + 5.0  # opposite sign to −14.5, but not its mirror image
+        direction = analysis_dto(analysis)["direction"]
+        assert direction["arm_values_check"] == "INCONCLUSIVE"
+        assert direction["established"] is False and direction["status"] == "SIGN_DISAGREES_WITH_ARM_VALUES" and direction["basis_kind"] == "NOT_ESTABLISHED"
+        reading = interpret_analysis(analysis_dto(analysis))
+        assert " versus " not in reading["observed"]
+    db.expire_all()
+
+
+def test_fe1_compare_response_states_the_direction_basis_exactly(db, client):
+    high = _pick(db, SM1, arm="15 mg", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72)
+    placebo = _pick(db, SM1, arm="placebo", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72)
+    body = client.post("/api/compare", json={"a": high.result_id, "b": placebo.result_id}).json()
+    quoted = body["comparison"]["reported_analyses"]
+    assert quoted
+    kinds = {"STATED_BY_REGISTRY_AND_CONFIRMED_BY_ARM_VALUES", "STATED_BY_CURATED_SOURCE_AND_CONFIRMED_BY_ARM_VALUES", "CONFIRMED_BY_ARM_VALUES",
+             "STATED_BY_REGISTRY", "STATED_BY_CURATED_SOURCE", "NOT_ESTABLISHED"}
+    for x in quoted:
+        orientation = x["pair_orientation"]
+        assert orientation["direction_basis_kind"] in kinds and orientation["direction_status"] == x["direction"]["status"]
+        assert orientation["direction_basis"] == x["direction"]["basis"]
+        assert orientation["direction_confirmed_by_arm_values"] == (x["direction"]["arm_values_check"] == "CONSISTENT")
+    # SURMOUNT-1's registry names no contrast: confirmed by arm values, and the basis says the source did not state it.
+    primary = next(x for x in quoted if x["origin"] == "REGISTRY")
+    assert primary["direction"]["basis_kind"] == "CONFIRMED_BY_ARM_VALUES" and primary["direction"]["stated_by"] == "NOT_STATED_BY_SOURCE"
+    assert "does not state the direction" in primary["direction"]["basis"]
+    # Every stored analysis carries one of the exact kinds, and 'established' agrees with it.
+    for analysis in db.scalars(select(StatisticalAnalysis)):
+        direction = analysis_dto(analysis)["direction"]
+        assert direction["basis_kind"] in kinds and direction["established"] == (direction["basis_kind"] != "NOT_ESTABLISHED")
+
+
+def test_web17_reported_text_is_returned_beside_the_number(db, client):
+    row = db.scalar(select(OutcomeResult).where(OutcomeResult.value_text.is_not(None), OutcomeResult.value.is_not(None)))
+    finding = client.get(f"/api/findings/{row.id}").json()["finding"]
+    assert finding["value_text"] == row.value_text and finding["value"] == row.value
+    listed = client.get("/api/findings", params={"study": row.study.nct_id, "arm_level_only": False, "limit": 2000}).json()["rows"]
+    assert next(r for r in listed if r["result_id"] == row.id)["value_text"] == row.value_text
+    blank = db.scalar(select(OutcomeResult).where(OutcomeResult.value_text.is_(None), OutcomeResult.value.is_not(None)))
+    if blank is not None:
+        assert client.get(f"/api/findings/{blank.id}").json()["finding"]["value_text"] is None  # missing stays missing
+    analysis = db.scalar(select(StatisticalAnalysis).where(StatisticalAnalysis.estimate_text.is_not(None)))
+    dto = client.get(f"/api/analyses/{analysis.id}").json()["analysis"]
+    assert dto["estimate_text"] == analysis.estimate_text and dto["estimate"] == analysis.estimate
+    profiles = client.get(f"/api/benefit-risk/{SM1}").json()
+    entry = next(a for a in profiles["arms"] if "weight_pct" in a["efficacy"])["efficacy"]["weight_pct"]
+    assert "value_text" in entry

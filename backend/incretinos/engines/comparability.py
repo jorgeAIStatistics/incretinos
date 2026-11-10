@@ -7,10 +7,13 @@ list of statements the evidence does and does not permit.
 Classification logic (deterministic):
 
 * DIRECT RANDOMIZED COMPARISON requires two DIFFERENT arms that were randomized against each other in
-  the SAME randomization (same trial, same sub-study and period), reported on the same endpoint
-  definition (measurement, responder criterion, unit), the same baseline, the same estimand and the
-  same time point. The reported between-arm analysis is quoted only when it is the analysis of exactly
-  that endpoint, estimand, time point and arm pair.
+  the SAME randomization (same trial, same sub-study and period), reported IN ONE DOCUMENT on the same
+  endpoint definition (measurement, responder criterion, unit), the same baseline, the same estimand and
+  the same time point. The reported between-arm analysis is quoted only for a direct comparison, and only
+  when it is the analysis of exactly that endpoint, estimand, time point and arm pair in that same document;
+  any other stored analysis of the two arms is listed under ``other_analyses`` with the reason.
+* An A − B difference is formed only between values of one endpoint definition, unit, baseline, assessment
+  time (at most one week apart) and analysed population; otherwise the reason is given and no difference.
 * Two records of ONE arm (a registry row beside a curated row, or two analyses of one group) are not a
   treatment comparison at all; the engine says so and computes no difference.
 * Any *blocking* mismatch (endpoint definition, unit, baseline, estimand, diabetes status)
@@ -103,7 +106,7 @@ class Comparison:
     #: How the two groups relate: RANDOMIZED_ARMS_OF_ONE_TRIAL, SAME_ARM_TWO_REPORTS,
     #: SAME_REGISTRATION_NOT_RANDOMIZED_AGAINST_EACH_OTHER, SAME_TRIAL_ARM_IDENTITY_UNRESOLVED or DIFFERENT_TRIALS.
     relationship: str = ""
-    #: Analyses stored for the same two arms that concern a different endpoint, estimand or time point; never quoted.
+    #: Analyses stored for the same two arms that concern a different endpoint, estimand or time point, are reported by another document, or belong to a pair that is not a direct comparison; never quoted.
     other_analyses: list[dict[str, Any]] = field(default_factory=list)
     endpoint_definitions: dict[str, Any] = field(default_factory=dict)
 
@@ -318,9 +321,16 @@ def _analysis_mismatches(row: StatisticalAnalysis, a: Finding, b: Finding) -> li
             reasons.append(f"a different or unrecognised measurement ({row.endpoint.title})")
         elif not (dr.threshold == da.threshold == db.threshold) or dr.threshold_ambiguous:
             reasons.append(f"a different responder threshold ({row.endpoint.title})")
+    if row.source_id is None or row.source_id != _source_id(a) or row.source_id != _source_id(b):
+        # An analysis is "the analysis of this pair" only in the document that reports the two values; another document
+        # may use another analysis set, data cut or handling of intercurrent events.
+        reasons.append(f"reported by another source ({row.source.key if row.source else 'source not recorded'}) than the two values")
     if not same_report and not reasons:
         row_baseline = _analysis_baseline_class(row)
-        if row_baseline is None or not (row_baseline == a.baseline_class == b.baseline_class):
+        if _baseline_factor(a, b).assessment != A.MATCH.value:
+            # Judged exactly as the baseline factor judges it: an undescribed baseline is not assumed to be the study baseline.
+            reasons.append("the two values are not established as measured from one baseline (it is not described for at least one of them), so the analysis cannot be shown to share it")
+        elif row_baseline is None or not (row_baseline == a.baseline_class == b.baseline_class):
             reasons.append("a different (or undeterminable) baseline from the two values")
     row_estimand = row.estimand.label if row.estimand else EstimandLabel.NOT_STATED.value
     if not (row_estimand == a.estimand_label == b.estimand_label):
@@ -350,8 +360,15 @@ def _pair_orientation(dto: dict[str, Any], treatment_key: str | None, a: Finding
     else:
         text = (f"The stored record lists {dto['treatment_label']} and {dto['comparator_label']}, but which of them is the reference is not established "
                 f"({dto['direction']['basis']}) The sign of the estimate is therefore not interpreted.")
+    direction = dto["direction"]
+    if established:
+        text += " Direction basis: " + direction["basis"]
     return {"treatment_is": treatment_is, "comparator_is": comparator_is, "direction_established": established,
-            "same_orientation_as_descriptive_difference": established and treatment_is == "A", "text": text}
+            "same_orientation_as_descriptive_difference": established and treatment_is == "A", "text": text,
+            # Exactly how the direction is known: stated by the source, confirmed by the arm values, both, or not established.
+            "direction_status": direction["status"], "direction_basis_kind": direction.get("basis_kind"),
+            "direction_stated_by": direction.get("stated_by"), "direction_confirmed_by_arm_values": bool(direction.get("confirmed_by_arm_values")),
+            "direction_basis": direction["basis"]}
 
 
 def _reported_analyses(session: Session, a: Finding, b: Finding) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -713,7 +730,32 @@ def build_factors(session: Session, a: Finding, b: Finding) -> list[Factor]:
     else:
         level, text = A.MATCH, "Same evidence tier."
     f.append(Factor("evidence_tier", "Evidence tier", a.tier, b.tier, level.value, text))
+
+    # 19 source document (within one trial): a direct comparison is one report of one analysis
+    if same_study:
+        f.append(_source_factor(a, b))
     return f
+
+
+def _source_label(f: Finding) -> str:
+    src = f.source or {}
+    if not src:
+        return "source not recorded"
+    tier = src.get("tier_label") or src.get("tier") or ""
+    return f"{src.get('key')} ({tier})" if tier else str(src.get("key"))
+
+
+def _source_factor(a: Finding, b: Finding) -> Factor:
+    label = "Source document"
+    ida, idb = _source_id(a), _source_id(b)
+    if ida is None or idb is None:
+        return Factor("source_document", label, _source_label(a), _source_label(b), A.UNKNOWN.value,
+                      "The source document is not recorded for at least one value, so the two cannot be shown to come from one report.")
+    if ida == idb:
+        return Factor("source_document", label, _source_label(a), _source_label(b), A.MATCH.value, "Both values are reported in the same document.")
+    return Factor("source_document", label, _source_label(a), _source_label(b), A.MAJOR_DIFFERENCE.value,
+                  f"Finding A is reported in {_source_label(a)} and finding B in {_source_label(b)}. No single source reports both values, so their "
+                  "difference is not one any source reported: the documents may use different analysis sets, data cuts or handling of intercurrent events.")
 
 
 #: Factors that must MATCH before two findings of different randomizations are called partially comparable.
@@ -780,7 +822,7 @@ def compare_findings(session: Session, a: Finding, b: Finding) -> Comparison:
         cls = ComparabilityClass.INSUFFICIENT_EVIDENCE
     elif same_study:
         estimand_ok = by_key["estimand"].assessment in (A.MATCH.value, A.NOT_APPLICABLE.value) or one_report
-        direct_gaps = [by_key[k].label for k in ("randomization", "endpoint", "unit", "baseline", "duration") if not matched(k)]
+        direct_gaps = [by_key[k].label for k in ("randomization", "endpoint", "unit", "baseline", "duration", "source_document") if not matched(k)]
         if not estimand_ok:
             direct_gaps.append(by_key["estimand"].label)
         if by_key["analysis_population"].assessment == A.MAJOR_DIFFERENCE.value:
@@ -812,13 +854,25 @@ def compare_findings(session: Session, a: Finding, b: Finding) -> Comparison:
         reasons.append("Not assessable from stored sources: " + ", ".join(x.label.lower() for x in unknown) + ".")
 
     analyses, other_analyses = _reported_analyses(session, a, b) if relationship == "RANDOMIZED_ARMS_OF_ONE_TRIAL" else ([], [])
+    if analyses and cls != ComparabilityClass.DIRECT_RANDOMIZED_COMPARISON:
+        # Only a direct comparison quotes a between-arm analysis. Otherwise the analysis is listed, never quoted, with the reason.
+        why = "this pair of values is not a direct randomized comparison of one quantity" + (f" ({', '.join(g.lower() for g in direct_gaps)} not matched)" if direct_gaps else f" (classified {cls.value.lower()})")
+        other_analyses = [{**{k: v for k, v in x.items() if k != "pair_orientation"}, "mismatch": [why]} for x in analyses] + other_analyses
+        analyses = []
     head_to_head = [] if same_study else find_head_to_head_trials(session, a.drug_slug, b.drug_slug)
 
     # Descriptive arithmetic difference — only where a difference of the two values is meaningful at all.
     descriptive = None
-    # The same measurement, on the same scale, from the same kind of baseline. A baseline that is not described for
-    # one of the two values is not assumed to be the same, so no difference is formed across it.
-    difference_meaningful = matched("endpoint", "unit", "baseline")
+    # The same measurement, on the same scale, from the same kind of baseline, at the same assessment time (one week at most
+    # apart) and in the same analysed population. A baseline that is not described for one of the two values is not assumed
+    # to be the same, and values at different weeks or of a named subset beside the whole population are different quantities.
+    difference_keys = ("endpoint", "unit", "baseline")
+    not_same = [by_key[k].label.lower() for k in difference_keys if not matched(k)]
+    if by_key["duration"].assessment not in (A.MATCH.value, A.MINOR_DIFFERENCE.value):
+        not_same.append(by_key["duration"].label.lower() + f" ({by_key['duration'].a} versus {by_key['duration'].b})")
+    if by_key["analysis_population"].assessment == A.MAJOR_DIFFERENCE.value:
+        not_same.append(by_key["analysis_population"].label.lower() + " (a named subset beside another population)")
+    difference_meaningful = not not_same
     if cls in (ComparabilityClass.DIRECT_RANDOMIZED_COMPARISON, ComparabilityClass.PARTIALLY_COMPARABLE, ComparabilityClass.DESCRIPTIVE_CROSS_STUDY) and a.value is not None and b.value is not None and difference_meaningful:
         descriptive = {
             "value": round(a.value - b.value, 4),
@@ -830,15 +884,18 @@ def compare_findings(session: Session, a: Finding, b: Finding) -> Comparison:
             "ci": None,
             "ci_status": "NOT_AVAILABLE",
             "note": (
-                "Arithmetic difference of the two arm-level values (A − B). It is not a model-based treatment-effect estimate and has no confidence interval."
+                "Arithmetic difference of the two arm-level values (A − B), both reported in one document. It is not a model-based treatment-effect estimate and has no confidence interval."
                 if cls == ComparabilityClass.DIRECT_RANDOMIZED_COMPARISON
+                else "Unadjusted arithmetic difference (A − B) between two arms of one randomized trial, but the two values are not established as one randomized quantity ("
+                + ", ".join(g.lower() for g in direct_gaps) + " not matched). It is descriptive only: it is not an estimate of the treatment effect, "
+                "it has no confidence interval, and it must not be described as statistically significant."
+                if relationship == "RANDOMIZED_ARMS_OF_ONE_TRIAL"
                 else "Unadjusted arithmetic difference (A − B) between groups that were not randomized against each other. It is descriptive only: it is not an estimate of comparative efficacy, "
                 "it has no confidence interval, and it must not be described as statistically significant."
             ),
         }
 
     elif cls in (ComparabilityClass.PARTIALLY_COMPARABLE, ComparabilityClass.DESCRIPTIVE_CROSS_STUDY) and a.value is not None and b.value is not None:
-        not_same = [by_key[k].label.lower() for k in ("endpoint", "unit", "baseline") if not matched(k)]
         reasons.append("No arithmetic difference is given: " + ", ".join(not_same) + " could not be established as the same for the two values.")
 
     a_name, b_name = f"{a.arm_label} ({a.study_name})", f"{b.arm_label} ({b.study_name})"
@@ -861,7 +918,7 @@ def compare_findings(session: Session, a: Finding, b: Finding) -> Comparison:
                 permitted.append("Whether this comparison was inside the trial's multiplicity control is "
                                  + ("documented as NO — treat any p-value as nominal." if TriState.NO.value in statuses else "not stated in the stored source."))
         else:
-            also = f" ({len(other_analyses)} other stored {'analysis' if len(other_analyses) == 1 else 'analyses'} of these two arms concern a different endpoint, estimand or time point and are not quoted for this pair.)" if other_analyses else ""
+            also = f" ({len(other_analyses)} other stored {'analysis' if len(other_analyses) == 1 else 'analyses'} of these two arms concern a different endpoint, estimand or time point, or are reported in another document, and are not quoted for this pair.)" if other_analyses else ""
             permitted.append("The arms were randomized against each other, but no between-arm analysis of this endpoint, estimand and time point is stored for this pair; "
                              f"the difference between the two arm-level values is descriptive.{also}")
             prohibited.append("Do not state that the difference is statistically significant: no supporting test is on record for this pair.")

@@ -24,6 +24,7 @@ from ..enums import (
     ReceptorTarget,
     TriState,
 )
+from ..vocab import DRUG_ALIASES
 from .estimands import ESTIMAND_EXPLAINER
 from .findings import (
     CATEGORY_LABEL,
@@ -35,6 +36,7 @@ from .findings import (
     effect_scale,
     format_ci,
     format_value,
+    interval_p_value_consistency,
     population_phrase,
 )
 
@@ -246,6 +248,13 @@ def interpret_analysis(a: dict[str, Any]) -> dict[str, Any]:
     missing = []
     # The interval is read against the null only when the scale and the confidence level are both established.
     readable = null is not None and level_status == "VALID" and lo is not None and hi is not None
+    # A record whose interval contradicts its own p-value (or whose estimate sits outside the middle of its interval) is
+    # not read at all: the disagreement is stated and no conclusion about a difference is drawn either way.
+    consistency = a.get("internal_consistency") or interval_p_value_consistency(
+        estimate, lo, hi, a.get("ci_level"), level_status, a.get("ci_sides"), scale["scale"], null, a.get("p_value_text"), a.get("hypothesis_type"))
+    inconsistent = consistency["status"] not in ("CONSISTENT", "NOT_CHECKABLE")
+    if inconsistent:
+        readable = False
     ci_excludes_null = (not (lo <= null <= hi)) if readable else None
     exploratory = a["role"] in (EndpointRole.EXPLORATORY.value, EndpointRole.POST_HOC.value)
     uncontrolled = a["multiplicity_controlled"] == TriState.NO.value
@@ -293,6 +302,9 @@ def interpret_analysis(a: dict[str, Any]) -> dict[str, Any]:
         elif ci_excludes_null is False:
             not_established.append(f"A between-arm difference: the {level_text} confidence interval includes {null_text}, the value of no difference.")
 
+    if inconsistent:
+        not_established.insert(0, f"Any conclusion about a between-arm difference, in either direction: {consistency['detail']}")
+        missing.append("A consistent record of this analysis (interval, estimate and p-value that agree); the source needs checking.")
     if scale["scale"] == "NOT_ESTABLISHED":
         not_established.append(f"Whether the interval excludes 'no difference': {scale['basis']}")
         missing.append("The scale of the estimate (difference or ratio), and with it the value that would mean no difference.")
@@ -334,7 +346,9 @@ def interpret_analysis(a: dict[str, Any]) -> dict[str, Any]:
         "direction_established": bool(direction["established"]),
         "direction_status": direction.get("status"),
         "ci_excludes_no_difference": ci_excludes_null,
-        "ci_excludes_no_difference_kind": "INFERENCE (read from the reported interval at its stated confidence level, against the null value of the stated scale)",
+        "ci_excludes_no_difference_kind": "INFERENCE (read from the reported interval at its stated confidence level, against the null value of the stated scale)"
+        if not inconsistent else "NOT_READ (the stored interval, estimate and p-value disagree with each other)",
+        "internal_consistency": consistency,
         "establishes": establishes,
         "does_not_establish": not_established,
         "missing": missing,
@@ -365,58 +379,166 @@ def describe_adverse_event(ae: dict[str, Any]) -> str:
 
 # --------------------------------------------------------------------------- language guard
 #
-# A heuristic screen for claims the evidence does not license. It is deliberately biased towards flagging:
-# a claim is cleared only by a negation that grammatically governs it inside the same clause. A negation
-# word that merely stands nearby ("without doubt", "no question", "not only … but") clears nothing.
+# A heuristic screen for claims the evidence does not license. It is deliberately biased towards flagging: a claim is
+# cleared only by a negation or hedging frame that governs it inside the same clause —
+#
+# * a negation or refusal in front of it: "there is no evidence that X is superior", "it would be wrong to say that X
+#   beats Y", "no one can say which drug is more effective", "a trial would be needed to establish superiority";
+# * an indirect question or condition in front of it: "whether X is more effective than Y is unknown";
+# * a negated or negatively evaluated predicate after it, with the claim as its subject: "superiority was not shown",
+#   "claims of superiority would require a randomized comparison", "any suggestion that X outperforms Y is unsupported".
+#
+# A negation word that merely stands nearby clears nothing ("without doubt", "not only … but", "it is no surprise"),
+# and neither does one that is part of an emphatic claim ("never before has …", "no other drug comes close",
+# "cannot be beaten"). Every rule is a pattern: the screen cannot recognise every paraphrase.
 
-_SIGNIFICANCE = (
-    r"\bstatistically\b|(?<!clinically )\bsignificant(ly)?\b|\bstatistical significance\b|\bp\s*[<≤=]\s*0?\.\d+"
+_COMPARATOR_WORDS = sorted(
+    {alias for slug, aliases in DRUG_ALIASES.items() if slug != "placebo" for alias in aliases}
+    | {"liraglutide", "exenatide", "cagrilintide", "survodutide", "mazdutide", "insulin", "the comparator", "the other drug", "the other agent",
+       "the other treatment", "its rival", "its rivals", "its competitor", "its competitors", "the competition", "every other", "all other"},
+    key=len, reverse=True,
 )
-_PATTERNS = {
-    "NI_AS_SUPERIORITY": r"\bsuperior(ity)?\b|\bbetter than\b|\boutperform(s|ed|ing)?\b|\bmore effective\b|\breduced (the )?risk\b|"
-    r"\bsignificant(ly)? (reduc|lower|better|greater|fewer|improv)|\bcardiovascular benefit\b|\bcardioprotect",
-    "CROSS_TRIAL_SUPERIORITY": r"\bsuperior(ity)?\b|\boutperform(s|ed|ing)?\b|\bmore (effective|efficacious|potent)\b|\bbetter than\b|\bbeats?\b|\bbest[- ]in[- ]class\b|"
-    r"\b(stronger|better|best|most effective) (drug|agent|medicine|treatment|therapy|option|choice)\b|" + _SIGNIFICANCE,
-    "LEAN_AS_MUSCLE": r"\bmuscle (loss|wasting|atrophy)\b|\bloss of (skeletal )?muscle\b|\blost muscle\b|\bsarcopenia\b",
-    "SPONTANEOUS_AS_INCIDENCE": r"\bincidence\b|\bevent rate\b|\brate of\b|\brisk of\b|\b\d+(\.\d+)?\s?% of (patients|users|people)\b|\bper \d[\d,]* (patients|users|person)",
-    "SPONTANEOUS_AS_CAUSAL": r"\bcauses?\b|\bcaused by\b|\bproves?\b|\bdue to the drug\b|\binduced by\b",
-    "DISCONTINUATION_AS_INCIDENCE": r"\bincidence of\b|\bexperienced (an? )?adverse event|\badverse[- ]event rate\b",
-    "RECOMMENDATION": r"\b(you|patients?) should (take|start|switch|use|stop)\b|\bI recommend\b|\bthe best (drug|treatment|choice) (is|for)\b|\bprescribe\b|\bshould be (prescribed|preferred)\b",
-    "UNLABELLED_EXPLORATORY": r"\bdemonstrated\b|\bproved\b|\bconfirmed\b|\bestablished\b",
+_DRUG = r"(?:" + "|".join(re.escape(w) for w in _COMPARATOR_WORDS) + r")\b"
+
+_SIGNIFICANCE = r"\bstatistically\b|(?<!clinically )\bsignificant(?:ly)?\b|\bstatistical significance\b|\bp\s*[<≤=]\s*0?\.\d+"
+# Superiority, inferiority, equivalence and ranking between two treatments.
+_SUPERIORITY = (
+    r"\bsuperior(?:ity)?\b|(?<!non-)(?<!non )\binferior(?:ity)?\b|\boutperform(?:s|ed|ing)?\b|\bout(?:pace|strip|class|do|shine)(?:s|d|ed|es|ped|ping|ing)?\b|"
+    r"\b(?:more|most) (?:effective|efficacious|potent|powerful)\b|\b(?:less|least) (?:effective|efficacious|potent|powerful)\b|"
+    r"\b(?:better|worse|weaker|stronger|superior) than\b|"
+    r"\b(?:far|much|clearly|significantly|substantially|markedly|considerably|vastly|way|distinctly|decidedly|obviously|plainly|evidently|notably) "
+    r"(?:better|superior|stronger|more effective|more efficacious|worse|weaker|less effective)\b|"
+    r"\b(?:beats?|beaten|beating|trumps?|trumped|eclipses?|eclipsed|dominates?|dominated)\b|"
+    r"\b(?:wins?|won|winner|winning)\b(?!\s+(?:\w+\s+)?(?:approval|authori[sz]ation|designation))|"
+    r"\b(?:edge|advantage|lead|upper hand) over\b|"
+    r"\b(?:surpass(?:es|ed|ing)?|exceed(?:s|ed|ing)?|tops?|topped|overtakes?|overtook|outdoes|outdid)\s+(?:\w+\s+){0,2}?" + _DRUG + "|"
+    r"\bahead of\s+(?:\w+\s+)?" + _DRUG + "|"
+    r"\b(?:falls?|fell|falling) short of\b|\blags? behind\b|\blagged behind\b|\bno match for\b|"
+    r"\b(?:twice|thrice|two times|three times|\d+(?:\.\d+)?[- ]?(?:times|fold)|half) as (?:effective|efficacious|potent|good|strong|much)\b|"
+    r"\b(?:just |equally |every bit )?as (?:effective|efficacious|potent) as\b|\bequally effective\b|"
+    r"\bbest[- ]in[- ]class\b|\b(?:unmatched|unrivall?ed|unparalleled|unbeatable|unbeaten|second to none)\b|\bin a (?:class|league) of (?:its|their) own\b|"
+    r"\b(?:no other|nothing else|nothing|none of the other|no competitor|no rival)\s+(?:\w+\s+){0,2}?(?:comes?|came) close\b|"
+    r"\b(?:no other|nothing else|none of the other)\s+(?:\w+\s+){0,2}?(?:compares?|matches|rivals?|is as|works as)\b|"
+    r"\b(?:cannot|can't|can not) be (?:beaten|beat|matched|bettered|surpassed|topped|outdone)\b|"
+    r"\b(?:stronger|better|best|most effective|most potent|strongest|leading|top|top-performing|best-performing) "
+    r"(?:drug|agent|medicine|medication|treatment|therapy|option|choice|incretin|molecule|performer)\b|"
+    r"\bthe (?:best|strongest|most effective|most potent|most efficacious)\b(?!\s+(?:available|evidence|estimate|way|approach|data|source|information|practice|design))|"
+    r"\brank(?:s|ed|ing)? (?:first|highest|top|above|ahead|best)\b|\btop[- ]ranked\b|\bnumber one\b|#1\b"
+)
+# A comparative between two treatments ("more weight loss on X than on Y"). A comparison with placebo or baseline, a
+# quantity ("more than 20%") and a sentence that labels the comparison as a description of reported numbers are not claims.
+_COMPARATIVE = (
+    r"\b(?:more|greater|larger|bigger|higher|deeper|faster|less|lower|smaller|fewer|slower|weaker|stronger)\b"
+    r"(?!\s+than\s+(?:\d|half\b|a\b|an\b|one\b|two\b|three\b|twice\b|double\b|expected|predicted|planned))"
+    r"[^.;:]{0,60}?\bthan\b"
+    r"(?!\s+(?:with\s+|on\s+|in\s+|for\s+|the\s+|a\s+|an\s+|at\s+|after\s+)?(?:placebo|baseline|before|expected|predicted|previously|planned|pre-?specified|zero|\d))"
+)
+_DESCRIPTIVE_COMPARISON = r"\bnumerically\b|\bunadjusted\b|\bdescriptive(?:ly)?\b|\bas reported\b|\breported (?:values?|means?|figures?|numbers?|estimates?)\b|\bside by side\b"
+# Attributing a between-trial difference to the drug.
+_CAUSAL_ATTRIBUTION = (
+    r"\b(?:due to|because of|attributable to|caused by|driven by|explained by|thanks to|owing to|the result of|a result of|results? from|resulted from)\s+"
+    r"(?:\w+\s+){0,3}?(?:" + _DRUG + r"|the (?:drug|treatment|agent|mechanism|molecule)\b|(?:triple|dual|tri)[- ]?agon\w*|its mechanism\b)"
+)
+
+#: code -> [(claim pattern, exemption pattern for the clause or None)], matched clause by clause.
+_RULES: dict[str, list[tuple[str, str | None]]] = {
+    "NI_AS_SUPERIORITY": [
+        (_SUPERIORITY + r"|\breduced (?:the )?risk\b|\bsignificant(?:ly)? (?:reduc|lower|better|greater|fewer|improv)|\bcardiovascular benefit\b|\bcardioprotect\w*|\bprotect(?:s|ed|ive)?\b", None),
+        (r"\b(?:reduc|lower|cut|decreas|prevent|avert|halv)\w*\s+(?:\w+\s+){0,4}?(?:risk|events?|mace(?:-\d)?|mortality|deaths?|hazard|incidence|hospitali[sz]ations?|strokes?|infarctions?|outcomes?)\b", None),
+        (r"\b(?:risk|events?|mace|mortality|deaths?|hazard)\b(?:\s+\w+){0,3}?\s+(?:was|were|is|are|has been|have been)\s+(?:\w+\s+)?(?:reduced|lowered|cut|decreased|prevented|halved)\b", None),
+        (r"\b\d+(?:\.\d+)?\s?%\s+(?:lower|reduction|fewer|less|relative reduction)\b", None),
+    ],
+    "CROSS_TRIAL_SUPERIORITY": [
+        (_SUPERIORITY, None),
+        (_SIGNIFICANCE, None),
+        (_COMPARATIVE, _DESCRIPTIVE_COMPARISON),
+        (_CAUSAL_ATTRIBUTION, None),
+    ],
+    "LEAN_AS_MUSCLE": [
+        (r"\bmuscle (?:mass )?(?:loss|wasting|atrophy|declin\w*|decreas\w*|reduction|depletion)\b|\bloss of (?:skeletal )?muscle\b|"
+         r"\b(?:lost|lose|loses|losing|reduced|reduces|depleted)\s+(?:\w+\s+){0,2}?muscle\b|\bmuscle (?:mass )?(?:was|were|is|are)?\s*(?:lost|reduced|depleted|decreased|declined)\b|\bsarcopenia\b", None),
+    ],
+    "SPONTANEOUS_AS_INCIDENCE": [
+        (r"\bincidence\b|\bevent rate\b|\brate of\b|\brisk of\b|\b\d+(?:\.\d+)?\s?% of (?:patients|users|people|participants)\b|\bper \d[\d,]* (?:patients|users|person|people)", None),
+    ],
+    "SPONTANEOUS_AS_CAUSAL": [
+        (r"\bcaus(?:es?|ed|ing|al|ally|ation)\b|\btrigger(?:s|ed|ing)?\b|\binduc(?:es?|ed|ing)\b|\bprovok(?:es?|ed|ing)\b|\bleads? to\b|\bled to\b|"
+         r"\bresult(?:s|ed)? in\b|\bresponsible for\b|\bbrings? on\b|\bprov(?:e|es|ed|en)\b|\bdue to the drug\b", None),
+        (r"\b(?:reports?|data|cases?|faers|signals?)\s+(?:show|shows|showed|demonstrate|demonstrates|prove|proves|confirm|confirms)\b(?=\s+that\b|\s*[.,;]|\s*$)", None),
+    ],
+    "DISCONTINUATION_AS_INCIDENCE": [
+        (r"\bincidence of\b|\bexperienced (?:an? )?adverse event|\badverse[- ]event rate\b", None),
+    ],
+    "RECOMMENDATION": [
+        (r"\b(?:you|patients?|people|clinicians?|doctors?) should (?:take|start|switch|use|stop|choose|try|receive|be (?:given|started|switched))\b|\bI recommend\b|\bwe recommend\b|"
+         r"\bthe best (?:drug|treatment|choice|option|therapy) (?:is|for)\b|\bprescribe\b|\bshould be (?:prescribed|preferred|used first|chosen|the first choice)\b|"
+         r"\b(?:preferred|first[- ]choice|first[- ]line choice|go-to) (?:treatment|drug|therapy|option|agent|medication|medicine|choice)\b|"
+         r"\b(?:treatment|drug|therapy|medication) of choice\b|\b(?:is|are) (?:the )?(?:right|ideal|optimal|recommended) (?:choice|option|treatment|drug|therapy) for\b|"
+         r"\bis recommended for\b|\b(?:you|patients?|people) (?:can|could|may) (?:use|take|start|switch to|choose)\b", None),
+    ],
+    "UNLABELLED_EXPLORATORY": [
+        (r"\bdemonstrat(?:e|es|ed|ing)\b|\bprov(?:e|es|ed|en|ing)\b|\bconfirm(?:s|ed|ing)?\b|\bestablish(?:es|ed|ing)?\b|\bshow(?:s|ed|n)? that\b|"
+         r"\bshow(?:s|ed|n)? (?:a |an )?(?:clear|significant|definite|real|true|robust|convincing)\b|\bdefinitive(?:ly)?\b|\bconclusive(?:ly)?\b", None),
+    ],
 }
 
-# A between-drug comparative carrying a p-value is a significance claim even without the word "significant".
-_SENTENCE_PATTERNS = {
-    "CROSS_TRIAL_SUPERIORITY": r"\b(?:more|greater|larger|bigger|better|higher|stronger|fewer|less|lower)\b[^.;]{0,80}\bthan\b[^.;]{0,80}\bp\s*[<≤=]\s*0?\.\d+",
+# Rules matched on the whole sentence (they span commas).
+_SENTENCE_RULES: dict[str, list[str]] = {
+    # A between-drug comparative carrying a p-value is a significance claim even without the word "significant".
+    "CROSS_TRIAL_SUPERIORITY": [r"\b(?:more|greater|larger|bigger|better|higher|stronger|fewer|less|lower)\b[^.;]{0,80}\bthan\b[^.;]{0,80}\bp\s*[<≤=]\s*0?\.\d+"],
+    # "lost lean mass, that is, muscle": lean mass equated with muscle.
+    "LEAN_AS_MUSCLE": [
+        r"\b(?:lean|fat[- ]free)[- ](?:body )?mass\b[^.;]{0,40}?\b(?:that is|i\.e\.|ie|meaning|namely|in other words|which is|which means|or rather)(?:\b|(?<=\.))[\s,]*(?:\w+\s+){0,2}?muscle\b",
+        r"\b(?:lean|fat[- ]free)[- ](?:body )?mass (?:is|was|represents|equals|means|reflects)\s+(?:(?!not\b|never\b|only\b)\w+\s+)?(?:skeletal )?muscle\b(?!\s+and\b)",
+    ],
 }
 
 # Phrases that contain a negation word but assert rather than deny. They are blanked before negation is looked for.
 _PSEUDO_NEGATION = re.compile(
-    r"\bnot (?:only|just|merely|simply|least|to mention|surprising(?:ly)?)\b|\b(?:no|without|beyond)(?: a| any)? (?:doubt|question|surprise|wonder|dispute|exaggeration)\b|"
-    r"\bno denying\b|\bcannot be (?:denied|overstated)\b|\b(?:could|can)(?:n't| not|not) be (?:more|clearer)\b|\bno(?:thing)? (?:less|short) (?:than|of)\b|\bundoubtedly\b|\bno longer in doubt\b",
+    r"\bnot (?:only|just|merely|simply|least|to mention|surprising(?:ly)?|even close)\b|\b(?:no|without|beyond)(?: a| any)? (?:doubt|question|surprise|wonder|dispute|exaggeration|contest)\b|"
+    r"\bno denying\b|\bcannot be (?:denied|overstated)\b|\b(?:could|can)(?:n't| not|not) be (?:more|clearer)\b|\bno(?:thing)? (?:less|short) (?:than|of)\b|\bundoubtedly\b|\bno longer in doubt\b|"
+    r"\b(?:like )?never before\b|\bnever (?:been|looked) (?:better|stronger|clearer)\b|\bif anything\b|\bthere is no comparison\b|\bno comparison\b(?=\s*[:—–-])|\bnone better\b",
     re.IGNORECASE,
 )
-# A negated verb, or a statement that evidence is absent, that can govern a claim later in the same clause.
+# A negation, refusal, indirect question or requirement in front of a claim, inside its clause.
 _GOVERNING_NEGATION = re.compile(
     r"\b(?:do|does|did|is|are|was|were|has|have|had|can|could|should|must|may|might|will|would)(?:n't| not| never)\b|\bcannot\b|\bcan't\b|\bnever\b|"
-    r"\bnot (?:be |been )?(?:known|clear|established|demonstrated|shown|possible|permitted|appropriate|valid|supported|licensed)\b|\b(?:unknown|unclear) whether\b|"
+    r"\bnot (?:be |been )?(?:known|clear|established|demonstrated|shown|possible|permitted|appropriate|valid|supported|licensed|justified|warranted|correct|accurate)\b|"
+    r"\b(?:unknown|unclear|uncertain|untested|unproven|undetermined|open) (?:whether|if)\b|"
     r"\bfail(?:s|ed)? to\b|\bneither\b|\bnor\b|\brather than\b|\binstead of\b|"
-    r"\b(?:no|without|lack of|absence of|insufficient) (?:\w+ ){0,2}?(?:evidence|proof|indication|basis|data|trials?|stud(?:y|ies)|tests?|claims?|reason|support|comparison)\b",
+    r"\b(?:no|without|lack of|absence of|insufficient|little|limited) (?:\w+ ){0,2}?(?:evidence|proof|indication|basis|data|trials?|stud(?:y|ies)|tests?|claims?|reason|support|comparison|grounds?)\b|"
+    r"\b(?:wrong|incorrect|inaccurate|misleading|premature|unjustified|unwarranted|inappropriate|invalid|false|unsupported|an overstatement|overstating|unsafe) to "
+    r"(?:say|claim|conclude|state|suggest|imply|call|describe|assert|infer|argue|declare|label|present)\b|"
+    r"\b(?:no one|nobody|no-one|none of us|no reader) (?:can|could|may|is able to|should) (?:say|tell|know|conclude|claim|infer|state|determine)\b|"
+    r"\b(?:impossible|too early|premature|not possible|hard|difficult) to (?:say|tell|know|conclude|claim|infer|determine|judge)\b|"
+    r"\bwhether\b|\bif\b|"
+    r"\b(?:needed|required|necessary|needs?|requires?|need|would (?:need|require)|designed|powered|sized|in order) to (?:establish|show|demonstrate|prove|confirm|claim|support|test|assess|determine|detect|evaluate)\b",
     re.IGNORECASE,
 )
 # A negating word immediately in front of the claim: "no significant", "not superior", "non-significant".
 _NEGATING_DETERMINER = re.compile(r"\b(?:no|not|non|without)\b(?:[- ]+(?:a|an|any|the|valid|formal|statistically|clinically))*[- ]*$", re.IGNORECASE)
-# The claim is the subject of a negated predicate: "superiority was not demonstrated".
+# The claim is the subject of a negated or negatively evaluated predicate: "superiority was not demonstrated",
+# "claims of superiority would require …", "any suggestion that X outperforms Y is unsupported".
 _NEGATED_PREDICATE = re.compile(
-    r"\b(?:(?:(?:was|were|is|are|has|have|had)(?:n't| not| never)(?: been| yet)?|(?:could|can|should|may|must)(?:n't| not)(?: be)?|cannot be)\s+(?:\w+ly\s+)?"
-    r"(?:demonstrated|shown|observed|established|found|seen|reached|achieved|met|tested|claimed|reported|detected|proven|proved|supported|confirmed|evaluated|assessed)"
-    r"|remains? (?:unproven|untested|unknown|unestablished))\b",
+    r"\b(?:(?:(?:(?:was|were|is|are|has|have|had)(?:n't| not| never)(?: been| yet)?|(?:could|can|should|may|must|would|will)(?:n't| not)(?: be)?|cannot be)\s+(?:\w+ly\s+)?"
+    r"(?:demonstrated|shown|observed|established|found|seen|reached|achieved|met|tested|claimed|reported|detected|proven|proved|supported|confirmed|evaluated|assessed|concluded|inferred|justified|warranted))"
+    r"|remains? (?:unproven|untested|unknown|unestablished|unclear|uncertain|to be (?:shown|established|tested|demonstrated|determined))"
+    r"|(?:is|are|was|were|would be|remains?)\s+(?:\w+ly\s+)?(?:unknown|unclear|uncertain|unsupported|unproven|unestablished|untested|premature|misleading|unjustified|unwarranted|wrong|incorrect|false|invalid|an overstatement"
+    r"|not (?:known|clear|established|supported|justified|warranted|licensed|valid))"
+    r"|(?:would|will|could|might)\s+(?:require|need|overstate|exaggerate|mislead)|(?:requires?|needs?) (?:a |an )?(?:head-to-head|randomi[sz]ed|direct|dedicated|confirmatory|new|further)|overstates?|exaggerates?)\b",
     re.IGNORECASE,
 )
 _PREDICATE_BARRIER = re.compile(r"\b(?:to|than|over|versus|vs|and|compared|with)\b", re.IGNORECASE)
+# A nominal claim carries its complement with it ("superiority of X over Y was not shown"): only 'and' / 'than' end it.
+_NOMINAL_CLAIM = re.compile(r"(?:superiority|inferiority|advantage|edge|lead|reduction|difference|significance)$", re.IGNORECASE)
+_NOMINAL_BARRIER = re.compile(r"\b(?:than|and)\b", re.IGNORECASE)
 _CLAUSE_BREAK = re.compile(r"[;:—–()]|,|\bbut\b|\bhowever\b|\balthough\b|\bthough\b|\bwhereas\b|\bwhile\b|\byet\b|\bnevertheless\b|\bnonetheless\b", re.IGNORECASE)
 _MAX_NEGATION_DISTANCE = 12  # words allowed between a governing negation and the claim
 _MAX_PREDICATE_DISTANCE = 6  # words allowed between the claim and its negated predicate
+
+
+# A sentence ends at . ! or ? followed by space, but not after an abbreviation ("i.e.", "e.g.", "vs.", "et al.").
+_SENTENCE_END = re.compile(r"(?<=[.!?])(?<!\bi\.e\.)(?<!\be\.g\.)(?<!\bvs\.)(?<!\bal\.)(?<!\bcf\.)(?<!\bapprox\.)\s+")
 
 
 def _blank(match: re.Match[str]) -> str:
@@ -424,7 +546,7 @@ def _blank(match: re.Match[str]) -> str:
 
 
 def _governed_by_negation(clause: str, start: int, end: int) -> bool:
-    """True when a negation inside this clause grammatically governs the phrase at [start, end)."""
+    """True when a negation or hedging frame inside this clause governs the phrase at [start, end)."""
     before, after = clause[:start], clause[end:]
     if _NEGATING_DETERMINER.search(before):
         return True
@@ -434,15 +556,24 @@ def _governed_by_negation(clause: str, start: int, end: int) -> bool:
     if predicate is None:
         return False
     between = after[: predicate.start()]
-    return len(between.split()) <= _MAX_PREDICATE_DISTANCE and not _PREDICATE_BARRIER.search(between)
+    barrier = _NOMINAL_BARRIER if _NOMINAL_CLAIM.search(clause[start:end]) else _PREDICATE_BARRIER
+    return len(between.split()) <= _MAX_PREDICATE_DISTANCE and not barrier.search(between)
+
+
+def _compiled(code: str) -> list[tuple[re.Pattern[str], re.Pattern[str] | None]]:
+    return [(re.compile(p, re.IGNORECASE), re.compile(x, re.IGNORECASE) if x else None) for p, x in _RULES[code]]
+
+
+_COMPILED = {code: _compiled(code) for code in _RULES}
+_COMPILED_SENTENCE = {code: [re.compile(p, re.IGNORECASE) for p in patterns] for code, patterns in _SENTENCE_RULES.items()}
 
 
 def _hits(code: str, text: str) -> list[str]:
     """Sentences that assert the pattern. Only a negation governing the phrase, in the same clause, clears it."""
     found = []
-    pattern = re.compile(_PATTERNS[code], re.IGNORECASE)
-    sentence_pattern = re.compile(_SENTENCE_PATTERNS[code], re.IGNORECASE) if code in _SENTENCE_PATTERNS else None
-    for sentence in re.split(r"(?<=[.!?])\s+", text):
+    rules = _COMPILED[code]
+    sentence_rules = _COMPILED_SENTENCE.get(code, [])
+    for sentence in _SENTENCE_END.split(text):
         masked = _PSEUDO_NEGATION.sub(_blank, sentence)
         asserted = False
         carried = False  # a cleared claim extends its negation over a following list ("not superior, better, or more effective")
@@ -451,7 +582,7 @@ def _hits(code: str, text: str) -> list[str]:
             if not clause:
                 continue
             continuation = bool(re.match(r"(?:or|nor|and)\b", clause, re.IGNORECASE)) or len(clause.split()) <= 3
-            matches = list(pattern.finditer(clause))
+            matches = [m for pattern, exempt in rules if not (exempt is not None and exempt.search(clause)) for m in pattern.finditer(clause)]
             if not matches:
                 carried = carried and continuation
                 continue
@@ -459,9 +590,12 @@ def _hits(code: str, text: str) -> list[str]:
             if not all(cleared):
                 asserted = True
             carried = all(cleared)
-        if not asserted and sentence_pattern is not None:
-            wide = sentence_pattern.search(masked)
-            asserted = bool(wide and not _governed_by_negation(masked, wide.start(), wide.start()))
+        if not asserted:
+            for pattern in sentence_rules:
+                wide = pattern.search(masked)
+                if wide and not _governed_by_negation(masked, wide.start(), wide.start()):
+                    asserted = True
+                    break
         if asserted:
             found.append(sentence.strip()[:200])
     return found
@@ -480,9 +614,9 @@ def guard_statement(
 ) -> list[dict[str, str]]:
     """Return claims in ``text`` that the described evidence does not license (empty list = clean).
 
-    The check is a pattern screen, not a parser: it catches the wordings listed in ``_PATTERNS`` and clears a
-    hit only when a negation governs it within the same clause. It errs towards flagging and cannot recognise
-    every paraphrase of a superiority claim.
+    The check is a pattern screen, not a parser: it catches the wordings listed in ``_RULES`` and ``_SENTENCE_RULES``
+    and clears a hit only when a negation, refusal, indirect question or negatively evaluated predicate governs it within
+    the same clause. It errs towards flagging and cannot recognise every paraphrase of a claim.
     """
     violations: list[dict[str, str]] = []
 
