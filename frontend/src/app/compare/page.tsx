@@ -6,10 +6,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { type BarFill, ChartFrame, ChartTable, FacetedChart, Reported } from "@/components/charts";
-import { Badge, Callout, ClassificationBadge, ErrorNote, Loading, PageHeader, Panel, Qualifiers, Section, Select, SourceLine, VerificationBadge } from "@/components/ui";
+import { Badge, Callout, ClassificationBadge, ErrorNote, ErrorState, Loading, PageHeader, Panel, Qualifiers, Section, Select, SourceLine, VerificationBadge, buttonClass } from "@/components/ui";
 import { apiPost, fmt, phaseLabel, titleCase, useApi, diabetesLabel } from "@/lib/api";
 import { useRows } from "@/lib/paging";
-import { ciLabel, contrastDirection, contrastKindLabel, contrastUnit, differenceUnit, estimandLabel, findingRow, isRatio, reportedText, tierLabel, unitLabel, weekLabel, withUnit } from "@/lib/rows";
+import { ciLabel, contrastDirection, contrastKindLabel, contrastUnit, differenceUnit, estimandLabel, findingRow, isRatio, isWeightPercentChange, reportedText, tierLabel, unitLabel, weekLabel, withUnit } from "@/lib/rows";
 
 // Vocabulary requested once: the API returns the label of every endpoint category with any findings response.
 const VOCABULARY = "/findings?limit=1";
@@ -39,7 +39,8 @@ const CHART_KIND: Record<string, { kind: string; fill: BarFill; title: string; h
 const sameScale = (a: any, b: any) => unitLabel(a.unit) === unitLabel(b.unit) && a.category === b.category && (a.threshold ?? null) === (b.threshold ?? null) && (a.class_title ?? "") === (b.class_title ?? "");
 
 function FindingPicker({ side, value, onPick, studies, categories }: { side: "A" | "B"; value: number | null; onPick: (id: number) => void; studies: any[]; categories: Record<string, string> | null }) {
-  const { data: current } = useApi(value ? `/findings/${value}` : null);
+  const currentRequest = useApi(value ? `/findings/${value}` : null);
+  const current = currentRequest.data;
   const [study, setStudy] = useState("");
   const [category, setCategory] = useState("WEIGHT_PCT_CHANGE");
   useEffect(() => {
@@ -48,21 +49,26 @@ function FindingPicker({ side, value, onPick, studies, categories }: { side: "A"
       setCategory(current.finding.category);
     }
   }, [current, study]);
-  const { data: list, loading } = useApi(study ? `/findings?study=${study}&category=${category}&limit=${RESULT_LIMIT}` : null);
+  const listRequest = useApi(study ? `/findings?study=${study}&category=${category}&limit=${RESULT_LIMIT}` : null);
+  const list = listRequest.data;
+  const failed = listRequest.status === "error";
   const options = (list?.rows ?? []).map((f: any) => ({
     value: String(f.result_id),
-    label: `${f.arm_label}${f.class_title ? ` (${f.class_title})` : ""} · ${withUnit(reportedText(f.value, f.value_text), f.unit)} · ${weekLabel(f.timepoint_weeks)} · ${estimandLabel(f.estimand_label, f.estimand_basis)} · ${tierLabel(f)}`,
+    // A row filed under percent weight change in another unit (a share of participants) says so in its option.
+    label: `${f.arm_label}${f.class_title ? ` (${f.class_title})` : ""} · ${withUnit(reportedText(f.value, f.value_text), f.unit)}${f.category === "WEIGHT_PCT_CHANGE" && !isWeightPercentChange(f) ? " (not a percent change in body weight)" : ""} · ${weekLabel(f.timepoint_weeks)} · ${estimandLabel(f.estimand_label, f.estimand_basis)} · ${tierLabel(f)}`,
   }));
   const categoryOptions = categories ? Object.entries(categories).map(([v, l]) => ({ value: v, label: `${l.charAt(0).toUpperCase()}${l.slice(1)}` })) : [{ value: category, label: titleCase(category) }];
-  const placeholder = !study ? "Select a trial first" : loading && !list ? "Loading results…" : options.length ? "Select a result…" : "No arm-level results for this endpoint in this trial";
+  // A failed request is never read as "no results": it says it failed and offers a retry.
+  const placeholder = !study ? "Select a trial first" : failed ? "Results could not be loaded" : !list ? "Loading results…" : options.length ? "Select a result…" : "No arm-level results for this endpoint in this trial";
   return (
-    <Panel className="min-w-0">
-      <p className="mb-2 text-[11.5px] font-semibold uppercase tracking-wide text-ink-3">Finding {side}</p>
+    <Panel className="min-w-0" title={`Finding ${side}`} level={2}>
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <Select label="Trial" value={study} onChange={setStudy} options={[{ value: "", label: "Select a trial…" }, ...studies.filter((s) => s.n_results > 0).map((s) => ({ value: s.nct_id, label: s.display_name }))]} />
         <Select label="Endpoint" value={category} onChange={setCategory} options={categoryOptions} />
       </div>
       <Select className="mt-2.5" label={study && list ? `Reported result (${options.length} available${options.length >= RESULT_LIMIT ? "; list truncated" : ""})` : "Reported result"} value={value ? String(value) : ""} onChange={(v) => v && onPick(Number(v))} options={[{ value: "", label: placeholder }, ...options]} />
+      {failed ? <div className="mt-2.5" data-testid={`picker-${side.toLowerCase()}-error`}><ErrorNote message={`The results of this trial could not be loaded. ${listRequest.error ?? ""}`} onRetry={listRequest.reload} /></div> : null}
+      {currentRequest.status === "error" ? <div className="mt-2.5"><ErrorNote message={`The selected result could not be loaded. ${currentRequest.error ?? ""}`} onRetry={currentRequest.reload} /></div> : null}
     </Panel>
   );
 }
@@ -70,9 +76,9 @@ function FindingPicker({ side, value, onPick, studies, categories }: { side: "A"
 function FindingCard({ side, f, reading }: { side: string; f: any; reading: any }) {
   const sameUnit = /standard (error|deviation)/i.test(f.dispersion_type ?? "");
   return (
-    <Panel className="min-w-0">
+    <Panel className="min-w-0" as="article">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[11.5px] font-semibold uppercase tracking-wide text-ink-3">Finding {side}</p>
+        <h3 className="text-data font-semibold text-ink-3">Finding {side}</h3>
         <VerificationBadge status={f.verification_status} />
       </div>
       <p className="mt-1 text-[15px] font-semibold leading-snug text-ink"><Link href={`/trials/${f.nct_id}`}>{f.study_name}</Link> — {f.arm_label}</p>
@@ -189,9 +195,10 @@ function Lab() {
   const router = useRouter();
   const a = Number(params.get("a")) || null;
   const b = Number(params.get("b")) || null;
-  const { data: studies, error: studiesError } = useRows<any>("/studies");
-  const { data: presets } = useApi<any[]>("/compare/presets");
-  const { data: vocabulary } = useApi(VOCABULARY);
+  const { data: studies, error: studiesError, reload: reloadStudies } = useRows<any>("/studies");
+  const presets = useApi<any[]>("/compare/presets");
+  const vocabularyRequest = useApi(VOCABULARY);
+  const vocabulary = vocabularyRequest.data;
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -216,8 +223,10 @@ function Lab() {
   return (
     <>
       <PageHeader eyebrow="Trial comparison laboratory" title="Can these two results be compared?" lede="Pick any two reported results. The engine classifies the comparison, shows every methodological difference behind that classification, and states what may and may not be concluded.">
-        {a && b && c ? <a href={`/api/reports/comparison?a=${a}&b=${b}`} className="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent px-3.5 text-[13.5px] font-medium text-white hover:bg-[#184f9f] hover:no-underline"><Download aria-hidden size={14} /> Export cited report</a> : null}
+        {a && b && c ? <a href={`/api/reports/comparison?a=${a}&b=${b}`} className={buttonClass("primary")}><Download aria-hidden size={14} /> Export cited report</a> : null}
       </PageHeader>
+      {studiesError ? <div className="mb-4"><ErrorNote message={`The trial list could not be loaded, so no trial can be picked. ${studiesError}`} onRetry={reloadStudies} /></div> : null}
+      {vocabularyRequest.status === "error" ? <div className="mb-4"><ErrorNote message={`The list of endpoints could not be loaded; only the endpoint already selected is offered. ${vocabularyRequest.error ?? ""}`} onRetry={vocabularyRequest.reload} /></div> : null}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <FindingPicker key={`A${a ?? ""}`} side="A" value={a} onPick={(id) => set("a", id)} studies={studies ?? []} categories={vocabulary?.category_labels ?? null} />
@@ -227,8 +236,9 @@ function Lab() {
       {same ? <div className="mt-5" data-testid="same-result"><Callout tone="warn" title="Finding A and finding B are the same stored result">A result cannot be compared with itself. Choose a different result for one side.</Callout></div> : null}
       {!c && !busy && !same ? (
         <Section title="Worked examples" hint="One for each kind of answer the engine gives.">
+          {presets.status === "error" ? <ErrorState title="The worked examples could not be loaded" message={presets.error ?? ""} onRetry={presets.reload} /> : !presets.data ? <Loading rows={2} label="Loading worked examples…" /> : presets.data.length === 0 ? <p className="text-data text-ink-3">No worked example is configured. Pick two results above.</p> : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {(presets ?? []).map((p) => (
+            {presets.data.map((p) => (
               <Link key={p.title} href={`/compare?a=${p.a}&b=${p.b}`} className="block rounded-lg border border-hairline bg-surface p-3.5 transition-colors hover:border-accent hover:no-underline">
                 <span className="block text-[13.5px] font-semibold text-ink">{p.title}</span>
                 <span className="mt-0.5 block text-[12.5px] text-ink-3">{p.question}</span>
@@ -236,6 +246,7 @@ function Lab() {
               </Link>
             ))}
           </div>
+          )}
         </Section>
       ) : null}
       {error ? <div className="mt-5"><ErrorNote message={error} /></div> : null}
@@ -244,7 +255,7 @@ function Lab() {
       {c ? (
         <div className="fade-in mt-6" data-testid="comparison-result">
           <div className={clsx("mb-6 rounded-lg border-l-4 bg-surface px-5 py-4 shadow-[0_1px_0_rgba(16,24,32,0.04)]", c.classification.startsWith("DIRECT") ? "border-[var(--ok)]" : c.classification.startsWith("NOT") ? "border-[var(--critical)]" : c.classification.startsWith("DESCRIPTIVE") ? "border-[var(--warn)]" : c.classification.startsWith("PARTIALLY") ? "border-accent" : "border-ink-3")}>
-            <p className="text-[11.5px] font-semibold uppercase tracking-wide text-ink-3">Classification</p>
+            <p className="text-data font-medium text-ink-3">Classification</p>
             <h2 className="mt-0.5 text-[22px] font-semibold text-ink" data-testid="classification">{titleCase(c.classification)}</h2>
             <p className="mt-0.5 text-[14px] text-ink-2">{c.headline}.</p>
             {c.relationship ? <p className="mt-1 text-[13px] text-ink-2" data-testid="relationship"><span className="font-semibold text-ink">How the two groups relate:</span> {RELATIONSHIP[c.relationship] ?? titleCase(c.relationship)}</p> : null}
@@ -262,7 +273,7 @@ function Lab() {
 
           <div className="mb-8 mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Panel className="min-w-0">
-              <p className="text-[13.5px] font-semibold text-ink">Reported between-arm analysis</p>
+              <h3 className="text-[13.5px] font-semibold text-ink">Reported between-arm analysis</h3>
               {c.reported_analyses.length ? c.reported_analyses.map((an: any, i: number) => {
                 const direction = contrastDirection(an);
                 return (
@@ -272,11 +283,14 @@ function Lab() {
                       {an.estimate == null ? <span className="text-ink-3">not reported</span> : <Reported text={reportedText(an.estimate, an.estimate_text)} unit={contrastUnit(an)} lo={an.ci_low} hi={an.ci_high} level={an.ci_level} missingUnit={isRatio(an) ? "ratio, no unit" : "unit not recorded"} />}
                       {an.ci_low == null || an.ci_high == null ? <span className="text-[12.5px] text-ink-3"> (CI not reported)</span> : null}
                     </p>
-                    <p className="mt-0.5" data-testid="contrast-direction">{contrastKindLabel(an)}: {direction.expression}. <span className="text-ink-3">{direction.basis}</span></p>
+                    <p className="mt-0.5" data-testid="contrast-direction">{contrastKindLabel(an)}: {direction.expression}.</p>
+                    {/* How the direction is known, exactly as the API states it: registry-stated, arm-confirmed or not established. */}
+                    <p className="mt-0.5" data-testid="direction-basis"><span className="font-medium text-ink">Direction basis — </span><span className="text-ink-3">{direction.basis}</span></p>
                     {an.pair_orientation?.text ? (
+                      // The API's sentence already says the estimate is shown as reported and is not re-signed; it is printed once.
                       <p className="mt-0.5" data-testid="pair-orientation">
+                        {an.pair_orientation.same_orientation_as_descriptive_difference === false ? <><Badge tone="warn">Opposite orientation to A − B</Badge>{" "}</> : null}
                         {an.pair_orientation.text}
-                        {an.pair_orientation.same_orientation_as_descriptive_difference === false ? <span className="font-medium text-[var(--warn)]"> Its sign is therefore the reverse of the descriptive difference (A − B) shown beside it; the estimate is printed as reported and is not re-signed.</span> : null}
                       </p>
                     ) : null}
                     <p className="mt-0.5">p-value: {an.p_value_text ?? "not reported in this source"}{an.unit ? ` · outcome unit as stored: ${an.unit}` : ""}</p>
@@ -298,7 +312,7 @@ function Lab() {
               ) : null}
             </Panel>
             <Panel className="min-w-0">
-              <p className="text-[13.5px] font-semibold text-ink">Descriptive difference (A − B)</p>
+              <h3 className="text-[13.5px] font-semibold text-ink">Descriptive difference (A − B)</h3>
               {difference ? (
                 <div data-testid="descriptive-difference">
                   <p className="num mt-1 text-[22px] font-semibold text-ink">{fmt(difference.value)} <span className="text-[13px] font-normal text-ink-3">{differenceUnit(difference.unit) || "unit not recorded"}</span></p>
@@ -329,10 +343,10 @@ function Lab() {
           </Section>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <Panel className="min-w-0"><p className="mb-1.5 flex items-center gap-1.5 text-[13.5px] font-semibold text-ink"><Check aria-hidden size={15} className="text-[var(--ok)]" /> What may be said</p><ul className="list-disc space-y-1.5 pl-5 text-[13px] text-ink-2">{c.permitted_statements.map((s: string) => <li key={s}>{s}</li>)}</ul></Panel>
-            <Panel className="min-w-0"><p className="mb-1.5 flex items-center gap-1.5 text-[13.5px] font-semibold text-ink"><Ban aria-hidden size={15} className="text-[var(--critical)]" /> What may not be said</p><ul className="list-disc space-y-1.5 pl-5 text-[13px] text-ink-2">{c.prohibited_statements.map((s: string) => <li key={s}>{s}</li>)}</ul></Panel>
+            <Panel className="min-w-0"><h2 className="mb-1.5 flex items-center gap-1.5 text-[13.5px] font-semibold text-ink"><Check aria-hidden size={15} className="text-[var(--ok)]" /> What may be said</h2><ul className="list-disc space-y-1.5 pl-5 text-[13px] text-ink-2">{c.permitted_statements.map((s: string) => <li key={s}>{s}</li>)}</ul></Panel>
+            <Panel className="min-w-0"><h2 className="mb-1.5 flex items-center gap-1.5 text-[13.5px] font-semibold text-ink"><Ban aria-hidden size={15} className="text-[var(--critical)]" /> What may not be said</h2><ul className="list-disc space-y-1.5 pl-5 text-[13px] text-ink-2">{c.prohibited_statements.map((s: string) => <li key={s}>{s}</li>)}</ul></Panel>
           </div>
-          {c.requirements.length ? <div className="mt-4"><Panel><p className="mb-1.5 text-[13.5px] font-semibold text-ink">What a rigorous comparison would require</p><ul className="list-disc space-y-1.5 pl-5 text-[13px] text-ink-2">{c.requirements.map((s: string) => <li key={s}>{s}</li>)}</ul></Panel></div> : null}
+          {c.requirements.length ? <div className="mt-4"><Panel><h2 className="mb-1.5 text-[13.5px] font-semibold text-ink">What a rigorous comparison would require</h2><ul className="list-disc space-y-1.5 pl-5 text-[13px] text-ink-2">{c.requirements.map((s: string) => <li key={s}>{s}</li>)}</ul></Panel></div> : null}
         </div>
       ) : null}
     </>
