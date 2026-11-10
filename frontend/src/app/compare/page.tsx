@@ -322,7 +322,12 @@ function Lab() {
                   <p className="mt-1 text-[12.5px] text-ink-3">Confidence interval: not available.</p>
                   <p className="mt-1.5 text-[13px] text-ink-2">{difference.note}</p>
                 </div>
-              ) : <Callout tone="critical" title="Not computed">The classification does not permit a difference between these two values.</Callout>}
+              ) : (
+                <Callout tone="critical" title="Not computed">
+                  {/* The comparison's own reason (as in the exported report): what kept the two values from being one quantity, else the first reason of the classification. */}
+                  {(c.reasons as string[]).find((r) => r.startsWith("No arithmetic difference is given")) ?? (c.reasons as string[])[0] ?? `The comparison is classified ${c.classification}.`}
+                </Callout>
+              )}
             </Panel>
           </div>
 

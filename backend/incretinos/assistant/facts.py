@@ -245,6 +245,10 @@ class EvidenceFact:
     superiority_tested: str | None = None
     superiority_met: str | None = None
     p_value_text: str | None = None
+    # whether the stored analysis agrees with itself (findings.interval_p_value_consistency status): an internally
+    # inconsistent analysis grounds no significance, superiority or direction claim
+    internal_consistency: str | None = None
+    internal_consistency_detail: str | None = None
     # provenance
     tier: str | None = None
     verification_status: str | None = None  # weakest status among the records behind this fact
@@ -466,6 +470,8 @@ def fact_from_analysis(analysis: StatisticalAnalysis, text: str | None = None) -
         superiority_tested=dto["superiority_tested"],
         superiority_met=dto["superiority_met"],
         p_value_text=dto["p_value_text"],
+        internal_consistency=(dto.get("internal_consistency") or {}).get("status"),
+        internal_consistency_detail=(dto.get("internal_consistency") or {}).get("detail"),
         tier=dto["tier"],
         verification_status=status,
         verification_statuses=[status] if status else [],

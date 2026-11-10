@@ -153,8 +153,26 @@ def p_significant(fact: EvidenceFact) -> bool | None:
     return value < 0.05 or (op in ("<", "<=") and value <= 0.05)
 
 
+#: Statuses of findings.interval_p_value_consistency under which an analysis is read at all.
+_SELF_CONSISTENT = (None, "CONSISTENT", "NOT_CHECKABLE")
+
+
+def internally_inconsistent(fact: EvidenceFact) -> str | None:
+    """Why the stored analysis disagrees with itself (interval vs p-value vs estimate), or None when it does not.
+
+    Such a record grounds no claim of a difference, of its direction, of significance or of its absence: the source
+    record needs checking first (the same rule as ``interpretation.interpret_analysis``).
+    """
+    if fact.internal_consistency in _SELF_CONSISTENT:
+        return None
+    return fact.internal_consistency_detail or f"the stored analysis is internally inconsistent ({fact.internal_consistency})"
+
+
 def effect_supported(fact: EvidenceFact) -> tuple[bool, str]:
     """May a sentence say the treatment lowered / raised the endpoint relative to the comparator?"""
+    inconsistent = internally_inconsistent(fact)
+    if inconsistent:
+        return False, inconsistent
     if fact.hypothesis_type == "NON_INFERIORITY" and fact.superiority_met != TriState.YES.value:
         return False, "a non-inferiority analysis with no superiority conclusion on record"
     excludes = ci_excludes_null(fact)
@@ -168,6 +186,9 @@ def effect_supported(fact: EvidenceFact) -> tuple[bool, str]:
 
 
 def superiority_supported(fact: EvidenceFact) -> tuple[bool, str]:
+    inconsistent = internally_inconsistent(fact)
+    if inconsistent:
+        return False, inconsistent
     if fact.superiority_met == TriState.YES.value:
         return True, ""
     if fact.hypothesis_type == "SUPERIORITY" and not is_exploratory(fact) and effect_supported(fact)[0]:
@@ -626,11 +647,15 @@ def _check_statistics(claim: StructuredClaim, fact: EvidenceFact, ctx: Context, 
                 out.append(Mismatch("statistical interpretation", f"statistical significance (“{text}”)", "a non-inferiority analysis: its p-value is not a test of difference"))
             elif is_exploratory(fact) and not labelled:
                 out.append(Mismatch("statistical interpretation", f"statistical significance (“{text}”)", f"nominal only: endpoint role {fact.endpoint_role}, multiplicity controlled {fact.multiplicity_controlled}"))
+            elif internally_inconsistent(fact):
+                out.append(Mismatch("statistical interpretation", f"statistical significance (“{text}”)", internally_inconsistent(fact)))
             elif not (p_significant(fact) or ci_excludes_null(fact)):
                 out.append(Mismatch("statistical interpretation", f"statistical significance (“{text}”)", effect_supported(fact)[1] or f"p {fact.p_value_text or 'not reported'}"))
         elif name == "NOT_SIGNIFICANT":
             if arm_level:
                 out.append(Mismatch("statistical interpretation", "not significant", "one arm's value: no test is reported for it", UNVERIFIABLE))
+            elif internally_inconsistent(fact):
+                out.append(Mismatch("statistical interpretation", "not significant", internally_inconsistent(fact)))
             elif not (ci_excludes_null(fact) is False or p_significant(fact) is False):
                 out.append(Mismatch("statistical interpretation", "not significant", f"CI {_show(fact.ci_low)} to {_show(fact.ci_high)}; p {fact.p_value_text or 'not reported'}"))
         elif name == "NOMINAL":

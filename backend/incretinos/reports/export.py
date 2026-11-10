@@ -224,7 +224,10 @@ def comparison_report_markdown(session: Session, result_a: int, result_b: int) -
         d = comparison.descriptive_difference
         lines.append(f"A − B = **{_fmt(d['value'])}** {_md(d['unit'] or '')} — confidence interval: not available. {_md(d['note'])}")
     else:
-        lines.append("Not computed: the classification does not permit a difference between these two values.")
+        # The comparison's own reason: the factor that kept the two values from being one quantity, or else the first
+        # (most serious) reason of the classification, e.g. a blocking factor or a missing value.
+        why = next((r for r in comparison.reasons if r.startswith("No arithmetic difference is given")), None) or (comparison.reasons[0] if comparison.reasons else None)
+        lines.append(f"Not computed. {_md(why)}" if why else f"Not computed for a comparison classified {_md(comparison.classification)}.")
     lines.append("")
 
     lines += [
