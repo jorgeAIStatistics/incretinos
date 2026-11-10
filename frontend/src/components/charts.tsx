@@ -2,7 +2,7 @@
 
 import { Table2 } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useEffect, useId, useLayoutEffect, useMemo, useState } from "react";
+import { createElement, type ReactNode, useEffect, useId, useLayoutEffect, useMemo, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis } from "recharts";
 import { fmt } from "@/lib/api";
 import { ciLabel, withUnit } from "@/lib/rows";
@@ -105,14 +105,14 @@ function niceTicks(min: number, max: number, count = 5): number[] {
   return ticks;
 }
 
-export function ChartFrame({ title, subtitle, footnote, children, table, controls }: { title: string; subtitle?: ReactNode; footnote?: ReactNode; children: ReactNode; table?: ReactNode; /** Shown above the chart and above its table view alike. */ controls?: ReactNode }) {
+export function ChartFrame({ title, subtitle, footnote, children, table, controls, level = 3 }: { title: string; subtitle?: ReactNode; footnote?: ReactNode; children: ReactNode; table?: ReactNode; /** Shown above the chart and above its table view alike. */ controls?: ReactNode; /** Heading level of the title: 2 when the chart sits directly under the page title, 3 inside a Section. */ level?: 2 | 3 | 4 }) {
   const [showTable, setShowTable] = useState(false);
   return (
     <figure className="min-w-0 rounded-lg border border-hairline bg-surface">
       {/* The title block keeps at least 16rem; on a narrow card the table toggle moves below it instead of squeezing the caption. */}
       <figcaption className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 px-4 pt-3.5">
         <div className="min-w-0 flex-1 basis-64">
-          <p className="text-[14.5px] font-semibold text-ink">{title}</p>
+          {createElement(`h${level}`, { className: "text-[14.5px] font-semibold text-ink" }, title)}
           {subtitle ? <div className="mt-0.5 max-w-3xl text-[12.5px] leading-snug text-ink-3">{subtitle}</div> : null}
         </div>
         {table ? (
