@@ -421,7 +421,9 @@ def test_retatrutide_vs_tirzepatide_is_not_head_to_head(db):
     assert not comparison.reported_analyses
     assert [t["display_name"] for t in comparison.head_to_head_trials] == ["TRIUMPH-5"] and comparison.head_to_head_trials[0]["has_results"] is False
     assert any("superior" in s for s in comparison.prohibited_statements) and any("statistically significant" in s for s in comparison.prohibited_statements)
-    assert comparison.descriptive_difference["ci_status"] == "NOT_AVAILABLE" and "not an estimate of comparative efficacy" in comparison.descriptive_difference["note"]
+    # Week 80 against week 72: values at different weeks are not one quantity, so no A − B is formed (CMP-2).
+    assert comparison.descriptive_difference is None
+    assert any(r.startswith("No arithmetic difference is given") and "week 80 versus week 72" in r for r in comparison.reasons)
     assert any("TRIUMPH-5" in r for r in comparison.requirements)
 
 
@@ -1084,3 +1086,183 @@ def test_rejected_evidence_is_excluded_from_comparisons_and_profiles(db):
     assert get_finding(db, high.result_id) is None
     with rejected_visible(db):
         assert get_finding(db, high.result_id).verification_status == "REJECTED"
+
+
+# ---- Review 1, comparability track: CMP-1..3, INT-1, INT-3, FE-1 and WEB-17 (API side)
+
+SM_OSA_TRIAL, ORFO_P2, ATTAIN2 = "NCT05412004", "NCT05051579", "NCT05872620"
+
+
+def _all_pairs(db, nct: str) -> list:
+    study = db.scalar(select(Study).where(Study.nct_id == nct))
+    rows = [r for r in sorted(study.results, key=lambda x: x.id) if r.endpoint.category == "WEIGHT_PCT_CHANGE" and r.scope == "ARM" and r.value is not None
+            and " minus " not in r.arm_label and not (r.arm is not None and r.arm.is_pooled)]
+    findings = [build_finding(db, r) for r in rows]
+    return [(a, b, compare_findings(db, a, b)) for i, a in enumerate(findings) for b in findings[i + 1:]]
+
+
+def test_cmp1_only_a_direct_comparison_quotes_a_between_arm_analysis(db, client):
+    """CMP-1: an ATTAIN-1 registry value beside a press-release value is descriptive; no analysis is presented as 'establishing' a difference."""
+    registry_placebo = _pick(db, ATTAIN1, arm_is="Placebo", tier="REGISTRY_RESULTS", weeks=72)
+    press_6mg = _pick(db, ATTAIN1, arm="6 mg", tier="PRESS_RELEASE", weeks=72)
+    comparison = compare_findings(db, registry_placebo, press_6mg)
+    assert comparison.classification == "DESCRIPTIVE CROSS-STUDY COMPARISON" and comparison.relationship == "RANDOMIZED_ARMS_OF_ONE_TRIAL"
+    assert comparison.reported_analyses == [] and comparison.other_analyses
+    assert all(x["mismatch"] for x in comparison.other_analyses)
+    body = client.post("/api/compare", json={"a": registry_placebo.result_id, "b": press_6mg.result_id}).json()
+    assert body["analysis_interpretations"] == [] and body["comparison"]["reported_analyses"] == []
+    # The invariant over every within-trial weight pair of the trials the review enumerated.
+    for nct in (ATTAIN1, ATTAIN2, SM4):
+        for _a, _b, c in _all_pairs(db, nct):
+            assert not c.reported_analyses or c.classification == "DIRECT RANDOMIZED COMPARISON", (nct, _a.result_id, _b.result_id)
+
+
+def test_cmp1_a_direct_registry_pair_still_quotes_its_analysis(db):
+    high = _pick(db, SM1, arm="15 mg", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72)
+    placebo = _pick(db, SM1, arm="placebo", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72)
+    comparison = compare_findings(db, high, placebo)
+    assert comparison.classification == "DIRECT RANDOMIZED COMPARISON" and comparison.reported_analyses
+    assert all(x["source"]["id"] == high.source["id"] for x in comparison.reported_analyses)
+
+
+def test_cmp2_no_difference_across_assessment_weeks_or_analysed_populations(db):
+    """CMP-2: SURMOUNT-1 placebo at week 72 (everyone) against 15 mg at week 176 (prediabetes subset)."""
+    placebo_72 = _pick(db, SM1, arm_is="Placebo", tier="REGISTRY_RESULTS", weeks=72)
+    high_176 = _pick(db, SM1, arm="15 mg", tier="REGISTRY_RESULTS", weeks=176)
+    comparison = compare_findings(db, placebo_72, high_176)
+    assert comparison.descriptive_difference is None
+    reason = next(r for r in comparison.reasons if r.startswith("No arithmetic difference is given"))
+    assert "assessment time point (week 72 versus week 176)" in reason and "analysis population" in reason
+    # Over every weight pair of SURMOUNT-1 and ATTAIN-1: a difference only at one week (±1) and one analysed population.
+    for nct in (SM1, ATTAIN1):
+        for a, b, c in _all_pairs(db, nct):
+            if c.descriptive_difference is not None:
+                assert abs(a.timepoint_weeks - b.timepoint_weeks) <= 1, (a.result_id, b.result_id)
+                assert _factor(c, "analysis_population").assessment != "MAJOR_DIFFERENCE"
+
+
+def test_cmp2_note_does_not_call_two_arms_of_one_trial_unrandomized(db):
+    publication_6mg = _pick(db, ATTAIN1, arm="6 mg", tier="PEER_REVIEWED", weeks=72)
+    review_12mg = _pick(db, ATTAIN1, arm="12 mg", tier="REGULATORY_REVIEW", weeks=72)
+    comparison = compare_findings(db, publication_6mg, review_12mg)
+    assert comparison.relationship == "RANDOMIZED_ARMS_OF_ONE_TRIAL"
+    note = comparison.descriptive_difference["note"]
+    assert "not randomized against each other" not in note and "two arms of one randomized trial" in note and "source document" in note
+
+
+def test_cmp3_values_from_two_documents_are_not_a_direct_comparison(db):
+    """CMP-3: a publication value and an FDA-review value of two ATTAIN-1 arms are not one reported analysis."""
+    publication_6mg = _pick(db, ATTAIN1, arm="6 mg", tier="PEER_REVIEWED", weeks=72)
+    review_12mg = _pick(db, ATTAIN1, arm="12 mg", tier="REGULATORY_REVIEW", weeks=72)
+    comparison = compare_findings(db, publication_6mg, review_12mg)
+    assert comparison.classification == "DESCRIPTIVE CROSS-STUDY COMPARISON"
+    source = _factor(comparison, "source_document")
+    assert source.assessment == "MAJOR_DIFFERENCE" and publication_6mg.source["key"] in source.explanation and review_12mg.source["key"] in source.explanation
+    assert any("source document" in r for r in comparison.reasons)
+    placebo = _pick(db, TRIUMPH1, arm_is="placebo", tier="PEER_REVIEWED")
+    press_12mg = _pick(db, TRIUMPH1, arm="12 mg", tier="PRESS_RELEASE")
+    triumph = compare_findings(db, placebo, press_12mg)
+    assert triumph.classification != "DIRECT RANDOMIZED COMPARISON" and triumph.reported_analyses == []
+
+
+def test_cmp3_an_analysis_from_a_third_document_is_never_quoted(db):
+    """Both SURMOUNT-4 values come from one press release: the registry's analysis is listed, not quoted as theirs."""
+    continued = _pick(db, SM4, arm="tirzepatide MTD (continued)", tier="PRESS_RELEASE")
+    switched = _pick(db, SM4, arm="placebo (switched)", tier="PRESS_RELEASE", weeks=continued.timepoint_weeks)
+    comparison = compare_findings(db, continued, switched)
+    assert comparison.classification == "DIRECT RANDOMIZED COMPARISON" and comparison.reported_analyses == []
+    assert comparison.other_analyses and all(any("reported by another source" in m for m in x["mismatch"]) for x in comparison.other_analyses)
+    for _a, _b, c in _all_pairs(db, ATTAIN1) + _all_pairs(db, SM4):
+        if c.classification == "DIRECT RANDOMIZED COMPARISON":
+            assert _a.source["id"] == _b.source["id"]
+            assert all(x["source"]["id"] == _a.source["id"] for x in c.reported_analyses)
+
+
+def test_int1_an_interval_that_contradicts_its_own_p_value_supports_no_conclusion():
+    """INT-1: SURMOUNT-OSA hsCRP −0.71 (−1.21 to −0.22) with p 0.752; Orforglipron BMI −3.8 (−4.6 to 3.0) with p <0.001."""
+    osa = interpret_analysis(_dto(estimate=-0.71, ci_low=-1.21, ci_high=-0.22, p_value_text="0.752", p_value_status="REPORTED"))
+    assert osa["establishes"] == [] and osa["ci_excludes_no_difference"] is None
+    assert osa["internal_consistency"]["status"] == "P_VALUE_DISAGREES_WITH_INTERVAL"
+    assert any("in either direction" in s and "0.752" in s for s in osa["does_not_establish"])
+    typo = interpret_analysis(_dto(estimate=-3.8, ci_low=-4.6, ci_high=3.0, p_value_text="<0.001", p_value_status="REPORTED"))
+    assert typo["establishes"] == [] and not any(s.startswith("A between-arm difference") for s in typo["does_not_establish"])  # no "the CI includes 0" conclusion
+    assert typo["internal_consistency"]["status"] == "P_VALUE_AND_ESTIMATE_DISAGREE_WITH_INTERVAL"
+    # A consistent record is read as before; a p-value printed at the threshold is not read as a disagreement.
+    agree = interpret_analysis(_dto(estimate=-2.0, ci_low=-3.0, ci_high=-1.0, p_value_text="<0.001", p_value_status="REPORTED"))
+    assert agree["establishes"] and agree["internal_consistency"]["status"] == "CONSISTENT"
+    rounding = interpret_analysis(_dto(estimate=-1.0, ci_low=-2.0, ci_high=-0.01, p_value_text="0.05", p_value_status="REPORTED"))
+    assert rounding["internal_consistency"]["status"] == "CONSISTENT" and rounding["establishes"]
+
+
+def test_int1_the_three_inconsistent_seeded_analyses_are_labelled(db):
+    flagged = {}
+    for analysis in db.scalars(select(StatisticalAnalysis)):
+        dto = analysis_dto(analysis)
+        if dto["internal_consistency"]["status"] not in ("CONSISTENT", "NOT_CHECKABLE"):
+            flagged[(analysis.study.nct_id, analysis.estimate, analysis.p_value_text)] = dto
+    assert set(flagged) == {(SM_OSA_TRIAL, -0.71, "0.752"), (SM_OSA_TRIAL, -1.04, "0.350"), (ORFO_P2, -3.8, "<0.001")}
+    for dto in flagged.values():
+        assert any(label["code"] == "INTERNALLY_INCONSISTENT" for label in dto["labels"])
+        reading = interpret_analysis(dto)
+        assert reading["establishes"] == [] and reading["ci_excludes_no_difference"] is None
+        assert dto["estimate"] in (-0.71, -1.04, -3.8)  # shown as stored; nothing is corrected
+
+
+def test_int3_a_sign_opposite_to_the_arm_values_is_never_an_established_direction(db):
+    """INT-3: a BELIEVE contrast named by the registry, whose arm values are made to give the opposite sign (in memory only)."""
+    believe = db.scalar(select(Study).where(Study.nct_id == BELIEVE))
+    analysis = next(a for a in believe.analyses if a.direction_basis == "REGISTRY_GROUP_DESCRIPTION" and a.estimate == -14.5)
+    before = analysis_dto(analysis)["direction"]
+    assert before["established"] and before["basis_kind"] == "STATED_BY_REGISTRY_AND_CONFIRMED_BY_ARM_VALUES"
+    with db.no_autoflush:
+        rows = [r for r in believe.results if r.endpoint_id == analysis.endpoint_id and r.estimand_id == analysis.estimand_id and r.value is not None
+                and (analysis.timepoint_weeks is None or r.timepoint_weeks in (None, analysis.timepoint_weeks))]
+        treatment = next(r for r in rows if r.arm_id == analysis.treatment_arm_id)
+        comparator = next(r for r in rows if r.arm_id == analysis.comparator_arm_id)
+        treatment.value = comparator.value + 5.0  # opposite sign to −14.5, but not its mirror image
+        direction = analysis_dto(analysis)["direction"]
+        assert direction["arm_values_check"] == "INCONCLUSIVE"
+        assert direction["established"] is False and direction["status"] == "SIGN_DISAGREES_WITH_ARM_VALUES" and direction["basis_kind"] == "NOT_ESTABLISHED"
+        reading = interpret_analysis(analysis_dto(analysis))
+        assert " versus " not in reading["observed"]
+    db.expire_all()
+
+
+def test_fe1_compare_response_states_the_direction_basis_exactly(db, client):
+    high = _pick(db, SM1, arm="15 mg", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72)
+    placebo = _pick(db, SM1, arm="placebo", estimand="EFFICACY", tier="REGISTRY_RESULTS", weeks=72)
+    body = client.post("/api/compare", json={"a": high.result_id, "b": placebo.result_id}).json()
+    quoted = body["comparison"]["reported_analyses"]
+    assert quoted
+    kinds = {"STATED_BY_REGISTRY_AND_CONFIRMED_BY_ARM_VALUES", "STATED_BY_CURATED_SOURCE_AND_CONFIRMED_BY_ARM_VALUES", "CONFIRMED_BY_ARM_VALUES",
+             "STATED_BY_REGISTRY", "STATED_BY_CURATED_SOURCE", "NOT_ESTABLISHED"}
+    for x in quoted:
+        orientation = x["pair_orientation"]
+        assert orientation["direction_basis_kind"] in kinds and orientation["direction_status"] == x["direction"]["status"]
+        assert orientation["direction_basis"] == x["direction"]["basis"]
+        assert orientation["direction_confirmed_by_arm_values"] == (x["direction"]["arm_values_check"] == "CONSISTENT")
+    # SURMOUNT-1's registry names no contrast: confirmed by arm values, and the basis says the source did not state it.
+    primary = next(x for x in quoted if x["origin"] == "REGISTRY")
+    assert primary["direction"]["basis_kind"] == "CONFIRMED_BY_ARM_VALUES" and primary["direction"]["stated_by"] == "NOT_STATED_BY_SOURCE"
+    assert "does not state the direction" in primary["direction"]["basis"]
+    # Every stored analysis carries one of the exact kinds, and 'established' agrees with it.
+    for analysis in db.scalars(select(StatisticalAnalysis)):
+        direction = analysis_dto(analysis)["direction"]
+        assert direction["basis_kind"] in kinds and direction["established"] == (direction["basis_kind"] != "NOT_ESTABLISHED")
+
+
+def test_web17_reported_text_is_returned_beside_the_number(db, client):
+    row = db.scalar(select(OutcomeResult).where(OutcomeResult.value_text.is_not(None), OutcomeResult.value.is_not(None)))
+    finding = client.get(f"/api/findings/{row.id}").json()["finding"]
+    assert finding["value_text"] == row.value_text and finding["value"] == row.value
+    listed = client.get("/api/findings", params={"study": row.study.nct_id, "arm_level_only": False, "limit": 2000}).json()["rows"]
+    assert next(r for r in listed if r["result_id"] == row.id)["value_text"] == row.value_text
+    blank = db.scalar(select(OutcomeResult).where(OutcomeResult.value_text.is_(None), OutcomeResult.value.is_not(None)))
+    if blank is not None:
+        assert client.get(f"/api/findings/{blank.id}").json()["finding"]["value_text"] is None  # missing stays missing
+    analysis = db.scalar(select(StatisticalAnalysis).where(StatisticalAnalysis.estimate_text.is_not(None)))
+    dto = client.get(f"/api/analyses/{analysis.id}").json()["analysis"]
+    assert dto["estimate_text"] == analysis.estimate_text and dto["estimate"] == analysis.estimate
+    profiles = client.get(f"/api/benefit-risk/{SM1}").json()
+    entry = next(a for a in profiles["arms"] if "weight_pct" in a["efficacy"])["efficacy"]["weight_pct"]
+    assert "value_text" in entry

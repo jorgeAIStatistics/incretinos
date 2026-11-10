@@ -417,8 +417,9 @@ def test_comparison_report_is_fully_cited(client, db):
     assert response.status_code == 200 and response.headers["content-type"].startswith("text/markdown")
     report = response.text
     for needle in ("DESCRIPTIVE CROSS-STUDY COMPARISON", "TRIUMPH-1", "SURMOUNT-1", "treatment regimen", "## What may not be said", "superior", "## Sources", "pubmed.ncbi.nlm.nih.gov/42814954", "pubmed.ncbi.nlm.nih.gov/35658024",
-                   "retrieved:", "content hash:", "Locator quote:", "TRIUMPH-5", "not medical advice", "confidence interval: not available"):
+                   "retrieved:", "content hash:", "Locator quote:", "TRIUMPH-5", "not medical advice", "## Descriptive difference", "Not computed"):
         assert needle in report, needle
+    assert "confidence interval: not available" not in report  # week 80 against week 72: no A − B is formed (review 1, CMP-2)
     assert "[1]" in report and "[2]" in report
     assert client.get("/api/reports/comparison", params={"a": 99999999, "b": b}).status_code == 404
     study_report = client.get("/api/reports/study/NCT05803421").text

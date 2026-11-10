@@ -173,6 +173,10 @@ def arm_stratum(label: str) -> str:
     outside_brackets = re.sub(r"\([^)]*\)", " ", low)
     if re.search(r"(?<!titrated)(?<!escalated)(?<!increased)(?<!\bup)(?<!equivalent)\s+to\s+(?:\w+\s+){0,2}?(?:placebo|mtd|maximum tolerated)\b|\bdose \d+\s+to\s+(?:\w+\s+)?dose \d+", outside_brackets):
         markers.add("SWITCH SEQUENCE")
+    # A lead-in, run-in or extension period is open-label by construction in these designs: 'open-label tirzepatide
+    # lead-in' is the same period as 'Tirzepatide (lead-in)', not a further sub-study.
+    if markers & {"LEAD-IN", "RUN-IN", "EXTENSION"}:
+        markers.discard("OPEN-LABEL")
     return " + ".join(sorted(markers))
 
 
@@ -183,6 +187,9 @@ def arm_dose_tokens(label: str) -> tuple[float, ...]:
     low = re.sub(r"(?:_|\(\s*)[a-z]{2,5}\d{1,2}(?![a-z0-9])\s*\)?", " ", low)
     numbers = re.findall(r"(?<![a-z0-9.])\d+(?:\.\d+)?(?![a-z0-9]|\.\d)", low)
     return tuple(sorted(float(n) for n in numbers))
+
+
+RESULTS_GROUP = "RESULTS_GROUP"
 
 
 def _placebo_like(arm: StudyArm) -> bool:
@@ -317,6 +324,15 @@ def arm_relation(session: Session, a: StudyArm | None, b: StudyArm | None) -> tu
         )
     if ia.resolved and ib.resolved:
         return "DISTINCT_ARMS", "Two different registered arm groups of the same randomization."
+    if not ia.resolved and not ib.resolved and RESULTS_GROUP in ((a.arm_type or ""), (b.arm_type or "")):
+        # The registry lists each randomized group once as an arm group, and its results groups normally map onto them. Results
+        # groups that map onto none are the registry's own sign that its reporting groups are not its arms: in crossover or
+        # sequential-cohort designs they are successive dose periods of the same participants, not parallel randomized arms.
+        return "UNRESOLVED", (
+            f"Neither '{a.label}' nor '{b.label}' maps to a registered arm group, and the registry reports at least one of them as a results group, "
+            "so the stored records do not establish that they are two arms randomized against each other (they may, for example, be successive "
+            "dose periods of the same participants)."
+        )
     same = _same_treatment(a, b)
     if same is False:
         return "DISTINCT_ARMS", "Different treatments in the same randomization."
@@ -612,6 +628,8 @@ class Finding:
     randomization_stratum: str = ""  # sub-study / period markers of the arm label; '' = main randomization
     labels: list[dict[str, str]] = field(default_factory=list)
     statement: str = ""
+    #: The value exactly as the source printed it (for example '-25.0'), so its reported precision can be shown. None when not stored.
+    value_text: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         data = asdict(self)
@@ -835,6 +853,7 @@ def build_finding(session: Session, result: OutcomeResult) -> Finding:
         ice_strategies=[{"event": s.event, "strategy": s.strategy, "basis": s.basis} for s in (estimand.strategies if estimand else [])],
         param_type=result.param_type,
         value=result.value,
+        value_text=result.value_text,
         value_low=result.value_low,
         value_high=result.value_high,
         unit=result.unit,
@@ -936,6 +955,80 @@ def ci_level_status(ci_low: float | None, ci_high: float | None, ci_level: float
     return "VALID" if 50 <= ci_level < 100 else "INVALID_LEVEL"
 
 
+_P_VALUE = re.compile(r"\s*(?:p\s*)?(<=|>=|≤|≥|<|>|=)?\s*(\d*\.\d+|0|1)\s*", re.IGNORECASE)
+
+
+def p_value_range(text: str | None) -> tuple[float, float] | None:
+    """The range a reported p-value text allows: '<0.001' -> (0, 0.001); '0.752' -> (0.7515, 0.7525). None if not one plain p-value."""
+    match = _P_VALUE.fullmatch(text or "")
+    if match is None:
+        return None
+    op, number = match.group(1) or "=", match.group(2)
+    value = float(number)
+    if not 0 <= value <= 1:
+        return None
+    if op in ("<", "<=", "≤"):
+        return (0.0, value)
+    if op in (">", ">=", "≥"):
+        return (value, 1.0)
+    half_unit = 0.5 * 10 ** -(len(number.split(".")[1]) if "." in number else 0)
+    return (max(0.0, value - half_unit), min(1.0, value + half_unit))
+
+
+def interval_p_value_consistency(estimate: float | None, ci_low: float | None, ci_high: float | None, ci_level: float | None, level_status: str,
+                                 ci_sides: str | None, scale: str, null_value: float | None, p_value_text: str | None, hypothesis_type: str | None) -> dict[str, Any]:
+    """Whether a stored analysis agrees with itself: its interval, its estimate and its p-value.
+
+    * ``P_VALUE_DISAGREES_WITH_INTERVAL`` — the two-sided interval excludes the null value while the reported p-value is at or above
+      1 − level (or the interval strictly includes the null value while the p-value is below it). Rounding is allowed for: a p-value
+      printed as 0.05 may be anything from 0.045 to 0.055, and an interval limit equal to the null value is not read either way.
+    * ``ESTIMATE_OFF_CENTRE`` — the estimate lies outside its interval, or far from the middle of it on the scale on which such
+      intervals are symmetric (the difference scale, or the log scale for a ratio): a sign or transcription error is likely.
+    * ``CONSISTENT`` — checked, no disagreement; ``NOT_CHECKABLE`` — the stored fields do not allow the check.
+
+    Nothing is corrected: an inconsistent record is labelled, and no conclusion is drawn from it.
+    """
+    if estimate is None or ci_low is None or ci_high is None or null_value is None or level_status != "VALID" or scale not in ("DIFFERENCE", "RATIO"):
+        return {"status": "NOT_CHECKABLE", "detail": "The interval, its level, the estimate or the scale is not established, so interval and p-value cannot be checked against each other."}
+    lo, hi = min(ci_low, ci_high), max(ci_low, ci_high)
+    problems: list[str] = []
+    off = False
+    if not lo <= estimate <= hi:
+        off = True
+        problems.append(f"the estimate {_fmt(estimate)} lies outside its own interval {_fmt(ci_low)} to {_fmt(ci_high)}")
+    elif hi > lo:
+        if scale == "DIFFERENCE":
+            centre, half_width, point = (lo + hi) / 2, (hi - lo) / 2, estimate
+        elif lo > 0 and estimate > 0:
+            centre, half_width, point = (math.log(lo) + math.log(hi)) / 2, (math.log(hi) - math.log(lo)) / 2, math.log(estimate)
+        else:
+            centre = half_width = point = None
+        if centre is not None and half_width is not None and point is not None and abs(point - centre) > half_width / 2:
+            off = True
+            problems.append(f"the estimate {_fmt(estimate)} is far from the middle of its interval {_fmt(ci_low)} to {_fmt(ci_high)}"
+                            + (" on the log scale" if scale == "RATIO" else "") + ", which a reported interval of this kind does not allow")
+    disagrees = False
+    p_range = p_value_range(p_value_text)
+    if p_range is not None and hypothesis_type != "NON_INFERIORITY" and (ci_sides or "").upper() != "ONE_SIDED" and ci_level is not None:
+        alpha = 1 - ci_level / 100
+        excludes = not (lo <= null_value <= hi)
+        strictly_includes = lo < null_value < hi
+        if excludes and p_range[0] >= alpha:
+            disagrees = True
+            problems.append(f"the {_fmt(ci_level, 2)}% interval excludes {_fmt(null_value)} but the reported p-value ({p_value_text.strip()}) is not below {_fmt(alpha, 3)}")
+        elif strictly_includes and p_range[1] < alpha:
+            disagrees = True
+            problems.append(f"the {_fmt(ci_level, 2)}% interval includes {_fmt(null_value)} but the reported p-value ({p_value_text.strip()}) is below {_fmt(alpha, 3)}")
+    if not problems:
+        checked = "interval and estimate" + (" and p-value" if p_range is not None and hypothesis_type != "NON_INFERIORITY" else "")
+        return {"status": "CONSISTENT", "detail": f"Checked: the stored {checked} agree with each other."}
+    status = "P_VALUE_DISAGREES_WITH_INTERVAL" if disagrees else "ESTIMATE_OFF_CENTRE"
+    if disagrees and off:
+        status = "P_VALUE_AND_ESTIMATE_DISAGREE_WITH_INTERVAL"
+    return {"status": status, "detail": "The stored record is internally inconsistent: " + "; ".join(problems)
+            + ". No statement about a between-arm difference is drawn from it; the source record needs checking."}
+
+
 def _sign(value: float) -> int:
     return (value > 0) - (value < 0)
 
@@ -945,7 +1038,8 @@ def analysis_direction(a: StatisticalAnalysis, scale: str) -> dict[str, Any]:
     out: dict[str, Any] = {"treatment": a.treatment_label, "comparator": a.comparator_label, "established": False, "arm_values_check": "NOT_CHECKABLE",
                            "treatment_arm_value": None, "comparator_arm_value": None, "scale_note": None}
     if not a.treatment_label or not a.comparator_label or a.treatment_arm_id is None or a.comparator_arm_id is None:
-        return {**out, "status": "NOT_AVAILABLE", "basis": "The stored analysis does not identify one treatment group and one comparator group."}
+        return {**out, "status": "NOT_AVAILABLE", "basis_kind": "NOT_ESTABLISHED", "stated_by": "NOT_STATED_BY_SOURCE", "confirmed_by_arm_values": False,
+                "basis": "The stored analysis does not identify one treatment group and one comparator group."}
     rows = [
         r for r in a.study.results
         if r.endpoint_id == a.endpoint_id and r.scope in ("ARM", "POOLED") and r.value is not None and r.estimand_id == a.estimand_id
@@ -982,24 +1076,46 @@ def analysis_direction(a: StatisticalAnalysis, scale: str) -> dict[str, Any]:
     # rows loaded before that column existed.
     basis = getattr(a, "direction_basis", None)
     registry_order = basis == DirectionBasis.NOT_STATED.value or REGISTRY_ORDER_NOTE in (a.comment or "")
+    # Who states the direction, kept apart from whether the arm values confirm it, so a reader is told exactly which.
+    stated_by = ("CURATED_SOURCE" if a.origin == "CURATED" else "REGISTRY_GROUP_DESCRIPTION" if basis == DirectionBasis.GROUP_DESCRIPTION.value
+                 else "NOT_STATED_BY_SOURCE")
+    out["stated_by"] = stated_by
+    out["confirmed_by_arm_values"] = check == "CONSISTENT"
     if check == "CONTRADICTED":
-        return {**out, "status": "CONTRADICTED_BY_ARM_VALUES",
+        return {**out, "status": "CONTRADICTED_BY_ARM_VALUES", "basis_kind": "NOT_ESTABLISHED",
                 "basis": "The sign of the stored estimate is opposite to (treatment value − comparator value) computed from the stored arm-level values, so which group is the reference is not established."}
+    if check == "INCONCLUSIVE":
+        # The stored arm values give the opposite sign. That is never support for the stated direction, whoever stated it.
+        return {**out, "status": "SIGN_DISAGREES_WITH_ARM_VALUES", "basis_kind": "NOT_ESTABLISHED",
+                "basis": "The sign of the stored estimate is opposite to (treatment value − comparator value) from the stored arm-level values of the same endpoint, "
+                         "estimand and time point (the estimate is not their mirror image either), so the direction is not established"
+                         + (" although the source names the contrast." if stated_by != "NOT_STATED_BY_SOURCE" else ".")}
     if check == "CONSISTENT":
-        return {**out, "established": True, "status": "VERIFIED_AGAINST_ARM_VALUES",
-                "basis": "The sign of the stored estimate agrees with (treatment value − comparator value) from the stored arm-level values of the same endpoint, estimand and time point."}
+        if stated_by == "REGISTRY_GROUP_DESCRIPTION":
+            text = ("The registry analysis names the contrast (its group description states which group is compared with which), and the sign of the stored estimate "
+                    "agrees with (treatment value − comparator value) from the stored arm-level values of the same endpoint, estimand and time point.")
+            kind = "STATED_BY_REGISTRY_AND_CONFIRMED_BY_ARM_VALUES"
+        elif stated_by == "CURATED_SOURCE":
+            text = ("The curated source row states treatment and comparator, and the sign of the stored estimate agrees with (treatment value − comparator value) "
+                    "from the stored arm-level values of the same endpoint, estimand and time point.")
+            kind = "STATED_BY_CURATED_SOURCE_AND_CONFIRMED_BY_ARM_VALUES"
+        else:
+            text = ("The source does not state the direction: the reference group was identified by its role in the trial (the registry's arm type or a placebo-titled group), "
+                    "and the sign of the stored estimate agrees with (treatment value − comparator value) from the stored arm-level values of the same endpoint, estimand and time point.")
+            kind = "CONFIRMED_BY_ARM_VALUES"
+        return {**out, "established": True, "status": "VERIFIED_AGAINST_ARM_VALUES", "basis_kind": kind, "basis": text}
     if a.origin == "CURATED":
-        return {**out, "established": True, "status": "STATED_IN_CURATED_SOURCE",
+        return {**out, "established": True, "status": "STATED_IN_CURATED_SOURCE", "basis_kind": "STATED_BY_CURATED_SOURCE",
                 "basis": "Treatment and comparator are taken from the curated source row; no arm-level values are stored on the same endpoint row to check the sign against."}
     if basis == DirectionBasis.GROUP_DESCRIPTION.value:
         # The registry names the contrast itself ("X vs Placebo"): a statement by the source, like a curated row's.
-        return {**out, "established": True, "status": "STATED_BY_REGISTRY",
+        return {**out, "established": True, "status": "STATED_BY_REGISTRY", "basis_kind": "STATED_BY_REGISTRY",
                 "basis": "The registry analysis names the contrast (its group description states which group is compared with which); "
-                         "the sign could not also be checked against arm-level values."}
+                         "the sign could not also be checked against stored arm-level values of the same endpoint, estimand and time point."}
     if registry_order:
-        return {**out, "status": "REGISTRY_ORDER_NOT_VERIFIED",
+        return {**out, "status": "REGISTRY_ORDER_NOT_VERIFIED", "basis_kind": "NOT_ESTABLISHED",
                 "basis": "The registry does not state which group is the reference; the groups are in registry order and the sign could not be checked against arm-level values."}
-    return {**out, "status": "CONVENTION_NOT_VERIFIED",
+    return {**out, "status": "CONVENTION_NOT_VERIFIED", "basis_kind": "NOT_ESTABLISHED",
             "basis": "The placebo or comparator group was taken as the reference by convention (from the registry's arm role or a placebo-titled group); "
                      "the registry does not state it and the sign could not be checked against arm-level values."}
 
@@ -1094,6 +1210,9 @@ def analysis_dto(a: StatisticalAnalysis) -> dict[str, Any]:
         labels.append({"code": "SCALE_NOT_ESTABLISHED", "text": "Difference or ratio not established", "tone": "warn", "detail": scale["basis"]})
     if not direction["established"]:
         labels.append({"code": "DIRECTION_NOT_ESTABLISHED", "text": "Direction not established", "tone": "warn", "detail": direction["basis"]})
+    consistency = interval_p_value_consistency(a.estimate, a.ci_low, a.ci_high, a.ci_level, level_status, a.ci_sides, scale["scale"], scale["null_value"], a.p_value_text, a.hypothesis_type)
+    if consistency["status"] not in ("CONSISTENT", "NOT_CHECKABLE"):
+        labels.append({"code": "INTERNALLY_INCONSISTENT", "text": "Record internally inconsistent", "tone": "warn", "detail": consistency["detail"]})
     return {
         "id": a.id,
         "study_id": a.study_id,
@@ -1117,6 +1236,8 @@ def analysis_dto(a: StatisticalAnalysis) -> dict[str, Any]:
         "hypothesis_type": a.hypothesis_type,
         "param_type": a.param_type,
         "estimate": a.estimate,
+        # The estimate exactly as the source printed it (reported precision); None when not stored.
+        "estimate_text": a.estimate_text,
         "unit": a.unit,
         "ci_low": a.ci_low,
         "ci_high": a.ci_high,
@@ -1128,6 +1249,8 @@ def analysis_dto(a: StatisticalAnalysis) -> dict[str, Any]:
         "direction": direction,
         "p_value_text": a.p_value_text,
         "p_value_status": "REPORTED" if a.p_value_text else "NOT_REPORTED",
+        # Whether the stored interval, estimate and p-value agree with each other (see interval_p_value_consistency).
+        "internal_consistency": consistency,
         "method": a.method,
         "ni_margin": a.ni_margin,
         "ni_margin_text": a.ni_margin_text,

@@ -35,6 +35,7 @@ from .findings import (
     effect_scale,
     format_ci,
     format_value,
+    interval_p_value_consistency,
     population_phrase,
 )
 
@@ -246,6 +247,13 @@ def interpret_analysis(a: dict[str, Any]) -> dict[str, Any]:
     missing = []
     # The interval is read against the null only when the scale and the confidence level are both established.
     readable = null is not None and level_status == "VALID" and lo is not None and hi is not None
+    # A record whose interval contradicts its own p-value (or whose estimate sits outside the middle of its interval) is
+    # not read at all: the disagreement is stated and no conclusion about a difference is drawn either way.
+    consistency = a.get("internal_consistency") or interval_p_value_consistency(
+        estimate, lo, hi, a.get("ci_level"), level_status, a.get("ci_sides"), scale["scale"], null, a.get("p_value_text"), a.get("hypothesis_type"))
+    inconsistent = consistency["status"] not in ("CONSISTENT", "NOT_CHECKABLE")
+    if inconsistent:
+        readable = False
     ci_excludes_null = (not (lo <= null <= hi)) if readable else None
     exploratory = a["role"] in (EndpointRole.EXPLORATORY.value, EndpointRole.POST_HOC.value)
     uncontrolled = a["multiplicity_controlled"] == TriState.NO.value
@@ -293,6 +301,9 @@ def interpret_analysis(a: dict[str, Any]) -> dict[str, Any]:
         elif ci_excludes_null is False:
             not_established.append(f"A between-arm difference: the {level_text} confidence interval includes {null_text}, the value of no difference.")
 
+    if inconsistent:
+        not_established.insert(0, f"Any conclusion about a between-arm difference, in either direction: {consistency['detail']}")
+        missing.append("A consistent record of this analysis (interval, estimate and p-value that agree); the source needs checking.")
     if scale["scale"] == "NOT_ESTABLISHED":
         not_established.append(f"Whether the interval excludes 'no difference': {scale['basis']}")
         missing.append("The scale of the estimate (difference or ratio), and with it the value that would mean no difference.")
@@ -334,7 +345,9 @@ def interpret_analysis(a: dict[str, Any]) -> dict[str, Any]:
         "direction_established": bool(direction["established"]),
         "direction_status": direction.get("status"),
         "ci_excludes_no_difference": ci_excludes_null,
-        "ci_excludes_no_difference_kind": "INFERENCE (read from the reported interval at its stated confidence level, against the null value of the stated scale)",
+        "ci_excludes_no_difference_kind": "INFERENCE (read from the reported interval at its stated confidence level, against the null value of the stated scale)"
+        if not inconsistent else "NOT_READ (the stored interval, estimate and p-value disagree with each other)",
+        "internal_consistency": consistency,
         "establishes": establishes,
         "does_not_establish": not_established,
         "missing": missing,
