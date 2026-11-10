@@ -3,6 +3,7 @@
 import { Eye, KeyRound, LogOut } from "lucide-react";
 import { createContext, type FormEvent, type ReactNode, useCallback, useContext, useId, useMemo, useRef, useState } from "react";
 import { Button, TextField } from "@/components/ui";
+import type { ReviewerIdentityMode } from "@/lib/review";
 
 /*
  * The reviewer's credential lives in React state of this tab only. It is never written to localStorage,
@@ -14,23 +15,32 @@ import { Button, TextField } from "@/components/ui";
 type Session = {
   /** Whether the deployment accepts decisions at all (`review_enabled` from /api/meta). Null until known. */
   enabled: boolean | null;
+  /**
+   * How the service establishes the reviewer name (`reviewer_identity`). With PERSONAL_TOKENS the name is bound to
+   * the token on the server: no name is typed or sent, and the name recorded is the one the service returns. Null
+   * until known, in which case a name is asked for (the service refuses a name that is not the token's own).
+   */
+  identityMode: ReviewerIdentityMode | null;
+  /** True when the service derives the reviewer name from the token (personal reviewer tokens). */
+  serverNamesReviewer: boolean;
   token: string | null;
   reviewer: string;
   setReviewer: (name: string) => void;
   setToken: (token: string | null) => void;
-  /** True when decisions can be sent: enabled, a token in memory and a reviewer name. */
+  /** True when decisions can be sent: enabled, a token in memory and, unless the service names the reviewer, a reviewer name. */
   canDecide: boolean;
 };
 
 const ReviewerContext = createContext<Session | null>(null);
 
-export function ReviewerSessionProvider({ enabled, children }: { enabled: boolean | null; children: ReactNode }) {
+export function ReviewerSessionProvider({ enabled, identityMode = null, children }: { enabled: boolean | null; identityMode?: ReviewerIdentityMode | null; children: ReactNode }) {
   const [token, setTokenState] = useState<string | null>(null);
   const [reviewer, setReviewer] = useState("");
   const setToken = useCallback((next: string | null) => setTokenState(next && next.length ? next : null), []);
+  const serverNamesReviewer = identityMode === "PERSONAL_TOKENS";
   const value = useMemo<Session>(
-    () => ({ enabled, token, reviewer, setReviewer, setToken, canDecide: enabled === true && !!token && reviewer.trim().length >= 2 }),
-    [enabled, token, reviewer, setToken],
+    () => ({ enabled, identityMode, serverNamesReviewer, token, reviewer, setReviewer, setToken, canDecide: enabled === true && !!token && (serverNamesReviewer || reviewer.trim().length >= 2) }),
+    [enabled, identityMode, serverNamesReviewer, token, reviewer, setToken],
   );
   return <ReviewerContext.Provider value={value}>{children}</ReviewerContext.Provider>;
 }
@@ -43,7 +53,7 @@ export function useReviewer(): Session {
 
 /** One line stating the mode, for the page header: read-only public mode, or recording as a named reviewer. */
 export function ModeLine() {
-  const { enabled, token, reviewer } = useReviewer();
+  const { enabled, token, reviewer, serverNamesReviewer } = useReviewer();
   if (enabled === null) return <p role="status" className="text-data text-ink-3">Checking whether this deployment accepts review decisions…</p>;
   const readOnly = !enabled || !token;
   return (
@@ -56,7 +66,8 @@ export function ModeLine() {
         </span>
       ) : (
         <span>
-          <span className="font-semibold text-ink">Reviewer mode</span> — token held in memory for this tab{reviewer.trim() ? `, recording as ${reviewer.trim()}` : ""}
+          <span className="font-semibold text-ink">Reviewer mode</span> — token held in memory for this tab
+          {serverNamesReviewer ? ", recording under the name bound to your token" : reviewer.trim() ? `, recording as ${reviewer.trim()}` : ""}
         </span>
       )}
     </p>
@@ -65,7 +76,7 @@ export function ModeLine() {
 
 /** Token entry and the reviewer's name. Shown above the queue and inside the record view's action panel. */
 export function ReviewerAccess() {
-  const { enabled, token, reviewer, setReviewer, setToken } = useReviewer();
+  const { enabled, token, reviewer, setReviewer, setToken, serverNamesReviewer } = useReviewer();
   const input = useRef<HTMLInputElement>(null);
   const tokenId = useId();
   const [tokenError, setTokenError] = useState<string | null>(null);
@@ -94,7 +105,7 @@ export function ReviewerAccess() {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-end gap-3">
-        <TextField label="Your name" name="reviewer" autoComplete="name" value={reviewer} onChange={setReviewer} className="w-full sm:w-56" />
+        {serverNamesReviewer ? null : <TextField label="Your name" name="reviewer" autoComplete="name" value={reviewer} onChange={setReviewer} className="w-full sm:w-56" />}
         {token ? (
           <div className="flex flex-wrap items-center gap-2">
             <p className="inline-flex items-center gap-1.5 text-data text-ink-2">
@@ -132,9 +143,9 @@ export function ReviewerAccess() {
         </p>
       ) : !token ? (
         <p id={`${tokenId}-hint`} className="text-caption text-ink-3">
-          Your name is recorded with each decision and in the audit log. The token is kept in this tab&rsquo;s memory only: not stored in the browser, not put in the address, and gone when you reload. The service checks it when you record a decision.
+          {serverNamesReviewer ? "Each reviewer has a personal token: the service records the name bound to your token with each decision and in the audit log." : "Your name is recorded with each decision and in the audit log."} The token is kept in this tab&rsquo;s memory only: not stored in the browser, not put in the address, and gone when you reload. The service checks it when you record a decision.
         </p>
-      ) : !reviewer.trim() ? (
+      ) : !serverNamesReviewer && !reviewer.trim() ? (
         <p className="text-caption text-ink-3">Enter your name to enable the decision buttons.</p>
       ) : null}
     </div>

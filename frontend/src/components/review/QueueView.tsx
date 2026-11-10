@@ -109,7 +109,11 @@ export function QueueView({
           <VerificationBadge status={r.verification_status} compact />
           {r.changed_since_review ? <span className="text-caption font-medium text-warn">Changed since review</span> : null}
           {r.changed_since_last_seen ? <span className="text-caption font-medium text-ink-2">Newly updated</span> : null}
-          {r.exclusion_hold ? <span className="text-caption font-medium text-warn">Exclusion hold</span> : null}
+          {r.review_hold ? (
+            <span className="text-caption font-medium text-warn" title={r.exclusion_reason ?? undefined} data-testid="queue-review-hold">
+              On review hold
+            </span>
+          ) : null}
         </div>
       ),
     },

@@ -25,7 +25,7 @@ export type ChartRow = {
   /** Confidence level in percent (e.g. 95) when it is stated. */
   intervalLevel?: number | null;
   range?: [number, number] | null; // a disclosed range across arms (no point value)
-  group: "active" | "control" | "comparator" | "other";
+  group: "active" | "control" | "comparator" | "sequence" | "other";
   /** The value was calculated here from reported counts; it is not a figure the source reported. */
   calculated?: boolean;
   /** Text under the value in place of the interval line (e.g. "25 of 55 participants"). */
@@ -39,6 +39,8 @@ const GROUP = {
   active: { color: "var(--series-1)", name: "Study drug", outline: false },
   comparator: { color: "var(--series-2)", name: "Active comparator", outline: false },
   control: { color: "var(--series-control)", name: "Placebo", outline: true },
+  // Placebo and an active drug in different periods (a switch or withdrawal arm): never a placebo arm, never a dose.
+  sequence: { color: "var(--series-3)", name: "Treatment sequence", outline: false },
   other: { color: "var(--series-3)", name: "Arm role not classified", outline: true },
 } as const;
 

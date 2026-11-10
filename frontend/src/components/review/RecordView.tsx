@@ -54,7 +54,7 @@ export function RecordView({ type, evidenceKey, rowId, filters, pos, hrefFor, na
   const [lastRecorded, setLastRecorded] = useState<{ key: string; result: DecisionResponse } | null>(null);
   const [staleFor, setStaleFor] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
-  const { canDecide, enabled, token } = useReviewer();
+  const { canDecide, enabled, token, serverNamesReviewer } = useReviewer();
   const { toast } = useToast();
 
   const d = detail.data;
@@ -99,7 +99,7 @@ export function RecordView({ type, evidenceKey, rowId, filters, pos, hrefFor, na
       toast({
         tone: "info",
         title: "Read-only public mode",
-        description: enabled === false ? "This deployment accepts no decisions." : !token ? "Enter the reviewer token in the review actions to record a decision." : "Enter your name to record a decision.",
+        description: enabled === false ? "This deployment accepts no decisions." : !token ? "Enter the reviewer token in the review actions to record a decision." : serverNamesReviewer ? "Decisions cannot be recorded right now." : "Enter your name to record a decision.",
       });
       return;
     }

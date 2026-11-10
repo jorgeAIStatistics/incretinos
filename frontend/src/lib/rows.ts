@@ -78,9 +78,11 @@ type ArmLike = { is_placebo?: boolean | null; drug_slug?: string | null; arm_typ
 /**
  * What an arm is in its trial, from data: the API's own `arm_role` where a row carries one, otherwise the arm's
  * placebo flag, its registered arm type and the role its drug has in the trial. The wording of the arm label is
- * never used. (Same rule as `arm_role` in the backend safety engine.)
+ * never used. (Same rule as `arm_role` in the backend safety engine.) A treatment sequence (placebo and an active
+ * drug in different periods, stored as arm role or arm type SEQUENCE) is never the placebo group and never a dose.
  */
 export function armGroup(arm: ArmLike, drugs?: StudyDrugRole[] | null): ChartRow["group"] {
+  if (arm.arm_role === "SEQUENCE" || arm.arm_type === "SEQUENCE") return "sequence";
   if (arm.arm_role) return arm.arm_role === "PLACEBO" ? "control" : arm.arm_role === "ACTIVE_COMPARATOR" ? "comparator" : arm.arm_role === "STUDY_DRUG" ? "active" : "other";
   if (arm.is_placebo) return "control";
   if (arm.arm_type === "PLACEBO_COMPARATOR") return "other"; // registered as placebo but stored with an active treatment: not a pure placebo arm
@@ -95,7 +97,7 @@ export function armGroup(arm: ArmLike, drugs?: StudyDrugRole[] | null): ChartRow
 
 /** Placebo first, then active comparators, then study-drug arms by dose; ties keep the order the API returned. */
 export function byRoleThenDose<T extends { group: ChartRow["group"] }>(rows: T[], dose: (row: T) => number | null | undefined): T[] {
-  const rank = { control: 0, comparator: 1, active: 2, other: 3 } as const;
+  const rank = { control: 0, comparator: 1, active: 2, sequence: 3, other: 4 } as const;
   return rows
     .map((row, index) => ({ row, index }))
     .sort((a, b) => rank[a.row.group] - rank[b.row.group] || (dose(a.row) ?? Infinity) - (dose(b.row) ?? Infinity) || a.index - b.index)

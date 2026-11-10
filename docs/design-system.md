@@ -136,7 +136,7 @@ Always with an icon and a text label. The tint and its border are decorative.
 |---|---|---|---|
 | `--series-1` | `#2a78d6` | Investigational arm | 4.42 |
 | `--series-2` | `#eb6834` | Active comparator | 3.20 |
-| `--series-3` | `#169b6b` | Arm role not classified (in use: an arm the data does not identify as study drug, comparator or placebo) | 3.54 |
+| `--series-3` | `#169b6b` | Arm role not classified (outlined bar: an arm the data does not identify as study drug, comparator or placebo); treatment sequence (filled bar: arm role `SEQUENCE`, placebo and an active drug in different periods) | 3.54 |
 | `--series-control` | `#8a8a84` | Placebo or control arm | 3.47 |
 | `--grid` | `#eceef1` | Gridlines, meter track | |
 
@@ -149,7 +149,9 @@ a control arm is meant to read as neutral.
 `--series-3` was `#1baf7a` (2.82:1 on white, 2.58:1 on the hover surface) while it was unused. It now marks "Arm role
 not classified", which is drawn as an outlined bar: the outline is the only edge of that mark, so it must meet
 3:1 (1.4.11). The hue is kept and the lightness lowered to `#169b6b` (3.54:1 on white, 3.2:1 on `--surface-hover`).
-Each such row also names its role in text ("Arm role not classified"), and every chart has its table view.
+Each such row also names its role in text ("Arm role not classified"), and every chart has its table view. A
+treatment-sequence arm (stored arm role `SEQUENCE`) uses the same hue as a filled bar and is named "Treatment
+sequence" in text: it is never drawn as placebo and never offered as a dose.
 
 Series colours identify an arm. They are never used for status, and status colours are never used as a series.
 

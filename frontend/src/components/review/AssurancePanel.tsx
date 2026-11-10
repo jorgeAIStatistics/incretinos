@@ -61,6 +61,7 @@ function DecisionItem({ d }: { d: DecisionOut }) {
       <p className="flex flex-wrap items-baseline gap-x-2">
         <span className="font-semibold text-ink">{decisionLabel(d.decision)}</span>{" "}
         <span className="text-ink-2">by {d.reviewer}</span>{" "}
+        {d.identity_label ? <span className="text-caption text-ink-3" data-testid="decision-identity">({d.identity_label})</span> : null}{" "}
         <span className="num text-caption text-ink-3">{stamp(d.created_at)}</span>
       </p>
       {d.status_before || d.status_after ? (

@@ -47,7 +47,7 @@ export function DecisionDialog({
   /** The service refused the decision because the evidence changed (409). */
   onConflict: () => void;
 }) {
-  const { token, reviewer, setToken } = useReviewer();
+  const { token, reviewer, setToken, serverNamesReviewer } = useReviewer();
   const { toast } = useToast();
   const attestId = useId();
   // The version the reviewer is looking at, fixed when the dialog opens.
@@ -89,7 +89,8 @@ export function DecisionDialog({
     if (problems || !token) return;
     const body: DecisionRequest = {
       decision,
-      reviewer: reviewer.trim(),
+      // With personal reviewer tokens the service records the token's own name; a typed name is not sent.
+      ...(serverNamesReviewer ? {} : { reviewer: reviewer.trim() }),
       rationale: rationale.trim(),
       attest_human_review: attested,
       expected_fingerprint: fingerprint,
@@ -100,7 +101,7 @@ export function DecisionDialog({
     setSending(true);
     try {
       const result = await postDecision(detail.evidence_type, detail.id, body, token);
-      toast({ tone: "info", title: "Decision recorded", description: `${info.label} was written to the audit log. Status: ${result.status_label ?? result.status_after}.` });
+      toast({ tone: "info", title: "Decision recorded", description: `${info.label} was written to the audit log${result.reviewer ? ` as ${result.reviewer}` : ""}. Status: ${result.status_label ?? result.status_after}.` });
       onRecorded(result);
     } catch (err) {
       const error = err instanceof DecisionError ? err : new DecisionError(String(err), 0, "other");
@@ -156,7 +157,7 @@ export function DecisionDialog({
           <span className="mono" title={fingerprint}>
             version {shortHash(fingerprint, 12)}
           </span>
-          <span>recording as {reviewer.trim() || "—"}</span>
+          <span>{serverNamesReviewer ? "recording under the name bound to your token" : `recording as ${reviewer.trim() || "—"}`}</span>
         </p>
       </div>
 

@@ -44,6 +44,8 @@ export type Meta = {
   tier_labels: Record<string, string>;
   llm: { provider: string; enabled: boolean };
   review_enabled: boolean;
+  /** How the reviewer name is established (see ReviewerIdentityMode in lib/review.ts). Absent from an older API. */
+  reviewer_identity?: "PERSONAL_TOKENS" | "SHARED_TOKEN_SELF_DECLARED" | "READ_ONLY";
   /** Evidence-level review state (all reviewable evidence, not results only). Absent from an API older than the review lifecycle. */
   review?: { by_status: Record<string, number>; by_type: Record<string, Record<string, number>>; decisions_recorded: number; needs_review: number };
   notice: string;
@@ -307,8 +309,9 @@ export type Finding = {
   class_title?: string | null;
   /** The randomized arm this row belongs to, across sources and formulations ("arm:112"). */
   arm_group_key?: string | null;
-  /** The arm's role in its trial as the API classifies it (PLACEBO, ACTIVE_COMPARATOR, STUDY_DRUG, UNCLASSIFIED), where provided. */
+  /** The arm's role in its trial as the API classifies it (PLACEBO, ACTIVE_COMPARATOR, STUDY_DRUG, SEQUENCE, UNCLASSIFIED), where provided. */
   arm_role?: string | null;
+  arm_role_label?: string | null;
 };
 
 export type FindingInterpretation = {

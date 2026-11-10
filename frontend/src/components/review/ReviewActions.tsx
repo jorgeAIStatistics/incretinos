@@ -43,7 +43,16 @@ export function StatusSummary({ detail, lastRecorded }: { detail: EvidenceDetail
           Excluded from every comparison, summary, calculation and report. Kept here for audit.
         </p>
       ) : null}
-      {s.exclusion_hold ? <p className="text-data font-medium text-warn">On exclusion hold: a reviewer rejected an earlier version of this record.</p> : null}
+      {s.review_hold ? (
+        <p className="text-data font-medium text-warn" data-testid="review-hold">
+          On review hold: a reviewer rejected an earlier version of this record, and nobody has decided on this version yet. It stays excluded until someone does.
+        </p>
+      ) : null}
+      {s.usable === false && s.exclusion_reason ? (
+        <p className="text-caption text-ink-2" data-testid="exclusion-reason">
+          Why it is excluded: {s.exclusion_reason}
+        </p>
+      ) : null}
       {s.verification_status === "QUOTE_ANCHORED" || s.base_verification_status === "QUOTE_ANCHORED" ? (
         <p className="text-caption text-ink-2">
           <Term k="quote-anchored">Quote-anchored</Term> means the quoted words were found in the source. It is not a review: nobody has checked that the number belongs to this study, arm, endpoint, estimand or population.
@@ -57,8 +66,11 @@ export function StatusSummary({ detail, lastRecorded }: { detail: EvidenceDetail
       {lastRecorded ? (
         <p role="status" className="rounded-control border border-control px-2 py-1.5 text-caption text-ink-2" data-testid="last-recorded">
           Recorded just now: {decisionLabel(lastRecorded.decision)}
-          {lastRecorded.reviewer ? ` as ${lastRecorded.reviewer}` : ""}. Status {lastRecorded.status_label ?? lastRecorded.status_after}
+          {lastRecorded.reviewer ? ` as ${lastRecorded.reviewer}` : ""}
+          {lastRecorded.identity_label ? ` (${lastRecorded.identity_label})` : ""}. Status {lastRecorded.status_label ?? lastRecorded.status_after}
           {lastRecorded.reason_text ? `. ${lastRecorded.reason_text}` : "."}
+          {lastRecorded.review_hold ? " It remains on review hold." : ""}
+          {lastRecorded.usable === false && lastRecorded.exclusion_reason ? ` Excluded: ${lastRecorded.exclusion_reason}` : ""}
         </p>
       ) : null}
     </div>
@@ -66,7 +78,7 @@ export function StatusSummary({ detail, lastRecorded }: { detail: EvidenceDetail
 }
 
 export function ReviewActions({ detail, onAction, stale, onReload }: { detail: EvidenceDetail; onAction: (decision: DecisionKind) => void; stale: boolean; onReload: () => void }) {
-  const { enabled, canDecide, token } = useReviewer();
+  const { enabled, canDecide, token, serverNamesReviewer } = useReviewer();
   const reconciled = detail.reconciled !== false && !!detail.fingerprint && !!detail.evidence_key;
   const disabled = !canDecide || !reconciled || stale;
   let why: ReactNode = null;
@@ -74,7 +86,7 @@ export function ReviewActions({ detail, onAction, stale, onReload }: { detail: E
   else if (!reconciled) why = "This record has not been keyed by the review lifecycle yet, so decisions are refused. Run the reconcile step, then reload.";
   else if (enabled === false) why = "Read-only public mode: this deployment accepts no decisions.";
   else if (!token) why = "Read-only public mode: enter the reviewer token below to record a decision.";
-  else if (!canDecide) why = "Enter your name below to record a decision.";
+  else if (!canDecide) why = serverNamesReviewer ? "Decisions cannot be recorded right now." : "Enter your name below to record a decision.";
 
   return (
     <div className="@container flex flex-col gap-3" data-testid="review-actions">

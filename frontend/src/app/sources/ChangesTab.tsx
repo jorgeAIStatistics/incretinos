@@ -1,11 +1,13 @@
 "use client";
 
 import { Check, X } from "lucide-react";
+import Link from "next/link";
 import { type FormEvent, useState } from "react";
 import { Badge, Button, Callout, type Column, DataTable, EmptyState, ErrorState, Hypothetical, Loading, Modal, Pagination, Panel, SecretField, SegmentedControl, TableCard, TableSkeleton, TextArea, TextField, useToast } from "@/components/ui";
 import { apiPost, day, errorMessage, useApi } from "@/lib/api";
 import { enumLabel, formatCount } from "@/lib/format";
 import { rowsOf, usePagedList } from "@/lib/paging";
+import { legacyQueueReviewHref } from "@/lib/review";
 import type { ChangeEvent, ChangeField, Meta, ReviewQueueExtra, ReviewQueueItem } from "@/lib/types";
 
 export type Reviewer = { name: string; token: string };
@@ -65,7 +67,7 @@ function ChangeCard({ change }: { change: ChangeEvent }) {
  * cannot be undone from here, so it is never recorded by a single click: the reviewer sees the item again,
  * chooses the decision and writes the rationale.
  */
-function DecisionDialog({ item, initial, reviewer, onClose, onRecorded }: { item: ReviewQueueItem; initial: Decision; reviewer: Reviewer; onClose: () => void; onRecorded: () => void }) {
+function DecisionDialog({ item, initial, reviewer, serverNamesReviewer, onClose, onRecorded }: { item: ReviewQueueItem; initial: Decision; reviewer: Reviewer; serverNamesReviewer: boolean; onClose: () => void; onRecorded: () => void }) {
   const [decision, setDecision] = useState<Decision>(initial);
   const [rationale, setRationale] = useState("");
   const [busy, setBusy] = useState(false);
@@ -84,9 +86,11 @@ function DecisionDialog({ item, initial, reviewer, onClose, onRecorded }: { item
     }
     setBusy(true);
     setError(null);
-    apiPost(`/review-queue/${item.id}/decision`, { decision, reviewer: reviewer.name.trim(), rationale: rationale.trim() }, "POST", { "X-Reviewer-Token": reviewer.token })
+    // With personal reviewer tokens the service records the token's own name; a typed name is not sent.
+    const body = serverNamesReviewer ? { decision, rationale: rationale.trim() } : { decision, reviewer: reviewer.name.trim(), rationale: rationale.trim() };
+    apiPost(`/review-queue/${item.id}/decision`, body, "POST", { "X-Reviewer-Token": reviewer.token })
       .then(() => {
-        toast({ tone: "ok", title: "Decision recorded", description: `${DECISIONS.find((d) => d.value === decision)?.label} was written to the audit log under ${reviewer.name.trim()}.` });
+        toast({ tone: "ok", title: "Decision recorded", description: `${DECISIONS.find((d) => d.value === decision)?.label} was written to the audit log${serverNamesReviewer ? " under the name bound to your token" : ` under ${reviewer.name.trim()}`}.` });
         onRecorded();
         onClose();
       })
@@ -120,7 +124,13 @@ function DecisionDialog({ item, initial, reviewer, onClose, onRecorded }: { item
         <SegmentedControl label="Decision" value={decision} onChange={setDecision} options={DECISIONS} />
         <TextArea label="Rationale" name="rationale" value={rationale} onChange={setRationale} required rows={3} hint="What you checked and why you decided this. It is stored with the decision." error={error} />
         <p className="text-caption text-ink-3">
-          Recording as <span className="font-medium text-ink-2">{reviewer.name.trim()}</span>.
+          {serverNamesReviewer ? (
+            "Recording under the name bound to your reviewer token."
+          ) : (
+            <>
+              Recording as <span className="font-medium text-ink-2">{reviewer.name.trim()}</span>.
+            </>
+          )}
         </p>
       </form>
     </Modal>
@@ -135,7 +145,9 @@ export function ChangesTab({ reviewer, onReviewer }: { reviewer: Reviewer; onRev
 
   // Whether decisions can be recorded is a fact reported by the service. Until it is known, nothing is claimed either way.
   const reviewEnabled = queue.data?.extra.review_enabled ?? meta.data?.review_enabled ?? null;
-  const ready = reviewer.token.length > 0 && reviewer.name.trim().length >= 2;
+  // With personal reviewer tokens (reviewer_identity PERSONAL_TOKENS) the service names the reviewer from the token.
+  const serverNamesReviewer = meta.data?.reviewer_identity === "PERSONAL_TOKENS";
+  const ready = reviewer.token.length > 0 && (serverNamesReviewer || reviewer.name.trim().length >= 2);
   const events = rowsOf<ChangeEvent>(changes.data);
 
   const columns: Column<ReviewQueueItem>[] = [
@@ -149,6 +161,14 @@ export function ChangesTab({ reviewer, onReviewer }: { reviewer: Reviewer; onRev
         <>
           {r.title}
           {r.payload?.quote ? <span className="block text-caption text-ink-3">“{r.payload.quote}”</span> : null}
+          {(() => {
+            const href = legacyQueueReviewHref(r);
+            return href ? (
+              <Link href={href} className="block text-caption text-accent hover:underline" data-testid="legacy-open-in-review">
+                Open in Evidence Review
+              </Link>
+            ) : null;
+          })()}
         </>
       ),
     },
@@ -194,13 +214,17 @@ export function ChangesTab({ reviewer, onReviewer }: { reviewer: Reviewer; onRev
           queue.status === "error" ? null : <p role="status" className="text-data text-ink-3">Checking whether this deployment accepts review decisions…</p>
         ) : reviewEnabled ? (
           <>
-            <p className="max-w-[80ch] text-data text-ink-2">Recording a decision requires the reviewer token and your name. Each decision asks for a rationale and is written to the audit log.</p>
+            <p className="max-w-[80ch] text-data text-ink-2">
+              {serverNamesReviewer
+                ? "Recording a decision requires your personal reviewer token; the service records the name bound to it. Each decision asks for a rationale and is written to the audit log."
+                : "Recording a decision requires the reviewer token and your name. Each decision asks for a rationale and is written to the audit log."}
+            </p>
             {/* Not a <form>: a name field beside a password field in a form is what password managers offer to save. */}
             <div role="group" aria-label="Reviewer identity" className="mt-3 flex flex-wrap items-start gap-3">
-              <TextField label="Reviewer name" name="reviewer" autoComplete="name" value={reviewer.name} onChange={(name) => onReviewer({ ...reviewer, name })} hint="Stored with each decision." className="w-full sm:w-60" />
+              {serverNamesReviewer ? null : <TextField label="Reviewer name" name="reviewer" autoComplete="name" value={reviewer.name} onChange={(name) => onReviewer({ ...reviewer, name })} hint="Stored with each decision." className="w-full sm:w-60" />}
               <SecretField label="Reviewer token" initial={reviewer.token} onChange={(token) => onReviewer({ ...reviewer, token })} hint="Kept in memory only; cleared on reload." className="w-full sm:w-60" />
             </div>
-            {!ready ? <p className="mt-2 text-caption text-ink-3">Enter your name and the reviewer token to enable the decision buttons.</p> : null}
+            {!ready ? <p className="mt-2 text-caption text-ink-3">{serverNamesReviewer ? "Enter your reviewer token to enable the decision buttons." : "Enter your name and the reviewer token to enable the decision buttons."}</p> : null}
           </>
         ) : (
           <p className="max-w-[80ch] text-data text-ink-2">This deployment is read-only: no reviewer token is configured, so decisions cannot be recorded.</p>
@@ -225,7 +249,7 @@ export function ChangesTab({ reviewer, onReviewer }: { reviewer: Reviewer; onRev
         />
       )}
 
-      {pending ? <DecisionDialog item={pending.item} initial={pending.decision} reviewer={reviewer} onClose={() => setPending(null)} onRecorded={queue.reload} /> : null}
+      {pending ? <DecisionDialog item={pending.item} initial={pending.decision} reviewer={reviewer} serverNamesReviewer={serverNamesReviewer} onClose={() => setPending(null)} onRecorded={queue.reload} /> : null}
     </>
   );
 }

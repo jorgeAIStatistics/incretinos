@@ -61,8 +61,10 @@ export type EvidenceListItem = {
   open_requests?: number;
   last_decision?: DecisionBrief | null;
   identity_collision?: boolean;
-  /** Not sent yet; another branch adds an exclusion hold for previously rejected rows. Shown when present. */
-  exclusion_hold?: boolean | null;
+  /** Excluded from analytic use although not REJECTED: a rejection of an earlier version awaits a new decision. */
+  review_hold?: boolean;
+  /** Why the row is excluded from analytic use, as the API states it (null when it is usable). */
+  exclusion_reason?: string | null;
 };
 
 export type EvidenceListExtra = { all_rows?: number; sort?: string; descending?: boolean; facets?: Record<string, Record<string, number>> };
@@ -124,6 +126,11 @@ export type DecisionOut = {
   proposed_correction?: { changes?: Record<string, unknown>; supporting_quote?: string; note?: string | null } | null;
   recorded_under_other_key?: boolean;
   imported?: boolean;
+  imported_from?: string | null;
+  ledger_match?: string | null;
+  /** How the reviewer name was established (AUTHENTICATED_REVIEWER_TOKEN, SELF_DECLARED_SHARED_TOKEN, IMPORTED_UNRECORDED). */
+  identity_basis?: string | null;
+  identity_label?: string | null;
 };
 
 export type StatusBlock = {
@@ -137,7 +144,10 @@ export type StatusBlock = {
   derived_status?: string | null;
   decided_by?: DecisionBrief | null;
   open_requests?: DecisionOut[];
-  exclusion_hold?: boolean | null;
+  /** Excluded from every analytic surface until a reviewer decides on the current version. */
+  review_hold?: boolean;
+  exclusion_reason?: string | null;
+  derived_hold?: boolean | null;
 };
 
 export type FieldChange = { field: string; before?: unknown; after?: unknown };
@@ -294,9 +304,21 @@ export type ReviewSummary = {
   changed_since_review_total?: number;
   changed_since_last_seen_total?: number;
   orphaned_decisions_total?: number;
+  /** Orphaned rejections: the value each one excluded may be in use again. */
+  orphaned_rejections_total?: number;
+  /** Rows excluded because a rejection of an earlier version awaits a new decision. */
+  held_total?: number;
   identity_collisions?: number;
   review_enabled?: boolean;
+  reviewer_identity?: ReviewerIdentityMode;
 };
+
+/**
+ * How the service establishes the reviewer name (`reviewer_identity` of /api/meta and /api/review/summary).
+ * PERSONAL_TOKENS: the name is bound to the reviewer's own token on the server, so the client sends none.
+ * SHARED_TOKEN_SELF_DECLARED: one development token; the reviewer states a name, labelled self-declared.
+ */
+export type ReviewerIdentityMode = "PERSONAL_TOKENS" | "SHARED_TOKEN_SELF_DECLARED" | "READ_ONLY";
 
 /* ---------- decisions ---------- */
 
@@ -356,7 +378,8 @@ export const decisionLabel = (d: string | null | undefined): string => (d && d i
 
 export type DecisionRequest = {
   decision: DecisionKind;
-  reviewer: string;
+  /** Only under the shared development token. With personal reviewer tokens the service records the token's name. */
+  reviewer?: string;
   rationale: string;
   attest_human_review: boolean;
   expected_fingerprint: string;
@@ -377,8 +400,12 @@ export type DecisionResponse = {
   usable?: boolean;
   reason?: string;
   reason_text?: string | null;
-  /** Another branch derives the reviewer from the token; when the API reports it, it is shown. */
+  review_hold?: boolean;
+  exclusion_reason?: string | null;
+  /** The name the service recorded (with personal tokens, the token's; never the client's guess). */
   reviewer?: string | null;
+  identity_basis?: string | null;
+  identity_label?: string | null;
 };
 
 /** A refused or failed decision. `kind` says what the reviewer should do next. */
@@ -597,12 +624,17 @@ export function recordHref(evidenceType: string, evidenceKey: string, extra: Rec
   return withQuery("/review", { ...extra, type: evidenceType, key: evidenceKey });
 }
 
+/** Where the workbench lists the review summary (counts, held rows, orphaned decisions). */
+export const REVIEW_SUMMARY_HREF = "/review#review-summary";
+
 /**
  * Link from an item of the legacy review queue (Sources & Audit) to the workbench: an evidence item opens its
- * record, a source change opens the queue filtered to the evidence that cites that source. Null when the item is
- * about something the workbench does not hold (an ingestion failure, a drug's regulatory status).
+ * record, a source change opens the queue filtered to the evidence that cites that source, and an orphaned review
+ * decision (its evidence no longer exists) opens the review summary. Null when the item is about something the
+ * workbench does not hold (an ingestion failure, a drug's regulatory status).
  */
-export function legacyQueueReviewHref(item: { target_type?: string | null; target_id?: number | null; payload?: Record<string, unknown> | null }): string | null {
+export function legacyQueueReviewHref(item: { item_type?: string | null; target_type?: string | null; target_id?: number | null; payload?: Record<string, unknown> | null }): string | null {
+  if (item.item_type === "ORPHANED_DECISION" || item.target_type === "review_decision") return REVIEW_SUMMARY_HREF;
   if (isEvidenceType(item.target_type) && typeof item.target_id === "number") return withQuery("/review", { type: item.target_type, id: item.target_id });
   const sourceKey = item.payload && typeof item.payload.source_key === "string" ? item.payload.source_key : null;
   return sourceKey ? withQuery("/review", { source_key: sourceKey }) : null;

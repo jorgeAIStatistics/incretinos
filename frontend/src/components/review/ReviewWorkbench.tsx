@@ -26,7 +26,7 @@ function SummaryStrip({ summary }: { summary: ReviewSummary | null }) {
   if (!summary?.by_status) return null;
   const by = summary.by_status;
   return (
-    <dl className="mb-4 flex flex-wrap gap-x-5 gap-y-2 text-data" aria-label="Reviewable records by verification status" data-testid="review-summary">
+    <dl id="review-summary" className="mb-4 flex scroll-mt-4 flex-wrap gap-x-5 gap-y-2 text-data" aria-label="Reviewable records by verification status" data-testid="review-summary">
       {VERIFICATION_ORDER.map((s) => (
         <div key={s} className="flex items-center gap-1.5">
           <dt>
@@ -39,6 +39,21 @@ function SummaryStrip({ summary }: { summary: ReviewSummary | null }) {
         <div className="flex items-center gap-1.5">
           <dt className="text-ink-2">Open requests</dt>
           <dd className="num font-semibold text-ink">{formatCount(summary.open_requests_total)}</dd>
+        </div>
+      ) : null}
+      {summary.held_total ? (
+        <div className="flex items-center gap-1.5" data-testid="summary-held">
+          <dt className="text-ink-2">On review hold</dt>
+          <dd className="num font-semibold text-warn">{formatCount(summary.held_total)}</dd>
+        </div>
+      ) : null}
+      {summary.orphaned_decisions_total ? (
+        <div className="flex items-center gap-1.5" data-testid="summary-orphaned">
+          <dt className="text-ink-2">Decisions whose evidence no longer exists</dt>
+          <dd className="num font-semibold text-ink">
+            {formatCount(summary.orphaned_decisions_total)}
+            {summary.orphaned_rejections_total ? <span className="font-normal text-critical"> ({formatCount(summary.orphaned_rejections_total)} rejections: the excluded value may be in use again)</span> : null}
+          </dd>
         </div>
       ) : null}
       {summary.decisions_recorded !== undefined ? (
@@ -55,8 +70,10 @@ export function ReviewWorkbench() {
   const meta = useApi<Meta>("/meta");
   const summary = useApi<ReviewSummary>("/review/summary");
   const enabled = meta.data ? meta.data.review_enabled === true : meta.status === "error" ? (summary.data?.review_enabled ?? null) : null;
+  // Whether the service names the reviewer from the token; until known, a typed name is asked for.
+  const identityMode = meta.data?.reviewer_identity ?? summary.data?.reviewer_identity ?? null;
   return (
-    <ReviewerSessionProvider enabled={enabled}>
+    <ReviewerSessionProvider enabled={enabled} identityMode={identityMode}>
       <Workbench summary={summary.data} reloadSummary={summary.reload} />
     </ReviewerSessionProvider>
   );
