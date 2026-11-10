@@ -1,18 +1,20 @@
 # Comparison report: ATTAIN-1 — 36 mg Orforglipron versus ATTAIN-1 — orforglipron 36 mg once daily (investigational capsule dose as reported)
 
-Generated 2026-10-13 20:52 UTC by IncretinOS 0.1.0 from stored public evidence.
+Generated 2026-11-10 05:16 UTC by IncretinOS 0.1.0 from stored public evidence.
 
 > **Scope.** Research summary of public evidence for qualified researchers. It is not medical advice, not a treatment recommendation, and not a regulatory submission. Verification statuses are mechanical (machine extraction or quote anchoring); no entry has been human-verified unless a review decision says so.
 
 ## Classification
 
-**NOT SUITABLE FOR EFFICACY COMPARISON** — These findings should not be compared for efficacy.
+**NOT SUITABLE FOR EFFICACY COMPARISON** — Two reports of one arm — not a treatment comparison.
 
-Factors: 1 blocking · 0 major differences · 2 minor differences · 3 not assessable · 7 matching.
+Factors: 2 blocking · 1 major differences · 2 minor differences · 4 not assessable · 6 matching.
 
 ### Why
 
+- Randomized contrast: Both findings are stored on the same arm. This is not a treatment comparison: it sets two reports (or two analyses) of one randomized group side by side.
 - Estimand: One finding uses the efficacy estimand (hypothetical: had participants stayed on treatment) and the other the treatment-regimen estimand (regardless of discontinuation). They answer different questions and are systematically different in magnitude.
+- Source document: Finding A is reported in ctgov:NCT05869903 (Registry-posted results (sponsor-submitted)) and finding B in pubmed:40960239 (Peer-reviewed publication). No single source reports both values, so their difference is not one any source reported: the documents may use different analysis sets, data cuts or handling of intercurrent events.
 - Handling of discontinuation / rescue therapy (minor): Documented intercurrent-event strategies differ in at least one respect.
 - Evidence tier (minor): The findings come from different evidence tiers (e.g. registry-posted versus peer-reviewed).
 
@@ -88,16 +90,17 @@ No between-arm analysis for this pair is stored. Any difference between the two 
 
 ## Descriptive difference
 
-Not computed: the classification does not permit a difference between these two values.
+Not computed. Randomized contrast: Both findings are stored on the same arm. This is not a treatment comparison: it sets two reports (or two analyses) of one randomized group side by side.
 
 ## Methodological comparison
 
 | Dimension | Finding A | Finding B | Assessment | Explanation |
 |---|---|---|---|---|
-| Study | ATTAIN-1 | ATTAIN-1 | Match | Both findings come from the same trial. |
-| Randomized contrast | 36 mg Orforglipron | orforglipron 36 mg once daily (investigational capsule dose as reported) | Match | Arms were allocated by randomization within one trial, so baseline differences are attributable to chance. |
-| Endpoint definition | Percent Change From Baseline in Body Weight (Primary Treatment Period) | percent change in body weight from baseline | Match | Same endpoint category. |
-| Baseline from which change is measured | Baseline | study baseline | Match | Change is measured from the same kind of baseline. |
+| Study | ATTAIN-1 | ATTAIN-1 | Match | Both findings come from the same registered trial. |
+| Randomized contrast | 36 mg Orforglipron | orforglipron 36 mg once daily (investigational capsule dose as reported) | Blocking | Both findings are stored on the same arm. This is not a treatment comparison: it sets two reports (or two analyses) of one randomized group side by side. |
+| Endpoint definition | Percent Change From Baseline in Body Weight (Primary Treatment Period) | percent change in body weight from baseline | Match | Same measurement (body weight). |
+| Unit and scale | percent change | % | Match | Same unit. |
+| Baseline from which change is measured | Baseline [study baseline (no lead-in, run-in or withdrawal design on record)\] | not described [study baseline (no lead-in, run-in or withdrawal design on record)\] | Unknown | The baseline is not described in the stored source for at least one finding. It is not assumed to be the same. |
 | Estimand | EFFICACY | TREATMENT_REGIMEN | Blocking | One finding uses the efficacy estimand (hypothetical: had participants stayed on treatment) and the other the treatment-regimen estimand (regardless of discontinuation). They answer different questions and are systematically different in magnitude. |
 | Handling of discontinuation / rescue therapy | PROHIBITED_OR_RESCUE_THERAPY: HYPOTHETICAL; TREATMENT_DISCONTINUATION: HYPOTHETICAL | TREATMENT_DISCONTINUATION: TREATMENT_POLICY | Minor Difference | Documented intercurrent-event strategies differ in at least one respect. |
 | Assessment time point | week 72 | week 72 | Match | Same assessment time. |
@@ -107,32 +110,28 @@ Not computed: the classification does not permit a difference between these two 
 | Endpoint hierarchy and multiplicity | PRIMARY / multiplicity NOT_STATED | PRIMARY / multiplicity YES | Unknown | Same endpoint role; multiplicity control is not stated for at least one finding in the stored source. |
 | Precision | n = 730; Standard Error 0.36 | n = 730; CI reported | Match | Both findings report sample size and a measure of uncertainty. |
 | Evidence tier | REGISTRY_RESULTS | PEER_REVIEWED | Minor Difference | The findings come from different evidence tiers (e.g. registry-posted versus peer-reviewed). |
+| Source document | ctgov:NCT05869903 (Registry-posted results (sponsor-submitted)) | pubmed:40960239 (Peer-reviewed publication) | Major Difference | Finding A is reported in ctgov:NCT05869903 (Registry-posted results (sponsor-submitted)) and finding B in pubmed:40960239 (Peer-reviewed publication). No single source reports both values, so their difference is not one any source reported: the documents may use different analysis sets, data cuts or handling of intercurrent events. |
 
 ## What may be said
 
-- Each finding may be reported on its own, with its context. No difference between them should be computed or quoted.
+- Each value may be reported with its own source, estimand, baseline and time point. Side by side they show how two sources or two analyses describe the same randomized group; they say nothing about a treatment effect.
 
 ## What may not be said
 
-- Do not state or imply that 36 mg Orforglipron is superior (or inferior) to orforglipron 36 mg once daily (investigational capsule dose as reported) on the basis of these two findings.
-- Do not describe the difference between these values as statistically significant; no valid test supports it.
-- Do not rank the treatments by these values as if the ranking were a demonstrated treatment effect.
+- Do not describe the gap between these two values as a treatment difference or a treatment effect: both belong to the same arm.
 
 ## What a rigorous comparison would require
 
-- A randomized head-to-head trial with a pre-specified estimand is the only design that removes cross-trial confounding.
-- Without a head-to-head trial: individual participant data from at least one trial for a matching-adjusted or simulated-treatment comparison, with all effect modifiers measured in both.
-- If both trials share a comparator (e.g. placebo): an anchored indirect comparison on the same estimand and time point, with its consistency assumptions stated and tested where possible.
-- The same estimand, endpoint definition, baseline definition and assessment time in both analyses.
+- If two sources disagree about the same quantity for one arm, that is a source conflict for human review, not a comparison of treatments.
 
 ## Sources
 
-[1] **ClinicalTrials.gov NCT05869903: A Study of Orforglipron (LY3502970) in Adult Participants With Obesity or Overweight With Weight-Related Comorbidities** · ClinicalTrials.gov (U.S. National Library of Medicine) · tier: Registry-posted results (sponsor-submitted) · published/updated: 2026-08-14 · retrieved: 2026-10-13 · version: 2026-08-14 · content hash: `a44b20acf3b1e035` · verification: machine extracted
-    https://clinicaltrials.gov/study/NCT05869903
+[1] **ClinicalTrials.gov NCT05869903: A Study of Orforglipron (LY3502970) in Adult Participants With Obesity or Overweight With Weight-Related Comorbidities** · ClinicalTrials.gov (U.S. National Library of Medicine) · tier: Registry-posted results (sponsor-submitted) · published/updated: 2026-08-14 · retrieved: 2026-11-10 · version: 2026-08-14 · content hash: `a44b20acf3b1e035` · verification: machine extracted
+    <https://clinicaltrials.gov/study/NCT05869903>
     Location: `resultsSection.outcomeMeasuresModule.outcomeMeasures[0].classes[0].categories[0].measurements[OG003]`
 
-[2] **Orforglipron, an Oral Small-Molecule GLP-1 Receptor Agonist for Obesity Treatment.** · The New England journal of medicine · tier: Peer-reviewed publication · published/updated: 2025 Nov 06 · retrieved: 2026-10-13 · version: db13ea220ce9 · content hash: `9d62bad36f857f54` · verification: quote anchored
-    https://pubmed.ncbi.nlm.nih.gov/40960239/
+[2] **Orforglipron, an Oral Small-Molecule GLP-1 Receptor Agonist for Obesity Treatment.** · The New England journal of medicine · tier: Peer-reviewed publication · published/updated: 2025 Nov 06 · retrieved: 2026-11-10 · version: db13ea220ce9 · content hash: `9d62bad36f857f54` · verification: quote anchored
+    <https://pubmed.ncbi.nlm.nih.gov/40960239/>
     Locator quote: “-11.2% (95% CI, -12.0 to -10.4) with 36 mg of orforglipron”
 
 ## Epistemic key

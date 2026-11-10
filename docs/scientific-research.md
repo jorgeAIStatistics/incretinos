@@ -87,15 +87,6 @@ Evidence tiers, in descending order of scrutiny: FDA prescribing information and
 
 | Trial | Arm | % change | Estimand (basis) | Week | Baseline | CI | n | Tier | Verification | Source key |
 |---|---|---|---|---|---|---|---|---|---|---|
-| EloraTZP Phase 2b | eloralintide 3 mg + tirzepatide 5 mg | -13.2 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 6 mg + tirzepatide 5 mg | -19.4 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 6 mg + tirzepatide 10 mg | -19.9 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 9 mg + tirzepatide 15 mg | -23.3 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | tirzepatide 15 mg | -14.8 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 3 mg | -8.2 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 6 mg | -12.3 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 9 mg | -11.1 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | placebo | -3 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
 | SURMOUNT-1 | Placebo | -2.4 | efficacy (inferred) | 72 | Baseline | not reported | 635 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT04184622 |
 | SURMOUNT-1 | 5 mg Tirzepatide | -16 | efficacy (inferred) | 72 | Baseline | not reported | 623 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT04184622 |
 | SURMOUNT-1 | 10 mg Tirzepatide | -21.4 | efficacy (inferred) | 72 | Baseline | not reported | 629 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT04184622 |
@@ -109,6 +100,14 @@ Evidence tiers, in descending order of scrutiny: FDA prescribing information and
 | SURMOUNT-2 | 15 mg Tirzepatide | -15.7 | not stated (n/a) | 72 | Baseline | not reported | 309 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT04657003 |
 | SURMOUNT-3 | Placebo | 3.3 | efficacy (inferred) | 72 | Baseline | not reported | 291 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT04657016 |
 | SURMOUNT-3 | Tirzepatide | -21.1 | efficacy (inferred) | 72 | Baseline | not reported | 284 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT04657016 |
+| SURMOUNT-4 | Placebo | 14.8 | efficacy (inferred) | 88 | Randomization (Week 36) | not reported | 329 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT04660643 |
+| SURMOUNT-4 | Tirzepatide MTD | -6.7 | efficacy (inferred) | 88 | Randomization (Week 36) | not reported | 332 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT04660643 |
+| SURMOUNT-4 | tirzepatide MTD (continued) | -5.5 | not stated (n/a) | 88 | week 36 (randomization) | not reported | 335 | Peer-reviewed publication | quote anchored | pubmed:38078870 |
+| SURMOUNT-4 | placebo (switched) | 14 | not stated (n/a) | 88 | week 36 (randomization) | not reported | 335 | Peer-reviewed publication | quote anchored | pubmed:38078870 |
+| SURMOUNT-4 | tirzepatide MTD (continued) | -6.7 | efficacy (inferred) | 88 | week 36 (randomization) | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2023-12-11-lilly-s-zepbound-tirzepatide-achieved-ad |
+| SURMOUNT-4 | placebo (switched) | 14.8 | efficacy (inferred) | 88 | week 36 (randomization) | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2023-12-11-lilly-s-zepbound-tirzepatide-achieved-ad |
+| SURMOUNT-4 | tirzepatide MTD (continued) | -26 | efficacy (inferred) | 88 | study entry (week 0) | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2023-12-11-lilly-s-zepbound-tirzepatide-achieved-ad |
+| SURMOUNT-4 | placebo (switched) | -9.5 | efficacy (inferred) | 88 | study entry (week 0) | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2023-12-11-lilly-s-zepbound-tirzepatide-achieved-ad |
 | SURMOUNT-5 | 15 mg or MTD - Tirzepatide | -20.2 | not stated (n/a) | 72 | Baseline | not reported | 318 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT05822830 |
 | SURMOUNT-5 | 2.4 mg or MTD - Semaglutide | -13.7 | not stated (n/a) | 72 | Baseline | not reported | 318 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT05822830 |
 | SURMOUNT-5 | tirzepatide MTD (10 or 15 mg) | -20.2 | not stated (n/a) | 72 | baseline (randomization, week 0) | -21.4 to -19.1 | — | Peer-reviewed publication | quote anchored | pubmed:40353578 |
@@ -131,7 +130,7 @@ Evidence tiers, in descending order of scrutiny: FDA prescribing information and
 **Indications.**
 
 - Foundayo — Approved: With a reduced-calorie diet and increased physical activity: reduce excess body weight and maintain weight reduction long term in adults with obesity, or overweight with at least one weight-related comorbid condition. (FDA prescribing information; quote anchored)
-- n/a — Submitted: Type 2 diabetes — listed as 'Regulatory Review' on Lilly's pipeline page (data as of 2026-08-05); not an approved indication. (Sponsor pipeline disclosure; curated pending review)
+- n/a — Submitted: Type 2 diabetes — listed as 'Regulatory Review' on Lilly's pipeline page (data as of 2026-08-05); not an approved indication. (Sponsor pipeline disclosure; pending human review)
 
 **Formulation harmonization (documented dose pairs only — there is no conversion factor).**
 
@@ -166,15 +165,11 @@ Locator quote: “capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding t
 
 | Trial | Arm | % change | Estimand (basis) | Week | Baseline | CI | n | Tier | Verification | Source key |
 |---|---|---|---|---|---|---|---|---|---|---|
-| ACHIEVE-3 | orforglipron 12 mg once daily (investigational capsule dose as reported) | -6.7 | efficacy (stated) | 52 | — | not reported | 424 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior |
-| ACHIEVE-3 | orforglipron 12 mg once daily (investigational capsule dose as reported) | -6.1 | treatment regimen (stated) | 52 | — | not reported | 424 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior |
-| ACHIEVE-3 | orforglipron 36 mg once daily (investigational capsule dose as reported) | -9.2 | efficacy (stated) | 52 | — | not reported | 423 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior |
-| ACHIEVE-3 | orforglipron 36 mg once daily (investigational capsule dose as reported) | -8.2 | treatment regimen (stated) | 52 | — | not reported | 423 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior |
-| ACHIEVE-3 | oral semaglutide 7 mg once daily | -3.7 | efficacy (stated) | 52 | — | not reported | 426 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior |
-| ACHIEVE-3 | oral semaglutide 7 mg once daily | -3.9 | treatment regimen (stated) | 52 | — | not reported | 426 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior |
-| ACHIEVE-3 | oral semaglutide 14 mg once daily | -5.3 | efficacy (stated) | 52 | — | not reported | 425 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior |
-| ACHIEVE-3 | oral semaglutide 14 mg once daily | -5.3 | treatment regimen (stated) | 52 | — | not reported | 425 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior |
-| ACHIEVE-4 | insulin glargine (titrated, once daily, subcutaneous) | 1.7 | efficacy (stated) | 52 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:eli-lilly-an-2026-09-30-lilly-s-oral-glp-1-foundayo-orforglipron |
+| ACHIEVE-3 | orforglipron 12 mg once daily (investigational capsule dose as reported) | -6.1 | treatment regimen (inferred) | 52 | — | not reported | 424 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior |
+| ACHIEVE-3 | orforglipron 36 mg once daily (investigational capsule dose as reported) | -8.2 | treatment regimen (inferred) | 52 | — | not reported | 423 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior |
+| ACHIEVE-3 | oral semaglutide 7 mg once daily | -3.9 | treatment regimen (inferred) | 52 | — | not reported | 426 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior |
+| ACHIEVE-3 | oral semaglutide 14 mg once daily | -5.3 | treatment regimen (inferred) | 52 | — | not reported | 425 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior |
+| ACHIEVE-4 | insulin glargine (titrated, once daily, subcutaneous) | 1.7 | efficacy (inferred) | 52 | — | not reported | — | Sponsor press release (topline) | pending human review | web:eli-lilly-an-2026-09-30-lilly-s-oral-glp-1-foundayo-orforglipron |
 | ATTAIN-1 | Placebo | -0.87 | efficacy (inferred) | 72 | Baseline | not reported | 949 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT05869903 |
 | ATTAIN-1 | 6 mg Orforglipron | -7.82 | efficacy (inferred) | 72 | Baseline | not reported | 723 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT05869903 |
 | ATTAIN-1 | 12 mg Orforglipron | -9.27 | efficacy (inferred) | 72 | Baseline | not reported | 725 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT05869903 |
@@ -183,38 +178,38 @@ Locator quote: “capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding t
 | ATTAIN-1 | orforglipron 12 mg once daily (investigational capsule dose as reported) | -8.4 | treatment regimen (stated) | 72 | — | -9.1 to -7.7 | 725 | Peer-reviewed publication | quote anchored | pubmed:40960239 |
 | ATTAIN-1 | orforglipron 36 mg once daily (investigational capsule dose as reported) | -11.2 | treatment regimen (stated) | 72 | — | -12 to -10.4 | 730 | Peer-reviewed publication | quote anchored | pubmed:40960239 |
 | ATTAIN-1 | placebo | -2.1 | treatment regimen (stated) | 72 | — | -2.8 to -1.4 | 949 | Peer-reviewed publication | quote anchored | pubmed:40960239 |
-| ATTAIN-1 | placebo | -2.1 | treatment regimen (stated) | 72 | — | not reported | 949 | FDA prescribing information | quote anchored | openfda-label:foundayo |
-| ATTAIN-1 | FOUNDAYO 5.5 mg once daily (label dosage; investigational formulation shown as equivalent dosage) | -7.4 | treatment regimen (stated) | 72 | — | not reported | 723 | FDA prescribing information | quote anchored | openfda-label:foundayo |
-| ATTAIN-1 | FOUNDAYO 9 mg once daily (label dosage; investigational formulation shown as equivalent dosage) | -8.3 | treatment regimen (stated) | 72 | — | not reported | 725 | FDA prescribing information | quote anchored | openfda-label:foundayo |
-| ATTAIN-1 | FOUNDAYO 17.2 mg once daily (label dosage; investigational formulation shown as equivalent dosage) | -11.1 | treatment regimen (stated) | 72 | — | not reported | 730 | FDA prescribing information | quote anchored | openfda-label:foundayo |
-| ATTAIN-1 | placebo | -2.1 | treatment regimen (stated) | 72 | — | not reported | 949 | FDA review document | curated pending review | web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul |
-| ATTAIN-1 | orforglipron 6 mg once daily (investigational capsule dose as reported) | -7.4 | treatment regimen (stated) | 72 | — | not reported | 723 | FDA review document | curated pending review | web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul |
-| ATTAIN-1 | orforglipron 12 mg once daily (investigational capsule dose as reported) | -8.3 | treatment regimen (stated) | 72 | — | not reported | 725 | FDA review document | curated pending review | web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul |
-| ATTAIN-1 | orforglipron 36 mg once daily (investigational capsule dose as reported) | -11.2 | treatment regimen (stated) | 72 | — | not reported | 730 | FDA review document | curated pending review | web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul |
-| ATTAIN-1 | orforglipron 6 mg once daily (investigational capsule dose as reported) | -7.8 | efficacy (stated) | 72 | — | not reported | 723 | Sponsor press release (topline) | curated pending review | web:eli-lilly-an-2025-09-16-lilly-s-oral-glp-1-orforglipron-demonstr |
-| ATTAIN-1 | orforglipron 12 mg once daily (investigational capsule dose as reported) | -9.3 | efficacy (stated) | 72 | — | not reported | 725 | Sponsor press release (topline) | curated pending review | web:eli-lilly-an-2025-09-16-lilly-s-oral-glp-1-orforglipron-demonstr |
-| ATTAIN-1 | orforglipron 36 mg once daily (investigational capsule dose as reported) | -12.4 | efficacy (stated) | 72 | — | not reported | 730 | Sponsor press release (topline) | curated pending review | web:eli-lilly-an-2025-09-16-lilly-s-oral-glp-1-orforglipron-demonstr |
-| ATTAIN-1 | placebo | -0.9 | efficacy (stated) | 72 | — | not reported | 949 | Sponsor press release (topline) | curated pending review | web:eli-lilly-an-2025-09-16-lilly-s-oral-glp-1-orforglipron-demonstr |
+| ATTAIN-1 | placebo | -2.1 | treatment regimen (inferred) | 72 | — | not reported | 949 | FDA prescribing information | quote anchored | openfda-label:foundayo |
+| ATTAIN-1 | FOUNDAYO 5.5 mg once daily (label dosage; investigational formulation shown as equivalent dosage) | -7.4 | treatment regimen (inferred) | 72 | — | not reported | 723 | FDA prescribing information | quote anchored | openfda-label:foundayo |
+| ATTAIN-1 | FOUNDAYO 9 mg once daily (label dosage; investigational formulation shown as equivalent dosage) | -8.3 | treatment regimen (inferred) | 72 | — | not reported | 725 | FDA prescribing information | quote anchored | openfda-label:foundayo |
+| ATTAIN-1 | FOUNDAYO 17.2 mg once daily (label dosage; investigational formulation shown as equivalent dosage) | -11.1 | treatment regimen (inferred) | 72 | — | not reported | 730 | FDA prescribing information | quote anchored | openfda-label:foundayo |
+| ATTAIN-1 | placebo | -2.1 | treatment regimen (inferred) | 72 | — | not reported | 949 | FDA review document | pending human review | web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul |
+| ATTAIN-1 | orforglipron 6 mg once daily (investigational capsule dose as reported) | -7.4 | treatment regimen (inferred) | 72 | — | not reported | 723 | FDA review document | pending human review | web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul |
+| ATTAIN-1 | orforglipron 12 mg once daily (investigational capsule dose as reported) | -8.3 | treatment regimen (inferred) | 72 | — | not reported | 725 | FDA review document | pending human review | web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul |
+| ATTAIN-1 | orforglipron 36 mg once daily (investigational capsule dose as reported) | -11.2 | treatment regimen (inferred) | 72 | — | not reported | 730 | FDA review document | pending human review | web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul |
+| ATTAIN-1 | orforglipron 6 mg once daily (investigational capsule dose as reported) | -7.8 | efficacy (inferred) | 72 | — | not reported | 723 | Sponsor press release (topline) | pending human review | web:eli-lilly-an-2025-09-16-lilly-s-oral-glp-1-orforglipron-demonstr |
+| ATTAIN-1 | orforglipron 12 mg once daily (investigational capsule dose as reported) | -9.3 | efficacy (inferred) | 72 | — | not reported | 725 | Sponsor press release (topline) | pending human review | web:eli-lilly-an-2025-09-16-lilly-s-oral-glp-1-orforglipron-demonstr |
+| ATTAIN-1 | orforglipron 36 mg once daily (investigational capsule dose as reported) | -12.4 | efficacy (inferred) | 72 | — | not reported | 730 | Sponsor press release (topline) | pending human review | web:eli-lilly-an-2025-09-16-lilly-s-oral-glp-1-orforglipron-demonstr |
+| ATTAIN-1 | placebo | -0.9 | efficacy (inferred) | 72 | — | not reported | 949 | Sponsor press release (topline) | pending human review | web:eli-lilly-an-2025-09-16-lilly-s-oral-glp-1-orforglipron-demonstr |
 | ATTAIN-2 | Placebo | -2.21 | efficacy (inferred) | 72 | Baseline | not reported | 630 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT05872620 |
 | ATTAIN-2 | 6 mg Orforglipron QD | -5.5 | efficacy (inferred) | 72 | Baseline | not reported | 329 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT05872620 |
 | ATTAIN-2 | 12 mg Orforglipron QD | -7.78 | efficacy (inferred) | 72 | Baseline | not reported | 332 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT05872620 |
 | ATTAIN-2 | 36 mg Orforglipron QD | -10.54 | efficacy (inferred) | 72 | Baseline | not reported | 322 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT05872620 |
-| ATTAIN-2 | orforglipron 6 mg once daily (investigational capsule dose as reported) | -5.1 | treatment regimen (stated) | 72 | — | -6 to -4.2 | 329 | Peer-reviewed publication | quote anchored | pubmed:41275875 |
-| ATTAIN-2 | orforglipron 12 mg once daily (investigational capsule dose as reported) | -7 | treatment regimen (stated) | 72 | — | -7.8 to -6.2 | 332 | Peer-reviewed publication | quote anchored | pubmed:41275875 |
-| ATTAIN-2 | orforglipron 36 mg once daily (investigational capsule dose as reported) | -9.6 | treatment regimen (stated) | 72 | — | -10.5 to -8.7 | 322 | Peer-reviewed publication | quote anchored | pubmed:41275875 |
-| ATTAIN-2 | placebo | -2.5 | treatment regimen (stated) | 72 | — | -3 to -1.9 | 630 | Peer-reviewed publication | quote anchored | pubmed:41275875 |
-| ATTAIN-2 | placebo | -2.5 | treatment regimen (stated) | 72 | — | not reported | 630 | FDA prescribing information | quote anchored | openfda-label:foundayo |
-| ATTAIN-2 | FOUNDAYO 5.5 mg once daily (label dosage; investigational formulation shown as equivalent dosage) | -5.1 | treatment regimen (stated) | 72 | — | not reported | 329 | FDA prescribing information | quote anchored | openfda-label:foundayo |
-| ATTAIN-2 | FOUNDAYO 9 mg once daily (label dosage; investigational formulation shown as equivalent dosage) | -7 | treatment regimen (stated) | 72 | — | not reported | 332 | FDA prescribing information | quote anchored | openfda-label:foundayo |
-| ATTAIN-2 | FOUNDAYO 17.2 mg once daily (label dosage; investigational formulation shown as equivalent dosage) | -9.6 | treatment regimen (stated) | 72 | — | not reported | 322 | FDA prescribing information | quote anchored | openfda-label:foundayo |
-| ATTAIN-2 | placebo | -2.5 | treatment regimen (stated) | 72 | — | not reported | 630 | FDA review document | curated pending review | web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul |
-| ATTAIN-2 | orforglipron 6 mg once daily (investigational capsule dose as reported) | -5.1 | treatment regimen (stated) | 72 | — | not reported | 329 | FDA review document | curated pending review | web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul |
-| ATTAIN-2 | orforglipron 12 mg once daily (investigational capsule dose as reported) | -7 | treatment regimen (stated) | 72 | — | not reported | 332 | FDA review document | curated pending review | web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul |
-| ATTAIN-2 | orforglipron 36 mg once daily (investigational capsule dose as reported) | -9.6 | treatment regimen (stated) | 72 | — | not reported | 322 | FDA review document | curated pending review | web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul |
-| ATTAIN-2 | orforglipron 6 mg once daily (investigational capsule dose as reported) | -5.5 | efficacy (stated) | 72 | — | not reported | 329 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe |
-| ATTAIN-2 | orforglipron 12 mg once daily (investigational capsule dose as reported) | -7.8 | efficacy (stated) | 72 | — | not reported | 332 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe |
-| ATTAIN-2 | orforglipron 36 mg once daily (investigational capsule dose as reported) | -10.5 | efficacy (stated) | 72 | — | not reported | 322 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe |
-| ATTAIN-2 | placebo | -2.2 | efficacy (stated) | 72 | — | not reported | 630 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe |
+| ATTAIN-2 | orforglipron 6 mg once daily (investigational capsule dose as reported) | -5.1 | treatment regimen (inferred) | 72 | — | -6 to -4.2 | 329 | Peer-reviewed publication | quote anchored | pubmed:41275875 |
+| ATTAIN-2 | orforglipron 12 mg once daily (investigational capsule dose as reported) | -7 | treatment regimen (inferred) | 72 | — | -7.8 to -6.2 | 332 | Peer-reviewed publication | quote anchored | pubmed:41275875 |
+| ATTAIN-2 | orforglipron 36 mg once daily (investigational capsule dose as reported) | -9.6 | treatment regimen (inferred) | 72 | — | -10.5 to -8.7 | 322 | Peer-reviewed publication | quote anchored | pubmed:41275875 |
+| ATTAIN-2 | placebo | -2.5 | treatment regimen (inferred) | 72 | — | -3 to -1.9 | 630 | Peer-reviewed publication | quote anchored | pubmed:41275875 |
+| ATTAIN-2 | placebo | -2.5 | treatment regimen (inferred) | 72 | — | not reported | 630 | FDA prescribing information | quote anchored | openfda-label:foundayo |
+| ATTAIN-2 | FOUNDAYO 5.5 mg once daily (label dosage; investigational formulation shown as equivalent dosage) | -5.1 | treatment regimen (inferred) | 72 | — | not reported | 329 | FDA prescribing information | quote anchored | openfda-label:foundayo |
+| ATTAIN-2 | FOUNDAYO 9 mg once daily (label dosage; investigational formulation shown as equivalent dosage) | -7 | treatment regimen (inferred) | 72 | — | not reported | 332 | FDA prescribing information | quote anchored | openfda-label:foundayo |
+| ATTAIN-2 | FOUNDAYO 17.2 mg once daily (label dosage; investigational formulation shown as equivalent dosage) | -9.6 | treatment regimen (inferred) | 72 | — | not reported | 322 | FDA prescribing information | quote anchored | openfda-label:foundayo |
+| ATTAIN-2 | placebo | -2.5 | treatment regimen (inferred) | 72 | — | not reported | 630 | FDA review document | pending human review | web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul |
+| ATTAIN-2 | orforglipron 6 mg once daily (investigational capsule dose as reported) | -5.1 | treatment regimen (inferred) | 72 | — | not reported | 329 | FDA review document | pending human review | web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul |
+| ATTAIN-2 | orforglipron 12 mg once daily (investigational capsule dose as reported) | -7 | treatment regimen (inferred) | 72 | — | not reported | 332 | FDA review document | pending human review | web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul |
+| ATTAIN-2 | orforglipron 36 mg once daily (investigational capsule dose as reported) | -9.6 | treatment regimen (inferred) | 72 | — | not reported | 322 | FDA review document | pending human review | web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul |
+| ATTAIN-2 | orforglipron 6 mg once daily (investigational capsule dose as reported) | -5.5 | efficacy (inferred) | 72 | — | not reported | 329 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe |
+| ATTAIN-2 | orforglipron 12 mg once daily (investigational capsule dose as reported) | -7.8 | efficacy (inferred) | 72 | — | not reported | 332 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe |
+| ATTAIN-2 | orforglipron 36 mg once daily (investigational capsule dose as reported) | -10.5 | efficacy (inferred) | 72 | — | not reported | 322 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe |
+| ATTAIN-2 | placebo | -2.2 | efficacy (inferred) | 72 | — | not reported | 630 | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe |
 
 **Cardiovascular and mortality analyses as reported.**
 
@@ -228,9 +223,9 @@ Locator quote: “capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding t
 
 **Mechanism (each action separately cited).**
 
-- GIPR agonist — Sponsor pipeline disclosure: “acts as a triagonist for the gastric inhibitory polypeptide (GIP) receptor, the glucagon-like peptide-1 (GLP-1) receptor and the glucagon receptor” [curated pending review]
-- GLP1R agonist — Sponsor pipeline disclosure: “acts as a triagonist for the gastric inhibitory polypeptide (GIP) receptor, the glucagon-like peptide-1 (GLP-1) receptor and the glucagon receptor” [curated pending review]
-- GCGR agonist — Sponsor pipeline disclosure: “acts as a triagonist for the gastric inhibitory polypeptide (GIP) receptor, the glucagon-like peptide-1 (GLP-1) receptor and the glucagon receptor” [curated pending review]
+- GIPR agonist — Sponsor pipeline disclosure: “acts as a triagonist for the gastric inhibitory polypeptide (GIP) receptor, the glucagon-like peptide-1 (GLP-1) receptor and the glucagon receptor” [pending human review]
+- GLP1R agonist — Sponsor pipeline disclosure: “acts as a triagonist for the gastric inhibitory polypeptide (GIP) receptor, the glucagon-like peptide-1 (GLP-1) receptor and the glucagon receptor” [pending human review]
+- GCGR agonist — Sponsor pipeline disclosure: “acts as a triagonist for the gastric inhibitory polypeptide (GIP) receptor, the glucagon-like peptide-1 (GLP-1) receptor and the glucagon receptor” [pending human review]
 
 **Tracked trials.**
 
@@ -256,10 +251,10 @@ Locator quote: “capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding t
 | Retatrutide Phase 2 (obesity) | retatrutide 1 mg | -8.7 | not stated (n/a) | 48 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Peer-reviewed publication | quote anchored | pubmed:37366315 |
 | Retatrutide Phase 2 (obesity) | retatrutide 12 mg | -24.2 | not stated (n/a) | 48 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Peer-reviewed publication | quote anchored | pubmed:37366315 |
 | Retatrutide Phase 2 (obesity) | placebo | -2.1 | not stated (n/a) | 48 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Peer-reviewed publication | quote anchored | pubmed:37366315 |
-| TRANSCEND-T2D-1 | retatrutide 4 mg | -11.5 | treatment regimen (stated) | 40 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | 134 | Peer-reviewed publication | quote anchored | pubmed:42250575 |
-| TRANSCEND-T2D-1 | retatrutide 9 mg | -13.9 | treatment regimen (stated) | 40 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | 133 | Peer-reviewed publication | quote anchored | pubmed:42250575 |
-| TRANSCEND-T2D-1 | retatrutide 12 mg | -15.3 | treatment regimen (stated) | 40 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | 136 | Peer-reviewed publication | quote anchored | pubmed:42250575 |
-| TRANSCEND-T2D-1 | placebo | -2.6 | treatment regimen (stated) | 40 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | 134 | Peer-reviewed publication | quote anchored | pubmed:42250575 |
+| TRANSCEND-T2D-1 | retatrutide 4 mg | -11.5 | treatment regimen (inferred) | 40 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | 134 | Peer-reviewed publication | quote anchored | pubmed:42250575 |
+| TRANSCEND-T2D-1 | retatrutide 9 mg | -13.9 | treatment regimen (inferred) | 40 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | 133 | Peer-reviewed publication | quote anchored | pubmed:42250575 |
+| TRANSCEND-T2D-1 | retatrutide 12 mg | -15.3 | treatment regimen (inferred) | 40 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | 136 | Peer-reviewed publication | quote anchored | pubmed:42250575 |
+| TRANSCEND-T2D-1 | placebo | -2.6 | treatment regimen (inferred) | 40 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | 134 | Peer-reviewed publication | quote anchored | pubmed:42250575 |
 | TRANSCEND-T2D-1 | retatrutide 4 mg | -11.5 | efficacy (stated) | 40 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-03-19-lilly-s-triple-agonist-retatrutide-demon |
 | TRANSCEND-T2D-1 | retatrutide 9 mg | -15.5 | efficacy (stated) | 40 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-03-19-lilly-s-triple-agonist-retatrutide-demon |
 | TRANSCEND-T2D-1 | retatrutide 12 mg | -16.8 | efficacy (stated) | 40 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-03-19-lilly-s-triple-agonist-retatrutide-demon |
@@ -268,28 +263,28 @@ Locator quote: “capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding t
 | TRIUMPH-1 | retatrutide 9 mg | -23.7 | treatment regimen (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Peer-reviewed publication | quote anchored | pubmed:42814954 |
 | TRIUMPH-1 | retatrutide 12 mg | -25 | treatment regimen (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Peer-reviewed publication | quote anchored | pubmed:42814954 |
 | TRIUMPH-1 | placebo | -3.9 | treatment regimen (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Peer-reviewed publication | quote anchored | pubmed:42814954 |
-| TRIUMPH-1 | retatrutide 4 mg | -19 | efficacy (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv |
-| TRIUMPH-1 | retatrutide 9 mg | -25.9 | efficacy (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv |
-| TRIUMPH-1 | retatrutide 12 mg | -28.3 | efficacy (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv |
-| TRIUMPH-1 | placebo | -2.2 | efficacy (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv |
-| TRIUMPH-1 | retatrutide 12 mg | -25 | treatment regimen (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv |
+| TRIUMPH-1 | retatrutide 4 mg | -19 | efficacy (inferred) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv |
+| TRIUMPH-1 | retatrutide 9 mg | -25.9 | efficacy (inferred) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv |
+| TRIUMPH-1 | retatrutide 12 mg | -28.3 | efficacy (inferred) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv |
+| TRIUMPH-1 | placebo | -2.2 | efficacy (inferred) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv |
+| TRIUMPH-1 | retatrutide 12 mg | -25 | treatment regimen (inferred) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv |
 | TRIUMPH-2 | retatrutide 4 mg | -11.9 | treatment regimen (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | 292 | Peer-reviewed publication | quote anchored | pubmed:42810372 |
 | TRIUMPH-2 | retatrutide 9 mg | -16.8 | treatment regimen (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | 284 | Peer-reviewed publication | quote anchored | pubmed:42810372 |
 | TRIUMPH-2 | retatrutide 12 mg | -18.8 | treatment regimen (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | 287 | Peer-reviewed publication | quote anchored | pubmed:42810372 |
 | TRIUMPH-2 | placebo | -5.1 | treatment regimen (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | 289 | Peer-reviewed publication | quote anchored | pubmed:42810372 |
-| TRIUMPH-2 | retatrutide 4 mg | -12.7 | efficacy (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe |
-| TRIUMPH-2 | retatrutide 9 mg | -19.1 | efficacy (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe |
-| TRIUMPH-2 | retatrutide 12 mg | -20.8 | efficacy (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe |
-| TRIUMPH-2 | placebo | -4 | efficacy (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe |
-| TRIUMPH-3 | retatrutide 9 mg | -21.6 | efficacy (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe |
-| TRIUMPH-3 | retatrutide 12 mg | -22.6 | efficacy (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe |
-| TRIUMPH-3 | placebo | -3.2 | efficacy (stated) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe |
-| TRIUMPH-4 | retatrutide 9 mg | -26.4 | efficacy (stated) | 68 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv |
-| TRIUMPH-4 | retatrutide 9 mg | -20 | treatment regimen (stated) | 68 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv |
-| TRIUMPH-4 | retatrutide 12 mg | -28.7 | efficacy (stated) | 68 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv |
-| TRIUMPH-4 | retatrutide 12 mg | -23.7 | treatment regimen (stated) | 68 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv |
-| TRIUMPH-4 | placebo | -2.1 | efficacy (stated) | 68 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv |
-| TRIUMPH-4 | placebo | -4.6 | treatment regimen (stated) | 68 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv |
+| TRIUMPH-2 | retatrutide 4 mg | -12.7 | efficacy (inferred) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe |
+| TRIUMPH-2 | retatrutide 9 mg | -19.1 | efficacy (inferred) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe |
+| TRIUMPH-2 | retatrutide 12 mg | -20.8 | efficacy (inferred) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe |
+| TRIUMPH-2 | placebo | -4 | efficacy (inferred) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe |
+| TRIUMPH-3 | retatrutide 9 mg | -21.6 | efficacy (inferred) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe |
+| TRIUMPH-3 | retatrutide 12 mg | -22.6 | efficacy (inferred) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe |
+| TRIUMPH-3 | placebo | -3.2 | efficacy (inferred) | 80 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2026-07-23-lilly-s-triple-agonist-retatrutide-succe |
+| TRIUMPH-4 | retatrutide 9 mg | -26.4 | efficacy (inferred) | 68 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv |
+| TRIUMPH-4 | retatrutide 9 mg | -20 | treatment regimen (inferred) | 68 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv |
+| TRIUMPH-4 | retatrutide 12 mg | -28.7 | efficacy (inferred) | 68 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv |
+| TRIUMPH-4 | retatrutide 12 mg | -23.7 | treatment regimen (inferred) | 68 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv |
+| TRIUMPH-4 | placebo | -2.1 | efficacy (inferred) | 68 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv |
+| TRIUMPH-4 | placebo | -4.6 | treatment regimen (inferred) | 68 | baseline (week 0, pre-treatment; source says "from baseline") | not reported | — | Sponsor press release (topline) | quote anchored | web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv |
 
 **Cardiovascular and mortality analyses as reported.**
 
@@ -302,7 +297,7 @@ Locator quote: “capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding t
 
 **Mechanism (each action separately cited).**
 
-- AMYR agonist — Sponsor pipeline disclosure: “LY3841136 (eloralintide) is a biologic entity that acts as a selective amylin receptor agonist.” [curated pending review]
+- AMYR agonist — Sponsor pipeline disclosure: “LY3841136 (eloralintide) is a biologic entity that acts as a selective amylin receptor agonist.” [pending human review]
 
 **Tracked trials.**
 
@@ -321,15 +316,15 @@ Locator quote: “capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding t
 
 | Trial | Arm | % change | Estimand (basis) | Week | Baseline | CI | n | Tier | Verification | Source key |
 |---|---|---|---|---|---|---|---|---|---|---|
-| EloraTZP Phase 2b | eloralintide 3 mg + tirzepatide 5 mg | -13.2 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 6 mg + tirzepatide 5 mg | -19.4 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 6 mg + tirzepatide 10 mg | -19.9 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 9 mg + tirzepatide 15 mg | -23.3 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | tirzepatide 15 mg | -14.8 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 3 mg | -8.2 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 6 mg | -12.3 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 9 mg | -11.1 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | placebo | -3 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | eloralintide 3 mg + tirzepatide 5 mg | -13.2 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | eloralintide 6 mg + tirzepatide 5 mg | -19.4 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | eloralintide 6 mg + tirzepatide 10 mg | -19.9 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | eloralintide 9 mg + tirzepatide 15 mg | -23.3 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | tirzepatide 15 mg | -14.8 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | eloralintide 3 mg | -8.2 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | eloralintide 6 mg | -12.3 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | eloralintide 9 mg | -11.1 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | placebo | -3 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
 | Eloralintide Phase 2 | Placebo | -0.4 | not stated (n/a) | 48 | Baseline | not reported | 53 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT06230523 |
 | Eloralintide Phase 2 | 1 mg Eloralintide | -9.4 | not stated (n/a) | 48 | Baseline | not reported | 28 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT06230523 |
 | Eloralintide Phase 2 | 3 mg Eloralintide | -12.4 | not stated (n/a) | 48 | Baseline | not reported | 24 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT06230523 |
@@ -337,20 +332,20 @@ Locator quote: “capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding t
 | Eloralintide Phase 2 | 9 mg Eloralintide | -20.1 | not stated (n/a) | 48 | Baseline | not reported | 54 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT06230523 |
 | Eloralintide Phase 2 | 6/9 mg Eloralintide | -19.9 | not stated (n/a) | 48 | Baseline | not reported | 24 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT06230523 |
 | Eloralintide Phase 2 | 3/6/9 mg Eloralintide | -16.5 | not stated (n/a) | 48 | Baseline | not reported | 52 | Registry-posted results (sponsor-submitted) | machine extracted | ctgov:NCT06230523 |
-| Eloralintide Phase 2 | eloralintide 1 mg | -9 | efficacy (stated) | 48 | — | -12.6 to -6.3 | 28 | Peer-reviewed publication | quote anchored | pubmed:41207310 |
-| Eloralintide Phase 2 | eloralintide 3 mg | -12 | efficacy (stated) | 48 | — | -14.9 to -9.8 | 24 | Peer-reviewed publication | quote anchored | pubmed:41207310 |
-| Eloralintide Phase 2 | eloralintide 6 mg | -18 | efficacy (stated) | 48 | — | -20.7 to -14.5 | 28 | Peer-reviewed publication | quote anchored | pubmed:41207310 |
-| Eloralintide Phase 2 | eloralintide 9 mg | -20 | efficacy (stated) | 48 | — | -22.7 to -17.5 | 54 | Peer-reviewed publication | quote anchored | pubmed:41207310 |
-| Eloralintide Phase 2 | eloralintide 6-9 mg (dose escalation) | -20 | efficacy (stated) | 48 | — | -22.7 to -17 | 24 | Peer-reviewed publication | quote anchored | pubmed:41207310 |
-| Eloralintide Phase 2 | eloralintide 3-9 mg (dose escalation) | -16 | efficacy (stated) | 48 | — | -18.6 to -14.1 | 52 | Peer-reviewed publication | quote anchored | pubmed:41207310 |
-| Eloralintide Phase 2 | placebo | -0.4 | efficacy (stated) | 48 | — | -2.2 to 1.4 | 53 | Peer-reviewed publication | quote anchored | pubmed:41207310 |
-| Eloralintide Phase 2 | eloralintide 1 mg | -9.5 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2025-11-06-eloralintide-ph2 |
-| Eloralintide Phase 2 | eloralintide 3 mg | -12.4 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2025-11-06-eloralintide-ph2 |
-| Eloralintide Phase 2 | eloralintide 6 mg | -17.6 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2025-11-06-eloralintide-ph2 |
-| Eloralintide Phase 2 | eloralintide 9 mg | -20.1 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2025-11-06-eloralintide-ph2 |
-| Eloralintide Phase 2 | eloralintide 6/9 mg (dose escalation) | -19.9 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2025-11-06-eloralintide-ph2 |
-| Eloralintide Phase 2 | eloralintide 3/6/9 mg (dose escalation) | -16.4 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2025-11-06-eloralintide-ph2 |
-| Eloralintide Phase 2 | placebo | -0.4 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2025-11-06-eloralintide-ph2 |
+| Eloralintide Phase 2 | eloralintide 1 mg | -9 | efficacy (inferred) | 48 | — | -12.6 to -6.3 | 28 | Peer-reviewed publication | quote anchored | pubmed:41207310 |
+| Eloralintide Phase 2 | eloralintide 3 mg | -12 | efficacy (inferred) | 48 | — | -14.9 to -9.8 | 24 | Peer-reviewed publication | quote anchored | pubmed:41207310 |
+| Eloralintide Phase 2 | eloralintide 6 mg | -18 | efficacy (inferred) | 48 | — | -20.7 to -14.5 | 28 | Peer-reviewed publication | quote anchored | pubmed:41207310 |
+| Eloralintide Phase 2 | eloralintide 9 mg | -20 | efficacy (inferred) | 48 | — | -22.7 to -17.5 | 54 | Peer-reviewed publication | quote anchored | pubmed:41207310 |
+| Eloralintide Phase 2 | eloralintide 6-9 mg (dose escalation) | -20 | efficacy (inferred) | 48 | — | -22.7 to -17 | 24 | Peer-reviewed publication | quote anchored | pubmed:41207310 |
+| Eloralintide Phase 2 | eloralintide 3-9 mg (dose escalation) | -16 | efficacy (inferred) | 48 | — | -18.6 to -14.1 | 52 | Peer-reviewed publication | quote anchored | pubmed:41207310 |
+| Eloralintide Phase 2 | placebo | -0.4 | efficacy (inferred) | 48 | — | -2.2 to 1.4 | 53 | Peer-reviewed publication | quote anchored | pubmed:41207310 |
+| Eloralintide Phase 2 | eloralintide 1 mg | -9.5 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2025-11-06-eloralintide-ph2 |
+| Eloralintide Phase 2 | eloralintide 3 mg | -12.4 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2025-11-06-eloralintide-ph2 |
+| Eloralintide Phase 2 | eloralintide 6 mg | -17.6 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2025-11-06-eloralintide-ph2 |
+| Eloralintide Phase 2 | eloralintide 9 mg | -20.1 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2025-11-06-eloralintide-ph2 |
+| Eloralintide Phase 2 | eloralintide 6/9 mg (dose escalation) | -19.9 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2025-11-06-eloralintide-ph2 |
+| Eloralintide Phase 2 | eloralintide 3/6/9 mg (dose escalation) | -16.4 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2025-11-06-eloralintide-ph2 |
+| Eloralintide Phase 2 | placebo | -0.4 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2025-11-06-eloralintide-ph2 |
 
 ## Eloralintide + tirzepatide (EloraTZP)
 
@@ -372,15 +367,15 @@ Locator quote: “capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding t
 
 | Trial | Arm | % change | Estimand (basis) | Week | Baseline | CI | n | Tier | Verification | Source key |
 |---|---|---|---|---|---|---|---|---|---|---|
-| EloraTZP Phase 2b | eloralintide 3 mg + tirzepatide 5 mg | -13.2 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 6 mg + tirzepatide 5 mg | -19.4 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 6 mg + tirzepatide 10 mg | -19.9 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 9 mg + tirzepatide 15 mg | -23.3 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | tirzepatide 15 mg | -14.8 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 3 mg | -8.2 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 6 mg | -12.3 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | eloralintide 9 mg | -11.1 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
-| EloraTZP Phase 2b | placebo | -3 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | curated pending review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | eloralintide 3 mg + tirzepatide 5 mg | -13.2 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | eloralintide 6 mg + tirzepatide 5 mg | -19.4 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | eloralintide 6 mg + tirzepatide 10 mg | -19.9 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | eloralintide 9 mg + tirzepatide 15 mg | -23.3 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | tirzepatide 15 mg | -14.8 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | eloralintide 3 mg | -8.2 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | eloralintide 6 mg | -12.3 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | eloralintide 9 mg | -11.1 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
+| EloraTZP Phase 2b | placebo | -3 | efficacy (stated) | 48 | — | not reported | — | Sponsor press release (topline) | pending human review | web:lilly-pr-2026-09-30-eloratzp |
 
 ## Brenipatide (LY3537031)
 
@@ -388,8 +383,8 @@ Locator quote: “capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding t
 
 **Mechanism (each action separately cited).**
 
-- GIPR agonist — Sponsor pipeline disclosure: “LY3537031 (Brenipatide) is a biologic entity that acts as an agonist of both glucose-dependent insulinotropic polypeptide (GIP) receptor and the glucagon-like peptide (GLP-1) receptor” [curated pending review]
-- GLP1R agonist — Sponsor pipeline disclosure: “LY3537031 (Brenipatide) is a biologic entity that acts as an agonist of both glucose-dependent insulinotropic polypeptide (GIP) receptor and the glucagon-like peptide (GLP-1) receptor” [curated pending review]
+- GIPR agonist — Sponsor pipeline disclosure: “LY3537031 (Brenipatide) is a biologic entity that acts as an agonist of both glucose-dependent insulinotropic polypeptide (GIP) receptor and the glucagon-like peptide (GLP-1) receptor” [pending human review]
+- GLP1R agonist — Sponsor pipeline disclosure: “LY3537031 (Brenipatide) is a biologic entity that acts as an agonist of both glucose-dependent insulinotropic polypeptide (GIP) receptor and the glucagon-like peptide (GLP-1) receptor” [pending human review]
 
 **Tracked trials.**
 
@@ -403,7 +398,7 @@ Locator quote: “capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding t
 
 **Mechanism (each action separately cited).**
 
-- GIPR agonist — Sponsor pipeline disclosure: “LY3532226 (Macupatide) is a biologic entity that acts as a long-acting agonist of the glucose-dependent insulinotropic polypeptide (GIP) receptor.” [curated pending review]
+- GIPR agonist — Sponsor pipeline disclosure: “LY3532226 (Macupatide) is a biologic entity that acts as a long-acting agonist of the glucose-dependent insulinotropic polypeptide (GIP) receptor.” [pending human review]
 
 **Tracked trials.**
 
@@ -417,7 +412,7 @@ Locator quote: “capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding t
 
 **Mechanism (each action separately cited).**
 
-- ACTRII antibody_blockade — Sponsor pipeline disclosure: “LY3985863 (Bimagrumab) is a monoclonal antibody that binds the activin/myostatin type II receptors ActRIIA and ActRIIB and blocks ligand binding.” [curated pending review]
+- ACTRII antibody_blockade — Sponsor pipeline disclosure: “LY3985863 (Bimagrumab) is a monoclonal antibody that binds the activin/myostatin type II receptors ActRIIA and ActRIIB and blocks ligand binding.” [pending human review]
 
 **Tracked trials.**
 
@@ -430,15 +425,46 @@ Locator quote: “capsule doses of 1, 3, 6, 12, 24, or 36 mg and corresponding t
 
 | Trial | Arm | % change | Estimand (basis) | Week | Baseline | CI | n | Tier | Verification | Source key |
 |---|---|---|---|---|---|---|---|---|---|---|
-| BELIEVE | bimagrumab 30 mg/kg + semaglutide 2.4 mg (high-dose combination) | -22.1 | efficacy (stated) | 72 | — | not reported | — | Peer-reviewed publication | curated pending review | pubmed:41772149 |
+| BELIEVE | bimagrumab 30 mg/kg + semaglutide 2.4 mg (high-dose combination) | -22.1 | efficacy (inferred) | 72 | — | not reported | — | Peer-reviewed publication | pending human review | pubmed:41772149 |
 
 ## Discrepancies between public sources
 
 Detected automatically for the same trial, arm, endpoint, estimand and time point (rounding variants excluded).
 
-- Why do public sources give different values for weight pct change in ATTAIN-1, orforglipron 6 mg (treatment regimen estimand, week 72)? Reported values: -7.5 (peer reviewed, source #166); -7.4 (regulatory label, source #198); -7.4 (regulatory review, source #30).
-- Why do public sources give different values for weight pct change in ATTAIN-1, orforglipron 12 mg (treatment regimen estimand, week 72)? Reported values: -8.4 (peer reviewed, source #166); -8.3 (regulatory label, source #198); -8.3 (regulatory review, source #30).
-- Why do public sources give different values for weight pct change in ATTAIN-1, orforglipron 36 mg (treatment regimen estimand, week 72)? Reported values: -11.2 (peer reviewed, source #166); -11.1 (regulatory label, source #198); -11.2 (regulatory review, source #30).
+- Why do public sources give different values for percent change in body weight in ATTAIN-1, 6 mg Orforglipron, week 72 (treatment regimen estimand)? Reported values: -7.5 (peer reviewed, source #166); -7.4 (regulatory label, source #198); -7.4 (regulatory review, source #30). Classification: true conflict (conflict group NCT05869903-dbb267038e8708c8).
+- Why do public sources give different values for percent change in body weight in ATTAIN-1, 12 mg Orforglipron, week 72 (treatment regimen estimand)? Reported values: -8.4 (peer reviewed, source #166); -8.3 (regulatory label, source #198); -8.3 (regulatory review, source #30). Classification: true conflict (conflict group NCT05869903-b8a18b2b2654fab3).
+- Why do public sources give different values for percent change in body weight in ATTAIN-1, 36 mg Orforglipron, week 72 (treatment regimen estimand)? Reported values: -11.2 (peer reviewed, source #166); -11.1 (regulatory label, source #198); -11.2 (regulatory review, source #30). Classification: true conflict (conflict group NCT05869903-031b8031021a0ea4).
+- Do the public sources' different values for percent change in body weight in SURMOUNT-1, 10 mg Tirzepatide versus Placebo, week 72 report the same quantity? Reported values: -18.9 (registry results, source #44); -16.4 (regulatory label, source #196). Classification: insufficient information (conflict group NCT04184622-d22e413d06dc7e2e).
+- Do the public sources' different values for percent change in body weight in SURMOUNT-1, 15 mg Tirzepatide versus Placebo, week 72 report the same quantity? Reported values: -20.1 (registry results, source #44); -17.8 (regulatory label, source #196). Classification: insufficient information (conflict group NCT04184622-92ee3db9b4e3aae9).
+- Do the public sources' different values for percent change in body weight in SURMOUNT-1, 5 mg Tirzepatide versus Placebo, week 72 report the same quantity? Reported values: -13.5 (registry results, source #44); -11.9 (regulatory label, source #196). Classification: insufficient information (conflict group NCT04184622-9d70b25d139ead44).
+- Do the public sources' different values for percent change in body weight in SURMOUNT-4, Placebo, week 88 report the same quantity? Reported values: 14.8 (registry results, source #47); 14.0 (peer reviewed, source #112); 14.8 (press release, source #3). Classification: insufficient information (conflict group NCT04660643-0890fc01af1e9e21).
+- Do the public sources' different values for percent change in body weight in SURMOUNT-4, Tirzepatide MTD, week 88 report the same quantity? Reported values: -6.7 (registry results, source #47); -5.5 (peer reviewed, source #112); -6.7 (press release, source #3). Classification: insufficient information (conflict group NCT04660643-416fe06a05abc9f2).
+- Do the public sources' different values for percent change in body weight in SURMOUNT-4, Tirzepatide MTD versus Placebo, week 88 report the same quantity? Reported values: -21.4 (registry results, source #47); -16.4 (registry results, source #47); -19.4 (peer reviewed, source #112); -19.4 (regulatory label, source #196). Classification: insufficient information (conflict group NCT04660643-ab4cbce9594d7484).
+- Do the public sources' different values for percent change in body weight in SURMOUNT-5, 15 mg or MTD - Tirzepatide, week 72 report the same quantity? Reported values: -20.2 (peer reviewed, source #115); -21.8 (registry results, source #48). Classification: insufficient information (conflict group NCT05822830-052e0d0b9e1f2dff).
+- Do the public sources' different values for percent change in body weight in SURMOUNT-5, 2.4 mg or MTD - Semaglutide, week 72 report the same quantity? Reported values: -13.7 (peer reviewed, source #115); -15.4 (registry results, source #48). Classification: insufficient information (conflict group NCT05822830-b19345c7895b9617).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=20%) in ATTAIN-1, 12 mg Orforglipron, week 72 (treatment regimen estimand)? Reported values: 8.9 (regulatory label, source #198); 9.0 (press release, source #7). Classification: true conflict (conflict group NCT05869903-33ebef39a290ca9b).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=10%) in ATTAIN-1, 12 mg Orforglipron, week 72 (treatment regimen estimand)? Reported values: 39.8 (regulatory label, source #198); 40.0 (press release, source #7). Classification: true conflict (conflict group NCT05869903-451ea15846027658).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=15%) in ATTAIN-1, 12 mg Orforglipron, week 72 (treatment regimen estimand)? Reported values: 20.1 (regulatory label, source #198); 20.3 (press release, source #7). Classification: true conflict (conflict group NCT05869903-d5a74fe346e05db7).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=5%) in ATTAIN-1, 12 mg Orforglipron, week 72 (treatment regimen estimand)? Reported values: 63.1 (regulatory label, source #198); 63.5 (press release, source #7). Classification: true conflict (conflict group NCT05869903-fd3cda352e6214cb).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=15%) in ATTAIN-1, 36 mg Orforglipron, week 72 (treatment regimen estimand)? Reported values: 35.9 (regulatory label, source #198); 36.0 (press release, source #7). Classification: true conflict (conflict group NCT05869903-4436a787a61a1062).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=10%) in ATTAIN-1, 36 mg Orforglipron, week 72 (treatment regimen estimand)? Reported values: 54.5 (regulatory label, source #198); 54.6 (press release, source #7). Classification: true conflict (conflict group NCT05869903-83b9c9ca9fb95aa9).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=5%) in ATTAIN-1, 36 mg Orforglipron, week 72 (treatment regimen estimand)? Reported values: 71.5 (regulatory label, source #198); 71.8 (press release, source #7). Classification: true conflict (conflict group NCT05869903-f13c390b574d2c1d).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=15%) in ATTAIN-1, 6 mg Orforglipron, week 72 (treatment regimen estimand)? Reported values: 14.3 (regulatory label, source #198); 15.1 (press release, source #7). Classification: true conflict (conflict group NCT05869903-26c1de37139d158c).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=10%) in ATTAIN-1, 6 mg Orforglipron, week 72 (treatment regimen estimand)? Reported values: 32.5 (regulatory label, source #198); 33.3 (press release, source #7). Classification: true conflict (conflict group NCT05869903-475331c84bcdbaac).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=5%) in ATTAIN-1, 6 mg Orforglipron, week 72 (treatment regimen estimand)? Reported values: 59.6 (regulatory label, source #198); 60.6 (press release, source #7). Classification: true conflict (conflict group NCT05869903-b66395470e0383ce).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=20%) in ATTAIN-1, 6 mg Orforglipron, week 72 (treatment regimen estimand)? Reported values: 5.9 (regulatory label, source #198); 6.4 (press release, source #7). Classification: true conflict (conflict group NCT05869903-bdb60907840825f6).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=20%) in ATTAIN-1, Placebo, week 72 (treatment regimen estimand)? Reported values: 2.9 (regulatory label, source #198); 2.8 (press release, source #7). Classification: true conflict (conflict group NCT05869903-d29f1812f6d705ab).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=5%) in ATTAIN-2, 12 mg Orforglipron QD, week 72 (treatment regimen estimand)? Reported values: 54.7 (regulatory label, source #198); 54.6 (press release, source #12). Classification: true conflict (conflict group NCT05872620-1130bb95386affa6).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=10%) in ATTAIN-2, 12 mg Orforglipron QD, week 72 (treatment regimen estimand)? Reported values: 31.1 (regulatory label, source #198); 31.2 (press release, source #6). Classification: true conflict (conflict group NCT05872620-223f3fbb0d228a00).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=15%) in ATTAIN-2, 36 mg Orforglipron QD, week 72 (treatment regimen estimand)? Reported values: 25.9 (regulatory label, source #198); 26.0 (press release, source #6). Classification: true conflict (conflict group NCT05872620-92408da5ebbc19d0).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=15%) in ATTAIN-2, 6 mg Orforglipron QD, week 72 (treatment regimen estimand)? Reported values: 6.7 (regulatory label, source #198); 6.8 (press release, source #6). Classification: true conflict (conflict group NCT05872620-541274f9337f208f).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=5%) in ATTAIN-2, 6 mg Orforglipron QD, week 72 (treatment regimen estimand)? Reported values: 47.4 (regulatory label, source #198); 47.7 (press release, source #12). Classification: true conflict (conflict group NCT05872620-9629c4245fe13e1d).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=10%) in ATTAIN-2, 6 mg Orforglipron QD, week 72 (treatment regimen estimand)? Reported values: 22.5 (regulatory label, source #198); 22.6 (press release, source #6). Classification: true conflict (conflict group NCT05872620-fc4ffecaf6e2e2d7).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=15%) in ATTAIN-2, Placebo, week 72 (treatment regimen estimand)? Reported values: 3.1 (regulatory label, source #198); 3.0 (press release, source #6). Classification: true conflict (conflict group NCT05872620-7626efbbfbb11c76).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=10%) in ATTAIN-2, Placebo, week 72 (treatment regimen estimand)? Reported values: 9.2 (regulatory label, source #198); 9.0 (press release, source #6). Classification: true conflict (conflict group NCT05872620-d7a3a2432d4bb43f).
+- Why do public sources give different values for participants reaching a weight-reduction threshold (>=5%) in ATTAIN-2, Placebo, week 72 (treatment regimen estimand)? Reported values: 26.8 (regulatory label, source #198); 26.6 (press release, source #12). Classification: true conflict (conflict group NCT05872620-f2e4be9fee26b75b).
+- Do the public sources' different values for percent change in body weight in Eloralintide Phase 2, 1 mg Eloralintide, week 48 report the same quantity? Reported values: -9.4 (registry results, source #78); -9.5 (press release, source #41). Classification: insufficient information (conflict group NCT06230523-8bccf2a66a24043c).
+- Do the public sources' different values for percent change in body weight in Eloralintide Phase 2, 3/6/9 mg Eloralintide, week 48 report the same quantity? Reported values: -16.5 (registry results, source #78); -16.4 (press release, source #41). Classification: insufficient information (conflict group NCT06230523-04736489da01ae3f).
 
 ## Items that could not be confirmed from a primary source
 

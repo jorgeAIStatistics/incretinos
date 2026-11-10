@@ -8,9 +8,9 @@ Generated from the offline-seeded evidence base (retrieved 2026-10-13) by `pytho
 
 - Findings come from different trials: there is no randomization between these groups, so differences may reflect populations, sites, era, conduct or analysis rather than the treatments.
 - Indication / defining comorbidity: The trials enrolled populations defined by different comorbidities.
+- Assessment time point: Assessment times differ by 8 weeks. Weight and weight-dependent measures were still changing over this range in these trials; a longer follow-up mechanically favours a larger change, so values at different weeks are not the same quantity.
 - Precision: At least one finding has no reported measure of uncertainty, so the precision of any difference cannot be judged.
-- Assessment time point (minor): Assessment times differ by 8 weeks. Small difference in follow-up.
-- Endpoint hierarchy and multiplicity (minor): The endpoint has a different position in each trial's hierarchy.
+- Not assessable from stored sources: mean baseline body weight, mean baseline bmi, mean age, female participants (calculated from registry counts), analysis model / missing-data handling, analysis population, endpoint hierarchy and multiplicity.
 
 What may not be said:
 - Do not state or imply that retatrutide 12 mg is superior (or inferior) to tirzepatide 15 mg on the basis of these two findings.
@@ -19,13 +19,13 @@ What may not be said:
 
 Assistant answer (deterministic, no language model):
 
-- *Verified Evidence* — Retatrutide — pharmacologic class: Triple GIP, GLP-1 and glucagon receptor agonist (derived from sourced receptor actions). Regulatory status: investigational as of 2026-10-13. Investigational. Listed in Phase 3 on Lilly's pipeline page (data as of 2026-08-05); no FDA-approved labeling exists in the openFDA label database as of the last check. Not approved for any indication.
-- *Verified Evidence* — In TRIUMPH-1 (NCT05929066; Phase 3; adults without type 2 diabetes — registered conditions: Obesity, Overweight, Osteoarthritis, Knee), the retatrutide 12 mg group had a reported percent change in body weight of -25% from baseline (week 0, pre-treatment; source says "from baseline") at week 80 (treatment-regimen estimand; confidence interval not reported in this source; n not reported; source: peer-reviewed publication).
-- *Verified Evidence* — Tirzepatide — pharmacologic class: Dual GIP and GLP-1 receptor agonist (derived from sourced receptor actions). Regulatory status: approved as of 2026-10-13. FDA-approved as Zepbound (chronic weight management; moderate to severe obstructive sleep apnea in adults with obesity) and as Mounjaro (glycemic control in type 2 diabetes from age 10; reduction of major adverse cardiovascular events in adults with type 2 diabetes at high risk).
-- *Verified Evidence* — In SURMOUNT-1 (NCT04184622; Phase 3; adults without type 2 diabetes — registered conditions: Overweight, Obesity), the tirzepatide 15 mg group had a reported percent change in body weight of -20.9% from baseline (randomization, week 0) at week 72 (treatment-regimen estimand; 95% CI -21.8 to -19.9; n not reported; source: peer-reviewed publication).
-- *Verified Evidence* — A registered trial includes both agents: TRIUMPH-5 (NCT06662383), PHASE3, status ACTIVE_NOT_RECRUITING, primary completion 2026-11 (estimated). No results are posted or published.
+- *Reported Evidence* — Retatrutide — pharmacologic class: Triple GIP, GLP-1 and glucagon receptor agonist (derived from sourced receptor actions). Regulatory status: investigational as of 2026-10-13. Investigational. Listed in Phase 3 on Lilly's pipeline page (data as of 2026-08-05); no FDA-approved labeling exists in the openFDA label database as of the last check. Not approved for any indication.
+- *Reported Evidence* — In TRIUMPH-1 (NCT05929066; Phase 3; adults without type 2 diabetes — registered conditions: Obesity, Overweight, Osteoarthritis, Knee), the retatrutide 12 mg group had a reported percent change in body weight of -25% from baseline (week 0, pre-treatment; source says "from baseline") at week 80 (treatment-regimen estimand; confidence interval not reported in this source; n not reported; source: peer-reviewed publication).
+- *Reported Evidence* — Tirzepatide — pharmacologic class: Dual GIP and GLP-1 receptor agonist (derived from sourced receptor actions). Regulatory status: approved as of 2026-10-13. FDA-approved as Zepbound (chronic weight management; moderate to severe obstructive sleep apnea in adults with obesity) and as Mounjaro (glycemic control in type 2 diabetes from age 10; reduction of major adverse cardiovascular events in adults with type 2 diabetes at high risk).
+- *Reported Evidence* — In SURMOUNT-1 (NCT04184622; Phase 3; adults without type 2 diabetes — registered conditions: Overweight, Obesity), the tirzepatide 15 mg group had a reported percent change in body weight of -20.9% from baseline (randomization, week 0) at week 72 (treatment-regimen estimand; 95% CI -21.8 to -19.9; n not reported; source: peer-reviewed publication).
+- *Reported Evidence* — A registered trial includes both agents: TRIUMPH-5 (NCT06662383), PHASE3, status ACTIVE_NOT_RECRUITING, primary completion 2026-11 (estimated). No results are posted or published.
 - *Unavailable* — No randomized head-to-head result comparing Retatrutide with Tirzepatide is publicly available in the stored sources.
-- *Interpretation* — Comparability of the two results above: DESCRIPTIVE CROSS-STUDY COMPARISON — Side-by-side description only. Findings come from different trials: there is no randomization between these groups, so differences may reflect populations, sites, era, conduct or analysis rather than the treatments. Indication / defining comorbidity: The trials enrolled populations defined by different comorbidities. Precision: At least one finding has no reported measure of uncertainty, so the precision of any difference cannot be judged. Assessment time point (minor): Assessment times differ by 8 weeks. Small difference in follow-up.
+- *Interpretation* — Comparability of the two results above: DESCRIPTIVE CROSS-STUDY COMPARISON — Side-by-side description only. Findings come from different trials: there is no randomization between these groups, so differences may reflect populations, sites, era, conduct or analysis rather than the treatments. Indication / defining comorbidity: The trials enrolled populations defined by different comorbidities. Assessment time point: Assessment times differ by 8 weeks. Weight and weight-dependent measures were still changing over this range in these trials; a longer follow-up mechanically favours a larger change, so values at different weeks are not the same quantity. Precision: At least one finding has no reported measure of uncertainty, so the precision of any difference cannot be judged.
 - *Interpretation* — What may not be concluded: Do not state or imply that retatrutide 12 mg is superior (or inferior) to tirzepatide 15 mg on the basis of these two findings. Do not describe the difference between these values as statistically significant; no valid test supports it. Do not rank the treatments by these values as if the ranking were a demonstrated treatment effect.
 - *Interpretation* — What a rigorous comparison would require: A randomized head-to-head trial with a pre-specified estimand is the only design that removes cross-trial confounding. A registered trial includes both agents: TRIUMPH-5 (NCT06662383), status ACTIVE_NOT_RECRUITING, primary completion 2026-11 (estimated); no results are posted in the registry. Without a head-to-head trial: individual participant data from at least one trial for a matching-adjusted or simulated-treatment comparison, with all effect modifiers measured in both.
 - *Hypothesis* — The agents differ in receptor targets (GCGR). Whether that difference translates into different clinical outcomes is a hypothesis until a randomized comparison reports.
@@ -43,7 +43,7 @@ Full cited report: [report-retatrutide-vs-tirzepatide.md](report-retatrutide-vs-
 
 ATTAIN-1, 36 mg capsule arm, week 72: **-12.35%** under the efficacy estimand (Registry-posted results (sponsor-submitted); label inferred from the registry's analysis-population text) and **-11.2%** under the treatment-regimen estimand (Peer-reviewed publication; stated by the publication).
 
-Comparing the two: **NOT SUITABLE FOR EFFICACY COMPARISON**. Estimand: One finding uses the efficacy estimand (hypothetical: had participants stayed on treatment) and the other the treatment-regimen estimand (regardless of discontinuation). They answer different questions and are systematically different in magnitude. Handling of discontinuation / rescue therapy (minor): Documented intercurrent-event strategies differ in at least one respect.
+Comparing the two: **NOT SUITABLE FOR EFFICACY COMPARISON**. Randomized contrast: Both findings are stored on the same arm. This is not a treatment comparison: it sets two reports (or two analyses) of one randomized group side by side. Estimand: One finding uses the efficacy estimand (hypothetical: had participants stayed on treatment) and the other the treatment-regimen estimand (regardless of discontinuation). They answer different questions and are systematically different in magnitude.
 
 Full report: [report-attain1-estimands.md](report-attain1-estimands.md)
 
@@ -73,27 +73,27 @@ Context that travels with the headline number:
 
 **Time to first occurrence of MACE-4 (cardiovascular death, non-fatal myocardial infarction, non-fatal stroke, or hospitalisation for unstable angina)** — Orforglipron versus Insulin Glargine — Hazard ratio: 0.84 (95% CI 0.59 to 1.2); p <0.0001 for non-inferiority.  
 Qualifiers: Non-inferiority test; Multiplicity status not stated. Source tier: Peer-reviewed publication; quote anchored.
-- Establishes: Non-inferiority on this endpoint: the treatment is not worse than the comparator by more than the pre-specified margin (upper confidence limit 1.2 is below the pre-specified margin of 1.8).
-- Does not establish: Superiority of the treatment over the comparator: the confidence interval includes 1; the stored source reports a non-inferiority conclusion and does not report a superiority test. Non-inferiority must not be read as superiority.
+- Establishes: Non-inferiority on this endpoint: the treatment is not worse than the comparator by more than the pre-specified margin (the upper limit of the 95% confidence interval, 1.2, is below the pre-specified margin of 1.8).
+- Does not establish: Superiority of the treatment over the comparator: the 95% confidence interval includes 1; the stored source reports a non-inferiority conclusion and does not report a superiority test. Non-inferiority must not be read as superiority.
 - Does not establish: A reduction in risk: a point estimate below 1 with an interval spanning 0.59 to 1.2 is compatible with benefit, no difference, or harm up to the upper limit.
 - Does not establish: Effects in populations, doses or durations other than those studied.
 
 **Time to first occurrence of MACE-3 (myocardial infarction, stroke, or cardiovascular death)** — Orforglipron versus Insulin Glargine — Hazard ratio: 0.77 (95% CI 0.52 to 1.13); p 0.181 (log-rank).  
 Qualifiers: Test type not stated; Multiplicity status not stated; Press release · topline. Source tier: Sponsor press release (topline); quote anchored.
-- Does not establish: A between-arm difference: the confidence interval includes no difference.
+- Does not establish: A between-arm difference: the 95% confidence interval includes 1, the value of no difference.
 - Does not establish: Peer-reviewed confirmation: this figure comes from a sponsor press release.
 - Does not establish: Effects in populations, doses or durations other than those studied.
 
 **All-cause death** — Orforglipron versus Insulin Glargine — Hazard ratio: 0.43 (95% CI 0.25 to 0.75); p 0.002 (nominal; not controlled for multiplicity).  
-Qualifiers: Test type not stated; Not multiplicity-controlled; Exploratory; Press release · topline. Source tier: Sponsor press release (topline); curated pending review.
-- Does not establish: A confirmatory conclusion: the interval excludes no difference, but the test type and its place in the testing hierarchy are not on record.
+Qualifiers: Test type not stated; Not multiplicity-controlled; Exploratory; Press release · topline. Source tier: Sponsor press release (topline); pending human review.
+- Does not establish: A confirmatory conclusion: the 95% interval excludes 1, but the test type and its place in the testing hierarchy are not on record.
 - Does not establish: Any confirmatory claim: the endpoint is exploratory. The result is hypothesis-generating.
 - Does not establish: Statistical significance in the confirmatory sense: the result was not controlled for multiplicity, so its p-value is nominal.
 - Does not establish: Peer-reviewed confirmation: this figure comes from a sponsor press release.
 
 **Cardiovascular death** — Orforglipron versus Insulin Glargine — Hazard ratio: 0.47 (95% CI 0.25 to 0.9); p 0.019 (nominal; not controlled for multiplicity).  
 Qualifiers: Test type not stated; Not multiplicity-controlled; Exploratory; Press release · topline. Source tier: Sponsor press release (topline); quote anchored.
-- Does not establish: A confirmatory conclusion: the interval excludes no difference, but the test type and its place in the testing hierarchy are not on record.
+- Does not establish: A confirmatory conclusion: the 95% interval excludes 1, but the test type and its place in the testing hierarchy are not on record.
 - Does not establish: Any confirmatory claim: the endpoint is exploratory. The result is hypothesis-generating.
 - Does not establish: Statistical significance in the confirmatory sense: the result was not controlled for multiplicity, so its p-value is nominal.
 - Does not establish: Peer-reviewed confirmation: this figure comes from a sponsor press release.
@@ -121,6 +121,8 @@ Open questions recorded for eloralintide:
 - Which clinical populations are under-represented in the reported evidence for Eloralintide? — *evidence in generation*
 - Have the EloraTZP Phase 2b (NCT06603571) topline results been confirmed in a peer-reviewed publication or registry posting? — *public reporting gap*
 - A tracked source changed (ClinicalTrials.gov NCT07321886: A Study of Eloralintide (LY3841136) in Participants With Obesity, or Overweight Without ): does it alter any stored finding or conclusion? — *record change*
+- Do the public sources' different values for percent change in body weight in Eloralintide Phase 2, 1 mg Eloralintide, week 48 report the same quantity? — *source conflict*
+- Do the public sources' different values for percent change in body weight in Eloralintide Phase 2, 3/6/9 mg Eloralintide, week 48 report the same quantity? — *source conflict*
 
 ## F. Safety — why spontaneous reports cannot establish incidence
 

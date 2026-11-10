@@ -1,6 +1,6 @@
 # Comparison report: TRIUMPH-1 — retatrutide 12 mg versus SURMOUNT-1 — tirzepatide 15 mg
 
-Generated 2026-10-13 20:52 UTC by IncretinOS 0.1.0 from stored public evidence.
+Generated 2026-11-10 05:16 UTC by IncretinOS 0.1.0 from stored public evidence.
 
 > **Scope.** Research summary of public evidence for qualified researchers. It is not medical advice, not a treatment recommendation, and not a regulatory submission. Verification statuses are mechanical (machine extraction or quote anchoring); no entry has been human-verified unless a review decision says so.
 
@@ -8,16 +8,16 @@ Generated 2026-10-13 20:52 UTC by IncretinOS 0.1.0 from stored public evidence.
 
 **DESCRIPTIVE CROSS-STUDY COMPARISON** — Side-by-side description only.
 
-Factors: 0 blocking · 2 major differences · 2 minor differences · 6 not assessable · 9 matching.
+Factors: 0 blocking · 3 major differences · 0 minor differences · 7 not assessable · 10 matching.
 
 ### Why
 
 - Findings come from different trials: there is no randomization between these groups, so differences may reflect populations, sites, era, conduct or analysis rather than the treatments.
 - Indication / defining comorbidity: The trials enrolled populations defined by different comorbidities.
+- Assessment time point: Assessment times differ by 8 weeks. Weight and weight-dependent measures were still changing over this range in these trials; a longer follow-up mechanically favours a larger change, so values at different weeks are not the same quantity.
 - Precision: At least one finding has no reported measure of uncertainty, so the precision of any difference cannot be judged.
-- Assessment time point (minor): Assessment times differ by 8 weeks. Small difference in follow-up.
-- Endpoint hierarchy and multiplicity (minor): The endpoint has a different position in each trial's hierarchy.
-- Not assessable from stored sources: mean baseline body weight, mean baseline bmi, mean age, female participants (calculated from registry counts), analysis model / missing-data handling, analysis population.
+- Not assessable from stored sources: mean baseline body weight, mean baseline bmi, mean age, female participants (calculated from registry counts), analysis model / missing-data handling, analysis population, endpoint hierarchy and multiplicity.
+- No arithmetic difference is given: assessment time point (week 80 versus week 72) could not be established as the same for the two values.
 
 ## The two findings
 
@@ -30,7 +30,7 @@ In TRIUMPH-1 (NCT05929066; Phase 3; adults without type 2 diabetes — registere
 | Study | TRIUMPH-1 (NCT05929066), PHASE3, status COMPLETED |
 | Population | adults without type 2 diabetes — registered conditions: Obesity, Overweight, Osteoarthritis, Knee. Basis for diabetes status — Registry title: “A Study of Retatrutide (LY3437943) in Participants Who Have Obesity or Overweight A Master Protocol to Investigate the Efficacy and Safety of LY3437943 Once Weekly in Participants Without Type 2 Diabe” |
 | Arm / dose | retatrutide 12 mg — 12 mg |
-| Endpoint | percent change in body weight from baseline (key secondary; multiplicity control: not stated) |
+| Endpoint | percent change in body weight from baseline (primary; multiplicity control: not stated) |
 | Estimand | treatment regimen (stated by source) |
 | Reported value | -25% |
 | Uncertainty | confidence interval not reported in this source |
@@ -90,15 +90,16 @@ None: the findings come from different trials, so no randomized between-arm anal
 
 ## Descriptive difference
 
-A − B = **-4.1** % — confidence interval: not available. Unadjusted arithmetic difference between arms of different trials. It is descriptive only: it is not an estimate of comparative efficacy, it has no confidence interval, and it must not be described as statistically significant.
+Not computed. No arithmetic difference is given: assessment time point (week 80 versus week 72) could not be established as the same for the two values.
 
 ## Methodological comparison
 
 | Dimension | Finding A | Finding B | Assessment | Explanation |
 |---|---|---|---|---|
 | Study | TRIUMPH-1 (NCT05929066) | SURMOUNT-1 (NCT04184622) | Major Difference | Findings come from different trials: there is no randomization between these groups, so differences may reflect populations, sites, era, conduct or analysis rather than the treatments. |
-| Endpoint definition | percent change in body weight from baseline | percent change in body weight from baseline | Match | Same endpoint category. |
-| Baseline from which change is measured | baseline (week 0, pre-treatment; source says "from baseline") | baseline (randomization, week 0) | Match | Change is measured from the same kind of baseline. |
+| Endpoint definition | percent change in body weight from baseline | percent change in body weight from baseline | Match | Same measurement (body weight). |
+| Unit and scale | % | % | Match | Same unit. |
+| Baseline from which change is measured | baseline (week 0, pre-treatment; source says "from baseline") [study baseline (no lead-in, run-in or withdrawal design on record)\] | baseline (randomization, week 0) [study baseline (no lead-in, run-in or withdrawal design on record)\] | Match | Change is measured from the same kind of baseline. |
 | Estimand | TREATMENT_REGIMEN | TREATMENT_REGIMEN | Match | Same estimand. |
 | Handling of discontinuation / rescue therapy | TREATMENT_DISCONTINUATION: TREATMENT_POLICY | TREATMENT_DISCONTINUATION: TREATMENT_POLICY | Match | Same documented strategies. |
 | Diabetes status of population | NO_T2D | NO_T2D | Match | Same diabetes status. |
@@ -110,11 +111,11 @@ A − B = **-4.1** % — confidence interval: not available. Unadjusted arithmet
 | Control type | PLACEBO | PLACEBO | Match | Same control type. A common placebo control makes an anchored indirect comparison conceivable, subject to effect-modifier balance. |
 | Masking | DOUBLE | DOUBLE | Match | Same masking approach. |
 | Study phase | PHASE3 | PHASE3 | Match | Same phase. |
-| Assessment time point | week 80 | week 72 | Minor Difference | Assessment times differ by 8 weeks. Small difference in follow-up. |
+| Assessment time point | week 80 | week 72 | Major Difference | Assessment times differ by 8 weeks. Weight and weight-dependent measures were still changing over this range in these trials; a longer follow-up mechanically favours a larger change, so values at different weeks are not the same quantity. |
 | Dose and formulation | retatrutide — 12 mg | tirzepatide — 15 mg | Not Applicable | Different agents: doses are not on a common scale. Each arm's titration scheme and whether the maximum tolerated dose was reached should be checked in the protocols. |
 | Analysis model / missing-data handling | not described | not described | Unknown | The analysis model is not described for both findings in the stored sources. |
 | Analysis population | not described | not described | Unknown | Compare the text: who was analysed and which observations were excluded. |
-| Endpoint hierarchy and multiplicity | KEY_SECONDARY / multiplicity NOT_STATED | PRIMARY / multiplicity NOT_STATED | Minor Difference | The endpoint has a different position in each trial's hierarchy. |
+| Endpoint hierarchy and multiplicity | PRIMARY / multiplicity NOT_STATED | PRIMARY / multiplicity NOT_STATED | Unknown | Same endpoint role; multiplicity control is not stated for at least one finding in the stored source. |
 | Precision | n not reported; no CI or dispersion reported | n not reported; CI reported | Major Difference | At least one finding has no reported measure of uncertainty, so the precision of any difference cannot be judged. |
 | Evidence tier | PEER_REVIEWED | PEER_REVIEWED | Match | Same evidence tier. |
 
@@ -138,12 +139,12 @@ A − B = **-4.1** % — confidence interval: not available. Unadjusted arithmet
 
 ## Sources
 
-[1] **Retatrutide, a Triple Hormone Receptor Agonist, for Treatment of Obesity.** · The New England journal of medicine · tier: Peer-reviewed publication · published/updated: 2026 Sep 29 · retrieved: 2026-10-13 · version: 9b22990bf55b · content hash: `fd40e201d97b1d9f` · verification: quote anchored
-    https://pubmed.ncbi.nlm.nih.gov/42814954/
+[1] **Retatrutide, a Triple Hormone Receptor Agonist, for Treatment of Obesity.** · The New England journal of medicine · tier: Peer-reviewed publication · published/updated: 2026 Sep 29 · retrieved: 2026-11-10 · version: 9b22990bf55b · content hash: `fd40e201d97b1d9f` · verification: quote anchored
+    <https://pubmed.ncbi.nlm.nih.gov/42814954/>
     Locator quote: “The mean percent change in body weight in the retatrutide groups was -17.6% (4-mg dose), -23.7% (9-mg dose), and -25.0% (12-mg dose) versus -3.9%”
 
-[2] **Tirzepatide Once Weekly for the Treatment of Obesity.** · The New England journal of medicine · tier: Peer-reviewed publication · published/updated: 2022 Jul 21 · retrieved: 2026-10-13 · version: 2e2c0a6b52ee · content hash: `0613303ed38db803` · verification: quote anchored
-    https://pubmed.ncbi.nlm.nih.gov/35658024/
+[2] **Tirzepatide Once Weekly for the Treatment of Obesity.** · The New England journal of medicine · tier: Peer-reviewed publication · published/updated: 2022 Jul 21 · retrieved: 2026-11-10 · version: 2e2c0a6b52ee · content hash: `0613303ed38db803` · verification: quote anchored
+    <https://pubmed.ncbi.nlm.nih.gov/35658024/>
     Locator quote: “-20.9% (95% CI, -21.8 to -19.9) with 15-mg doses and -3.1% (95% CI, -4.3 to -1.9) with placebo”
 
 ## Epistemic key
