@@ -14,6 +14,17 @@ the same evidence facts the assistant builds, runs the same verifier, and report
 - the list of misses.
 
 The verifier knows nothing about benchmark sentences; nothing here feeds back into it.
+
+Sets and their role (``SET_ROLES``). Only a set nobody developing the verifier has seen measures generalisation:
+
+- ``dev``: written while the verifier was built;
+- ``dev-review``: the sentences an independent reviewer used to attack the verifier (Session 2 review, F01-F22), added
+  after the attack; development data;
+- ``heldout`` (file ``heldout.yaml``): heldout-v1. Measured once, blind, on the merged Session 2 code (detection 98.3%,
+  113/115; false rejection 20.8%, 10/48). Its misses were studied afterwards, so it is development data from then on;
+- ``heldout-v2``: a blind held-out set written without sight of the verifier. Run when the file is present.
+
+A case's sentence may hold up to three sentences; it counts as accepted only if every factual sentence is SUPPORTED.
 """
 
 from __future__ import annotations
@@ -28,19 +39,29 @@ from sqlalchemy.orm import Session
 
 from ..config import BACKEND_ROOT
 from ..models import Drug, EvidenceClaim, OutcomeResult, StatisticalAnalysis, Study
-from .claims import Vocabulary
+from .claims import Vocabulary, split_sentences
 from .facts import EvidenceFact, fact_from_analysis, fact_from_claim, fact_from_drug, fact_from_result
 from .verifier import NOT_FACTUAL, SUPPORTED, verify_draft
 
 # backend/benchmarks/claims in a checkout. An installed package (the container image) cannot find it from its own
 # path, so INCRETINOS_BENCHMARK_DIR names it explicitly there, like the fixture, curation and migration directories.
 BENCHMARK_DIR = Path(os.environ.get("INCRETINOS_BENCHMARK_DIR") or BACKEND_ROOT / "benchmarks" / "claims")
-SETS = ("dev", "heldout")
+SETS = ("dev", "dev-review", "heldout", "heldout-v2")
+SET_ROLES = {
+    "dev": "development",
+    "dev-review": "development (independent reviewer's adversarial sentences, added after the attack)",
+    "heldout": "heldout-v1 (development after first measurement)",
+    "heldout-v2": "blind held-out",
+}
+SET_ALIASES = {"heldout-v1": "heldout"}
 CATEGORIES = (
     "VALID", "DRUG_SWAPPED", "DIRECTION_REVERSED", "COMPARATOR_SWAPPED", "ARM_SWAPPED", "UNIT_CHANGED", "CI_MISSTATED", "NI_AS_SUPERIORITY", "SIGNIFICANCE_INVENTED",
     "TRIAL_MISATTRIBUTED", "ESTIMAND_MIXED", "EXPLORATORY_AS_CONFIRMATORY", "TIER_MISSTATED", "MISSING_AS_ZERO", "UNVERIFIED_AS_HUMAN_VERIFIED", "TIMEPOINT_CHANGED",
     "POPULATION_CHANGED", "MAGNITUDE_CHANGED", "UNCITED_CLAIM", "INJECTED_INSTRUCTION",
+    # added with the Session 2 review
+    "CAUSAL_LANGUAGE", "RECOMMENDATION", "RESPONDER_VS_MEAN", "RELATIVE_VS_ABSOLUTE", "SUBGROUP_SHIFT", "TEXT_FACT_ALTERED", "COREFERENCE_SHIFT", "CROSS_TRIAL_RANKING",
 )
+MAX_SENTENCES = 3
 
 
 class BenchmarkError(Exception):
@@ -122,11 +143,35 @@ def resolve_evidence(session: Session, spec: dict[str, Any]) -> EvidenceFact:
         if drug is None:
             raise BenchmarkError(f"no drug with slug {spec.get('drug')!r}")
         fact = fact_from_drug(session, drug)
+    elif kind == "answer_card":
+        fact = _answer_card(session, spec)
     else:
         raise BenchmarkError(f"unknown evidence kind {kind!r}")
     if not fact.usable:
         raise BenchmarkError(f"the selected record was rejected in review and is never offered as evidence: {spec}")
     return fact
+
+
+_ANSWER_CARDS: dict[tuple[int, str], list[dict[str, Any]]] = {}
+
+
+def _answer_card(session: Session, spec: dict[str, Any]) -> EvidenceFact:
+    """A card exactly as the assistant composes it for a question (rule-based readings exist only there).
+
+    ``question`` is asked without a model; ``text_contains`` must pick exactly one of its evidence cards.
+    """
+    from .answer import ask, cards_for_verification
+
+    question, needle = spec.get("question"), spec.get("text_contains")
+    if not question or not needle:
+        raise BenchmarkError(f"an answer_card selector needs 'question' and 'text_contains': {spec}")
+    key = (id(session), question)
+    if key not in _ANSWER_CARDS:
+        _ANSWER_CARDS[key] = cards_for_verification(ask(session, question).blocks)
+    matches = [card for card in _ANSWER_CARDS[key] if needle in card["text"]]
+    if len(matches) != 1:
+        raise BenchmarkError(f"{len(matches)} answer cards match {spec} (exactly one is required)")
+    return matches[0]["fact"]
 
 
 def load_cases(path: Path) -> list[dict[str, Any]]:
@@ -159,6 +204,8 @@ def run_case(session: Session, case: dict[str, Any], vocabulary: Vocabulary) -> 
             raise BenchmarkError(f"expected must be SUPPORTED or REJECT, not {case.get('expected')!r}")
         if not isinstance(case.get("sentence"), str) or not case["sentence"].strip():
             raise BenchmarkError("the case has no sentence")
+        if len(split_sentences(case["sentence"])) > MAX_SENTENCES:
+            raise BenchmarkError(f"a case holds at most {MAX_SENTENCES} sentences")
         facts = [resolve_evidence(session, spec) for spec in case.get("evidence") or []]
         expected_fact = case.get("expected_fact")
         if expected_fact is not None and not (isinstance(expected_fact, int) and 1 <= expected_fact <= len(facts)):
@@ -238,9 +285,10 @@ def summarize(name: str, results: list[dict[str, Any]], path: Path | None = None
 
 def run_set(session: Session, name: str, directory: Path | None = None) -> dict[str, Any]:
     """Run one benchmark set. A set whose file is absent is reported as not present, not as a failure."""
+    name = SET_ALIASES.get(name, name)
     path = (directory or BENCHMARK_DIR) / f"{name}.yaml"
     if not path.exists():
-        return {"set": name, "path": str(path), "present": False, "cases": 0, "note": f"{path.name} is not present; nothing was run."}
+        return {"set": name, "role": SET_ROLES.get(name), "path": str(path), "present": False, "cases": 0, "note": f"{path.name} is not present; nothing was run."}
     try:
         cases = load_cases(path)
     except (BenchmarkError, yaml.YAMLError) as exc:
@@ -248,20 +296,22 @@ def run_set(session: Session, name: str, directory: Path | None = None) -> dict[
     vocabulary = Vocabulary.from_session(session)
     results = [run_case(session, case if isinstance(case, dict) else {"id": None}, vocabulary) for case in cases]
     summary = summarize(name, results, path)
+    summary["role"] = SET_ROLES.get(name)
     summary["results"] = results
     return summary
 
 
 def run(session: Session, which: str = "dev", directory: Path | None = None) -> list[dict[str, Any]]:
-    names = SETS if which == "all" else (which,)
+    names = SETS if which == "all" else (SET_ALIASES.get(which, which),)
     return [run_set(session, name, directory) for name in names]
 
 
 def format_report(report: dict[str, Any]) -> str:
     """Plain-text rendering of one set's report."""
+    role = f" - {report['role']}" if report.get("role") else ""
     if not report.get("present"):
-        return f"[{report['set']}] {report.get('note', 'not present')}"
-    lines = [f"[{report['set']}] {report.get('cases', 0)} cases ({report.get('scored', 0)} scored, {len(report.get('errors', []))} benchmark errors)"]
+        return f"[{report['set']}{role}] {report.get('note', 'not present')}"
+    lines = [f"[{report['set']}{role}] {report.get('cases', 0)} cases ({report.get('scored', 0)} scored, {len(report.get('errors', []))} benchmark errors)"]
     if report.get("scored"):
         def pct(value: float | None) -> str:
             return "n/a" if value is None else f"{100 * value:.1f}%"

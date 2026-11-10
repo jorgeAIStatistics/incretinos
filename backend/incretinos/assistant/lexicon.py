@@ -32,6 +32,13 @@ NUMBER_WORD_RE = re.compile(
 )
 
 
+# "at week eighty", "Phase three": a number word that names a time point or a phase, whatever follows it
+_NUMBER_WORD = (
+    r"(?:(?P<tens>" + "|".join(_TENS) + r")(?:[- ](?P<ones1>" + "|".join(list(_ONES)[1:10]) + r"))?|(?P<ones2>" + "|".join(_ONES) + r")|(?P<hundred>(?:a|one) hundred))"
+)
+NUMBER_WORD_AFTER_RE = re.compile(r"\b(?P<lead>weeks?|months?|years?|days?|phase)\s+" + _NUMBER_WORD + r"\b", re.IGNORECASE)
+
+
 def number_word_value(match: re.Match) -> int:
     if match.group("hundred"):
         return 100
@@ -81,6 +88,11 @@ WORDED_TIME_RES = [
     (re.compile(r"\bhalf a year\b|\bsix months\b", re.IGNORECASE), 26.0),
     (re.compile(r"\ba month\b", re.IGNORECASE), 52.0 / 12.0),
 ]
+# "801 of 6586 participants": events (or responders) out of the number analysed
+COUNT_OF_RE = re.compile(
+    r"(?<![\d.])(?P<val>\d+)\s+(?:of|out of)\s+(?P<n>\d+)\b(?!\s*(?:%|percent|mg|kg|weeks?|months?))(?:\s+(?:randomi[sz]ed\s+|enrolled\s+|treated\s+|analy[sz]ed\s+)?(?:participants|patients|adults|people|individuals|subjects))?",
+    re.IGNORECASE,
+)
 COUNT_RES = [
     re.compile(r"\b[nN]\s*=\s*(?P<val>\d+)\b"),
     re.compile(r"(?<![\d.])(?P<val>\d+)\s+(?:randomi[sz]ed\s+|enrolled\s+|treated\s+|analy[sz]ed\s+|adult\s+)?(?:participants|patients|adults|people|individuals|subjects|persons|volunteers)\b", re.IGNORECASE),
@@ -101,7 +113,10 @@ MONTH_NUMBER = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6, "jul
 
 _UNIT = (
     r"(?P<unit>%|percent(?:age)?[- ]points?|percent\b|pp\b|points?\b|kg\s*/\s*m(?:2|\^2|²)|kg\b|kilograms?\b|mm\s?hg\b|mg\s*/\s*dl\b|mmol\s*/\s*mol\b|mmol\s*/\s*l\b"
-    r"|cm\b|centimet(?:er|re)s?\b|lbs?\b|pounds?\b|-?fold\b)"
+    r"|cm\b|centimet(?:er|re)s?\b|lbs?\b|pounds?\b|-?fold\b|kilos?\b|events?\s*(?:per|/)\s*(?:hour|hr|h)\b"
+    # units no stored value uses: read so that they are refused, never ignored ("19.9 in" is not 19.9 cm)
+    r"|inch(?:es)?\b|in\b(?=\s*(?:$|[,;.)]|with\b|at\b|for\b|from\b|after\b|over\b|by\b|versus\b|vs\b|than\b|compared\b|among\b|and\b|or\b))"
+    r"|ft\b|feet\b|stones?\b|grams?\b|g\b|oz\b|ounces?\b|mm\b|millimet(?:er|re)s?\b|met(?:er|re)s?\b)"
 )
 RANGE_RES = [
     re.compile(rf"\b(?:from|between)\s+(?P<low>{NUM})\s*(?:%|percent)?\s*(?:to|and)\s*(?P<high>{NUM})\s*{_UNIT}", re.IGNORECASE),
@@ -117,7 +132,8 @@ UNIT_CLASS = [
     (re.compile(r"percent(?:age)?[- ]points?|^pp$|^points?$", re.IGNORECASE), "PP"),
     (re.compile(r"^%$|^percent$", re.IGNORECASE), "PCT"),
     (re.compile(r"kg\s*/\s*m", re.IGNORECASE), "KG_M2"),
-    (re.compile(r"^kg$|kilogram", re.IGNORECASE), "KG"),
+    (re.compile(r"^kg$|kilogram|^kilos?$", re.IGNORECASE), "KG"),
+    (re.compile(r"^events?\s*(?:per|/)\s*(?:hour|hr|h)$", re.IGNORECASE), "EVENTS_H"),
     (re.compile(r"mm\s?hg", re.IGNORECASE), "MMHG"),
     (re.compile(r"mg\s*/\s*dl", re.IGNORECASE), "MG_DL"),
     (re.compile(r"^cm$|centimet", re.IGNORECASE), "CM"),
@@ -144,6 +160,7 @@ UNIT_COMPATIBLE = {
     "MMHG": {"MMHG"},
     "MG_DL": {"MG_DL"},
     "CM": {"CM"},
+    "EVENTS_H": {"EVENTS_H"},
 }
 
 # --------------------------------------------------------------------------- parameters
@@ -219,6 +236,12 @@ _f("CI_EXCLUDES_NULL", rf"\b(?:(?:confidence )?interval|CI)\s+(?:excludes|exclud
 _f("CI_EXCLUDES_NULL", rf"\b(?:excludes|excluded|excluding)\s+{_NULL}(?![\w.])")
 
 # statistical interpretation
+_POST_NEG = (
+    r"(?:(?:was|were|is|are|has|have|had|could|can|did|does)\s+(?:not|never)|wasn't|weren't|isn't|hasn't|haven't|hadn't|couldn't|cannot|can't|did not|does not)"
+    r"\s+(?:been\s+|be\s+|yet\s+)*(?:shown|demonstrated|established|met|achieved|proven|proved|reached|concluded|confirmed|declared|claimed|tested|attained|supported)"
+)
+_f("NEG_SUPERIORITY", rf"\bsuperiority\b[^.;]{{0,80}}?\b{_POST_NEG}\b", spanning=True)
+_f("NEG_SUPERIORITY", r"\bsuperiority\b[^.;]{0,80}?\b(?:failed|fell short|was rejected|not met|not shown|not demonstrated|not established)\b", spanning=True)
 _f("NEG_SUPERIORITY", rf"\b{_NEG_VERB}{_GAP}superior(?:ity)?\b", spanning=True)
 _f("NEG_SUPERIORITY", r"\b(?:must|should|can|may)(?:\s+not|n't)\s+be\s+(?:read|described|interpreted|called|taken|presented)\s+as\s+superior(?:ity)?\b")
 _f("NEG_SUPERIORITY", rf"\b{_NEG}{_GAP}superior(?:ity)?\b", spanning=True)
@@ -227,6 +250,8 @@ _f("HYPOTHETICAL_SUPERIORITY", r"\b(?:showing|establishing|demonstrating|proving
 _f("SUPERIORITY", r"\bsuperior(?:ity)?\b|\boutperform(?:ed|s|ing)?\b|\bbeat(?:s|ing)?\b|\bbetter than\b|\bmore effective\b|\bmore efficacious\b|\bmore potent\b|\bbest[- ]in[- ]class\b")
 _f("SUPERIORITY", r"\bsurpass(?:ed|es|ing)\b|\bexceed(?:ed|s|ing)?\b|\bworks? better\b|\bstronger\b|\bmost effective\b|\bthe better (?:drug|agent|option|treatment|choice)\b|\bpreferable\b|\bdominat(?:ed|es)\b|\boutdid\b|\bbest\b|\bbetter\b|\bworse\b|(?<!non-)(?<!non)(?<!non )\binferior to\b")
 _f("NOT_SIGNIFICANT", r"\b(?:not|non|no|without|never)[- ]+(?:a |any |been |reach(?:ed|ing)? |achiev(?:ed|ing|e) |attain(?:ed)? |statistically |statistical |nominally |formally )*significan(?:t|ce|tly)\b")
+_f("NOT_SIGNIFICANT", r"\b(?:must|should|can|may|cannot)(?:\s+not|n't)?\s+be\s+(?:described|called|read|interpreted|presented|taken|reported)\s+as\s+(?:statistically\s+|nominally\s+)?significan(?:t|ce)\b")
+_f("NOT_SIGNIFICANT", r"\b(?:do not|don't|never|must not|should not|cannot)\s+(?:describe|call|read|present|report|interpret)\b[^.;]{0,60}?\bas\s+(?:statistically\s+|nominally\s+)?significan(?:t|ce)\b", spanning=True)
 _f("NOT_SIGNIFICANT", r"\b(?:did not|does not|didn't|failed to|fell short of|short of)\s+(?:reach|achieve|attain|meet|show)?\s*(?:statistical |nominal )?significan(?:t|ce)\b|\bnon-?significant\b|\binsignificant\b")
 _f("NO_DIFFERENCE", r"\bno\s+(?:clinically |meaningful |real |relevant |material |apparent |evidence of (?:a |any )?|clear )*(?:difference|differences|effect|effects|change|benefit|impact|reduction|increase|improvement|advantage)\b")
 _f("NO_DIFFERENCE", r"\b(?:did|does|do) not (?:differ|change)\b|\bnot differ(?:ent)?\b|\bequivalen(?:t|ce)\b|\bsimilar\b|\bcomparable\b|\b(?:was|were|is|are|remained) the same\b|\bthe same as\b|\bidentical\b|\bindistinguishable\b|\bunchanged\b")
@@ -235,6 +260,7 @@ _f("SIGNIFICANT", r"\b(?:statistically |highly |clinically |nominally )?signific
 _f("NOMINAL", r"\bnominal(?:ly)?\b")
 _f("NI_NOT_MET", r"\b(?:not|failed to (?:show|demonstrate|meet|establish)|did not (?:show|demonstrate|meet|establish|achieve))\b[^.;]{0,30}?\bnon-?inferior(?:ity)?\b", spanning=True)
 _f("NI_MET", r"\b(?:was|were|is|proved|shown to be|found to be|demonstrated to be|deemed|judged)\s+non-?inferior\b|\bnon-?inferior to\b")
+_f("NI_MET", r"\b(?:met|meeting|meets|satisf(?:ied|ies|ying)|fulfill?(?:ed|s|ing)|achieved|reached)\s+(?:the\s+|its\s+|a\s+)?(?:pre-?specified\s+)?non-?inferiority\s+(?:criteri(?:on|a)|margin|threshold|bound|boundary)\b")
 _f("NI_MET", r"\bnon-?inferiority\s+(?:was |were |is |has been |had been )?(?:met|shown|demonstrated|established|achieved|confirmed|concluded|declared|satisfied)\b|\bnon-?inferiority criteri(?:on|a)\b")
 _f("NI_MET", r"\b(?:met|meeting|meets|satisf(?:ied|ies|ying)|fulfill?(?:ed|s|ing)|achieved|demonstrated|established|showed|shown|confirmed|reached)\b[^.;]{0,40}?\bnon-?inferiority\b", spanning=True)
 _f("NI_TEST", r"\bnon-?inferior(?:ity)?\b")
@@ -253,7 +279,9 @@ _f("PRIMARY", r"\b(?:co-?)?primary\b")
 _f("SECONDARY", r"\bsecondary\b")
 _f("EXPLORATORY", r"\bexploratory\b|\bhypothesis[- ]generating\b")
 _f("POST_HOC", r"\bpost[- ]hoc\b")
-_f("CONFIRMATORY", r"\bconfirmatory\b|\bconfirm(?:ed|s|ing)?\b|\bprove[dns]?\b|\bproof\b|\bestablish(?:ed|es|ing)?\b|\bdefinitive(?:ly)?\b|\bconclusive(?:ly)?\b|\bunequivocal(?:ly)?\b|\bpivotal\b")
+_f("CONFIRMATORY", r"\bconfirm(?:ed|s|ing)?\s+(?:the\s+|a\s+|its\s+)?(?:non-?inferiority|superiority|efficacy|primary hypothesis|hypothesis|(?:cardiovascular )?safety)\b"
+   r"|\b(?:non-?inferiority|superiority|efficacy|(?:cardiovascular )?safety)\s+(?:was|were|is|has been|had been)\s+confirmed\b")
+_f("CONFIRMATORY", r"\bconfirmatory\b|\bprove[dns]?\b|\bproof\b|\bestablish(?:ed|es|ing)?\b|\bdefinitive(?:ly)?\b|\bconclusive(?:ly)?\b|\bunequivocal(?:ly)?\b|\bpivotal\b")
 _f("DEMONSTRATED", r"\bdemonstrat(?:ed|es|ing|e)\b")
 
 # estimands
@@ -279,6 +307,7 @@ _f("VERIFICATION_NOT_HUMAN", r"\b(?:awaiting|awaits|pending)\s+(?:human\s+)?(?:r
 _f("VERIFICATION_HUMAN", r"\bhuman[- ](?:verified|reviewed|validated|checked|approved|confirmed)\b|\b(?:verified|validated|checked|confirmed|approved|reviewed)\s+by\s+(?:a |an |the )?(?:human|reviewer|expert|person|clinician|curator|scientist)s?\b")
 _f("VERIFICATION_HUMAN", r"\b(?:reviewer|expert|manually|independently|clinically|fully)[- ](?:verified|validated|approved|confirmed|checked|reviewed)\b|\bverified\b|\bvalidated\b|\bdouble[- ]checked\b|\bfact[- ]checked\b|\bverification\b")
 _f("VERIFICATION_HUMAN", r"\breviewed\b|\baudited\b|\bcertified\b|\bcross-checked\b|\bsigned off\b")
+_f("VERIFICATION_HUMAN", r"\b(?:[a-z]+-)?(?:confirm(?:ed|s|ing)?|checked|vetted|verified|validated|audited|certified|corroborated|authenticated)\b|\bconfirmation\b|\bvalidation\b")
 _f("VERIFICATION_QUOTE_ANCHORED", r"\bquote[- ]anchored\b")
 _f("VERIFICATION_MACHINE_EXTRACTED", r"\bmachine[- ]extracted\b")
 
@@ -290,7 +319,7 @@ _f("POP_T2D", r"\btype (?:2|ii) diabetes(?: mellitus)?\b|\bt2dm?\b|\bdiabetic\b|
 
 # regulatory status
 _f("REG_NOT_APPROVED", r"\bnot\s+(?:yet\s+|currently\s+|been\s+|fda[- ])*approved\b|\bunapproved\b|\bno (?:fda[- ])?approved (?:label(?:ing)?|indication|product)\b|\bhas not (?:been|received) (?:fda )?approv(?:ed|al)\b|\bnot (?:authori[sz]ed|licensed)\b")
-_f("REG_APPROVED", r"\b(?:fda|ema|regulator)[- ]approved\b|\bapproved\b|\bapproval\b|\blicensed\b|\bauthori[sz]ed\b|\bmarketed\b|\bon the market\b|\bcommercially available\b")
+_f("REG_APPROVED", r"\b(?:fda|ema|regulator)[- ]approved\b|\bapproved\b|\bapproval\b|\blicensed\b|\bauthori[sz]ed\b|\bmarketed\b|\bsold (?:as|under)\b|\bon the market\b|\bcommercially available\b")
 _f("REG_INVESTIGATIONAL", r"\binvestigational\b|\bexperimental\b|\bin (?:clinical )?development\b|\bunder investigation\b")
 
 # endpoint families
@@ -305,6 +334,14 @@ _f("EP_BMI", r"\bbmi\b|\bbody[- ]mass index\b")
 _f("EP_BP", r"\b(?:systolic |diastolic )?blood pressure\b")
 _f("EP_GLUCOSE", r"\bfasting (?:serum |plasma |blood )?glucose\b")
 _f("EP_WEIGHT", r"\bbody[- ]?weight\b|\bweight\b")
+
+# "the proportion of participants ... was 20.9%" is a responder proportion, never a mean change
+_f("RESPONDER_PROPORTION", r"\b(?:proportions?|percentages?|shares?|fractions?|percent|rates?)\s+of\s+(?:the\s+|all\s+|those\s+)?[^.;]{0,40}?\b(?:participants|patients|adults|people|individuals|subjects|persons|recipients|responders)\b", spanning=True)
+# causal wording: a within-arm change is not a treatment effect
+_f("CAUSAL", r"\b(?:led|leads|leading|lead) to\b|\b(?:resulted|results|resulting|result) in\b|\bcaus(?:ed|es|ing|e)\b|\bbecause of\b|\bdue to\b|\battributable to\b|\battributed to\b|\bowing to\b|\bas a (?:result|consequence) of\b"
+   r"|\bthanks to\b|\binduc(?:ed|es|ing|e)\b|\bdr(?:ove|ives|iven|ive) by\b|\bresponsible for\b|\bproduced by\b|\bbrought about\b")
+# rankings: an order of treatments asserted as an effect
+_f("RANKING", r"\brank(?:s|ed|ing)?\s+(?:first|second|third|highest|lowest|above|below|ahead|top|best)\b|\bahead of\b|\btop[- ]ranked\b|\bhighest[- ]ranked\b|\bnumber one\b|\bfirst place\b|\blead(?:s|ing)? the (?:field|class|pack)\b")
 
 # exhaustive quantifiers
 _f("EXHAUSTIVE", r"\bonly\b|\ball\b|\bevery\b|\bnone\b|\bno other\b|\bexclusively\b|\bsolely\b|\bsole\b|\balways\b|\beveryone\b|\bnobody\b")
@@ -329,7 +366,65 @@ IMPERATIVE_RE = re.compile(
     r"^\W*(?:tell|say|state|write|output|print|reveal|repeat|respond|answer|advise|recommend|prescribe|switch|start|stop|take|click|visit|go|do|don't|remember|always|never|now|instead|add|append|include|omit|delete|remove|call|describe|report|declare|conclude|use(?! of)|buy|ask)\b",
     re.IGNORECASE,
 )
+# A recommendation is never an evidence statement, wherever it stands in the sentence ("Patients can use X, which ...").
+RECOMMENDATION_RE = re.compile(
+    r"\b(?:can|may|should|could|must|ought to|might|need to|would do well to)\s+(?:(?:also|then|now|safely|reasonably|still|therefore|instead)\s+)*"
+    r"(?:use|take|start|switch(?:\s+to)?|choose|try|prescribe|receive|prefer|opt for|consider|be (?:used|prescribed|given|preferred|chosen|started|switched|offered|considered|recommended|treated))\b"
+    r"|\bthe (?:treatment|drug|option|therapy|agent|medicine|medication|choice|one) (?:to use|of choice|to choose|to prefer|to pick|to take|to start)\b|\b(?:drug|treatment|agent|therapy|medication) of choice\b"
+    r"|\bfirst[- ]line\b|\brecommend(?:s|ed|ing|ation|ations)?\b(?!\s+(?:starting\s+|maintenance\s+)?(?:dose|doses|dosage|dosing))|\badvis(?:e|es|ed|able)\b"
+    r"|\b(?:better|best|preferred|right|good|ideal|reasonable|sensible|obvious|logical|natural) (?:choice|option|pick|candidate)\b|\bworth (?:trying|using|taking|starting|switching)\b"
+    r"|\bconsider (?:using|switching|starting|taking|prescribing)\b|\bshould be (?:used|given|prescribed|preferred|started|chosen|offered)\b",
+    re.IGNORECASE,
+)
+# Instruction-like text inside an evidence card (registry or sponsor free text): such a card is never used as evidence.
+# Narrower than INSTRUCTION_RE, which also matches ordinary label wording such as "Administration Instructions".
+CARD_INJECTION_RE = re.compile(
+    r"\bignore\b|\bdisregard\b|\bforget\b|\boverride\b|\bbypass\b|\bjailbreak\b|\bsystem prompt\b|\b(?:previous|prior|above|earlier|all|these|new) (?:instructions?|rules|messages?)\b"
+    r"|\bas an ai\b|\blanguage model\b|\byou\b|\byour\b|\bplease\b|https?://|\bwww\.|\b(?:system|developer|user|assistant)\s*:|\bpretend\b|\brole[- ]?play\b|\bfrom now on\b|\bnew rule\b"
+    r"|\b(?:verifier|citation check|summary|model)\b[^.]{0,40}\b(?:must|should|will|is to)\b",
+    re.IGNORECASE,
+)
 HYPOTHETICAL_FRAME_RE = re.compile(r"\bwould (?:require|need|take|be (?:needed|required|necessary))\b|\b(?:is|are|be) (?:required|needed|necessary) (?:to|for)\b|\brequirements? for\b", re.IGNORECASE)
+
+# A sentence that refers back to the previous sentence's subject ("It also ...", "Its 95% CI ...", "That dose ..."). Singular
+# references only: "they" or "these results" usually point inside their own sentence.
+_ARM_NOUN = r"(?:dose|drug|agent|arm|group|compound|medicine|medication|regimen)"
+ANAPHOR_RE = re.compile(
+    rf"^\W*(?:it|its|it's)\b|\bits\b|(?:^|[,;:]\s*)it\b|\b(?:that|this|the same|the latter|the former|the said)\s+{_ARM_NOUN}\b|^\W*the\s+{_ARM_NOUN}\b",
+    re.IGNORECASE,
+)
+ANAPHOR_START_RE = re.compile(rf"^\W*(?:it|its|it's|(?:that|this|the same|the said)\s+{_ARM_NOUN}|the\s+{_ARM_NOUN})\b", re.IGNORECASE)
+STUDY_ANAPHOR_RE = re.compile(r"\b(?:that|this|the same|the said)\s+(?:trial|study)\b|^\W*(?:the|this|that)\s+(?:trial|study)\b", re.IGNORECASE)
+# "adults with knee osteoarthritis", "patients who had heart failure": a subgroup the stored population must name
+SUBGROUP_RE = re.compile(r"\b(?:adults|participants|patients|people|individuals|subjects|persons|women|men|those|children|adolescents|recipients)\s+(?:with|who had|who have|having|suffering from)\s+", re.IGNORECASE)
+
+# The only sentences that may stand without evidence: framing and hedges that assert nothing about a trial, a drug or a record.
+# Matched against the whole sentence (citation markers removed). Anything else is a factual sentence and must be supported.
+META_SENTENCE_RES = [
+    re.compile(r"(?:in )?(?:summary|overview|brief|short|conclusion)|to summari[sz]e|summary of (?:the )?evidence|key findings", re.IGNORECASE),
+    re.compile(r"(?:here is|below is|the following is|this is) (?:a |the )?(?:brief |short )?(?:summary|overview)(?: of (?:the |this )?(?:evidence|evidence cards|cards|findings|results|stored evidence))?", re.IGNORECASE),
+    re.compile(r"(?:this|the) summary (?:covers|describes|draws on|is based on|uses|summari[sz]es) (?:only )?(?:part|some|a subset|a part) of the (?:available |stored )?(?:evidence|evidence cards|cards)(?: (?:shown|offered|provided|available))?", re.IGNORECASE),
+    re.compile(r"(?:this|the) summary (?:covers|describes|uses) only the (?:evidence )?cards (?:shown|offered|provided)", re.IGNORECASE),
+    re.compile(r"(?:all )?(?:values|figures|numbers|results) are (?:given |stated |shown )?as reported (?:by|in) the cited (?:sources?|cards?|evidence)", re.IGNORECASE),
+    re.compile(r"see the cited (?:cards|evidence|sources)(?: for (?:details|the full record|context))?", re.IGNORECASE),
+    re.compile(r"(?:these|the) (?:results|findings|values) should be (?:interpreted|read) (?:with caution|cautiously|in context)", re.IGNORECASE),
+]
+
+
+def is_meta_sentence(text: str) -> bool:
+    """True only for a sentence that is wholly one of the framing / hedge templates (or empty)."""
+    plain = re.sub(r"\[\s*C\d+(?:\s*[,;]\s*C\d+)*\s*\]", " ", text)
+    plain = re.sub(r"\s+", " ", plain).strip().strip(" .:;!-").strip()
+    return not plain or any(pattern.fullmatch(plain) for pattern in META_SENTENCE_RES)
+
+
+#: Words that contradict each other when one is asserted and the cited text says the other ("the same trial" / "different trials").
+ANTONYMS = {
+    "same": {"different", "differ", "separate", "distinct"}, "single": {"different", "separate", "distinct"}, "identical": {"different", "differ"},
+    "different": {"same", "identical", "single"}, "separate": {"same", "single"}, "direct": {"indirect"}, "indirect": {"direct"},
+    "randomized": {"nonrandomized", "non-randomized", "observational"}, "blinded": {"open-label", "unblinded"}, "double-blind": {"open-label"}, "open-label": {"double-blind", "blinded"},
+    "prespecified": {"post-hoc"}, "pre-specified": {"post-hoc"},
+}
 
 # --------------------------------------------------------------------------- neutral words
 
@@ -382,6 +477,7 @@ NEUTRAL = frozenset(
     similarly likewise meanwhile notably specifically namely overall
     whereas while
     case cases context terms respect regard regarding concerning
+    conducted conduct still itself themselves composite continued continuing objective objectives recipient recipients brand brands name names same
     """.split()
 )
 

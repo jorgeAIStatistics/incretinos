@@ -124,6 +124,8 @@ def unit_class(unit: str | None, param: str | None = None) -> str | None:
         return "CM"
     if "%" in u or "percent" in u:
         return "PCT"
+    if re.fullmatch(r"events?\s*(?:per|/)\s*(?:hour|hr|h)", u):
+        return "EVENTS_H"
     return "OTHER" if u else None
 
 
@@ -210,6 +212,7 @@ class EvidenceFact:
     phase: str | None = None
     diabetes_status: str | None = None
     conditions: list[str] = field(default_factory=list)
+    population_text: str = ""  # the population the value is reported for (never the trial's registered conditions)
     # what
     endpoint_category: str | None = None
     endpoint_title: str | None = None
@@ -337,6 +340,7 @@ def fact_from_finding(f: Finding, verification_status: str | None = None) -> Evi
         phase=f.phase,
         diabetes_status=f.diabetes_status,
         conditions=list(f.conditions),
+        population_text=" ".join(part for part in (population_phrase(f).split(" — ")[0], f.analysis_population) if part),
         endpoint_category=f.category,
         endpoint_title=f.endpoint_title if not f.class_title else f"{f.endpoint_title} - {f.class_title}",
         endpoint_threshold=f.threshold,
@@ -437,6 +441,7 @@ def fact_from_analysis(analysis: StatisticalAnalysis, text: str | None = None) -
         phase=study.phase,
         diabetes_status=diabetes,
         conditions=list(study.conditions or []),
+        population_text=population_text,
         endpoint_category=dto["category"],
         endpoint_title=dto["endpoint_title"],
         endpoint_threshold=analysis.endpoint.threshold,

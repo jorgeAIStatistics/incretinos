@@ -23,6 +23,7 @@ from ..engines.interpretation import guard_statement
 from ..enums import EndpointRole, EstimandBasis, EstimandLabel, TriState, VerificationStatus
 from . import lexicon as lx
 from .claims import (
+    ArmMention,
     SentenceReading,
     StructuredClaim,
     Vocabulary,
@@ -202,7 +203,6 @@ class TextSignature:
     negated_clauses: list[set[str]] = field(default_factory=list)
     plain_clauses: list[set[str]] = field(default_factory=list)
     negated_features: set[str] = field(default_factory=set)  # features stated only inside a negated clause
-    approval_scope: set[str] = field(default_factory=set)  # features and stems of the sentences that state an approval or the drug's class
     lowered: str = ""
 
 
@@ -253,7 +253,7 @@ def text_signature(fact: EvidenceFact, vocab: Vocabulary) -> TextSignature:
             if data["name"] == "EXHAUSTIVE":
                 sig.exhaustive.add(data["text"].lower())
     plain_features: set[str] = set()
-    for clause in re.split(r"(?<=[.;:])\s+|,\s+(?=but\b|whereas\b|while\b)", text):
+    for clause in re.split(r"(?<=[.;:])\s+|,\s+(?=but\b|whereas\b|while\b|so\b|because\b|which\b)", text):
         words = re.findall(r"[A-Za-z][A-Za-z0-9_]*(?:[-/'][A-Za-z0-9_]+)*", clause)
         content = set()
         for word in words:
@@ -268,11 +268,120 @@ def text_signature(fact: EvidenceFact, vocab: Vocabulary) -> TextSignature:
         else:
             plain_features |= clause_features
     sig.negated_features -= plain_features
-    for sentence in re.split(r"(?<=[.])\s+", text):
-        found = {m.data["name"] for m in _scan_mentions(sentence, vocab).mentions if m.kind == "FEATURE"}
-        if ({"REG_APPROVED"} & found and "REG_NOT_APPROVED" not in found) or "pharmacologic class" in sentence.lower():
-            sig.approval_scope |= found | vocabulary_of(sentence)
     return sig
+
+
+# --------------------------------------------------------------------------- statements inside a text card
+#
+# A text card (a curated claim, a drug's regulatory profile, a registry record, a rule-based reading) is prose. Its
+# wording cannot be checked for meaning, so a sentence citing it must agree with it nearly word for word: the numbers,
+# brands, other drugs, endpoints, populations and conclusions the sentence names must all stand in ONE statement of the
+# card (a sentence, or a part of one between semicolons or "and as <brand>"), with the same polarity.
+
+
+@dataclass
+class Segment:
+    text: str
+    sentence: int  # index of the card sentence this segment belongs to
+    lowered: str = ""
+    vocabulary: set[str] = field(default_factory=set)
+    negated: bool = False
+    approval: bool = False  # part of a sentence stating an approval
+    class_statement: bool = False  # the pharmacologic-class statement of a drug profile
+    features: set[str] = field(default_factory=set)
+    numbers: set[float] = field(default_factory=set)
+    magnitudes: set[float] = field(default_factory=set)
+    times: set[float] = field(default_factory=set)
+    dates: set[str] = field(default_factory=set)
+    doses: set[float] = field(default_factory=set)
+    drugs: set[str] = field(default_factory=set)
+    variants: set[str] = field(default_factory=set)
+    statements: list[StructuredClaim] | None = None
+
+
+_SEGMENT_SPLIT = re.compile(r";\s*|,?\s+and\s+(?=as\s+[A-Z])|,\s+(?=but\b|whereas\b|while\b)")
+_NEGATION_WORDS = re.compile(r"\b(?:not|no|never|neither|nor|cannot|none)\b|n't\b", re.IGNORECASE)
+
+
+def _top_level_split(text: str, pattern: re.Pattern) -> list[str]:
+    depth, cuts = 0, []
+    depths = []
+    for ch in text:
+        if ch in ")]":
+            depth = max(0, depth - 1)
+        depths.append(depth)
+        if ch in "([":
+            depth += 1
+    for match in pattern.finditer(text):
+        if depths[match.start()] == 0:
+            cuts.append((match.start(), match.end()))
+    parts, position = [], 0
+    for start, end in cuts:
+        parts.append(text[position:start])
+        position = end
+    parts.append(text[position:])
+    return [part.strip() for part in parts if part.strip()]
+
+
+def _is_negated(text: str) -> bool:
+    plain = re.sub(r"\bwithout (?:type 2 |type ii |known )*diabetes\b|\bno(?:n)?[- ]diabetic\b|\bno (?:doubt|question)\b", " ", text, flags=re.IGNORECASE)
+    return bool(_NEGATION_WORDS.search(plain))
+
+
+def segments_of(fact: EvidenceFact, vocab: Vocabulary) -> list[Segment]:
+    from .claims import normalise
+
+    text = normalise(fact.text)
+    out: list[Segment] = []
+    for index, sentence in enumerate(re.split(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])", text)):
+        sentence_features = {m.data["name"] for m in _scan_mentions(sentence, vocab).mentions if m.kind == "FEATURE"}
+        approval = "REG_APPROVED" in sentence_features and "REG_NOT_APPROVED" not in sentence_features
+        for part in _top_level_split(sentence, _SEGMENT_SPLIT):
+            seg = Segment(text=part, sentence=index, lowered=part.lower(), vocabulary=vocabulary_of(part), negated=_is_negated(part), approval=approval,
+                          class_statement="pharmacologic class" in part.lower() or "receptor agonist" in part.lower())
+            reader = _scan_mentions(part, vocab)
+            seg.drugs |= {slug for m in vocab.drug_pattern().finditer(part) for slug in expand_drugs(vocab.drug_slug(m.group(1)))}
+            for arm in _build_arms(reader, vocab):
+                seg.drugs |= set(arm.drugs)
+            for mention in reader.mentions:
+                data = mention.data
+                if mention.kind == "DRUG" and data.get("slug"):
+                    seg.drugs |= set(expand_drugs(data["slug"]))
+                elif mention.kind == "DOSE":
+                    seg.doses |= set(data["values"])
+                    seg.numbers |= set(data["values"])
+                elif mention.kind == "MAG":
+                    seg.magnitudes.add(round(abs(data["value"]), 9))
+                    seg.numbers.add(abs(data["value"]))
+                elif mention.kind in ("RANGE", "CI", "PAREN"):
+                    seg.numbers |= {abs(data["low"]), abs(data["high"])}
+                    if data.get("level"):
+                        seg.numbers.add(data["level"])
+                elif mention.kind == "CI_LABEL" and data.get("level"):
+                    seg.numbers.add(data["level"])
+                elif mention.kind == "TIME":
+                    seg.times.add(round(data["weeks"], 3))
+                    seg.numbers.add(round(data["weeks"], 3))
+                elif mention.kind in ("COUNT", "MARGIN", "THRESHOLD", "NUMBER", "P"):
+                    seg.numbers.add(abs(float(data["value"])))
+                elif mention.kind == "COUNT_OF":
+                    seg.numbers |= {float(data["value"]), float(data["n"])}
+                elif mention.kind == "DATE":
+                    seg.dates.add(data["date"])
+                elif mention.kind == "PARAM":
+                    seg.features.add(f"PARAM_{data['family']}")
+                elif mention.kind == "FEATURE":
+                    seg.features.add(data["name"])
+                    if data.get("variant"):
+                        seg.variants.add(data["variant"])
+            out.append(seg)
+    return out
+
+
+def _statements(seg: Segment, vocab: Vocabulary) -> list[StructuredClaim]:
+    if seg.statements is None:
+        seg.statements = read_sentence(seg.text, vocab).claims
+    return seg.statements
 
 
 # --------------------------------------------------------------------------- field checks
@@ -285,11 +394,17 @@ class Context:
     all_phases: set[str] = field(default_factory=set)
     truncated: bool = False
     signatures: dict[str, TextSignature] = field(default_factory=dict)
+    segment_cache: dict[str, list[Segment]] = field(default_factory=dict)
 
     def signature(self, fact: EvidenceFact) -> TextSignature:
         if fact.fact_id not in self.signatures:
             self.signatures[fact.fact_id] = text_signature(fact, self.vocab)
         return self.signatures[fact.fact_id]
+
+    def segments(self, fact: EvidenceFact) -> list[Segment]:
+        if fact.fact_id not in self.segment_cache:
+            self.segment_cache[fact.fact_id] = segments_of(fact, self.vocab)
+        return self.segment_cache[fact.fact_id]
 
 
 def _grounded(term: str, vocabulary: set[str]) -> bool:
@@ -315,13 +430,14 @@ def _dose_check(arm, allowed: dict[str, list[float]], label: str | None, out: li
     for key, values in arm.doses.items():
         pool = allowed.get(key, []) if key and key in allowed and allowed.get(key) else every
         for dose in values:
+            unit = arm.unit_of(key)
             if not any(_eq(dose, known) for known in pool):
-                out.append(Mismatch(f"{side} dose", f"{_show(dose)} {arm.dose_unit}", f"{_show(pool)} mg" if pool else "no single dose stated for this arm"))
+                out.append(Mismatch(f"{side} dose", f"{_show(dose)} {unit}", f"{_show(pool)} mg" if pool else "no single dose stated for this arm"))
                 continue
             stored = re.search(rf"(?<![\d.]){re.escape(_show(dose))}(?:\.0+)?\s*-?\s*(mg/kg|mg|mcg|µg|μg)", (label or "").lower())
             stored_unit = stored.group(1).replace("μ", "µ") if stored else "mg"
-            if arm.dose_unit != stored_unit:
-                out.append(Mismatch(f"{side} dose unit", f"{_show(dose)} {arm.dose_unit}", f"{_show(dose)} {stored_unit}"))
+            if unit != stored_unit:
+                out.append(Mismatch(f"{side} dose unit", f"{_show(dose)} {unit}", f"{_show(dose)} {stored_unit}"))
 
 
 def _check_arms(claim: StructuredClaim, fact: EvidenceFact, out: list[Mismatch]) -> None:
@@ -361,9 +477,17 @@ def _check_arms(claim: StructuredClaim, fact: EvidenceFact, out: list[Mismatch])
         backward = side_matches(sides[0], fact_comparator, fact.comparator_doses) and side_matches(sides[1], fact_treatment, fact.arm_doses)
         if not (forward or backward):
             out.append(Mismatch("compared arms", [a.text for a in pair], f"{fact.arm_label} versus {fact.comparator_label}"))
+        elif backward and not forward and len(pair) >= 2 and (claim.magnitude_signed or claim.direction in ("DECREASE", "INCREASE") or (claim.magnitude is not None and fact.unit_class == "RATIO")):
+            # "the difference between placebo and X was -17.8": read in the order written, the sign is reversed
+            out.append(Mismatch("compared arms", f"{pair[0].text} minus {pair[1].text}", f"the estimate is {fact.arm_label} versus {fact.comparator_label}; naming the sides the other way round reverses it", UNVERIFIABLE))
         treatment = [a for a in treatment if a not in pair]
     if (treatment or comparator) and not (side_matches(treatment, fact_treatment, fact.arm_doses) and side_matches(comparator, fact_comparator, fact.comparator_doses)):
         if (treatment or comparator) and side_matches(treatment, fact_comparator, fact.comparator_doses) and side_matches(comparator, fact_treatment, fact.arm_doses) and (treatment and comparator):
+            flipped_direction = {"DECREASE": "INCREASE", "INCREASE": "DECREASE"}.get(claim.direction or "")
+            if claim.comparative and flipped_direction and fact.direction == flipped_direction and not claim.magnitude_signed:
+                # "the hazard was higher with placebo than with dulaglutide": comparator as subject, comparative turned round
+                claim.orientation_flipped = True
+                return
             out.append(Mismatch("comparator", f"{' + '.join(a.text for a in treatment)} versus {' + '.join(a.text for a in comparator)}", f"{fact.arm_label} versus {fact.comparator_label} (treatment and comparator are reversed)"))
             return
         named_t = {d for a in treatment for d in a.drugs}
@@ -389,6 +513,8 @@ def _asserted_direction(claim: StructuredClaim, fact: EvidenceFact) -> str | Non
     """
     if fact.kind == ARM_RESULT:
         return claim.base_direction or claim.direction
+    if claim.orientation_flipped:
+        return {"DECREASE": "INCREASE", "INCREASE": "DECREASE"}.get(claim.direction or "", claim.direction)
     return claim.direction
 
 
@@ -412,6 +538,9 @@ def _check_magnitude(claim: StructuredClaim, fact: EvidenceFact, out: list[Misma
             allowed |= {"PCT", "PCT_PARTICIPANTS"}
         if fact.unit_class not in allowed:
             out.append(Mismatch("unit", _UNIT_LABEL.get(unit, unit.lower()), fact.unit or ("ratio" if fact.unit_class == "RATIO" else "no unit")))
+        elif unit == "PCT" and fact.unit_class == "PCT_POINTS" and (claim.comparative or re.search(r"\brelative\b", claim.text, re.IGNORECASE)):
+            # "17.8% more than placebo" reads as a relative difference; the stored estimate is in percentage points
+            out.append(Mismatch("unit", f"{_show(value)}% (a relative difference)", f"{_show(fact.value)} percentage points"))
     if claim.bound and claim.magnitude is not None:
         out.append(Mismatch("magnitude", f"“{claim.bound}” {_show(value)}", f"{_show(fact.value)} as reported (an inexact bound is not the reported value)", UNVERIFIABLE))
     if fact.value is None:
@@ -478,8 +607,8 @@ def _check_statistics(claim: StructuredClaim, fact: EvidenceFact, ctx: Context, 
             if arm_level and not _grounded(text, ctx.signature(fact).vocabulary):
                 out.append(Mismatch("statistical interpretation", f"“{text}”", "an evaluation one arm's reported value does not carry", UNVERIFIABLE))
             continue
-        if name in ("SUPERIORITY", "HYPOTHETICAL_SUPERIORITY"):
-            if ctx.hypothetical and name == "HYPOTHETICAL_SUPERIORITY":
+        if name in ("SUPERIORITY", "HYPOTHETICAL_SUPERIORITY", "RANKING"):
+            if ctx.hypothetical and name == "HYPOTHETICAL_SUPERIORITY" and not claim.subject_drugs and not claim.comparator_drugs:
                 continue  # "showing superiority would require ...": named as a requirement, not asserted
             if arm_level:
                 out.append(Mismatch("statistical interpretation", f"superiority (“{text}”)", "one arm's value: no between-arm test is attached to it"))
@@ -520,7 +649,11 @@ def _check_statistics(claim: StructuredClaim, fact: EvidenceFact, ctx: Context, 
                     why = f"reported value {_show(fact.value)} with an interval that excludes no difference"
                 out.append(Mismatch("statistical interpretation", f"no difference / no effect (“{text}”)", why))
         elif name == "NI_MET":
-            if arm_level or fact.hypothesis_type != "NON_INFERIORITY" or fact.ni_met != TriState.YES.value:
+            if not arm_level and fact.hypothesis_type == "NON_INFERIORITY" and fact.ni_met == TriState.NOT_STATED.value:
+                out.append(Mismatch("statistical interpretation", "non-inferiority met",
+                                    f"the stored analysis does not state whether the non-inferiority margin was met (ni_met NOT_STATED; p {fact.p_value_text or 'not reported'}); "
+                                    "a p-value is not read as the conclusion, so the curated record must state it", UNVERIFIABLE))
+            elif arm_level or fact.hypothesis_type != "NON_INFERIORITY" or fact.ni_met != TriState.YES.value:
                 out.append(Mismatch("statistical interpretation", "non-inferiority met", f"hypothesis type {fact.hypothesis_type or 'none'}; non-inferiority margin met: {fact.ni_met or 'not applicable'}"))
         elif name == "NI_NOT_MET":
             if arm_level or fact.ni_met != TriState.NO.value:
@@ -547,11 +680,11 @@ def _check_roles(claim: StructuredClaim, fact: EvidenceFact, out: list[Mismatch]
     role, controlled = fact.endpoint_role, fact.multiplicity_controlled
     shown = f"{role}; multiplicity controlled: {controlled}"
     for asserted in claim.endpoint_role:
-        if asserted == "PRIMARY" and role != EndpointRole.PRIMARY.value and not _title_has(fact, "primary"):
+        if asserted == "PRIMARY" and role != EndpointRole.PRIMARY.value:
             out.append(Mismatch("endpoint role", "primary", role))
         elif asserted == "KEY_SECONDARY" and role != EndpointRole.KEY_SECONDARY.value:
             out.append(Mismatch("endpoint role", "key secondary", role))
-        elif asserted == "SECONDARY" and role not in (EndpointRole.SECONDARY.value, EndpointRole.KEY_SECONDARY.value) and not _title_has(fact, "secondary"):
+        elif asserted == "SECONDARY" and role not in (EndpointRole.SECONDARY.value, EndpointRole.KEY_SECONDARY.value):
             out.append(Mismatch("endpoint role", "secondary", role))
         elif asserted == "EXPLORATORY" and role not in (EndpointRole.EXPLORATORY.value, EndpointRole.POST_HOC.value):
             out.append(Mismatch("endpoint role", "exploratory", role))
@@ -705,6 +838,25 @@ def check_structured(claim: StructuredClaim, fact: EvidenceFact, ctx: Context) -
         if phase not in _phase_digits(fact.phase):
             out.append(Mismatch("phase", f"Phase {phase}", (fact.phase or "not stated").replace("PHASE", "Phase ")))
 
+    if claim.event_count is not None:
+        if fact.unit_class != "COUNT_PARTICIPANTS" or not _eq(claim.event_count, fact.value):
+            out.append(Mismatch("count", claim.event_count, f"{_show(fact.value)} {fact.unit or ''}".strip() if fact.value is not None else None))
+    for phrase in claim.causal:
+        if _title_has(fact, phrase):
+            continue
+        if fact.kind == ARM_RESULT or fact.is_placebo or "placebo" in claim.subject_drugs:
+            out.append(Mismatch("causation", f"“{phrase}”", "one arm's change from baseline: a within-arm change is not a treatment effect, and a placebo arm's change is not caused by placebo", UNVERIFIABLE))
+        else:
+            ok, why = effect_supported(fact)
+            if not ok:
+                out.append(Mismatch("causation", f"“{phrase}”", why))
+    if claim.subgroup:
+        # "adults with knee osteoarthritis": a subgroup must be the stored population, not a registered condition of the trial
+        population = vocabulary_of(" ".join(part for part in (fact.population_text, fact.endpoint_title, fact.arm_label, fact.comparator_label) if part))
+        outside = [word for word in claim.subgroup if not _grounded(word, population)]
+        if outside:
+            out.append(Mismatch("population", f"participants with {' '.join(claim.subgroup)}", f"the result is reported for {fact.population_text or 'the trial population'}; a registered condition is not a subgroup result", UNVERIFIABLE))
+
     _check_statistics(claim, fact, ctx, out)
     _check_roles(claim, fact, out)
     _check_provenance(claim, fact, None, out)
@@ -736,7 +888,8 @@ def check_text(claim: StructuredClaim, fact: EvidenceFact, ctx: Context) -> list
     for name in claim.unknown_studies:
         if name.lower() not in sig.lowered:
             out.append(Mismatch("study", name, sorted(known_studies) or "no study named"))
-    known_drugs = sig.drugs | set(fact.drugs)
+    # a drug named anywhere in the card's wording, including inside a study's name ("Retatrutide Phase 2 (obesity)")
+    known_drugs = sig.drugs | set(fact.drugs) | {slug for m in ctx.vocab.drug_pattern().finditer(fact.text) for slug in expand_drugs(ctx.vocab.drug_slug(m.group(1)))}
     named = {d for arm in claim.arms for d in arm.drugs}
     if fact.kind == REGULATORY_STATUS and claim.subject_drugs and not set(claim.subject_drugs) <= set(fact.drugs):
         out.append(Mismatch("drug", sorted(claim.subject_drugs), sorted(fact.drugs)))
@@ -759,7 +912,7 @@ def check_text(claim: StructuredClaim, fact: EvidenceFact, ctx: Context) -> list
         for candidate in sig.magnitudes:
             if not _eq(abs(value), abs(candidate["value"])):
                 continue
-            if claim.unit and candidate["unit"] and claim.unit != candidate["unit"] and {claim.unit, candidate["unit"]} != {"PCT", "PP"}:
+            if claim.unit and candidate["unit"] and claim.unit != candidate["unit"] and {claim.unit, candidate["unit"]} not in ({"PCT", "PP"}, {"PCT", "PCT_PEOPLE"}):
                 continue
             cand_sign = (-1 if candidate["value"] < 0 else 1) if candidate["signed"] else (-1 if text_directions == {"DECREASE"} else 1 if text_directions == {"INCREASE"} else None)
             if claim_sign is None or cand_sign is None or claim_sign == cand_sign:
@@ -769,8 +922,6 @@ def check_text(claim: StructuredClaim, fact: EvidenceFact, ctx: Context) -> list
             matched = True
         if not matched:
             out.append(Mismatch("magnitude", f"{_show(value)}{' ' + _UNIT_LABEL.get(claim.unit, claim.unit) if claim.unit else ''}", [f"{_show(m['value'])}{' ' + _UNIT_LABEL.get(m['unit'], m['unit']) if m['unit'] else ''}" for m in sig.magnitudes] or "no such value in the cited statement"))
-        elif (named or any(arm.doses for arm in claim.arms)) and len({round(abs(m["value"]), 9) for m in sig.magnitudes if not claim.unit or m["unit"] == claim.unit}) >= 2 and (len(sig.doses) >= 2 or len(sig.drugs - {"placebo"}) >= 2):
-            out.append(Mismatch("magnitude", f"{_show(value)} attributed to {', '.join(arm.text for arm in claim.arms)}", "the cited statement lists several values; which arm each belongs to cannot be bound mechanically", UNVERIFIABLE))
     if claim.magnitude_range is not None:
         low, high = claim.magnitude_range
         if not any({round(low, 9), round(high, 9)} == {round(a, 9), round(b, 9)} for a, b in sig.intervals):
@@ -824,11 +975,22 @@ def check_text(claim: StructuredClaim, fact: EvidenceFact, ctx: Context) -> list
             out.append(Mismatch("endpoint", endpoint["text"], "not named in the cited statement", UNVERIFIABLE))
         elif endpoint.get("variant") and endpoint["variant"] not in sig.endpoint_variants:
             out.append(Mismatch("endpoint", endpoint["text"], sorted(sig.endpoint_variants) or "not named in the cited statement"))
-    if claim.parameter and f"PARAM_{claim.parameter}" not in sig.features:
+    param_word = {"HR": "hazard", "OR": "odds", "RR": "risk", "DIFFERENCE": "difference"}.get(claim.parameter or "")
+    if claim.parameter and f"PARAM_{claim.parameter}" not in sig.features and not (param_word and param_word in sig.vocabulary):
         out.append(Mismatch("effect measure", claim.parameter, "not named in the cited statement", UNVERIFIABLE))
+    drugs_named = bool(named)
     for stat in claim.statistical:
         name = stat["name"]
         if name == "HYPOTHETICAL_SUPERIORITY" and ctx.hypothetical:
+            # "Showing superiority would require ...": a requirement, not a result. The frame must govern the mention (the
+            # mention is the subject of "would require"), and a sentence that names drugs is not a requirement but a claim about them.
+            if _requirement_only(claim, stat, ctx):
+                continue
+            if fact.kind == DERIVED_TEXT:
+                out.append(Mismatch("statistical interpretation", _stat(stat), "a rule-based reading never asserts superiority; a sentence naming the drugs is not a requirement but a claim about them"))
+                continue
+        if name == "RANKING" and fact.kind == DERIVED_TEXT:
+            out.append(Mismatch("statistical interpretation", _stat(stat), "a rule-based reading never ranks treatments"))
             continue
         if name == "EFFECT_WORD":
             if name not in sig.features and not _grounded(stat["text"], sig.vocabulary):
@@ -844,6 +1006,8 @@ def check_text(claim: StructuredClaim, fact: EvidenceFact, ctx: Context) -> list
             out.append(Mismatch("statistical interpretation", _stat(stat), "the cited statement says the opposite" if contradicted in sig.features else "not stated in the cited statement", CONTRADICTED if contradicted in sig.features else UNVERIFIABLE))
     if claim.effect_asserted and claim.comparative and (claim.comparator_drugs or len(named) >= 2) and not ({"DIR_UP_COMPARATIVE", "DIR_DOWN_COMPARATIVE"} & sig.features):
         out.append(Mismatch("statistical interpretation", "a comparison between treatments", "the cited statement makes no such comparison", UNVERIFIABLE))
+    elif fact.kind == DERIVED_TEXT and claim.comparative and drugs_named and not claim.negators:
+        out.append(Mismatch("statistical interpretation", "a comparison between named treatments", "a rule-based reading never orders treatments"))
 
     for status in claim.regulatory:
         if fact.kind == REGULATORY_STATUS:
@@ -870,11 +1034,6 @@ def check_text(claim: StructuredClaim, fact: EvidenceFact, ctx: Context) -> list
     if not has_negation and claimed_features & sig.negated_features:
         # "No type 2 diabetes indication appears in the label" cannot support "approved for type 2 diabetes"
         out.append(Mismatch("negation", sorted(f.lower().replace("_", " ") for f in claimed_features & sig.negated_features), "the cited statement says this only in the negative", CONTRADICTED))
-    if fact.kind == REGULATORY_STATUS and "APPROVED" in claim.regulatory and fact.regulatory_status == "APPROVED":
-        outside = sorted(f.lower().replace("_", " ") for f in claimed_features if f.startswith(("POP_", "EP_")) and f not in sig.approval_scope)
-        outside += [term for term in claim.residual_terms if _grounded(term, sig.vocabulary) and not _grounded(term, sig.approval_scope)]
-        if outside:
-            out.append(Mismatch("approved use", outside, "not part of what the cited statement says is approved", UNVERIFIABLE))
     if not has_negation:
         for clause in sig.negated_clauses:
             shared = sentence_stems & clause
@@ -884,7 +1043,227 @@ def check_text(claim: StructuredClaim, fact: EvidenceFact, ctx: Context) -> list
     elif claim.negators and not sig.negated_clauses:
         out.append(Mismatch("negation", f"“{claim.negators[0]}”", "the cited statement is not negated", UNVERIFIABLE))
     _check_wording(claim, sig.vocabulary, out)
+    _check_text_binding(claim, fact, ctx, out)
     return out
+
+
+_POSITIVE_FEATURES = {"SUPERIORITY", "SIGNIFICANT", "NI_MET", "NI_TEST", "NO_DIFFERENCE", "CI_EXCLUDES_NULL", "RANKING", "EFFECT_WORD", "NOMINAL", "HYPOTHETICAL_SUPERIORITY"}
+_ROLE_FEATURES = {"PRIMARY": "PRIMARY", "KEY_SECONDARY": "KEY_SECONDARY", "SECONDARY": "SECONDARY", "EXPLORATORY": "EXPLORATORY", "POST_HOC": "POST_HOC", "CONFIRMATORY": "CONFIRMATORY",
+                  "DEMONSTRATED": "DEMONSTRATED", "MULTIPLICITY_CONTROLLED": "MULT_CONTROLLED"}
+
+
+_MODALS = frozenset({"should", "must", "shall", "ought", "need", "needs"})
+
+
+def _requirement_only(claim: StructuredClaim, stat: dict[str, Any], ctx: Context) -> bool:
+    """ "Showing superiority would require ...": superiority named as a requirement, governed by the frame that follows it,
+    in a sentence that names no drug (a sentence about named drugs is a claim about them, whatever its frame)."""
+    if not ctx.hypothetical or stat["name"] != "HYPOTHETICAL_SUPERIORITY" or claim.subject_drugs or claim.comparator_drugs:
+        return False
+    position = claim.text.lower().find(stat["text"])
+    if position < 0 or lx.HYPOTHETICAL_FRAME_RE.search(claim.text, position) is None:
+        return False
+    return not re.search(r"\b(?:achiev|attain|reach|met|meet)\w*", claim.text[:position], re.IGNORECASE)
+
+
+def _content_stems(text: str, skip: set[str]) -> set[str]:
+    """Stems of the words of ``text`` that carry content: not neutral, not a negator, not a name the card is about."""
+    out: set[str] = set()
+    for word in re.findall(r"[A-Za-z][A-Za-z0-9]*(?:[-/'][A-Za-z0-9]+)*", text):
+        low = re.sub(r"'s$", "", word.lower())
+        if low in lx.NEUTRAL or low in lx.NEGATORS or low in _MODALS or low.endswith("n't") or low in skip or any(ch.isdigit() for ch in low) and "-" not in low:
+            continue
+        out.add(min(stems(low), key=len))
+    return out
+
+
+def _subject_names(fact: EvidenceFact, vocab: Vocabulary) -> set[str]:
+    """Words naming what the card is about (its drug's generic and code names, its study): bound to the whole card, not to one statement."""
+    names: set[str] = set()
+    for slug in fact.drugs:
+        for alias in vocab.drug_aliases.get(slug, [slug]):
+            if alias == slug or alias.replace(" ", "-") == slug or re.fullmatch(r"ly\d+", alias):
+                names |= set(alias.lower().split())
+        names |= set(slug.split("-"))
+    for name in (fact.study_name, fact.study_acronym, fact.study_nct):
+        if name:
+            names |= set(name.lower().split())
+    return names
+
+
+def _brand_or_other_drug_needs(claim: StructuredClaim, fact: EvidenceFact, vocab: Vocabulary) -> list[tuple[str, Any]]:
+    """Drug names a statement of the card must itself contain: brands, and any drug that is not the card's own subject."""
+    needs: list[tuple[str, Any]] = []
+    for match in vocab.drug_pattern().finditer(claim.text):
+        alias = match.group(1).lower()
+        slug = vocab.drug_slug(alias)
+        if slug is None:
+            continue
+        generic = alias == slug or alias.replace(" ", "-") == slug or re.fullmatch(r"ly\d+", alias)
+        if slug in fact.drugs and generic:
+            continue
+        if generic:
+            needs.append((alias, lambda seg, slug=slug: slug in seg.drugs or any(a in seg.lowered for a in vocab.drug_aliases.get(slug, [slug]))))
+        else:  # a brand names one product, so the statement must name that brand
+            needs.append((alias, lambda seg, alias=alias: re.search(rf"(?<![a-z]){re.escape(alias)}(?![a-z])", seg.lowered) is not None))
+    return needs
+
+
+def _segment_needs(claim: StructuredClaim, fact: EvidenceFact, ctx: Context) -> list[tuple[str, Any]]:
+    """Everything the claim asserts that must stand together in one statement of the card, as (label, test) pairs."""
+    needs: list[tuple[str, Any]] = []
+
+    def number(label: str, value: float) -> None:
+        needs.append((label, lambda seg, value=value: any(_eq(abs(float(value)), known) for known in seg.numbers)))
+
+    if claim.magnitude is not None:
+        number(f"value {_show(claim.magnitude)}", claim.magnitude)
+    if claim.magnitude_range is not None:
+        number(f"range limit {_show(claim.magnitude_range[0])}", claim.magnitude_range[0])
+        number(f"range limit {_show(claim.magnitude_range[1])}", claim.magnitude_range[1])
+    if claim.ci is not None:
+        number(f"interval limit {_show(claim.ci['low'])}", claim.ci["low"])
+        number(f"interval limit {_show(claim.ci['high'])}", claim.ci["high"])
+    for weeks in claim.timepoints_weeks:
+        needs.append((f"week {_show(weeks)}", lambda seg, weeks=weeks: any(abs(weeks - t) <= 0.05 for t in seg.times)))
+    for count in claim.counts:
+        number(f"n {count}", count)
+    if claim.event_count is not None:
+        number(f"count {claim.event_count}", claim.event_count)
+    for extra, label in ((claim.threshold, "threshold"), (claim.ni_margin, "margin"), (claim.p_value["value"] if claim.p_value else None, "p-value"), (claim.dispersion["value"] if claim.dispersion else None, "dispersion")):
+        if extra is not None:
+            number(f"{label} {_show(extra)}", extra)
+    for date in claim.dates:
+        needs.append((f"date {date}", lambda seg, date=date: any(known.startswith(date) for known in seg.dates)))
+    for arm in claim.arms:
+        for values in arm.doses.values():
+            for dose in values:
+                needs.append((f"dose {_show(dose)} mg", lambda seg, dose=dose: any(_eq(dose, known) for known in seg.doses)))
+    needs.extend(_brand_or_other_drug_needs(claim, fact, ctx.vocab))
+    for endpoint in claim.endpoints:
+        if endpoint["family"] == "RESPONDER":
+            continue
+        family, word = endpoint["family"], endpoint["text"].split()[-1]
+        needs.append((endpoint["text"], lambda seg, family=family, word=word: f"EP_{family}" in seg.features or _grounded(word, seg.vocabulary)))
+        if endpoint.get("variant"):
+            needs.append((endpoint["text"], lambda seg, variant=endpoint["variant"]: variant in seg.variants))
+    for population in claim.population:
+        needs.append((population.lower().replace("_", " "), lambda seg, population=population: f"POP_{population}" in seg.features))
+    for stat in claim.statistical:
+        if stat["name"] == "HYPOTHETICAL_SUPERIORITY" and _requirement_only(claim, stat, ctx):
+            continue
+        if stat["name"] == "HYPOTHETICAL_SUPERIORITY":
+            needs.append((stat["text"], lambda seg: bool({"SUPERIORITY", "HYPOTHETICAL_SUPERIORITY", "NEG_SUPERIORITY"} & seg.features)))
+        elif stat["name"] in _POSITIVE_FEATURES and stat["name"] != "EFFECT_WORD":
+            needs.append((stat["text"], lambda seg, name=stat["name"]: name in seg.features))
+    for role in claim.endpoint_role:
+        if role in _ROLE_FEATURES:
+            needs.append((role.lower().replace("_", " "), lambda seg, feature=_ROLE_FEATURES[role]: feature in seg.features))
+    for estimand in claim.estimand:
+        if estimand != "NOT_STATED":
+            needs.append((estimand.lower().replace("_", "-") + " estimand", lambda seg, estimand=estimand: f"ESTIMAND_{estimand}" in seg.features))
+    if claim.causal:
+        needs.append((claim.causal[0], lambda seg: "CAUSAL" in seg.features))
+    for word in claim.subgroup:
+        needs.append((word, lambda seg, word=word: _grounded(word, seg.vocabulary)))
+    if fact.kind != REGULATORY_STATUS:  # a profile's status is checked against its stored status, not its wording
+        for status in claim.regulatory:
+            needs.append((status.lower().replace("_", " "), lambda seg, status=status: f"REG_{status}" in seg.features))
+    return needs
+
+
+def _role_binding(claim: StructuredClaim, fact: EvidenceFact, seg: Segment, ctx: Context) -> str | None:
+    """When a statement lists several values, the claim's value must belong, in that statement, to the arm and endpoint the claim names."""
+    if claim.magnitude is None or len(seg.magnitudes) < 2:
+        return None
+    candidates = [c for c in _statements(seg, ctx.vocab) if c.magnitude is not None and _eq(abs(c.magnitude), abs(claim.magnitude)) and not c.problems]
+    if not candidates:
+        return f"the statement lists several values and {_show(claim.magnitude)} cannot be read as one of them on its own"
+    named_arms = [a for a in claim.arms if a.drugs or a.doses]
+    seg_arms = len({tuple(sorted(a.drugs)) or ("dose", *sorted(d for v in a.doses.values() for d in v)) for c in _statements(seg, ctx.vocab) for a in c.arms})
+    claim_families = {e["family"] for e in claim.endpoints if e["family"] != "RESPONDER"}
+    seg_families = {f for f in seg.features if f.startswith("EP_")}
+    problems = []
+    for candidate in candidates:
+        problems = []
+        own = [a for a in candidate.arms if a.role != "COMPARATOR"] if not candidate.carried_arms else []
+        if seg_arms >= 2 or named_arms:
+            if not named_arms:
+                problems.append("the sentence does not say which arm the value belongs to")
+            elif not own:
+                problems.append("in the cited statement no arm is written next to this value")
+            else:
+                own_drugs = {d for a in own for d in a.drugs} or set(fact.drugs)
+                claim_drugs = {d for a in named_arms if a.role != "COMPARATOR" for d in a.drugs}
+                if claim_drugs and claim_drugs != own_drugs:
+                    problems.append(f"in the cited statement {_show(claim.magnitude)} belongs to {', '.join(a.text for a in own)}")
+                claim_doses = {d for a in named_arms for v in a.doses.values() for d in v}
+                own_doses = {d for a in own for v in a.doses.values() for d in v}
+                if claim_doses and own_doses and not claim_doses <= own_doses:
+                    problems.append(f"in the cited statement {_show(claim.magnitude)} belongs to {', '.join(a.text for a in own)}")
+        if claim_families and len(seg_families) >= 2:
+            own_families = {e["family"] for e in candidate.endpoints}
+            if not claim_families <= own_families:
+                problems.append("the statement lists values for several endpoints and does not name this one next to the value")
+        if claim.threshold is not None and (candidate.threshold is None or not _eq(candidate.threshold, claim.threshold)):
+            problems.append("the responder threshold does not belong to this value in the cited statement")
+        if claim.timepoints_weeks and len(seg.times) >= 2 and not set(claim.timepoints_weeks) <= set(candidate.timepoints_weeks):
+            problems.append("the statement lists several time points and does not name this one next to the value")
+        if not problems:
+            return None
+    return "; ".join(dict.fromkeys(problems))
+
+
+def _check_text_binding(claim: StructuredClaim, fact: EvidenceFact, ctx: Context, out: list[Mismatch]) -> None:
+    """Near-verbatim agreement with one statement of a text card (see ``Segment``)."""
+    segments = ctx.segments(fact)
+    if not segments:
+        return
+    needs = _segment_needs(claim, fact, ctx)
+    approval_claim = fact.kind == REGULATORY_STATUS and "APPROVED" in claim.regulatory
+    candidates = segments
+    if approval_claim:
+        # the approved use must be one the card states for the brand or drug the sentence names
+        class_vocabulary = set().union(*(seg.vocabulary for seg in segments if seg.class_statement)) if any(seg.class_statement for seg in segments) else set()
+        for term in claim.residual_terms:
+            if not _grounded(term, class_vocabulary):
+                needs.append((term, lambda seg, term=term: _grounded(term, seg.vocabulary)))
+        candidates = [seg for seg in segments if seg.approval and not seg.class_statement]
+    best, best_missing = None, None
+    for seg in candidates:
+        missing = [label for label, test in needs if not test(seg)]
+        if best_missing is None or len(missing) < len(best_missing):
+            best, best_missing = seg, missing
+        if not missing:
+            break
+    if needs and (best is None or best_missing):
+        shown = best_missing if best_missing is not None else [label for label, _ in needs]
+        out.append(Mismatch("statement", sorted(dict.fromkeys(shown)), "no single statement of the cited card says these together" + (" (for the approved use named)" if approval_claim else ""), UNVERIFIABLE))
+        return
+    if best is not None:
+        problem = _role_binding(claim, fact, best, ctx)
+        if problem:
+            out.append(Mismatch("magnitude", f"{_show(claim.magnitude)} attributed to {', '.join(a.text for a in claim.arms) or 'no named arm'}", problem, UNVERIFIABLE))
+
+    # a negated part of the sentence must restate a negated statement of the card
+    skip = _subject_names(fact, ctx.vocab)
+    for part in re.split(r"[;,()]|\b(?:but|whereas|while|which|and|because|so)\b", claim.text):
+        if not _is_negated(part):
+            continue
+        content = _content_stems(part, skip)
+        if not content:
+            continue
+        if not any(seg.negated and all(stems(word) & seg.vocabulary for word in content) for seg in segments):
+            out.append(Mismatch("negation", f"“{part.strip()}”", "no negated statement of the cited card says this", UNVERIFIABLE))
+            break
+    # an asserted word whose opposite the card states ("the same trial" against "different trials")
+    sentence_words = {w.lower() for w in re.findall(r"[A-Za-z][A-Za-z-]*", claim.text)}
+    if not _is_negated(claim.text):
+        plain_vocabulary = set().union(*(seg.vocabulary for seg in segments if not seg.negated)) if any(not seg.negated for seg in segments) else set()
+        for word in sentence_words & set(lx.ANTONYMS):
+            if lx.ANTONYMS[word] & plain_vocabulary and not stems(word) & plain_vocabulary:
+                out.append(Mismatch("wording", f"“{word}”", f"the cited statement says {sorted(lx.ANTONYMS[word] & plain_vocabulary)[0]}", CONTRADICTED))
+                break
 
 
 # --------------------------------------------------------------------------- claim, sentence, draft
@@ -901,6 +1280,13 @@ def verify_claim(claim: StructuredClaim, cards: dict[str, dict[str, Any]], ctx: 
         claim.verdict = UNVERIFIABLE
         claim.mismatches = [Mismatch("citation", "an assertion", "no evidence card is cited for it", UNVERIFIABLE).as_dict()]
         return
+    tainted = [cid for cid, fact in candidates if instruction_like(fact)]
+    candidates = [(cid, fact) for cid, fact in candidates if cid not in tainted]
+    if not candidates:
+        claim.verdict = UNVERIFIABLE
+        claim.mismatches = [Mismatch("evidence", tainted, "the cited card contains instruction-like text and is never used as evidence", UNVERIFIABLE).as_dict()
+                            | {"message": "The cited card contains instruction-like text and is never used as evidence."}]
+        return
     best: tuple[int, str, EvidenceFact, list[Mismatch]] | None = None
     for cid, fact in candidates:
         probe = StructuredClaim(**{**claim.__dict__, "numbers": list(claim.numbers)})
@@ -912,7 +1298,7 @@ def verify_claim(claim: StructuredClaim, cards: dict[str, dict[str, Any]], ctx: 
             break
     assert best is not None
     derived = [(cid, fact) for cid, fact in candidates if fact.kind == DERIVED_TEXT]
-    if best[0] > 0 and len(derived) >= 2 and len(derived) == len(candidates):
+    if best[0] > 0 and len(derived) >= 2 and len(derived) == len(candidates) and not claim.subject_drugs and not claim.comparator_drugs:
         # Rule-based readings have no record behind them: a sentence may restate two of them together.
         merged = fact_from_text("+".join(fact.fact_id for _, fact in derived), " ".join(fact.text for _, fact in derived), [sid for _, fact in derived for sid in fact.source_ids])
         probe = StructuredClaim(**{**claim.__dict__, "numbers": list(claim.numbers)})
@@ -928,6 +1314,11 @@ def verify_claim(claim: StructuredClaim, cards: dict[str, dict[str, Any]], ctx: 
         claim.verdict = CONTRADICTED
     else:
         claim.verdict = UNVERIFIABLE
+
+
+def instruction_like(fact: EvidenceFact) -> bool:
+    """Evidence text that addresses a reader or a model ("Ignore all previous instructions ..."). Such a card grounds nothing."""
+    return bool(lx.CARD_INJECTION_RE.search(fact.text or ""))
 
 
 def _guard(sentence: str, facts: list[EvidenceFact]) -> list[str]:
@@ -973,18 +1364,73 @@ def _side_by_side_comparison(supported: list[StructuredClaim], cards: dict[str, 
     return None
 
 
-def verify_sentence(reading: SentenceReading, cards: dict[str, dict[str, Any]], ctx: Context) -> dict[str, Any]:
+@dataclass
+class Subject:
+    """What an earlier sentence was about, for a later "It ...", "Its 95% CI ...", "That dose ..." or "That trial ..."."""
+
+    arms: list[ArmMention] = field(default_factory=list)
+    studies: list[str] = field(default_factory=list)
+
+    @classmethod
+    def of(cls, reading: SentenceReading) -> Subject:
+        arms: dict[tuple, ArmMention] = {}
+        for claim in reading.claims:
+            for arm in claim.arms:
+                if arm.role != "COMPARATOR" and arm.drugs:
+                    arms.setdefault((tuple(arm.drugs), tuple(sorted((k, tuple(v)) for k, v in arm.doses.items()))), arm)
+        studies = list(dict.fromkeys(nct for claim in reading.claims for nct in claim.studies))
+        return cls(list(arms.values()), studies)
+
+
+def _resolve_reference(reading: SentenceReading, previous: Subject | None, cards: dict[str, dict[str, Any]]) -> None:
+    """Bind "It", "Its", "That dose" to the previous sentence's subject, or mark the claim unresolvable. Never guessed."""
+    cited_facts = [cards[cid]["fact"] for cid in reading.cited if cid in cards]
+    text_only = bool(cited_facts) and not any(f.is_structured for f in cited_facts)
+    for claim in reading.claims:
+        own = [a for a in claim.arms if a.role != "COMPARATOR" and a.drugs]
+        if reading.anaphor and own and lx.ANAPHOR_START_RE.match(reading.text) and previous and len(previous.arms) == 1:
+            # "Retatrutide ... [C2]. It is approved as Zepbound [C3]": the pronoun is the subject, the drug named later is not
+            meant = set(previous.arms[0].drugs)
+            if not meant <= {d for a in own for d in a.drugs}:
+                claim.problems.append(f"“{reading.anaphor}” refers to {previous.arms[0].text}, but the sentence attributes the statement to {', '.join(a.text for a in own)}")
+        if reading.anaphor and not own:
+            arms = previous.arms if previous else []
+            if len(arms) == 1:
+                source = arms[0]
+                doses = {} if text_only else {k: list(v) for k, v in source.doses.items()}
+                carried = ArmMention(list(source.drugs), doses, "TREATMENT", source.start, source.end, f"{source.text} (from “{reading.anaphor}”)", source.dose_unit, dict(source.dose_units))
+                claim.arms = [carried, *[a for a in claim.arms if a.drugs or a.role == "COMPARATOR"]]
+                claim.subject_drugs = list(dict.fromkeys([*carried.drugs, *claim.subject_drugs]))
+            elif not arms:
+                claim.problems.append(f"“{reading.anaphor}” refers to an earlier subject, but no earlier sentence names one")
+            else:
+                claim.problems.append(f"“{reading.anaphor}” could refer to more than one earlier arm ({'; '.join(a.text for a in arms)})")
+        if reading.study_anaphor and not claim.studies and not claim.unknown_studies and previous and previous.studies:
+            if len(previous.studies) == 1:
+                claim.studies = list(previous.studies)
+            else:
+                claim.problems.append(f"“{reading.study_anaphor}” could refer to more than one earlier trial")
+
+
+def verify_sentence(reading: SentenceReading, cards: dict[str, dict[str, Any]], ctx: Context, previous: Subject | None = None) -> dict[str, Any]:
     reasons: list[str] = []
     verdict = SUPPORTED
     unknown = [cid for cid in reading.cited if cid not in cards]
     if reading.instruction:
         verdict = UNVERIFIABLE
-        reasons.append(f"Instruction-like or imperative text (“{reading.instruction}”) is not an evidence statement and is never shown.")
+        reasons.append(f"Instruction-like, imperative or recommendation wording (“{reading.instruction[:40]}”) is not an evidence statement and is never shown.")
     if unknown:
         verdict = UNVERIFIABLE
         reasons.append(f"Cites unknown card(s) {unknown}.")
-    if not reading.is_factual:  # nothing is asserted (a heading, a connective, a bare marker): neither supported nor refused
+    if lx.is_meta_sentence(reading.text):  # framing that asserts nothing ("In summary:"): neither supported nor refused
         return {"sentence": reading.text, "cited": reading.cited, "claims": [], "verdict": NOT_FACTUAL if verdict == SUPPORTED else verdict, "reasons": reasons, "bound": []}
+    if not reading.is_factual:
+        # Fail closed: a sentence the extractor reads nothing in is still a statement. Only the short list of framing and
+        # hedge sentences (lexicon.META_SENTENCE_RES) may stand without evidence.
+        reasons.append("Asserts something the verifier cannot bind to evidence and is not one of the recognised framing sentences; only those may stand without support.")
+        return {"sentence": reading.text, "cited": reading.cited, "claims": [c.as_dict() for c in reading.claims], "verdict": UNVERIFIABLE, "reasons": reasons, "bound": []}
+    if reading.anaphor or reading.study_anaphor:
+        _resolve_reference(reading, previous, cards)
     if not reading.cited:
         numeric = any(c.magnitude is not None or c.magnitude_range or c.counts or c.numbers or c.timepoints_weeks or c.ci or c.p_value for c in reading.claims)
         reasons.append("States a number without a citation." if numeric else "States a fact without a citation.")
@@ -1052,7 +1498,13 @@ def verify_draft(draft: str, cards: list[dict[str, Any]], vocabulary: Vocabulary
     for fact in facts:
         if fact.kind == DERIVED_TEXT or fact.phase is None:
             ctx.all_phases |= ctx.signature(fact).phases
-    reports = [verify_sentence(read_sentence(sentence, vocab), prepared, ctx) for sentence in split_sentences(draft)]
+    reports = []
+    previous: Subject | None = None
+    for sentence in split_sentences(draft):
+        reading = read_sentence(sentence, vocab)
+        reports.append(verify_sentence(reading, prepared, ctx, previous))
+        if reading.is_factual:
+            previous = Subject.of(reading)
     problems: list[str] = []
     for index, report in enumerate(reports, start=1):
         if report["verdict"] in (SUPPORTED, NOT_FACTUAL):
@@ -1073,3 +1525,26 @@ def verify_draft(draft: str, cards: list[dict[str, Any]], vocabulary: Vocabulary
         "verdicts": counts,
         "method": "deterministic structured-claim verification; no language model takes part in the decision",
     }
+
+
+def withheld_report(check: dict[str, Any]) -> dict[str, Any]:
+    """The report of a draft that was withheld, without the draft.
+
+    A withheld draft is never shown, so its sentences are not returned either (they may carry injected or simply false
+    text). What remains is enough to see why: per sentence, the verdict, the cited cards, the reasons, and per claim the
+    field that failed with the claimed and the stored value.
+    """
+    sentences = []
+    for index, report in enumerate(check.get("sentences", []), start=1):
+        sentences.append({
+            "index": index,
+            "verdict": report["verdict"],
+            "cited": report.get("cited", []),
+            "reasons": report.get("reasons", []),
+            "claims": [
+                {"verdict": claim.get("verdict"), "bound_card": claim.get("bound_card"),
+                 "mismatches": [{key: mismatch.get(key) for key in ("field", "claimed", "actual", "kind")} for mismatch in claim.get("mismatches", [])]}
+                for claim in report.get("claims", [])
+            ],
+        })
+    return {key: check[key] for key in ("passed", "problems", "sentences_checked", "verdicts", "method") if key in check} | {"sentences": sentences, "draft_withheld": True}

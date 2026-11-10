@@ -282,6 +282,10 @@ def test_assistant_endpoint_labels_evidence_honestly_and_returns_the_claim_repor
     assert withheld["llm"]["rejected"] is True and all(b["kind"] != "MODEL_SUMMARY" for b in withheld["blocks"])
     report = withheld["llm"]["citation_check"]["sentences"][0]
     assert report["verdict"] in ("UNVERIFIABLE", "CONTRADICTED") and report["reasons"] and report["claims"]
+    # the withheld draft itself is never returned (security.json SEC-06): verdicts, claimed values and reasons only
+    assert withheld["llm"]["citation_check"]["draft_withheld"] is True and "sentence" not in report
+    assert "greater weight loss" not in str(withheld["llm"]) and all("text" not in claim for claim in report["claims"])
+    assert all(set(m) == {"field", "claimed", "actual", "kind"} for claim in report["claims"] for m in claim["mismatches"])
     monkeypatch.setattr("incretinos.api.main.get_provider", lambda settings: FakeProvider("In SURMOUNT-1, the tirzepatide 15 mg group had -20.9% at week 72 (95% CI -21.8 to -19.9) [C4]."))
     kept = client.post("/api/assistant/ask", json=question).json()
     assert kept["llm"]["used"] is True and kept["blocks"][-1]["kind"] == "MODEL_SUMMARY" and kept["llm"]["cited_markers"] == ["C4"]
