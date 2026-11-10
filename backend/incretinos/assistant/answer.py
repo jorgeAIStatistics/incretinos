@@ -233,7 +233,7 @@ def detect_drug_slugs(session: Session, text: str) -> list[str]:
 def detect_studies(session: Session, text: str) -> list[Study]:
     low = text.lower()
     out = []
-    for study in session.scalars(select(Study)):
+    for study in session.scalars(select(Study).order_by(Study.id)):
         name = study.display_name.lower()
         if study.nct_id.lower() in low or re.search(rf"(?<![a-z0-9]){re.escape(name)}(?![a-z0-9\-])", low):
             out.append((low.find(name) if name in low else low.find(study.nct_id.lower()), study))
@@ -254,7 +254,7 @@ def _best_weight_result(session: Session, study: Study, estimand: str | None = N
       dispersion, then a reported number analysed, then the record stored first). The other sources are not hidden
       from the user: findings and comparisons list them.
     """
-    rows = [r for r in study.results if r.endpoint.category == "WEIGHT_PCT_CHANGE" and r.value is not None and r.scope == "ARM" and r.arm is not None and not is_placebo_arm(r.arm) and not r.arm.is_pooled and " minus " not in r.arm_label and " to " not in r.arm_label.lower()
+    rows = [r for r in sorted(study.results, key=lambda r: r.id) if r.endpoint.category == "WEIGHT_PCT_CHANGE" and r.value is not None and r.scope == "ARM" and r.arm is not None and not is_placebo_arm(r.arm) and not r.arm.is_pooled and " minus " not in r.arm_label and " to " not in r.arm_label.lower()
             and policy.is_usable(r.verification_status)]
     weeks = (study.design_features or {}).get("treatment_weeks")
     if weeks:
@@ -340,7 +340,7 @@ def _intent_compare_drugs(c: _Composer, slugs: list[str]) -> None:
     picked: list[Finding] = []
     for drug in drugs:
         _drug_profile(c, drug)
-        studies = [s for s in session.scalars(select(Study)) if any(link.drug_id == drug.id and link.role != "COMPARATOR" for link in s.drug_links)]
+        studies = [s for s in session.scalars(select(Study).order_by(Study.id)) if any(link.drug_id == drug.id and link.role != "COMPARATOR" for link in s.drug_links)]
         phase3 = [s for s in studies if s.phase and "PHASE3" in s.phase and s.population and s.population.diabetes_status == "NO_T2D"]
         best = None
         for study in sorted(phase3, key=lambda s: s.display_name):
@@ -382,10 +382,10 @@ def _intent_compare_drugs(c: _Composer, slugs: list[str]) -> None:
 def _intent_exploratory(c: _Composer, studies: list[Study], slugs: list[str]) -> None:
     session = c.session
     if not studies and slugs:
-        studies = [s for s in session.scalars(select(Study)) if any(link.drug.slug in slugs for link in s.drug_links)]
+        studies = [s for s in session.scalars(select(Study).order_by(Study.id)) if any(link.drug.slug in slugs for link in s.drug_links)]
     found = False
     for study in studies[:6]:
-        exploratory = [a for a in study.analyses if (a.endpoint.role in ("EXPLORATORY", "POST_HOC") or a.multiplicity_controlled == "NO") and policy.is_usable(a.verification_status)]
+        exploratory = [a for a in sorted(study.analyses, key=lambda a: a.id) if (a.endpoint.role in ("EXPLORATORY", "POST_HOC") or a.multiplicity_controlled == "NO") and policy.is_usable(a.verification_status)]
         for analysis in exploratory[:8]:
             dto = analysis_dto(analysis)
             c.analysis(analysis, f"{study.display_name} — {dto['endpoint_title']}: {interpret_analysis(dto)['observed']} [{'; '.join(label['text'] for label in dto['labels'])}]")
@@ -414,7 +414,7 @@ def _intent_gaps(c: _Composer, slugs: list[str]) -> None:
         c.add("INTERPRETATION", f"{gap.question} — Available: {gap.available_evidence} Missing: {gap.missing_evidence} Why it is open: {NATURE_LABEL.get(gap.gap_nature, gap.gap_nature)}", *(gap.source_ids or [])[:3])
     for slug in slugs[:1]:
         drug = session.scalar(select(Drug).where(Drug.slug == slug))
-        ongoing = [s for s in session.scalars(select(Study)) if any(link.drug.slug == slug for link in s.drug_links) and s.phase and "PHASE3" in s.phase and not s.has_results and (s.overall_status or "") in ("RECRUITING", "ACTIVE_NOT_RECRUITING", "NOT_YET_RECRUITING")]
+        ongoing = [s for s in session.scalars(select(Study).order_by(Study.id)) if any(link.drug.slug == slug for link in s.drug_links) and s.phase and "PHASE3" in s.phase and not s.has_results and (s.overall_status or "") in ("RECRUITING", "ACTIVE_NOT_RECRUITING", "NOT_YET_RECRUITING")]
         for study in ongoing[:8]:
             primary = [e.title for e in study.endpoints if e.kind == "PROTOCOL" and e.role == "PRIMARY"][:2]
             c.study_record(study, f"Ongoing Phase 3 for {drug.name}: {study.display_name} ({study.nct_id}) — {study.brief_title}. Status {study.overall_status}; planned enrollment {study.enrollment}; primary completion {study.primary_completion_date} ({(study.primary_completion_type or '').lower()}). Registered primary endpoint(s): {'; '.join(primary) or 'not listed'}.")
@@ -442,7 +442,7 @@ def _intent_rigorous(c: _Composer, studies: list[Study]) -> None:
 def _intent_hypothetical(c: _Composer, studies: list[Study], slugs: list[str]) -> None:
     session = c.session
     c.add("INTERPRETATION", "Results reported under the efficacy estimand depend on hypothetical treatment continuation: they estimate the effect had every participant remained on the assigned treatment (ICH E9(R1) hypothetical strategy). Results under the treatment-regimen estimand do not.")
-    pool = studies or [s for s in session.scalars(select(Study)) if not slugs or any(link.drug.slug in slugs for link in s.drug_links)]
+    pool = studies or [s for s in session.scalars(select(Study).order_by(Study.id)) if not slugs or any(link.drug.slug in slugs for link in s.drug_links)]
     shown = 0
     for study in pool:
         row = _best_weight_result(session, study, "EFFICACY")
@@ -469,13 +469,13 @@ def _intent_cvot(c: _Composer, slugs: list[str]) -> None:
         any_found = True
         kind = "dedicated outcomes trial" if feats.get("outcomes_trial") else "trial with a pre-specified cardiovascular safety assessment"
         c.study_record(study, f"{', '.join(drug_names)}: {study.display_name} ({study.nct_id}) — {kind}; status {study.overall_status}; enrollment {study.enrollment} ({(study.enrollment_type or '').lower()}); primary completion {study.primary_completion_date} ({(study.primary_completion_type or '').lower()}); registry results posted: {'yes' if study.has_results else 'no'}.")
-        for analysis in [a for a in study.analyses if a.endpoint.category == "MACE" and policy.is_usable(a.verification_status)][:2]:
+        for analysis in [a for a in sorted(study.analyses, key=lambda a: a.id) if a.endpoint.category == "MACE" and policy.is_usable(a.verification_status)][:2]:
             dto = analysis_dto(analysis)
             reading = interpret_analysis(dto)
             c.analysis(analysis, f"{study.display_name} — {dto['endpoint_title']}: {reading['observed']}")
             for item in reading["does_not_establish"][:2]:
                 c.add("INTERPRETATION", f"{study.display_name}: does not establish — {item}")
-    core_without = [d for d in session.scalars(select(Drug).where(Drug.tier_group == "CORE")) if (not slugs or d.slug in slugs) and not any((s.design_features or {}).get("outcomes_trial") for s in session.scalars(select(Study)) if any(link.drug_id == d.id and link.role != "COMPARATOR" for link in s.drug_links))]
+    core_without = [d for d in session.scalars(select(Drug).where(Drug.tier_group == "CORE").order_by(Drug.id)) if (not slugs or d.slug in slugs) and not any((s.design_features or {}).get("outcomes_trial") for s in session.scalars(select(Study).order_by(Study.id)) if any(link.drug_id == d.id and link.role != "COMPARATOR" for link in s.drug_links))]
     for drug in core_without:
         c.add("UNAVAILABLE", f"No prospective cardiovascular outcomes trial of {drug.name} was found among tracked registry records (not proof that none exists).")
     if not any_found and not core_without:
