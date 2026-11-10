@@ -1,10 +1,9 @@
 "use client";
 
-import * as Tabs from "@radix-ui/react-tabs";
 import { Check } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { Badge, Button, Callout, ErrorNote, Hypothetical, KV, Loading, NumberField, PageHeader, Panel, Section, Select } from "@/components/ui";
+import { Badge, Button, Callout, ErrorNote, ErrorState, Hypothetical, KV, Loading, NumberField, PageHeader, Panel, Section, Select, TabPanel, Tabs } from "@/components/ui";
 import { apiPost, fmt, phaseLabel, titleCase, useApi } from "@/lib/api";
 import { useRows } from "@/lib/paging";
 
@@ -54,7 +53,7 @@ function PowerCalc() {
       <Panel className="min-w-0">
         {out ? (
           <div data-testid="power-result">
-            <p className="text-[12px] font-semibold uppercase tracking-wide text-ink-3">{out.design}</p>
+            <h2 className="text-data font-semibold text-ink-3">{out.design}</h2>
             {out.events_required != null ? <p className="num mt-1 text-[30px] font-semibold leading-none">{out.events_required.toLocaleString()} <span className="text-[14px] font-medium text-ink-3">events required</span></p>
               : <p className="num mt-1 text-[30px] font-semibold leading-none">{out.n_group_1.toLocaleString()} + {out.n_group_2.toLocaleString()} <span className="text-[14px] font-medium text-ink-3">evaluable participants ({out.n_total.toLocaleString()} total)</span></p>}
             {out.with_attrition ? <p className="num mt-2 text-[13.5px] text-ink-2">Allowing for {fmt(out.with_attrition.attrition * 100, 0)}% attrition: randomize <b>{out.with_attrition.n_to_randomize.toLocaleString()}</b>.</p> : null}
@@ -106,7 +105,7 @@ function Simulation() {
               <div className="mt-3 grid grid-cols-1 gap-3" data-testid="sensitivity">
                 <Panel pad={false} className="min-w-0">
                   <div data-testid="sensitivity-attrition">
-                    <p className="px-4 pt-3 text-[13.5px] font-semibold">Sensitivity to attrition</p>
+                    <h3 className="px-4 pt-3 text-[13.5px] font-semibold">Sensitivity to attrition</h3>
                     <p className="px-4 pb-1 text-[12px] text-ink-3">{sens.attrition_note}</p>
                     <div className="overflow-x-auto">
                       <table className="tbl"><thead><tr><th>Attrition</th><th className="r !whitespace-normal">Evaluable participants per arm</th><th className="r">Power</th></tr></thead><tbody>{sens.attrition.map((r: any) => <tr key={r.attrition}><td className="num">{fmt(r.attrition * 100, 0)}%</td><td className="r num">{r.n_evaluable_per_group}</td><td className="r num">{r.power != null ? percent(r.power) : "not calculated"}</td></tr>)}</tbody></table>
@@ -116,7 +115,7 @@ function Simulation() {
                 {sens.missing_data ? (
                   <Panel pad={false} className="min-w-0">
                     <div data-testid="sensitivity-missing-data">
-                      <p className="px-4 pt-3 text-[13.5px] font-semibold">Delta adjustment for missing data</p>
+                      <h3 className="px-4 pt-3 text-[13.5px] font-semibold">Delta adjustment for missing data</h3>
                       <p className="px-4 pb-1 text-[12px] text-ink-3">{sens.missing_data_note} Values are in the units of the assumed means; the difference is treatment − control.</p>
                       <div className="overflow-x-auto">
                         <table className="tbl"><thead><tr><th className="!whitespace-normal">δ added to missing treatment-arm values</th><th className="r !whitespace-normal">Marginal treatment mean</th><th className="r !whitespace-normal">Difference (treatment − control)</th></tr></thead><tbody>{sens.missing_data.map((r: any) => <tr key={r.delta}><td className="num">+{fmt(r.delta)}</td><td className="r num">{fmt(r.marginal_treatment_mean, 2)}</td><td className="r num">{fmt(r.difference, 2)}</td></tr>)}</tbody></table>
@@ -135,15 +134,17 @@ function Simulation() {
 
 function Coverage() {
   const [picked, setDrug] = useState<string | null>(null);
-  const { data: drugs, error: drugsError } = useRows<any>("/drugs");
+  const { data: drugs, error: drugsError, reload: reloadDrugs } = useRows<any>("/drugs");
   const tracked = (drugs ?? []).filter((d) => d.tier_group !== "COMPARATOR");
   const drug = picked ?? tracked[0]?.slug ?? null; // the first tracked molecule the API lists, not a fixed one
-  const { data, error } = useApi(drug ? `/design/coverage?drug=${drug}` : null);
+  const coverage = useApi(drug ? `/design/coverage?drug=${drug}` : null);
+  const data = coverage.data;
   return (
     <>
-      <div className="mb-3"><Select label="Molecule" value={drug ?? ""} onChange={setDrug} options={drugs ? tracked.map((d) => ({ value: d.slug, label: d.name })) : [{ value: "", label: "Loading molecules…" }]} className="w-60" /></div>
-      {drugsError || error ? <ErrorNote message={(drugsError || error)!} /> : !data ? <Loading /> : (
-        <div className="overflow-x-auto rounded-lg border border-hairline bg-surface">
+      <div className="mb-3"><Select label="Molecule" value={drug ?? ""} onChange={setDrug} options={drugs ? tracked.map((d) => ({ value: d.slug, label: d.name })) : [{ value: "", label: drugsError ? "Molecules could not be loaded" : "Loading molecules…" }]} className="w-60" /></div>
+      {drugsError ? <ErrorState title="The molecule list could not be loaded" message={drugsError} onRetry={reloadDrugs} /> : coverage.status === "error" ? <ErrorState title="Population coverage could not be loaded" message={coverage.error ?? ""} onRetry={coverage.reload} /> : drugs && !drug ? <Callout tone="muted" title="No tracked molecule is on record." /> : !data ? <Loading /> : (
+        // Positioned, so the visually hidden cell text is clipped by this scroll box instead of widening the page.
+        <div className="relative overflow-x-auto rounded-lg border border-hairline bg-surface">
           <table className="tbl">
             <thead><tr><th>Trial</th><th>Phase</th><th>Status</th><th className="r">N</th><th>BMI</th>{data.dimensions.map(([k, l]: [string, string]) => <th key={k} className="!whitespace-normal text-center leading-tight" style={{ minWidth: 62 }}>{l}</th>)}<th className="r">Endpoints</th><th className="r">Criteria</th></tr></thead>
             <tbody>
@@ -164,26 +165,29 @@ function Coverage() {
 }
 
 function Eligibility() {
-  const { data: studies } = useRows<any>("/studies");
-  const { data: changes } = useRows<any>("/changes");
+  const { data: studies, error: studiesError, reload: reloadStudies } = useRows<any>("/studies");
+  const { data: changes, error: changesError, reload: reloadChanges } = useRows<any>("/changes");
   const [pickedA, setA] = useState<string | null>(null);
   const [pickedB, setB] = useState<string | null>(null);
   // Defaults come from the data: trial A is the trial with the most recently detected record change (so the amendment view has
   // something to show), otherwise the first trial listed; trial B is another trial of the same programme.
-  const ready = !!studies && !!changes;
+  // A failed change list only loses the default choice of trial A; it never blocks the comparison.
+  const ready = !!studies && (!!changes || !!changesError);
   const changed = (changes ?? []).map((e) => /NCT\d{8}/.exec(e.source?.key ?? "")?.[0]).find((n) => n && (studies ?? []).some((s) => s.nct_id === n));
   const a = pickedA ?? (ready ? (changed ?? studies![0]?.nct_id ?? null) : null);
   const programme = (studies ?? []).find((s) => s.nct_id === a)?.program;
   const b = pickedB ?? (ready ? ((studies ?? []).find((s) => s.nct_id !== a && s.program === programme)?.nct_id ?? (studies ?? []).find((s) => s.nct_id !== a)?.nct_id ?? null) : null);
-  const { data, error } = useApi(a && b ? `/design/eligibility-compare?a=${a}&b=${b}` : null);
-  const { data: hist } = useApi(a ? `/design/amendments/${a}` : null);
-  const opts = studies ? studies.map((s) => ({ value: s.nct_id, label: s.display_name })) : [{ value: "", label: "Loading trials…" }];
+  const compare = useApi(a && b ? `/design/eligibility-compare?a=${a}&b=${b}` : null);
+  const data = compare.data;
+  const amendments = useApi(a ? `/design/amendments/${a}` : null);
+  const hist = amendments.data;
+  const opts = studies ? studies.map((s) => ({ value: s.nct_id, label: s.display_name })) : [{ value: "", label: studiesError ? "Trials could not be loaded" : "Loading trials…" }];
   return (
     <>
-      <div className="mb-3 flex flex-wrap gap-3"><Select label="Trial A" value={a ?? ""} onChange={setA} options={opts} className="w-64" /><Select label="Trial B" value={b ?? ""} onChange={setB} options={opts} className="w-64" /></div>
-      {error ? <ErrorNote message={error} /> : null}
-      {data ? (
-        <div className="overflow-x-auto rounded-lg border border-hairline bg-surface">
+      <div className="mb-3 flex flex-wrap gap-3"><Select label="Trial A" value={a ?? ""} onChange={setA} options={opts} className="w-full sm:w-auto sm:min-w-64" /><Select label="Trial B" value={b ?? ""} onChange={setB} options={opts} className="w-full sm:w-auto sm:min-w-64" /></div>
+      {changesError ? <div className="mb-3"><ErrorNote message={`Detected record changes could not be loaded, so trial A is not preselected from them. ${changesError}`} onRetry={reloadChanges} /></div> : null}
+      {studiesError ? <ErrorState title="The trial list could not be loaded" message={studiesError} onRetry={reloadStudies} /> : compare.status === "error" ? <ErrorState title="The eligibility comparison could not be loaded" message={compare.error ?? ""} onRetry={compare.reload} /> : data ? (
+        <div className="relative overflow-x-auto rounded-lg border border-hairline bg-surface">
           <table className="tbl">
             <thead><tr><th>Topic</th><th>{data.a.study.display_name} <span className="font-normal normal-case text-ink-3">({data.counts.a_inclusion} inclusion / {data.counts.a_exclusion} exclusion)</span></th><th>{data.b.study.display_name} <span className="font-normal normal-case text-ink-3">({data.counts.b_inclusion} / {data.counts.b_exclusion})</span></th></tr></thead>
             <tbody>
@@ -199,14 +203,15 @@ function Eligibility() {
           <p className="border-t border-hairline px-3 py-2 text-[12px] text-ink-3">{data.note}</p>
         </div>
       ) : <Loading />}
+      {amendments.status === "error" ? <div className="mt-3"><ErrorNote message={`The protocol amendment history could not be loaded. ${amendments.error ?? ""}`} onRetry={amendments.reload} /></div> : null}
       {hist?.study?.nct_id === a && hist?.changes?.length ? (
         <Section title={`Protocol amendment impact — ${hist.study.display_name}`} hint={hist.note}>
           {hist.changes.map((c: any) => (
             <Panel key={c.id} pad={false} className="mb-3">
-              <div className="px-4 pt-3">{c.is_synthetic ? <Badge tone="warn">Synthetic demonstration — not a real registry change</Badge> : <Badge tone="info">Detected change</Badge>} <span className="ml-2 text-[13px] text-ink-2">{c.summary}</span></div>
-              <table className="tbl mt-2"><thead><tr><th>Field</th><th>Before</th><th>After</th><th>Significance</th><th>Why it matters</th></tr></thead>
+              <div className="px-4 pt-3">{c.is_synthetic ? <Badge tone="warn" className="!whitespace-normal">Synthetic demonstration — not a real registry change</Badge> : <Badge tone="info">Detected change</Badge>} <span className="ml-2 text-[13px] text-ink-2">{c.summary}</span></div>
+              <div className="relative overflow-x-auto"><table className="tbl mt-2"><thead><tr><th>Field</th><th>Before</th><th>After</th><th>Significance</th><th>Why it matters</th></tr></thead>
                 <tbody>{c.changes.map((x: any, i: number) => <tr key={i}><td className="font-medium">{x.label}</td><td className="max-w-xs text-ink-2">{Array.isArray(x.before) ? x.before.join("; ") : String(x.before ?? "—")}</td><td className="max-w-xs text-ink-2">{Array.isArray(x.after) ? x.after.join("; ") : String(x.after ?? "—")}</td><td>{titleCase(x.significance)}</td><td className="text-ink-3">{x.note}</td></tr>)}</tbody>
-              </table>
+              </table></div>
             </Panel>
           ))}
         </Section>
@@ -215,21 +220,24 @@ function Eligibility() {
   );
 }
 
+const TOOLS = [
+  { value: "power", label: "Sample size and power" },
+  { value: "simulation", label: "Synthetic simulation and sensitivity" },
+  { value: "coverage", label: "Population coverage" },
+  { value: "eligibility", label: "Eligibility and amendments" },
+];
+
 export default function Design() {
+  const [tool, setTool] = useState("power");
   return (
     <>
       <PageHeader eyebrow="Protocol design workbench" title="Design calculations, coverage and eligibility — with every assumption shown" lede="Standard sample-size formulas, reproducible synthetic simulations, and side-by-side reading of registered protocols. Nothing here predicts whether a trial will succeed." />
-      <Tabs.Root defaultValue="power">
-        <Tabs.List className="mb-5 flex gap-5 overflow-x-auto border-b border-hairline" aria-label="Design tools">
-          {[["power", "Sample size and power"], ["simulation", "Synthetic simulation and sensitivity"], ["coverage", "Population coverage"], ["eligibility", "Eligibility and amendments"]].map(([v, l]) => (
-            <Tabs.Trigger key={v} value={v} className="-mb-px shrink-0 border-b-2 border-transparent pb-2 text-[13.5px] font-medium text-ink-3 data-[state=active]:border-accent data-[state=active]:text-ink">{l}</Tabs.Trigger>
-          ))}
-        </Tabs.List>
-        <Tabs.Content value="power"><PowerCalc /></Tabs.Content>
-        <Tabs.Content value="simulation"><Simulation /></Tabs.Content>
-        <Tabs.Content value="coverage"><Coverage /></Tabs.Content>
-        <Tabs.Content value="eligibility"><Eligibility /></Tabs.Content>
-      </Tabs.Root>
+      <Tabs value={tool} onValueChange={setTool} items={TOOLS} label="Design tools">
+        <TabPanel value="power"><PowerCalc /></TabPanel>
+        <TabPanel value="simulation"><Simulation /></TabPanel>
+        <TabPanel value="coverage"><Coverage /></TabPanel>
+        <TabPanel value="eligibility"><Eligibility /></TabPanel>
+      </Tabs>
     </>
   );
 }

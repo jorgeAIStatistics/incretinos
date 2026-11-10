@@ -71,7 +71,9 @@
         "src/app/molecules/page.tsx",
         "src/app/safety/page.tsx",
         "src/app/trials/[[]nct]/page.tsx",
-        "e2e/presentation.spec.ts"
+        "e2e/presentation.spec.ts",
+        // Written in parallel with the rule above (review-fixes branch); its API payloads are untyped like presentation.spec.ts.
+        "e2e/review-fixes.spec.ts"
       ],
       "rules": { "typescript/no-explicit-any": "warn" }
     }

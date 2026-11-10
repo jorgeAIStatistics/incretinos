@@ -147,25 +147,47 @@ export function findingRow(f: any, opts: { studyInLabel?: boolean; drugs?: Study
   };
 }
 
+/* ---------- what a chart may plot ---------- */
+
+/**
+ * A row may be plotted as "percent change in body weight" only when its endpoint category says so AND its unit is a
+ * percent change. A share of participants ("% of participants", e.g. a ≥5% responder proportion) is never plotted as
+ * weight change, whatever category it was filed under.
+ */
+export const isWeightPercentChange = (f: { category?: string | null; unit?: string | null }): boolean => f.category === "WEIGHT_PCT_CHANGE" && unitLabel(f.unit) === "%";
+
 /* ---------- coherent result sets ---------- */
 
 export type FindingSet = { key: string; findings: any[]; first: any; unit: string };
 
+/** The measure a row reports: endpoint category, endpoint title (as text, not as a record id), responder threshold and sub-measure. */
+const measureKey = (f: any): string => [f.category ?? "", String(f.endpoint_title ?? "").trim().replace(/\s+/g, " ").toLowerCase(), f.threshold ?? "", f.class_title ?? ""].join("¦");
+const armIdentity = (f: any): string => String(f.arm_id ?? f.arm_group_key ?? f.arm_label ?? f.result_id);
+
 /**
- * Results may share an axis and a caption only when they share endpoint (and sub-measure, such as a responder
- * threshold), estimand, evidence tier, source, time point, baseline definition and unit. This partitions findings
- * into such sets, in the order given.
+ * Results may share an axis and a caption only when they share the measure (endpoint and sub-measure, such as a
+ * responder threshold), estimand, evidence tier, source, time point, baseline definition and unit. This partitions
+ * findings into such sets, in the order given.
+ *
+ * The key is the measure as the source reports it, not the stored endpoint record: one source table is sometimes
+ * stored as several endpoint records (for example the control arm apart from the active arms, when only the
+ * active-arm contrasts are multiplicity-controlled), and those rows belong on one chart. An arm never appears twice
+ * in one set; a second row for the same arm starts another set.
  */
 export function findingSets(findings: any[]): FindingSet[] {
-  const sets = new Map<string, FindingSet>();
+  const sets: FindingSet[] = [];
   for (const f of findings) {
     const unit = unitLabel(f.unit);
-    const key = [f.endpoint_id ?? f.endpoint_title ?? "", f.class_title ?? "", f.estimand_label, f.estimand_basis, f.tier, f.source?.id ?? "no-source", f.timepoint_weeks ?? "no-time", f.baseline_definition ?? "", unit].join("¦");
-    const set = sets.get(key);
+    const base = [measureKey(f), f.estimand_label, f.estimand_basis, f.tier, f.source?.id ?? "no-source", f.timepoint_weeks ?? "no-time", f.baseline_definition ?? "", unit].join("¦");
+    const arm = armIdentity(f);
+    const set = sets.find((s) => s.key.split("#")[0] === base && !s.findings.some((x) => armIdentity(x) === arm));
     if (set) set.findings.push(f);
-    else sets.set(key, { key, findings: [f], first: f, unit });
+    else {
+      const n = sets.filter((s) => s.key.split("#")[0] === base).length;
+      sets.push({ key: n ? `${base}#${n + 1}` : base, findings: [f], first: f, unit });
+    }
   }
-  return [...sets.values()];
+  return sets;
 }
 
 /** What a set is, in the order estimand · evidence tier · time point (· baseline) (· sub-measure). True of every row in the set. */
@@ -175,38 +197,59 @@ export function setLabel(set: FindingSet): string {
 
 /* ---------- between-arm contrasts ---------- */
 
-/** A between-arm estimate is a ratio when its parameter is named one (odds, hazard, risk ratio) or its unit is recorded as "ratio". */
-export const isRatio = (a: { param_type?: string | null; unit?: string | null }): boolean => /ratio/i.test(a.param_type ?? "") || /^ratio$/i.test((a.unit ?? "").trim());
+type ContrastLike = { param_type?: string | null; unit?: string | null; effect_scale?: { scale?: string | null; basis?: string | null } | null };
 
-/** Whether a between-arm estimate is a ratio, a difference, or something this page cannot classify from its name. */
-export function contrastKind(a: { param_type?: string | null; unit?: string | null }): "ratio" | "difference" | "other" {
-  if (isRatio(a)) return "ratio";
+/**
+ * Whether a between-arm estimate is a difference, a ratio, or neither established — as the API states it
+ * (`effect_scale.scale`). The page does not re-derive the scale from the parameter's name: when the API says the
+ * scale is not established (for example a parameter called a difference with a unit recorded as "ratio"), no
+ * subtraction or division is asserted here either. Rows from an API without `effect_scale` fall back to the name.
+ */
+export function contrastKind(a: ContrastLike): "ratio" | "difference" | "other" {
+  const scale = a.effect_scale?.scale;
+  if (scale) return scale === "RATIO" ? "ratio" : scale === "DIFFERENCE" ? "difference" : "other";
+  if (/ratio/i.test(a.param_type ?? "") || /^ratio$/i.test((a.unit ?? "").trim())) return "ratio";
   return /differ/i.test(a.param_type ?? "") ? "difference" : "other";
 }
-export const contrastKindLabel = (a: { param_type?: string | null; unit?: string | null }): string => ({ ratio: "Ratio", difference: "Difference", other: "Contrast" })[contrastKind(a)];
+/** A between-arm estimate is a ratio only when the API establishes it as one. */
+export const isRatio = (a: ContrastLike): boolean => contrastKind(a) === "ratio";
+export const contrastKindLabel = (a: ContrastLike): string => ({ ratio: "Ratio", difference: "Difference", other: "Contrast (difference or ratio not established)" })[contrastKind(a)];
+
+/** How the direction of a contrast is known, in the API's terms. Each status has one footnote mark. */
+const DIRECTION: Record<string, { mark: string; label: string }> = {
+  STATED_BY_REGISTRY: { mark: "r", label: "Registry-stated" },
+  STATED_IN_CURATED_SOURCE: { mark: "a", label: "Stated by the curated source" },
+  VERIFIED_AGAINST_ARM_VALUES: { mark: "v", label: "Arm-confirmed" },
+  REGISTRY_ORDER_NOT_VERIFIED: { mark: "c", label: "Not established" },
+  CONVENTION_NOT_VERIFIED: { mark: "e", label: "Not established" },
+  CONTRADICTED_BY_ARM_VALUES: { mark: "d", label: "Not established" },
+  NOT_AVAILABLE: { mark: "‡", label: "Not established" },
+};
 
 /**
  * What is subtracted from (or divided by) what in a reported between-arm analysis, and how that direction is known.
- * `basis` is one of a small set of sentences, so a table can print each one once as a footnote keyed by `mark`.
+ * Both come from the API: `direction.established`, `direction.status` and `direction.basis` (printed verbatim), and
+ * `effect_scale.scale`. "X − Y" is written only for an established difference and "X ÷ Y" only for an established
+ * ratio. `basis` is one sentence per status, so a table can print each one once as a footnote keyed by `mark`.
  */
-export function contrastDirection(a: any): { expression: string; mark: string; basis: string; established: boolean } {
+export function contrastDirection(a: any): { expression: string; mark: string; label: string; basis: string; established: boolean } {
   const treatment = a.treatment_label ?? "treatment not stated";
+  if (!a.comparator_label) return { expression: `${treatment}; comparator not stated`, mark: "‡", label: "Not established", basis: "The source does not name the comparator, so the direction of this contrast is not on record.", established: false };
+  const direction = (a.direction ?? null) as { established?: boolean; status?: string; basis?: string } | null;
+  const known = direction?.status ? DIRECTION[direction.status] : undefined;
+  const established = direction ? direction.established === true : a.origin === "CURATED";
+  // A registry analysis that names its contrast and whose sign also agrees with the arm values is both: say so.
+  const registryNamed = a.direction_basis === "REGISTRY_GROUP_DESCRIPTION" && direction?.status === "VERIFIED_AGAINST_ARM_VALUES";
+  const label = !established ? "Not established" : registryNamed ? "Registry-stated and arm-confirmed" : (known?.label ?? "Established");
+  const mark = registryNamed ? "rv" : (known?.mark ?? (established ? "s" : "n"));
+  const basis = `${label}: ${direction?.basis ?? (established ? "Direction as curated from the cited source (treatment relative to comparator); the quoted source text is the authority." : "The direction of this contrast is not established.")}${registryNamed ? " The registry analysis also names the contrast in its group description." : ""}`;
+  if (!established) return { expression: `${treatment} and ${a.comparator_label} (which group is the reference is not established)`, mark, label, basis, established: false };
   const kind = contrastKind(a);
-  if (!a.comparator_label) return { expression: `${treatment}; comparator not stated`, mark: "‡", basis: "The source does not name the comparator, so the direction of this contrast is not on record.", established: false };
-  if (kind === "other") return { expression: `${treatment} vs ${a.comparator_label}`, mark: "§", basis: "The parameter is named neither a difference nor a ratio, so no direction of subtraction or division is asserted here.", established: false };
-  // The API says whether "treatment relative to comparator" is established for this analysis (stated by the source, or
-  // confirmed by the stored arm-level values) and why not when it is not. When it is not, no subtraction or division
-  // is written out: the two groups are named and the reason is given.
-  const direction = a.direction as { established?: boolean; status?: string; basis?: string } | null | undefined;
-  if (direction && direction.established === false) {
-    const mark = ({ CONTRADICTED_BY_ARM_VALUES: "d", CONVENTION_NOT_VERIFIED: "e", REGISTRY_ORDER_NOT_VERIFIED: "c", NOT_AVAILABLE: "‡" } as Record<string, string>)[direction.status ?? ""] ?? "d";
-    return { expression: `${treatment} and ${a.comparator_label} (which group is the reference is not established)`, mark, basis: direction.basis ?? "The direction of this contrast is not established.", established: false };
+  if (kind === "other") {
+    const why = a.effect_scale?.basis ?? "The parameter is named neither a difference nor a ratio.";
+    return { expression: `${treatment} vs ${a.comparator_label} (no subtraction or division asserted)`, mark: `${mark}§`, label, basis: `${basis} ${why}`, established: true };
   }
-  const expression = kind === "ratio" ? `${treatment} ÷ ${a.comparator_label}` : `${treatment} − ${a.comparator_label}`;
-  if (a.origin === "CURATED") return { expression, mark: "a", basis: "Direction as curated from the cited source (treatment relative to comparator); the quoted source text is the authority.", established: true };
-  if (direction?.status === "STATED_BY_REGISTRY") return { expression, mark: "r", basis: direction.basis ?? "The registry analysis names the contrast.", established: true };
-  if (/does not state which group is the reference/i.test(a.comment ?? "")) return { expression, mark: "c", basis: "The registry does not say which group is the reference: the groups are in registry order and the sign may be the reverse.", established: false };
-  return { expression, mark: "b", basis: "Reference arm identified by its role in the trial (placebo or active comparator); the registry posts the estimate without stating the direction.", established: true };
+  return { expression: kind === "ratio" ? `${treatment} ÷ ${a.comparator_label}` : `${treatment} − ${a.comparator_label}`, mark, label, basis, established: true };
 }
 
 /** The unit printed beside a between-arm estimate: a ratio has none, a difference of percentages is in percentage points. */

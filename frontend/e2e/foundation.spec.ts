@@ -52,18 +52,35 @@ test("every route has its own document title and exactly one page heading", asyn
   }
 });
 
+/**
+ * Measured once the page has finished loading — after the network is idle and no placeholder is left, so panels
+ * that render late (a risk contrast, a chart) are included — and again in every tab state of the page.
+ */
+async function sidewaysOverflow(page: Page): Promise<number> {
+  await page.waitForLoadState("networkidle");
+  await settled(page);
+  await page.waitForLoadState("networkidle");
+  return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+}
+
 for (const viewport of [
+  { name: "narrow phone", width: 320, height: 640 },
   { name: "phone", width: 390, height: 844 },
   { name: "tablet", width: 834, height: 1112 },
 ]) {
-  test(`no route scrolls sideways at ${viewport.name} width`, async ({ page }) => {
-    test.setTimeout(180_000);
+  test(`no route scrolls sideways at ${viewport.name} width, in any tab`, async ({ page }) => {
+    test.setTimeout(420_000);
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     for (const [path] of ROUTES) {
-      await page.goto(path);
-      await settled(page);
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-      expect(overflow, `horizontal overflow on ${path} at ${viewport.width}px`).toBeLessThanOrEqual(1);
+      await page.goto(path, { waitUntil: "networkidle" });
+      expect(await sidewaysOverflow(page), `horizontal overflow on ${path} at ${viewport.width}px`).toBeLessThanOrEqual(1);
+      const tabs = page.getByRole("tab");
+      const names = await tabs.allInnerTexts();
+      for (const [i, name] of names.entries()) {
+        if ((await tabs.nth(i).getAttribute("aria-selected")) === "true") continue;
+        await tabs.nth(i).click();
+        expect(await sidewaysOverflow(page), `horizontal overflow on ${path}, tab "${name.trim()}", at ${viewport.width}px`).toBeLessThanOrEqual(1);
+      }
     }
   });
 }

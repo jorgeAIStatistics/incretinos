@@ -25,7 +25,8 @@ import {
   TierBadge,
   VerificationBadge,
 } from "@/components/ui";
-import { day, fmt, useApi, useDebounced, withQuery } from "@/lib/api";
+import { day, useApi, useDebounced, withQuery } from "@/lib/api";
+import { reportedText, withUnit } from "@/lib/rows";
 import { formatCount } from "@/lib/format";
 import { useMediaQuery, useQueryParams } from "@/lib/hooks";
 import { usePagedList } from "@/lib/paging";
@@ -148,7 +149,7 @@ function SourceDetail({ id, headingLevel }: { id: number; headingLevel: 2 | 3 })
                           <td className="whitespace-nowrap">{f.study}</td>
                           <td className="min-w-[120px]">{f.arm}</td>
                           <td className="min-w-[220px]">{f.endpoint}</td>
-                          <td className="r">{f.value === null || f.value === undefined ? <Missing /> : <Link href={`/compare?a=${f.result_id}`}>{fmt(f.value)}</Link>}</td>
+                          <td className="r">{f.value === null || f.value === undefined ? <Missing /> : <Link href={`/compare?a=${f.result_id}`}>{withUnit(reportedText(f.value, f.value_text), f.unit)}</Link>}{f.value != null && !f.unit ? <span className="block text-caption text-ink-3">unit on the result page</span> : null}</td>
                           <td><VerificationBadge status={f.verification_status} compact /></td>
                         </tr>
                       ))}

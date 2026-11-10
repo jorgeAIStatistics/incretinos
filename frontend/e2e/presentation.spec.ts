@@ -35,7 +35,14 @@ const estimandText = (f: any): string => `${ESTIMAND[f.estimand_label]}${String(
 const weekText = (f: any): string => (f.timepoint_weeks != null ? `week ${num(f.timepoint_weeks)}` : "time point not stated");
 /** Estimand · evidence tier · time point (· baseline) (· sub-measure of the endpoint): what a caption and every row under it must say. */
 const basisText = (f: any): string => [estimandText(f), f.source?.tier_label, weekText(f), f.baseline_definition ? `from ${f.baseline_definition}` : null, f.class_title || null].filter(Boolean).join(" · ");
-const basisKey = (f: any): string => [f.endpoint_id, f.class_title ?? "", f.estimand_label, f.estimand_basis, f.tier, f.source?.id, f.timepoint_weeks, f.baseline_definition ?? "", f.unit].join("|");
+/**
+ * The measure a row reports: category, endpoint title as text and responder threshold. Not the stored endpoint record:
+ * one source table can be stored as several records (the control arm apart from the active arms), and its rows belong together.
+ */
+const measure = (f: any): string => [f.category, String(f.endpoint_title ?? "").trim().replace(/\s+/g, " ").toLowerCase(), f.threshold ?? ""].join("~");
+const basisKey = (f: any): string => [measure(f), f.class_title ?? "", f.estimand_label, f.estimand_basis, f.tier, f.source?.id, f.timepoint_weeks, f.baseline_definition ?? "", f.unit].join("|");
+/** A percent change, as opposed to a share of participants or any other unit. Written out here, independently of the page's code. */
+const isPercentChange = (unit: string | null | undefined): boolean => /^(%|percent(age)? change)$/i.test((unit ?? "").trim());
 const partition = (findings: any[]): any[][] => {
   const sets = new Map<string, any[]>();
   for (const f of findings) sets.set(basisKey(f), [...(sets.get(basisKey(f)) ?? []), f]);
@@ -43,7 +50,8 @@ const partition = (findings: any[]): any[][] => {
 };
 const weightSets = (study: any): any[][] =>
   // Arm-level values of the headline endpoint. Evidence rejected in review is never charted.
-  partition(study.endpoint_groups.filter((g: any) => g.category === "WEIGHT_PCT_CHANGE").flatMap((g: any) => g.results).filter((r: any) => r.scope === "ARM" && r.value != null && !r.is_pooled && r.verification_status !== "REJECTED"));
+  // A row filed under this endpoint in another unit (a share of participants) is never plotted as weight change.
+  partition(study.endpoint_groups.filter((g: any) => g.category === "WEIGHT_PCT_CHANGE").flatMap((g: any) => g.results).filter((r: any) => r.scope === "ARM" && r.value != null && !r.is_pooled && r.verification_status !== "REJECTED" && isPercentChange(r.unit)));
 /**
  * The select or input whose label starts with this text. Labels are tied to their control by id (the shared form fields
  * no longer wrap the control, so a label's text is its own and not its options'), and the control is found through its
@@ -98,7 +106,7 @@ test("WEB-09: the smallest reported value in the dataset appears in full on its 
   const tiny = all.rows.find((f: any) => f.value != null && f.value !== 0 && Math.abs(f.value) < 0.005);
   expect(tiny, "a stored non-zero value below 0.005").toBeTruthy();
   await page.goto(`/trials/${tiny.nct_id}`);
-  const group = page.locator(`[data-testid="endpoint-group"][data-endpoint-id="${tiny.endpoint_id}"]`);
+  const group = page.locator(`[data-testid="endpoint-group"][data-endpoint-ids~="${tiny.endpoint_id}"]`);
   await openGroup(group);
   const cell = group.locator(`[data-result-id="${tiny.result_id}"]`).getByTestId("result-value");
   await expect(cell).toContainText(num(tiny.value));
@@ -115,7 +123,7 @@ test("WEB-02: every reported value carries its unit and every contrast says what
   // A weight endpoint in kilograms: the unit is beside the value and the standard error.
   const kg = study.endpoint_groups.find((g: any) => g.results.some((r: any) => r.value != null && /^kilograms?( \(kg\))?$|^kg$/i.test(r.unit ?? "")));
   expect(kg, "an endpoint reported in kilograms").toBeTruthy();
-  const kgGroup = page.locator(`[data-endpoint-id="${kg.endpoint_id}"]`);
+  const kgGroup = page.locator(`[data-endpoint-ids~="${kg.endpoint_id}"]`);
   await openGroup(kgGroup);
   for (const r of kg.results.filter((x: any) => x.value != null)) {
     const row = kgGroup.locator(`[data-result-id="${r.result_id}"]`);
@@ -127,7 +135,7 @@ test("WEB-02: every reported value carries its unit and every contrast says what
   for (const [pattern, symbol] of [[/mmHg/, "mmHg"], [/centimeters/, "cm"], [/mg\/dL/, "mg/dL"], [/^Percentage of Participants$/, "% of participants"], [/^percent change$/, "%"]] as [RegExp, string][]) {
     const g = study.endpoint_groups.find((x: any) => x.results.some((r: any) => r.value != null && pattern.test(r.unit ?? "")));
     expect(g, `an endpoint in ${symbol}`).toBeTruthy();
-    const group = page.locator(`[data-endpoint-id="${g.endpoint_id}"]`);
+    const group = page.locator(`[data-endpoint-ids~="${g.endpoint_id}"]`);
     await openGroup(group);
     const r = g.results.find((x: any) => x.value != null);
     await expect(group.locator(`[data-result-id="${r.result_id}"]`).getByTestId("result-value")).toContainText(symbol.startsWith("%") ? `${num(r.value)}${symbol}` : `${num(r.value)} ${symbol}`);
@@ -138,20 +146,23 @@ test("WEB-02: every reported value carries its unit and every contrast says what
   const ratios = study.endpoint_groups.find((g: any) => g.analyses.some((a: any) => /odds ratio/i.test(a.param_type) && a.ci_low != null));
   expect(differences && ratios, "analyses reported as a difference and as a ratio").toBeTruthy();
   for (const g of [differences, ratios]) {
-    const group = page.locator(`[data-endpoint-id="${g.endpoint_id}"]`);
+    const group = page.locator(`[data-endpoint-ids~="${g.endpoint_id}"]`);
     await openGroup(group);
-    const rows = group.getByTestId("analysis-row");
-    await expect(rows).toHaveCount(g.analyses.length);
-    for (const [i, a] of g.analyses.entries()) {
-      const ratio = /ratio/i.test(a.param_type);
+    for (const a of g.analyses) {
+      const row = group.locator(`[data-testid="analysis-row"][data-analysis-id="${a.id}"]`);
+      // Difference or ratio exactly as the API's effect scale says.
+      if (a.effect_scale.scale === "NOT_ESTABLISHED") continue; // covered by the FE-1 test below
+      const ratio = a.effect_scale.scale === "RATIO";
       // The operands are written as a subtraction or division only when the API says the direction is established
       // (stated by the source or confirmed by the stored arm values); otherwise the two groups are named without one.
       const established = a.direction?.established !== false;
-      await expect(rows.nth(i).getByTestId("contrast-direction")).toContainText(
+      await expect(row.getByTestId("contrast-direction")).toContainText(
         established ? `${ratio ? "Ratio" : "Difference"}: ${a.treatment_label} ${ratio ? "÷" : "−"} ${a.comparator_label}` : `${ratio ? "Ratio" : "Difference"}: ${a.treatment_label} and ${a.comparator_label} (which group is the reference is not established)`,
       );
-      if (!established) await expect(rows.nth(i).getByTestId("contrast-direction")).not.toContainText(` ${ratio ? "÷" : "−"} ${a.comparator_label}`);
-      const estimate = rows.nth(i).getByTestId("analysis-estimate");
+      if (!established) await expect(row.getByTestId("contrast-direction")).not.toContainText(` ${ratio ? "÷" : "−"} ${a.comparator_label}`);
+      // How the direction is known is printed exactly as the API states it.
+      await expect(group.getByTestId("contrast-notes")).toContainText(a.direction.basis);
+      const estimate = row.getByTestId("analysis-estimate");
       await expect(estimate).toContainText(ratio ? `${num(a.estimate)} (ratio, no unit)` : `${num(a.estimate)} percentage points`);
       if (a.ci_low != null) await expect(estimate).toContainText(`${num(a.ci_level)}% CI ${num(a.ci_low)} to ${num(a.ci_high)}${ratio ? "" : " percentage points"}`);
       // The estimate and its confidence level are separate words: "−10.79" followed by "95% CI" must not read "−10.795%".
@@ -161,7 +172,8 @@ test("WEB-02: every reported value carries its unit and every contrast says what
     // How the direction is known is stated once per table.
     await expect(group.getByTestId("contrast-notes").locator("li").first()).toBeVisible();
   }
-  await expect(page.locator(`[data-endpoint-id="${differences.endpoint_id}"]`).getByTestId("contrast-notes")).toContainText("the registry posts the estimate without stating the direction");
+  // FE-1: no sentence claims the registry left the direction unstated when the API says it was confirmed or stated.
+  await expect(page.locator(`[data-endpoint-ids~="${differences.endpoint_id}"]`).getByTestId("contrast-notes")).not.toContainText("the registry posts the estimate without stating the direction");
 });
 
 test("WEB-02: a posted confidence level that is not a level is named as invalid, not printed as one", async ({ page, request }) => {
@@ -172,29 +184,57 @@ test("WEB-02: a posted confidence level that is not a level is named as invalid,
     return;
   }
   await page.goto(`/trials/${odd.nct_id}`);
-  const group = page.locator(`[data-endpoint-id="${odd.endpoint_id}"]`);
+  const group = page.locator(`[data-endpoint-ids~="${odd.endpoint_id}"]`);
   await openGroup(group);
-  const study = await json(request, `/studies/${odd.nct_id}`);
-  const index = study.endpoint_groups.find((g: any) => g.endpoint_id === odd.endpoint_id).analyses.findIndex((a: any) => a.id === odd.id);
-  const estimate = group.getByTestId("analysis-row").nth(index).getByTestId("analysis-estimate");
+  const estimate = group.locator(`[data-testid="analysis-row"][data-analysis-id="${odd.id}"]`).getByTestId("analysis-estimate");
   await expect(estimate).toContainText(`level posted by the source as ${num(odd.ci_level)}%, which is not a valid confidence level`);
   await expect(estimate).toContainText(`${num(odd.ci_low)} to ${num(odd.ci_high)}`); // the limits themselves are still shown as posted
   expect(await estimate.innerText()).not.toContain(`${num(odd.ci_level)}% CI`);
 });
 
-test("WEB-02: an estimate recorded as a ratio is presented as a ratio whatever its parameter is called", async ({ page, request }) => {
+test("FE-1: an estimate the API does not establish as a difference or a ratio is written as neither", async ({ page, request }) => {
   const analyses = (await json(request, "/analyses?limit=1500")).rows;
-  const ratio = analyses.find((a: any) => a.unit === "ratio" && !/ratio/i.test(a.param_type ?? "") && a.estimate != null && a.comparator_label);
-  expect(ratio, "an analysis whose unit is 'ratio' but whose parameter name does not say so").toBeTruthy();
-  const study = await json(request, `/studies/${ratio.nct_id}`);
-  const index = study.endpoint_groups.find((g: any) => g.endpoint_id === ratio.endpoint_id).analyses.findIndex((a: any) => a.id === ratio.id);
-  await page.goto(`/trials/${ratio.nct_id}`);
-  const group = page.locator(`[data-endpoint-id="${ratio.endpoint_id}"]`);
+  // For example a parameter named "Estimated treatment difference" with its unit recorded as "ratio" (bioequivalence).
+  const odd = analyses.find((a: any) => a.effect_scale?.scale === "NOT_ESTABLISHED" && a.unit === "ratio" && a.estimate != null && a.comparator_label);
+  expect(odd, "an analysis whose scale the API calls not established").toBeTruthy();
+  await page.goto(`/trials/${odd.nct_id}`);
+  const group = page.locator(`[data-endpoint-ids~="${odd.endpoint_id}"]`);
   await openGroup(group);
-  const row = group.getByTestId("analysis-row").nth(index);
-  await expect(row.getByTestId("contrast-direction")).toContainText(`Ratio: ${ratio.treatment_label} ÷ ${ratio.comparator_label}`);
-  await expect(row.getByTestId("contrast-direction")).not.toContainText("Difference");
-  await expect(row.getByTestId("analysis-estimate")).toContainText(`${num(ratio.estimate)} (ratio, no unit)`);
+  const row = group.locator(`[data-testid="analysis-row"][data-analysis-id="${odd.id}"]`);
+  const direction = row.getByTestId("contrast-direction");
+  await expect(direction).toContainText("Contrast (difference or ratio not established)");
+  await expect(direction).toContainText(`${odd.treatment_label} vs ${odd.comparator_label}`);
+  await expect(direction).not.toContainText("÷");
+  await expect(direction).not.toContainText(` − ${odd.comparator_label}`);
+  await expect(direction).not.toContainText("Ratio:");
+  await expect(row.getByTestId("analysis-estimate")).not.toContainText("ratio, no unit");
+  // The API's own reason is printed in the notes.
+  await expect(group.getByTestId("contrast-notes")).toContainText(odd.effect_scale.basis);
+});
+
+test("FE-1: the direction basis is printed as the API states it — registry-stated, arm-confirmed or not established", async ({ page, request }) => {
+  const study = await json(request, "/studies/NCT05616013"); // BELIEVE: the registry names its contrasts and the arm values confirm their sign
+  const analyses = study.endpoint_groups.flatMap((g: any) => g.analyses.map((a: any) => ({ ...a, group: g })));
+  const both = analyses.find((a: any) => a.direction_basis === "REGISTRY_GROUP_DESCRIPTION" && a.direction?.status === "VERIFIED_AGAINST_ARM_VALUES");
+  expect(both, "a registry-named contrast confirmed by arm values").toBeTruthy();
+  await page.goto("/trials/NCT05616013");
+  const group = page.locator(`[data-endpoint-ids~="${both.endpoint_id}"]`);
+  await openGroup(group);
+  const row = group.locator(`[data-testid="analysis-row"][data-analysis-id="${both.id}"]`);
+  await expect(row.getByTestId("contrast-direction")).toContainText("direction: registry-stated and arm-confirmed");
+  const notes = group.getByTestId("contrast-notes");
+  await expect(notes).toContainText(both.direction.basis);
+  await expect(notes).not.toContainText("without stating the direction");
+
+  // On the comparison page the same analysis prints the same basis, once.
+  const arms = study.endpoint_groups.find((g: any) => g.endpoint_id === both.endpoint_id).results;
+  const a = arms.find((r: any) => r.arm_id === both.treatment_arm_id && r.estimand_label === both.estimand_label);
+  const b = arms.find((r: any) => r.arm_id === both.comparator_arm_id && r.estimand_label === both.estimand_label);
+  if (a && b) {
+    await page.goto(`/compare?a=${a.result_id}&b=${b.result_id}`);
+    const reported = page.getByTestId("reported-analysis").filter({ hasText: both.direction.basis });
+    await expect(reported.first().getByTestId("direction-basis")).toContainText("Registry-stated and arm-confirmed");
+  }
 });
 
 /* ------------------------------------------------------------------ WEB-01 */
@@ -259,9 +299,11 @@ test("WEB-01: no trial page mixes estimands, tiers, sources or time points in it
   const studies = (await json(request, "/studies")).rows; // list endpoints answer {total, limit, offset, rows}
   let mixed = 0;
   let subMeasures = 0;
+  let storedSubMeasures = 0;
   for (const s of studies.filter((x: any) => x.n_results > 0)) {
     const sets = weightSets(await json(request, `/studies/${s.nct_id}`));
     if (sets.length < 2) continue;
+    storedSubMeasures += sets.filter((set) => set[0].class_title).length;
     mixed += 1;
     await page.goto(`/trials/${s.nct_id}`);
     const hero = page.getByTestId("hero-chart");
@@ -280,18 +322,24 @@ test("WEB-01: no trial page mixes estimands, tiers, sources or time points in it
     expect(seen.size, `${s.display_name}: every stored set can be shown`).toBe(sets.length);
   }
   expect(mixed, "trials that report percent weight change on more than one basis").toBeGreaterThanOrEqual(8);
-  expect(subMeasures, "sets that are one sub-measure of an endpoint").toBeGreaterThan(0);
+  // Every stored sub-measure set (a percent change reported for a subgroup or period of one endpoint) was shown alone.
+  expect(subMeasures, "sets that are one sub-measure of an endpoint").toBe(storedSubMeasures);
 });
 
 test("WEB-01: the benefit–risk chart gives each estimand, tier, source and time point its own panel", async ({ page, request }) => {
   for (const nct of ["NCT05929066", "NCT05616013", "NCT05869903", "NCT06603571"]) {
     const profile = await json(request, `/benefit-risk/${nct}`);
-    const arms = profile.arms.filter((a: any) => a.efficacy.weight_pct);
+    // Only percent changes are drawn as weight change; a share of participants (a responder proportion) never is.
+    const arms = profile.arms.filter((a: any) => a.efficacy.weight_pct && isPercentChange(a.efficacy.weight_pct.unit));
+    const otherUnit = profile.arms.filter((a: any) => a.efficacy.weight_pct && !isPercentChange(a.efficacy.weight_pct.unit));
     const basis = (a: any) => { const e = a.efficacy.weight_pct; return [e.estimand_label, e.estimand_basis, e.tier, e.source?.id, e.timepoint_weeks, e.unit].join("|"); };
     await page.goto(`/benefit-risk?nct=${nct}`);
     await page.waitForLoadState("networkidle");
     const chart = page.getByTestId("efficacy-chart");
     await expect(chart.getByTestId("chart-row")).toHaveCount(arms.length);
+    if (otherUnit.length) await expect(page.getByTestId("efficacy-other-unit")).toContainText(`${otherUnit.length} arm`);
+    else await expect(page.getByTestId("efficacy-other-unit")).toHaveCount(0);
+    if (!arms.length) continue;
     const facets = chart.getByTestId("chart-facet");
     const count = await facets.count();
     expect(count, `${nct}: at least one panel per reported basis`).toBeGreaterThanOrEqual(new Set(arms.map(basis)).size);
@@ -494,7 +542,7 @@ test("WEB-05: arm roles come from data — semaglutide arms are active comparato
   const contrast = events.getByTestId("risk-contrast");
   await expect(contrast).toContainText("No arm in this table is recorded as a placebo arm");
   await expect(field(contrast, "Arm B (reference)")).toHaveValue("");
-  await expect(contrast.getByRole("button", { name: /Calculate risk difference/ })).toBeDisabled();
+  await expect(contrast.getByRole("button", { name: "Calculate the risk contrast" })).toBeDisabled();
 
   // A trial with one placebo arm: it is the default reference, and the result names both operands.
   const surmount = (await json(request, "/safety/trial-ae?nct=NCT04184622&measure_kind=PARTICIPANTS_WITH_EVENT&term=Nausea")).rows.filter((r: any) => r.term === "Nausea" && r.scope === "ARM" && !r.is_serious);
@@ -507,7 +555,7 @@ test("WEB-05: arm roles come from data — semaglutide arms are active comparato
   await expect(field(contrast, "Arm B (reference)")).toHaveValue(String(placebo[0].id));
   const armA = surmount.filter((r: any) => r.arm_role === "STUDY_DRUG").sort((x: any, y: any) => (x.arm_dose_amount ?? Infinity) - (y.arm_dose_amount ?? Infinity)).pop(); // highest studied dose
   await expect(field(contrast, "Arm A")).toHaveValue(String(armA.id));
-  await contrast.getByRole("button", { name: "Calculate risk difference (A − B) and risk ratio (A ÷ B)" }).click();
+  await contrast.getByRole("button", { name: "Calculate the risk contrast" }).click();
   const outcome = events.getByTestId("risk-contrast-result");
   await expect(outcome).toContainText(`Risk difference, ${armA.arm_label} − ${placebo[0].arm_label}:`);
   await expect(outcome).toContainText("percentage points");
@@ -524,7 +572,7 @@ test("WEB-08: mandatory qualifiers are all visible on every result row", async (
   expect(groups.length, "groups with rows that carry more than three qualifiers").toBeGreaterThan(0);
   await page.goto("/trials/NCT04881760");
   for (const g of groups) {
-    const group = page.locator(`[data-endpoint-id="${g.endpoint_id}"]`);
+    const group = page.locator(`[data-endpoint-ids~="${g.endpoint_id}"]`);
     await openGroup(group);
     for (const f of g.results) {
       const row = group.locator(`[data-result-id="${f.result_id}"]`);

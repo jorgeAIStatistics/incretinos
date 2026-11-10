@@ -213,6 +213,9 @@ export type DependentFinding = {
   arm: string;
   endpoint: string;
   value: number | null;
+  /** Sent by newer API versions: the value's unit and the source's own text for it. */
+  unit?: string | null;
+  value_text?: string | null;
   verification_status: string;
   locator_quote: string | null;
   source_location: string | null;
@@ -297,6 +300,15 @@ export type Finding = {
   statement: string;
   /** Present on list responses: an interval calculated here from a reported standard error. An inference, not a reported value. */
   derived_interval?: { ci_low: number; ci_high: number; display?: string } | null;
+  /** The source's own text for `value` ("−25.0"), where the API provides it. Printed in place of the number when it denotes the same number. */
+  value_text?: string | null;
+  /** Responder threshold and sub-measure of the endpoint, where it reports several. */
+  threshold?: number | null;
+  class_title?: string | null;
+  /** The randomized arm this row belongs to, across sources and formulations ("arm:112"). */
+  arm_group_key?: string | null;
+  /** The arm's role in its trial as the API classifies it (PLACEBO, ACTIVE_COMPARATOR, STUDY_DRUG, UNCLASSIFIED), where provided. */
+  arm_role?: string | null;
 };
 
 export type FindingInterpretation = {

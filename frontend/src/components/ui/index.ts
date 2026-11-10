@@ -5,7 +5,7 @@
 export { Badge, ClassificationBadge, Hint, RegulatoryBadge, type Tone, toneOf } from "./badge";
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant, buttonClass, IconButton, LinkButton } from "./button";
 export { EpistemicBadge, Missing, Qualifiers, TierBadge, VerificationBadge, VerificationIcon } from "./evidence";
-export { NumberField, SearchField, SegmentedControl, Select, Slider, TextArea, TextField } from "./field";
+export { NumberField, SearchField, SecretField, SegmentedControl, Select, Slider, TextArea, TextField } from "./field";
 export { Callout, Disclosure, Hypothetical, KV, Meter, PageHeader, Panel, Section, Stat, StatTile } from "./layout";
 export { Drawer, Modal } from "./overlay";
 export { SourceLine, ValueCell } from "./provenance";

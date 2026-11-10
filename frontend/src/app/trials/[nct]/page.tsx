@@ -4,9 +4,9 @@ import { Download } from "lucide-react";
 import Link from "next/link";
 import { use, useState } from "react";
 import { ChartFrame, ChartTable, IntervalChart, Reported } from "@/components/charts";
-import { Badge, Callout, ErrorNote, KV, Loading, PageHeader, Panel, Qualifiers, Section, Select, SourceLine, VerificationBadge } from "@/components/ui";
+import { Badge, Callout, ErrorState, KV, Loading, PageHeader, Panel, Qualifiers, Section, Select, SourceLine, VerificationBadge } from "@/components/ui";
 import { fmt, phaseLabel, titleCase, useApi, diabetesLabel } from "@/lib/api";
-import { byRoleThenDose, contrastDirection, contrastKindLabel, contrastUnit, estimandLabel, findingRow, findingSets, isRatio, reportedText, setLabel, weekLabel, withUnit } from "@/lib/rows";
+import { byRoleThenDose, contrastDirection, contrastKindLabel, contrastUnit, estimandLabel, findingRow, findingSets, isRatio, isWeightPercentChange, reportedText, setLabel, unitLabel, weekLabel, withUnit } from "@/lib/rows";
 
 // Qualifier codes whose content this table already prints in its own column of the same row (estimand, interval, verification).
 const SHOWN_IN_OTHER_COLUMNS = ["ESTIMAND_EFFICACY", "ESTIMAND_TREATMENT_REGIMEN", "CI_NOT_REPORTED", "MACHINE_EXTRACTED", "QUOTE_ANCHORED", "PENDING_REVIEW"];
@@ -53,12 +53,42 @@ function AnalysisEstimate({ a }: { a: any }) {
   );
 }
 
+const MULTIPLICITY: Record<string, string> = { YES: "multiplicity-controlled", NO: "not multiplicity-controlled", NOT_STATED: "multiplicity control not stated" };
+const multiplicityText = (m: string | null | undefined) => MULTIPLICITY[m ?? "NOT_STATED"] ?? titleCase(m);
+
+/**
+ * One source table is sometimes stored as several endpoint records that differ only in whether multiplicity control
+ * is stated (for example the control arm apart from the active arms). Those records are shown as one group, so the
+ * control arm stays beside its active arms and no two sections look identical; the multiplicity status of each row
+ * is printed instead. Records that differ in anything else — title, category, origin, role or time frame — stay apart.
+ */
+function mergeEndpointGroups(groups: any[]): any[] {
+  const merged = new Map<string, any>();
+  for (const g of groups) {
+    const key = [String(g.title ?? "").trim().replace(/\s+/g, " ").toLowerCase(), g.category, g.origin, g.role, g.timeframe ?? ""].join("¦");
+    const into = merged.get(key);
+    if (into) {
+      into.endpoint_ids.push(g.endpoint_id);
+      into.multiplicities.push(g.multiplicity_controlled);
+      into.results = [...into.results, ...g.results.map((r: any) => ({ ...r, multiplicity_controlled: r.multiplicity_controlled ?? g.multiplicity_controlled }))];
+      into.analyses = [...into.analyses, ...g.analyses];
+    } else {
+      merged.set(key, { ...g, endpoint_ids: [g.endpoint_id], multiplicities: [g.multiplicity_controlled], results: g.results.map((r: any) => ({ ...r, multiplicity_controlled: r.multiplicity_controlled ?? g.multiplicity_controlled })) });
+    }
+  }
+  return [...merged.values()];
+}
+
 function EndpointGroup({ g, open }: { g: any; open: boolean }) {
   const [expanded, setExpanded] = useState(open);
   const directions = g.analyses.map((a: any) => contrastDirection(a));
-  const notes = Array.from(new Map<string, string>(directions.map((d: any) => [d.mark, d.basis])).entries()).sort(([x], [y]) => x.localeCompare(y));
+  // One footnote per distinct sentence; a mark is shown once even when several analyses share it.
+  const notes = Array.from(new Map<string, [string, string]>(directions.map((d: any) => [`${d.mark}|${d.basis}`, [d.mark, d.basis]])).values()).sort(([x], [y]) => x.localeCompare(y));
+  const multiplicities: string[] = Array.from(new Set<string>((g.multiplicities ?? [g.multiplicity_controlled]).map((m: string | null) => m ?? "NOT_STATED")));
+  const mixed = multiplicities.length > 1;
+  const valuesWith = (m: string) => g.results.filter((r: any) => (r.multiplicity_controlled ?? "NOT_STATED") === m).length;
   return (
-    <div className="border-b border-hairline last:border-b-0" data-testid="endpoint-group" data-endpoint-id={g.endpoint_id}>
+    <div className="border-b border-hairline last:border-b-0" data-testid="endpoint-group" data-endpoint-id={g.endpoint_id} data-endpoint-ids={(g.endpoint_ids ?? [g.endpoint_id]).join(" ")}>
       <button type="button" onClick={() => setExpanded((e) => !e)} aria-expanded={expanded} className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left hover:bg-sunken">
         <span className="min-w-0">
           <span className="block text-[13.5px] font-medium text-ink">{g.title}</span>
@@ -67,6 +97,9 @@ function EndpointGroup({ g, open }: { g: any; open: boolean }) {
             <span>{g.origin === "REGISTRY" ? "Registry-posted" : "From publication, label or release"}</span>
             {g.timeframe ? <span>· {g.timeframe}</span> : null}
             <span>· {g.results.length} values · {g.analyses.length} between-arm analyses</span>
+            <span data-testid="endpoint-multiplicity">
+              · {mixed ? `stored as ${g.endpoint_ids.length} records that differ in multiplicity control: ${multiplicities.map((m) => `${multiplicityText(m)} (${valuesWith(m)} ${valuesWith(m) === 1 ? "value" : "values"})`).join(", ")}` : multiplicityText(multiplicities[0])}
+            </span>
           </span>
         </span>
         <span aria-hidden className="mt-0.5 text-ink-3">{expanded ? "−" : "+"}</span>
@@ -81,7 +114,7 @@ function EndpointGroup({ g, open }: { g: any; open: boolean }) {
               <tbody>
                 {g.results.map((f: any) => (
                   <tr key={f.result_id} data-testid="result-row" data-result-id={f.result_id}>
-                    <td className="font-medium">{f.arm_label}{f.class_title ? <span className="block text-[11.5px] font-normal text-ink-3">{f.class_title}</span> : null}</td>
+                    <td className="font-medium">{f.arm_label}{f.class_title ? <span className="block text-[11.5px] font-normal text-ink-3">{f.class_title}</span> : null}{mixed ? <span className="block text-[11.5px] font-normal text-ink-3">{multiplicityText(f.multiplicity_controlled)}</span> : null}</td>
                     <td className="r" data-testid="result-value"><ResultValue f={f} /></td>
                     <td className="num text-ink-3"><Dispersion f={f} /></td>
                     <td className="r num">{f.n_analyzed ?? <span className="text-ink-3">n/r</span>}</td>
@@ -108,11 +141,11 @@ function EndpointGroup({ g, open }: { g: any; open: boolean }) {
                 </thead>
                 <tbody>
                   {g.analyses.map((a: any, i: number) => (
-                    <tr key={a.id} data-testid="analysis-row">
+                    <tr key={a.id} data-testid="analysis-row" data-analysis-id={a.id}>
                       <td className="font-medium">
                         {a.treatment_label} <span className="font-normal text-ink-3">vs</span> {a.comparator_label ?? "comparator not stated"}
                         <span className="block text-[12px] font-normal text-ink-2" data-testid="contrast-direction">
-                          {contrastKindLabel(a)}: {directions[i].expression} <sup>{directions[i].mark}</sup>
+                          {contrastKindLabel(a)}: {directions[i].expression} <sup>{directions[i].mark}</sup> <span className="text-ink-3">· direction: {directions[i].label.toLowerCase()}</span>
                         </span>
                         <span className="block text-[11.5px] font-normal text-ink-3">{estimandLabel(a.estimand_label, a.estimand_basis)} · {weekLabel(a.timepoint_weeks)}</span>
                       </td>
@@ -148,7 +181,10 @@ function WeightChart({ s }: { s: any }) {
   const all = groups.flatMap((g: any) => g.results);
   // Evidence a reviewer rejected is kept in the tables below for audit but is never summarised in a chart.
   const rejected = all.filter((r: any) => r.verification_status === "REJECTED").length;
-  const armLevel = all.filter((r: any) => r.scope === "ARM" && r.value != null && !r.is_pooled && r.verification_status !== "REJECTED");
+  // Only rows that are a percent change in body weight are plotted here: a share of participants filed under this
+  // endpoint (a responder proportion) is a different measure and is never drawn as weight change.
+  const otherUnit = all.filter((r: any) => r.verification_status !== "REJECTED" && !isWeightPercentChange(r)).length;
+  const armLevel = all.filter((r: any) => r.scope === "ARM" && r.value != null && !r.is_pooled && r.verification_status !== "REJECTED" && isWeightPercentChange(r));
   const sets = findingSets(armLevel);
   if (!sets.length) {
     return (
@@ -174,11 +210,12 @@ function WeightChart({ s }: { s: any }) {
     }),
     (x) => x.dose,
   ).map((x) => x.row);
-  const notPlotted = all.length - armLevel.length - rejected;
+  const notPlotted = all.length - armLevel.length - rejected - otherUnit;
   const axis = group?.category_label ? `${group.category_label.charAt(0).toUpperCase()}${group.category_label.slice(1)}` : first.endpoint_title;
   return (
     <div data-testid="hero-chart" className="min-w-0">
       <ChartFrame
+        level={2}
         title={first.endpoint_title}
         subtitle={
           <>
@@ -195,6 +232,7 @@ function WeightChart({ s }: { s: any }) {
           <span data-testid="hero-source">
             Source of every plotted value: <SourceLine source={first.source} /> · endpoint role: {titleCase(first.role)}
             {notPlotted > 0 ? <span className="block">{notPlotted} further {notPlotted === 1 ? "row" : "rows"} for this endpoint (pooled arms, ranges across arms or rows without a value) {notPlotted === 1 ? "is" : "are"} listed in the results below, not plotted.</span> : null}
+            {otherUnit > 0 ? <span className="block" data-testid="hero-other-unit">{otherUnit} {otherUnit === 1 ? "row" : "rows"} filed under this endpoint {otherUnit === 1 ? "is" : "are"} not a percent change in body weight (unit: {Array.from(new Set(all.filter((r: any) => !isWeightPercentChange(r)).map((r: any) => unitLabel(r.unit) || "not recorded"))).join(", ")}) and {otherUnit === 1 ? "is" : "are"} not plotted as weight change; {otherUnit === 1 ? "it is" : "they are"} listed below.</span> : null}
             {rejected > 0 ? <span className="block">{rejected} {rejected === 1 ? "value" : "values"} rejected in review {rejected === 1 ? "is" : "are"} not plotted; {rejected === 1 ? "it remains" : "they remain"} listed below with that status.</span> : null}
           </span>
         }
@@ -207,9 +245,17 @@ function WeightChart({ s }: { s: any }) {
 
 export default function TrialPage({ params }: { params: Promise<{ nct: string }> }) {
   const { nct } = use(params);
-  const { data: s, error, loading } = useApi(`/studies/${nct}`);
-  if (error) return <ErrorNote message={error} />;
-  if (loading || !s) return <Loading rows={9} />;
+  const study = useApi(`/studies/${nct}`);
+  const s = study.data;
+  if (study.status === "error") {
+    return (
+      <>
+        <PageHeader eyebrow={`Clinical trial · ${nct}`} title={nct} />
+        <ErrorState title="This trial could not be loaded" message={study.error ?? ""} onRetry={study.reload} />
+      </>
+    );
+  }
+  if (!s) return <Loading rows={9} />;
   const primaryPub = s.publications.find((p: any) => p.relation === "PRIMARY_RESULTS");
   return (
     <>
@@ -249,7 +295,7 @@ export default function TrialPage({ params }: { params: Promise<{ nct: string }>
 
       <Section title="Reported results" hint="Grouped by endpoint. Registry-posted and publication-reported values are kept as separate rows even when they describe the same arm. Every value is shown with its unit, as reported.">
         <div className="rounded-lg border border-hairline bg-surface">
-          {s.endpoint_groups.length ? s.endpoint_groups.map((g: any, i: number) => <EndpointGroup key={g.endpoint_id} g={g} open={i === 0} />) : <p className="px-4 py-3 text-[13px] text-ink-3">No results stored.</p>}
+          {s.endpoint_groups.length ? mergeEndpointGroups(s.endpoint_groups).map((g: any, i: number) => <EndpointGroup key={g.endpoint_id} g={g} open={i === 0} />) : <p className="px-4 py-3 text-[13px] text-ink-3">No results stored.</p>}
         </div>
       </Section>
 
