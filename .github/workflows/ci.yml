@@ -174,15 +174,15 @@ jobs:
         run: npm run typecheck && npm run lint && npm run build
       - working-directory: frontend
         run: npx playwright install --with-deps chromium
-      - name: Browser tests (workflows, design foundation, scientific presentation, review fixes, evidence review workbench, full-text evidence; each fails on any browser-console error)
+      - name: Browser tests (workflows, design foundation, scientific presentation, review fixes, evidence review workbench, full-text evidence, source conflicts; each fails on any browser-console error)
         working-directory: frontend
         # Named explicitly so that a removed or renamed spec file fails the step instead of silently running fewer tests.
-        run: npx playwright test e2e/workflows.spec.ts e2e/foundation.spec.ts e2e/presentation.spec.ts e2e/review-fixes.spec.ts e2e/review.spec.ts e2e/fulltext.spec.ts
+        run: npx playwright test e2e/workflows.spec.ts e2e/foundation.spec.ts e2e/presentation.spec.ts e2e/review-fixes.spec.ts e2e/review.spec.ts e2e/fulltext.spec.ts e2e/conflicts.spec.ts
       - name: The same browser tests against the production build (standalone server, production Content-Security-Policy)
         working-directory: frontend
         env:
           E2E_WEB: production
-        run: npx playwright test e2e/workflows.spec.ts e2e/foundation.spec.ts e2e/presentation.spec.ts e2e/review-fixes.spec.ts e2e/review.spec.ts e2e/fulltext.spec.ts
+        run: npx playwright test e2e/workflows.spec.ts e2e/foundation.spec.ts e2e/presentation.spec.ts e2e/review-fixes.spec.ts e2e/review.spec.ts e2e/fulltext.spec.ts e2e/conflicts.spec.ts
       - name: Keep the traces and the seed log when a browser test fails
         if: failure()
         uses: actions/upload-artifact@v4

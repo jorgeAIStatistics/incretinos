@@ -303,6 +303,18 @@ export type RelatedRow = {
   values?: Record<string, unknown>;
 };
 
+/** How a row compares with other sources reporting the same quantity (backend engines/conflicts.py). */
+export type SourceConflict = {
+  group_id: string | null;
+  class: string | null;
+  class_label: string | null;
+  group_class?: string | null;
+  group_class_label?: string | null;
+  href: string | null;
+  explanation: string;
+  comparisons: { evidence_type: string; id: number; evidence_key: string | null; tier: string | null; value_printed: string | null; class: string; class_label: string; explanation: string; explains: string[]; missing: string[] }[];
+};
+
 export type CheckFlag = { code: string; severity: string; explanation: string; fields?: string[] };
 export type AuditEntry = { id: number; at: string; actor: string; action: string; detail?: Record<string, unknown> };
 
@@ -353,6 +365,7 @@ export type EvidenceDetail = {
   estimand?: EstimandBlock | null;
   related_analyses?: RelatedRow[];
   same_quantity_other_sources?: RelatedRow[];
+  source_conflict?: SourceConflict | null;
   check_flags?: CheckFlag[];
   risk_level?: string | null;
   identity_collision?: { level: number; explanation?: string | null } | null;

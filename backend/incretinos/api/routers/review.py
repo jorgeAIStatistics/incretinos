@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from ...config import ReviewerIdentity
 from ...db import get_db, rejected_visible
+from ...engines.conflicts import conflict_for_row
 from ...review import queries
 from ...review.lifecycle import (
     REASON_TEXT,
@@ -358,6 +359,30 @@ class RelatedRow(_Out):
     values: dict[str, Any] = {}
 
 
+class ConflictPairOut(_Out):
+    evidence_type: str
+    id: int
+    evidence_key: str | None = None
+    tier: str | None = None
+    value_printed: str | None = None
+    conflict_class: str = Field(alias="class")
+    class_label: str
+    explanation: str
+    explains: list[str] = []
+    missing: list[str] = []
+
+
+class SourceConflictOut(_Out):
+    group_id: str | None = None
+    conflict_class: str | None = Field(None, alias="class", description="This row's own classification: the most action-requiring class among its comparisons.")
+    class_label: str | None = None
+    group_class: str | None = None
+    group_class_label: str | None = None
+    href: str | None = None
+    explanation: str
+    comparisons: list[ConflictPairOut] = []
+
+
 class CheckFlagOut(_Out):
     code: str
     severity: str
@@ -477,6 +502,7 @@ class EvidenceDetail(_Out):
     estimand: EstimandBlock | None = None
     related_analyses: list[RelatedRow] = []
     same_quantity_other_sources: list[RelatedRow] = []
+    source_conflict: SourceConflictOut | None = Field(None, description="How this row's values compare with other sources reporting the same quantity (engines.conflicts); null when no other source does.")
     check_flags: list[CheckFlagOut] = []
     risk_level: str
     identity_collision: IdentityCollision | None = None
@@ -657,8 +683,12 @@ def list_evidence(
 
 
 def _detail(db: Session, evidence_type: str, row: Any) -> dict[str, Any]:
+    # The conflict classification is computed first, outside the inspection block, so it sees the evidence as every
+    # analytic surface does: a rejected or held row never takes part in it.
+    conflict = conflict_for_row(db, evidence_type, row)
     with rejected_visible(db):  # the dossier lists related and competing rows whatever their status
         detail = queries.evidence_detail(db, evidence_type, row)
+    detail["source_conflict"] = conflict
     detail["correctable_fields"] = sorted(queries.identity.flatten(detail["snapshot"]))
     return detail
 

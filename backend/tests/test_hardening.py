@@ -39,6 +39,7 @@ from incretinos.db import (
     make_engine,
     request_may_write,
 )
+from incretinos.engines import conflicts
 from incretinos.ingestion.pipeline import Pipeline
 from incretinos.ingestion.transport import FixtureTransport
 from incretinos.models import (
@@ -168,6 +169,8 @@ def samples(seeded) -> dict:
             "item": session.scalar(select(ReviewQueueItem.id).order_by(ReviewQueueItem.id).limit(1)),
             "ae_a": nausea["15 mg Tirzepatide"],
             "ae_b": nausea["Placebo"],
+            # A source-conflict group (ATTAIN-1, 36 mg, week 72): its identifier is derived from the natural key, not row ids.
+            "group": conflicts.all_groups(session, [session.scalar(select(Study.id).where(Study.nct_id == "NCT05869903"))])[0].group_id,
         }
     finally:
         session.close()
@@ -177,7 +180,9 @@ def samples(seeded) -> dict:
 def _path_values(samples: dict) -> dict[str, object]:
     return {"nct": "NCT04184622", "slug": "tirzepatide", "result_id": samples["a"], "analysis_id": samples["analysis"], "source_id": samples["source"], "gap_id": samples["gap"], "item_id": samples["item"],
             # The evidence review router: one stored result, addressed by row id and by its evidence key.
-            "evidence_type": "result", "row_id": samples["a"], "evidence_key": samples["a_key"]}
+            "evidence_type": "result", "row_id": samples["a"], "evidence_key": samples["a_key"],
+            # The source-conflict router: one group of rows from several sources.
+            "group_id": samples.get("group", "NCT00000000-0000000000000000")}
 
 
 def _query_samples(samples: dict) -> dict[str, dict[str, object]]:
@@ -418,6 +423,7 @@ LIST_ENDPOINTS: dict[str, dict[str, object]] = {
     "/api/review-queue": {"status": ""},
     "/api/safety/trial-ae": {"nct": "NCT04184622"},
     "/api/safety/terms": {"nct": "NCT04184622"},
+    "/api/conflicts": {},
 }
 # The only responses that are a bare JSON array: fixed lists written in the code, not rows from the database.
 FIXED_LISTS = {"/api/compare/presets", "/api/assistant/examples"}
