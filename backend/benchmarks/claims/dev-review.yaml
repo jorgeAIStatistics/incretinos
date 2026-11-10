@@ -1,0 +1,514 @@
+# Development benchmark: the independent reviewer's adversarial sentences (incretinos benchmark-claims --set dev-review).
+#
+# Origin. Session 2 review of the merged claim verifier (claims.json, findings F01-F22). The reviewer attacked the
+# verifier with sentences that are in neither dev.yaml nor heldout.yaml and reproduced the findings with them. Those
+# sentences are collected here, in the shared case format, AFTER the attack: this is development data, not a measure of
+# generalisation. Ids keep the reviewer's own labels (a11, a43b, v13, postneg1 ...) after the "rv-" prefix.
+#
+# Wording. Where claims.json quotes a sentence in full it is kept verbatim. Where it abbreviates a sentence ("..."), the
+# missing words were completed from the evidence it cites and the note says "reconstructed"; the error the reviewer
+# introduced is kept exactly. Cases marked "constructed" are not the reviewer's: they are controls written with this file
+# (the faithful form of an attack, or one more instance of the same error class), and say so in their note.
+#
+# A sentence field may hold up to three sentences; the case counts as SUPPORTED only if every factual sentence is.
+#
+# Not here, and why:
+# - F14 (instruction text inside an evidence card) needs a poisoned card; the stored data has none, so it is tested in
+#   tests/test_claim_verification.py on an in-memory copy of a card.
+# - F22 (ACHIEVE-3 / SURPASS-CVOT "non-inferior"): the stored analyses do not state whether the non-inferiority margin
+#   was met (ni_met NOT_STATED). A verifier bound to stored facts must refuse those sentences, so they are neither VALID
+#   (correct in the world, unsupported by the record) nor an error class; they are tested, with the reason given, in tests.
+version: 1
+
+evidence_library:
+  s1_tzp15: &s1_tzp15 {kind: result, nct: NCT04184622, arm_contains: "15 mg", category: WEIGHT_PCT_CHANGE, tier: PEER_REVIEWED}
+  s1_placebo: &s1_placebo {kind: result, nct: NCT04184622, arm_contains: "placebo", category: WEIGHT_PCT_CHANGE, tier: PEER_REVIEWED}
+  s1_tzp15_waist: &s1_tzp15_waist {kind: result, nct: NCT04184622, arm_contains: "15 mg", category: WAIST_CHANGE}
+  s1_tzp15_responder: &s1_tzp15_responder {kind: result, nct: NCT04184622, arm_contains: "15 mg", category: WEIGHT_RESPONDER}
+  t1_reta12: &t1_reta12 {kind: result, nct: NCT05929066, arm_contains: "12 mg", category: WEIGHT_PCT_CHANGE, tier: PEER_REVIEWED}
+  t1_reta12_efficacy: &t1_reta12_efficacy {kind: result, nct: NCT05929066, arm_contains: "12 mg", category: WEIGHT_PCT_CHANGE, estimand: EFFICACY}
+  t2_reta12: &t2_reta12 {kind: result, nct: NCT05929079, arm_contains: "12 mg", category: WEIGHT_PCT_CHANGE, tier: PEER_REVIEWED}
+  a1_orfo36: &a1_orfo36 {kind: result, nct: NCT05869903, arm_contains: "36 mg", category: WEIGHT_PCT_CHANGE, tier: PEER_REVIEWED}
+  believe_combo_kg: &believe_combo_kg {kind: result, nct: NCT05616013, arm_contains: "bimagrumab 30 mg/kg + semaglutide 2.4 mg", category: WEIGHT_ABS_CHANGE, tier: PEER_REVIEWED}
+  an_s1_tzp15_label: &an_s1_tzp15_label {kind: analysis, nct: NCT04184622, category: WEIGHT_PCT_CHANGE, treatment_contains: "15 mg", comparator_contains: "placebo", tier: REGULATORY_LABEL}
+  an_rewind_label: &an_rewind_label {kind: analysis, nct: NCT01394952, category: MACE, treatment_contains: "dulaglutide", comparator_contains: "placebo", tier: REGULATORY_LABEL}
+  an_ac4_mace4: &an_ac4_mace4 {kind: analysis, nct: NCT05803421, category: MACE, treatment_contains: "orforglipron", comparator_contains: "insulin glargine", tier: PEER_REVIEWED}
+  cl_dxa: &cl_dxa {kind: claim, key: "note:retatrutide-tirzepatide:F167"}
+  cl_triumph3_mace: &cl_triumph3_mace {kind: claim, key: "note:retatrutide-tirzepatide:F95"}
+  cl_attain1_responders: &cl_attain1_responders {kind: claim, key: "note:orforglipron:F146"}
+  cl_s4_key_secondary: &cl_s4_key_secondary {kind: claim, key: "note:retatrutide-tirzepatide:F185"}
+  cl_reta_p2_primary: &cl_reta_p2_primary {kind: claim, key: "note:retatrutide-tirzepatide:F14"}
+  ds_retatrutide: &ds_retatrutide {kind: drug_status, drug: retatrutide}
+  ds_tirzepatide: &ds_tirzepatide {kind: drug_status, drug: tirzepatide}
+  # rule-based readings exist only in a composed answer: selected from the cards the assistant builds for the question
+  rd_comparability: &rd_comparability {kind: answer_card, question: "What evidence differentiates retatrutide from tirzepatide?", text_contains: "Comparability of the two results above"}
+  rd_not_concluded: &rd_not_concluded {kind: answer_card, question: "What evidence differentiates retatrutide from tirzepatide?", text_contains: "What may not be concluded"}
+  rd_rigorous: &rd_rigorous {kind: answer_card, question: "What evidence differentiates retatrutide from tirzepatide?", text_contains: "What a rigorous comparison would require"}
+
+cases:
+  # =========================================================================== F01: uncited content that read as "not factual"
+  - id: rv-a49
+    category: UNCITED_CLAIM
+    expected: REJECT
+    evidence: [*s1_tzp15]
+    sentence: "In SURMOUNT-1, tirzepatide 15 mg reduced body weight by 20.9% at week 72 [C1]. The trial was not randomized."
+    note: "Reviewer F01 a49, verbatim. The second sentence is uncited and false; it was read as NOT_FACTUAL."
+  - id: rv-a50
+    category: UNCITED_CLAIM
+    expected: REJECT
+    evidence: [*s1_tzp15]
+    sentence: "In SURMOUNT-1, tirzepatide 15 mg reduced body weight by 20.9% at week 72 [C1]. Participants were not randomly assigned."
+    note: "Reviewer F01 a50 ('Participants were not randomly assigned.'), reconstructed after a cited sentence so the draft has something factual."
+  - id: rv-a51
+    category: UNCITED_CLAIM
+    expected: REJECT
+    evidence: [*s1_tzp15]
+    sentence: "In SURMOUNT-1, tirzepatide 15 mg reduced body weight by 20.9% at week 72 [C1]. Results for the other doses were not reported."
+    note: "Reviewer F01 a51, reconstructed after a cited sentence."
+  - id: rv-a99
+    category: UNCITED_CLAIM
+    expected: REJECT
+    evidence: [*s1_tzp15]
+    sentence: "In SURMOUNT-1, tirzepatide 15 mg reduced body weight by 20.9% at week 72 [C1]. These results were not adjusted."
+    note: "Reviewer F01 retest a99, reconstructed after a cited sentence."
+
+  # =========================================================================== F02: verification wording
+  - id: rv-a80
+    category: UNVERIFIED_AS_HUMAN_VERIFIED
+    expected: REJECT
+    evidence: [*s1_tzp15]
+    sentence: "Data confirmed: tirzepatide 15 mg reduced body weight by 20.9% at week 72 in SURMOUNT-1 [C1]."
+    note: "Reviewer F02 a80, reconstructed. 'Confirmed' asserts checking; the record is quote-anchored."
+  - id: rv-a81
+    category: UNVERIFIED_AS_HUMAN_VERIFIED
+    expected: REJECT
+    evidence: [*s1_tzp15]
+    sentence: "In SURMOUNT-1, the 20.9% reduction in body weight with tirzepatide 15 mg at week 72 is a confirmed value [C1]."
+    note: "Reviewer F02 a81, reconstructed."
+  - id: rv-a82
+    category: UNVERIFIED_AS_HUMAN_VERIFIED
+    expected: REJECT
+    evidence: [*a1_orfo36]
+    sentence: "Expert-confirmed data from ATTAIN-1 show a −11.2% change in body weight at week 72 with orforglipron 36 mg [C1]."
+    note: "Reviewer F02 a82, reconstructed. The hyphenated 'Expert-' was never checked as a word."
+  - id: rv-a83
+    category: UNVERIFIED_AS_HUMAN_VERIFIED
+    expected: REJECT
+    evidence: [*t1_reta12_efficacy]
+    sentence: "The curator-checked TRIUMPH-1 value for retatrutide 12 mg under the efficacy estimand is −28.3% at week 80 [C1]."
+    note: "Reviewer F02 a83, reconstructed. Was grounded by the card's negated phrase 'no checked source quote names it'."
+  - id: rv-a84
+    category: UNVERIFIED_AS_HUMAN_VERIFIED
+    expected: REJECT
+    evidence: [*s1_tzp15]
+    sentence: "In SURMOUNT-1, the 20.9% reduction in body weight with tirzepatide 15 mg at week 72 was confirmed by the investigators [C1]."
+    note: "Reviewer F02 a84, reconstructed."
+
+  # =========================================================================== F03: values re-attributed inside a text card
+  - id: rv-a11
+    category: TEXT_FACT_ALTERED
+    expected: REJECT
+    evidence: [*cl_dxa]
+    sentence: "In the SURMOUNT-1 DXA substudy, lean mass changed by -33.9% with tirzepatide from baseline to week 72 [C1]."
+    note: "Reviewer F03 a11, reconstructed. -33.9% is the fat-mass change."
+  - id: rv-a12
+    category: TEXT_FACT_ALTERED
+    expected: REJECT
+    evidence: [*cl_dxa]
+    sentence: "In the SURMOUNT-1 DXA substudy, body weight changed by -5.3% with tirzepatide from baseline to week 72 [C1]."
+    note: "Reviewer F03 a12, reconstructed. -5.3% is placebo's."
+  - id: rv-a13b
+    category: TEXT_FACT_ALTERED
+    expected: REJECT
+    evidence: [*cl_triumph3_mace]
+    sentence: "In TRIUMPH-3, the MACE-3 hazard ratio was 0.73 (95% CI 0.47 to 1.12) [C1]."
+    note: "Reviewer F03 a13b, verbatim. These are the MACE-5 values."
+  - id: rv-a13d
+    category: TEXT_FACT_ALTERED
+    expected: REJECT
+    evidence: [*cl_triumph3_mace]
+    sentence: "In TRIUMPH-3, the MACE-5 hazard ratio was 0.92 (95% CI 0.51 to 1.65) [C1]."
+    note: "Reviewer F03 a13d (MACE-5 given MACE-3's values), reconstructed."
+  - id: rv-a15b
+    category: TEXT_FACT_ALTERED
+    expected: REJECT
+    evidence: [*cl_attain1_responders]
+    sentence: "In ATTAIN-1, 54.6% of participants with placebo had at least 10% weight reduction [C1]."
+    note: "Reviewer F03 a15b, reconstructed. 54.6% belongs to the 36 mg arm."
+  - id: rv-a17b
+    category: TEXT_FACT_ALTERED
+    expected: REJECT
+    evidence: [*cl_s4_key_secondary]
+    sentence: "In SURMOUNT-4, 16.6% of participants with tirzepatide maintained at least 80% of the weight lost during lead-in at week 88 [C1]."
+    note: "Reviewer F03 a17b, reconstructed. 16.6% is placebo's."
+  - id: rv-a18b
+    category: TEXT_FACT_ALTERED
+    expected: REJECT
+    evidence: [*cl_reta_p2_primary]
+    sentence: "In the retatrutide Phase 2 trial, the primary end point was the percentage change in body weight from baseline to 48 weeks [C1]."
+    note: "Reviewer F03 a18b, reconstructed. The primary end point was at 24 weeks; 48 weeks was secondary."
+
+  # =========================================================================== F04: negation flipped against a text card
+  - id: rv-a43
+    category: TEXT_FACT_ALTERED
+    expected: REJECT
+    evidence: [*ds_retatrutide]
+    sentence: "Retatrutide is not investigational [C1]."
+    note: "Reviewer F04 a43, verbatim."
+  - id: rv-a43b
+    category: TEXT_FACT_ALTERED
+    expected: REJECT
+    evidence: [*ds_retatrutide]
+    sentence: "Retatrutide is not a GLP-1 receptor agonist [C1]."
+    note: "Reviewer F04 a43b, verbatim."
+  - id: rv-a43c
+    category: TEXT_FACT_ALTERED
+    expected: REJECT
+    evidence: [*ds_retatrutide]
+    sentence: "Retatrutide is not listed in Phase 3 on Lilly's pipeline page [C1]."
+    note: "Reviewer F04 a43c, verbatim."
+  - id: rv-e2e4-design
+    category: TEXT_FACT_ALTERED
+    expected: REJECT
+    evidence: [*rd_rigorous]
+    sentence: "A randomized head-to-head trial with a pre-specified estimand is not the only design that removes cross-trial confounding [C1]."
+    note: "Reviewer F04 (e2e4.py), verbatim; inverts the platform's own methodological caveat."
+
+  # =========================================================================== F05: brand and indication swapped
+  - id: rv-a19
+    category: TEXT_FACT_ALTERED
+    expected: REJECT
+    evidence: [*ds_tirzepatide]
+    sentence: "Tirzepatide is FDA-approved as Zepbound for glycemic control in type 2 diabetes [C1]."
+    note: "Reviewer F05 a19, verbatim. Glycemic control is Mounjaro's indication."
+  - id: rv-a20
+    category: TEXT_FACT_ALTERED
+    expected: REJECT
+    evidence: [*ds_tirzepatide]
+    sentence: "Tirzepatide is FDA-approved as Mounjaro for chronic weight management [C1]."
+    note: "Reviewer F05 a20, verbatim. Chronic weight management is Zepbound's indication."
+
+  # =========================================================================== F06: rule-based cards and cross-trial superiority
+  - id: rv-e2e4-superiority
+    category: CROSS_TRIAL_RANKING
+    expected: REJECT
+    evidence: [*rd_not_concluded, *rd_rigorous]
+    sentence: "Retatrutide 12 mg achieved what showing superiority to tirzepatide 15 mg would require [C1][C2]."
+    note: "Reviewer F06 (e2e4.py), verbatim. C1 itself says not to state or imply superiority."
+  - id: rv-e2e4-same-trial
+    category: TEXT_FACT_ALTERED
+    expected: REJECT
+    evidence: [*rd_comparability]
+    sentence: "The two results come from the same trial [C1]."
+    note: "Reviewer F06 (e2e4.py), verbatim. The card says the findings come from different trials."
+  - id: rv-ranking-derived
+    category: CROSS_TRIAL_RANKING
+    expected: REJECT
+    evidence: [*rd_comparability, *rd_not_concluded]
+    sentence: "Retatrutide 12 mg ranks ahead of tirzepatide 15 mg for weight reduction [C1][C2]."
+    note: "Constructed for F06 (not a reviewer sentence): a ranking bound to rule-based cards."
+  - id: rv-ranking-arms
+    category: CROSS_TRIAL_RANKING
+    expected: REJECT
+    evidence: [*t1_reta12, *s1_tzp15]
+    sentence: "Retatrutide 12 mg produced greater weight loss (-25% at week 80) than tirzepatide 15 mg (-20.9% at week 72) [C1][C2]."
+    note: "Constructed for F06 from the Session 2 audit draft W27: a cross-trial ranking of two arm results."
+
+  # =========================================================================== F07: coreference across sentences
+  - id: rv-a21
+    category: COREFERENCE_SHIFT
+    expected: REJECT
+    evidence: [*s1_placebo, *s1_tzp15]
+    sentence: "In SURMOUNT-1, the placebo group lost 3.1% of body weight at week 72 [C1]. Its 95% confidence interval was −21.8 to −19.9 [C2]."
+    note: "Reviewer F07 a21, reconstructed. The interval is tirzepatide's."
+  - id: rv-a22
+    category: COREFERENCE_SHIFT
+    expected: REJECT
+    evidence: [*s1_placebo, *s1_tzp15]
+    sentence: "In SURMOUNT-1, body weight fell by 3.1% with placebo at week 72 [C1]. Its 95% CI was −21.8 to −19.9 [C2]."
+    note: "Reviewer F07 a22 ('same pattern'), reconstructed."
+  - id: rv-a23
+    category: COREFERENCE_SHIFT
+    expected: REJECT
+    evidence: [*ds_retatrutide, *s1_tzp15]
+    sentence: "Retatrutide is an investigational agent [C1]. It also reduced body weight by 20.9% at week 72 in SURMOUNT-1 [C2]."
+    note: "Reviewer F07 a23, verbatim."
+  - id: rv-a24
+    category: COREFERENCE_SHIFT
+    expected: REJECT
+    evidence: [*t1_reta12, *s1_tzp15]
+    sentence: "In TRIUMPH-1, retatrutide 12 mg reduced body weight by 25% at week 80 [C1]. That dose also reduced body weight by 20.9% at week 72 [C2]."
+    note: "Reviewer F07 a24, reconstructed."
+  - id: rv-e2e2-its-ci
+    category: COREFERENCE_SHIFT
+    expected: REJECT
+    evidence: [*ds_retatrutide, *s1_tzp15]
+    sentence: "Retatrutide is an investigational agent [C1]. Its 95% CI was -21.8 to -19.9 [C2]."
+    note: "Reviewer F07 (e2e2.py, through the API), reconstructed."
+  - id: rv-same-trial-shift
+    category: COREFERENCE_SHIFT
+    expected: REJECT
+    evidence: [*s1_tzp15, *t1_reta12]
+    sentence: "In SURMOUNT-1, tirzepatide 15 mg reduced body weight by 20.9% at week 72 [C1]. In the same trial, retatrutide 12 mg reduced body weight by 25% at week 80 [C2]."
+    note: "Constructed for F07 (not a reviewer sentence): 'the same trial' points back to SURMOUNT-1; the value is TRIUMPH-1's."
+
+  # =========================================================================== F08, F11, F12, F13
+  - id: rv-a54
+    category: RESPONDER_VS_MEAN
+    expected: REJECT
+    evidence: [*s1_tzp15]
+    sentence: "In SURMOUNT-1, the proportion of participants on tirzepatide 15 mg losing weight was 20.9% at week 72 [C1]."
+    note: "Reviewer F08 a54, verbatim. 20.9% is the mean percent change."
+  - id: rv-a28
+    category: RELATIVE_VS_ABSOLUTE
+    expected: REJECT
+    evidence: [*an_s1_tzp15_label]
+    sentence: "Tirzepatide 15 mg reduced body weight 17.8% more than placebo in SURMOUNT-1 at week 72 [C1]."
+    note: "Reviewer F11 a28, verbatim. The estimate is 17.8 percentage points."
+  - id: rv-a29
+    category: RELATIVE_VS_ABSOLUTE
+    expected: REJECT
+    evidence: [*an_s1_tzp15_label]
+    sentence: "In SURMOUNT-1, the reduction in body weight with tirzepatide 15 mg was 17.8 percent greater than with placebo at week 72 [C1]."
+    note: "Reviewer F11 a29, reconstructed."
+  - id: rv-a79
+    category: CAUSAL_LANGUAGE
+    expected: REJECT
+    evidence: [*s1_placebo]
+    sentence: "In SURMOUNT-1, placebo led to a 3.1% reduction in body weight at week 72 [C1]."
+    note: "Reviewer F12 a79, verbatim."
+  - id: rv-a75
+    category: CAUSAL_LANGUAGE
+    expected: REJECT
+    evidence: [*s1_tzp15]
+    sentence: "In SURMOUNT-1, treatment with tirzepatide 15 mg led to a 20.9% reduction in body weight at week 72 [C1]."
+    note: "Reviewer F12 a75, reconstructed. A within-arm change is not a treatment effect."
+  - id: rv-a76
+    category: CAUSAL_LANGUAGE
+    expected: REJECT
+    evidence: [*s1_tzp15]
+    sentence: "In SURMOUNT-1, the 20.9% weight reduction at week 72 occurred because of tirzepatide 15 mg [C1]."
+    note: "Reviewer F12 a76, reconstructed."
+  - id: rv-rec1
+    category: RECOMMENDATION
+    expected: REJECT
+    evidence: [*s1_tzp15]
+    sentence: "Patients can use tirzepatide 15 mg, which reduced body weight by 20.9% at week 72 in SURMOUNT-1 [C1]."
+    note: "Reviewer F13 (retest3.py), verbatim."
+  - id: rv-rec2
+    category: RECOMMENDATION
+    expected: REJECT
+    evidence: [*s1_tzp15]
+    sentence: "Tirzepatide 15 mg is therefore the treatment to use: it reduced body weight by 20.9% at week 72 in SURMOUNT-1 [C1]."
+    note: "Reviewer F13 (retest3.py), reconstructed."
+
+  # =========================================================================== F09, F10, F20, F21
+  - id: rv-a60
+    category: SUBGROUP_SHIFT
+    expected: REJECT
+    evidence: [*t1_reta12]
+    sentence: "In TRIUMPH-1, adults with knee osteoarthritis receiving retatrutide 12 mg lost 25% of body weight at week 80 [C1]."
+    note: "Reviewer F09 a60, verbatim. Knee osteoarthritis is a registered condition (a basket), not the population of this value."
+  - id: rv-a61
+    category: SUBGROUP_SHIFT
+    expected: REJECT
+    evidence: [*s1_tzp15]
+    sentence: "In SURMOUNT-1, adults with overweight receiving tirzepatide 15 mg lost 20.9% of body weight at week 72 [C1]."
+    note: "Reviewer F09 a61, reconstructed."
+  - id: rv-prim
+    category: EXPLORATORY_AS_CONFIRMATORY
+    expected: REJECT
+    evidence: [*s1_tzp15_waist]
+    sentence: "The primary endpoint of SURMOUNT-1 was the change in waist circumference, -19.9 cm with tirzepatide 15 mg at week 72 [C1]."
+    note: "Reviewer F10 retest 'prim', reconstructed. A SECONDARY endpoint whose registry title says '(Primary Treatment Period)'."
+  - id: rv-a31
+    category: UNIT_CHANGED
+    expected: REJECT
+    evidence: [*s1_tzp15_waist]
+    sentence: "In SURMOUNT-1, waist circumference fell by 19.9 in with tirzepatide 15 mg at week 72 [C1]."
+    note: "Reviewer F20 a31, verbatim. The stored unit is centimetres."
+  - id: rv-a91
+    category: COMPARATOR_SWAPPED
+    expected: REJECT
+    evidence: [*an_s1_tzp15_label]
+    sentence: "In SURMOUNT-1, the difference between placebo and tirzepatide 15 mg in percent change in body weight at week 72 was −17.8 percentage points [C1]."
+    note: "Reviewer F21 a91, verbatim. Stored: tirzepatide minus placebo = -17.8."
+
+  # =========================================================================== VALID: the reviewer's faithful sentences the verifier refused
+  - id: rv-v05
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*t1_reta12]
+    sentence: "In TRIUMPH-1, retatrutide 12 mg reduced body weight by 25% at week eighty [C1]."
+    expected_fact: 1
+    note: "Reviewer F15 v05 ('at week eighty'), reconstructed."
+  - id: rv-v09
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*believe_combo_kg]
+    sentence: "In BELIEVE, body weight fell by 17.8 kilos at week 48 with bimagrumab 30 mg/kg plus semaglutide 2.4 mg [C1]."
+    expected_fact: 1
+    note: "Reviewer F15 v09 ('kilos'), reconstructed on a stored kilogram value."
+  - id: rv-v13
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*an_rewind_label]
+    sentence: "In REWIND, the hazard of MACE-3 was higher with placebo than with dulaglutide 1.5 mg (hazard ratio 0.88; 95% CI 0.79 to 0.99) [C1]."
+    expected_fact: 1
+    note: "Reviewer F18 v13, verbatim. Comparator written as subject with the comparative turned round."
+  - id: rv-v14
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*s1_tzp15]
+    sentence: "The primary objective of SURMOUNT-1 was the percent change in body weight from baseline; tirzepatide 15 mg produced -20.9% at week 72 [C1]."
+    expected_fact: 1
+    note: "Reviewer F15 v14 ('objective'), reconstructed."
+  - id: rv-v23
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*s1_tzp15]
+    sentence: "In SURMOUNT-1, recipients of tirzepatide 15 mg had a percent change in body weight of -20.9% at week 72 [C1]."
+    expected_fact: 1
+    note: "Reviewer F15 v23 ('recipients'), reconstructed."
+  - id: rv-v29
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*ds_tirzepatide]
+    sentence: "Tirzepatide is FDA-approved under the brand name Zepbound for chronic weight management [C1]."
+    expected_fact: 1
+    note: "Reviewer F15 v29 ('brand'), reconstructed."
+  - id: rv-v30
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*ds_tirzepatide]
+    sentence: "Tirzepatide is sold as Zepbound for chronic weight management [C1]."
+    expected_fact: 1
+    note: "Reviewer F15 v30 ('sold'), reconstructed. 'Sold as' states a marketed, approved product, checked against the stored status."
+  - id: rv-v41
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*s1_tzp15, *s1_placebo]
+    sentence: "In SURMOUNT-1, tirzepatide 15 mg reduced body weight by 20.9% at week 72 [C1]. In the same trial, body weight fell by 3.1% with placebo at week 72 [C2]."
+    expected_fact: 1
+    note: "Reviewer F15 v41 ('same'), reconstructed."
+  - id: rv-postneg1
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*an_ac4_mace4]
+    sentence: "In ACHIEVE-4, orforglipron was non-inferior to insulin glargine for MACE-4, but superiority was not shown (hazard ratio 0.84; 95% CI 0.59 to 1.2) [C1]."
+    expected_fact: 1
+    note: "Reviewer F17 postneg1, reconstructed (the reviewer's parenthesis abbreviated)."
+  - id: rv-postneg2
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*an_ac4_mace4]
+    sentence: "In ACHIEVE-4, orforglipron was non-inferior to insulin glargine for MACE-4 (hazard ratio 0.84; 95% CI 0.59 to 1.2), and superiority of orforglipron over insulin glargine was not demonstrated [C1]."
+    expected_fact: 1
+    note: "Reviewer F17 postneg2, reconstructed."
+  - id: rv-h048
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*t2_reta12, *ds_retatrutide]
+    sentence: "In TRIUMPH-2, retatrutide 12 mg reduced body weight by 18.8% at week 80 [C1]; retatrutide remains investigational [C2]."
+    expected_fact: 1
+    note: "Reviewer F19 retest h048, reconstructed (the direction was carried into the valueless second clause)."
+
+  # =========================================================================== VALID: constructed controls (the faithful form of an attack above)
+  - id: rv-ctl-its-ci
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*s1_tzp15]
+    sentence: "In SURMOUNT-1, tirzepatide 15 mg reduced body weight by 20.9% at week 72 [C1]. Its 95% confidence interval was −21.8 to −19.9 [C1]."
+    expected_fact: 1
+    note: "Constructed control for F07: the pronoun resolves to the arm the interval belongs to."
+  - id: rv-ctl-pair-forward
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*an_s1_tzp15_label]
+    sentence: "In SURMOUNT-1, the difference between tirzepatide 15 mg and placebo in percent change in body weight at week 72 was −17.8 percentage points [C1]."
+    expected_fact: 1
+    note: "Constructed control for F21: sides in the order of the estimate."
+  - id: rv-ctl-points-more
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*an_s1_tzp15_label]
+    sentence: "Tirzepatide 15 mg reduced body weight by 17.8 percentage points more than placebo in SURMOUNT-1 at week 72 [C1]."
+    expected_fact: 1
+    note: "Constructed control for F11: the same comparison in percentage points."
+  - id: rv-ctl-responder
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*s1_tzp15_responder]
+    sentence: "In SURMOUNT-1, the percentage of participants on tirzepatide 15 mg with at least 5% body weight reduction was 96.32% at week 72 [C1]."
+    expected_fact: 1
+    note: "Constructed control for F08: a responder proportion stated as one."
+  - id: rv-ctl-attain1-responders
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*cl_attain1_responders]
+    sentence: "In ATTAIN-1, 54.6% of participants in the 36 mg group had at least 10% weight reduction under the treatment-regimen estimand [C1]."
+    expected_fact: 1
+    note: "Constructed control for F03 (a15b): the value with its own arm, named as the card names it (the card does not name the drug)."
+  - id: rv-ctl-s4-key-secondary
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*cl_s4_key_secondary]
+    sentence: "In SURMOUNT-4, 89.5% of tirzepatide participants at week 88 maintained at least 80% of the weight lost during lead-in, versus 16.6% with placebo [C1]."
+    expected_fact: 1
+    note: "Constructed control for F03 (a17b): near-verbatim restatement."
+  - id: rv-ctl-triumph3
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*cl_triumph3_mace]
+    sentence: "In TRIUMPH-3, the on-treatment MACE analyses were not pre-specified; the MACE-5 hazard ratio was 0.73 (95% CI 0.47 to 1.12) [C1]."
+    expected_fact: 1
+    note: "Constructed control for F03 (a13b), keeping the card's 'not pre-specified' caveat."
+  - id: rv-ctl-reta-p2-primary
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*cl_reta_p2_primary]
+    sentence: "In the retatrutide Phase 2 trial, the primary end point was the percentage change in body weight from baseline to 24 weeks [C1]."
+    expected_fact: 1
+    note: "Constructed control for F03 (a18b)."
+  - id: rv-ctl-dxa-fat
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*cl_dxa]
+    sentence: "In the SURMOUNT-1 DXA substudy, body weight, fat mass and lean mass changed by -21.3%, -33.9% and -10.9% with tirzepatide (baseline to week 72) [C1]."
+    expected_fact: 1
+    note: "Constructed control for F03 (a11, a12): the card's own list, restated in its order."
+  - id: rv-ctl-mounjaro
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*ds_tirzepatide]
+    sentence: "Tirzepatide is FDA-approved as Mounjaro for glycemic control in type 2 diabetes [C1]."
+    expected_fact: 1
+    note: "Constructed control for F05."
+  - id: rv-ctl-not-approved
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*ds_retatrutide]
+    sentence: "Retatrutide is investigational and is not approved for any indication [C1]."
+    expected_fact: 1
+    note: "Constructed control for F04."
+  - id: rv-ctl-different-trials
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*rd_comparability]
+    sentence: "The two results come from different trials, so they can only be described side by side [C1]."
+    expected_fact: 1
+    note: "Constructed control for F06."
+  - id: rv-ctl-requirement
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*rd_rigorous]
+    sentence: "Showing superiority of one agent would require a randomized head-to-head trial with a pre-specified estimand [C1]."
+    expected_fact: 1
+    note: "Constructed control for F06 (Session 2 audit faithful draft F07): superiority named only as a requirement."
+  - id: rv-ctl-summary-note
+    category: VALID
+    expected: SUPPORTED
+    evidence: [*s1_tzp15]
+    sentence: "This summary covers part of the evidence. In SURMOUNT-1, tirzepatide 15 mg reduced body weight by 20.9% at week 72 [C1]."
+    expected_fact: 1
+    note: "Constructed control for F01: a framing sentence from the allow-list (the prompt asks for it when cards are omitted)."

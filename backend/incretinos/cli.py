@@ -186,14 +186,14 @@ def report(
 
 @app.command("benchmark-claims")
 def benchmark_claims(
-    which: str = typer.Option("dev", "--set", help="Benchmark set to run: dev, heldout or all."),
+    which: str = typer.Option("dev", "--set", help="Benchmark set to run: dev, dev-review, heldout (heldout-v1), heldout-v2 or all."),
     as_json: bool = typer.Option(False, "--json", help="Print the full report as JSON."),
 ) -> None:
     """Run the adversarial claim-verification benchmark against the current database."""
     from .assistant import benchmark
 
-    if which not in (*benchmark.SETS, "all"):
-        raise typer.BadParameter("--set must be dev, heldout or all")
+    if which not in (*benchmark.SETS, *benchmark.SET_ALIASES, "all"):
+        raise typer.BadParameter("--set must be dev, dev-review, heldout (heldout-v1), heldout-v2 or all")
     with session_scope() as session:
         reports = benchmark.run(session, which)
     if as_json:
