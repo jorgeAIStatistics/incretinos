@@ -69,17 +69,21 @@ from ..models import (
     StatisticalAnalysis,
     Study,
     StudyArm,
+    StudyDrug,
     StudyPublication,
     StudyVersion,
 )
 from ..vocab import (
     COMBINATION_SLUGS,
     COMPARATOR_ARM_TYPES,
+    SEQUENCE_ARM_TYPE,
     DirectionBasis,
     arm_drug_slug,
     arm_identity_key,
     categorize_endpoint,
+    classify_arm_role,
     detect_drugs,
+    is_sequence_arm,
     match_arm_label,
     norm_arm_label,
     parse_single_dose,
@@ -424,15 +428,24 @@ class _StudyArms:
         drug_slug, is_placebo = arm_drug_slug(label if named else " + ".join(interventions))
         dose = parse_single_dose(label) if _single_drug(drug_slug) else None
         sequence_text = None
-        if arm_type == "PLACEBO_COMPARATOR":
-            # The registry classifies the arm as the placebo comparator. A drug also named in its label
-            # ("Placebo/30 mg/kg Bimagrumab": placebo, later switched) does not make it an arm of that drug.
+        stored_type = arm_type
+        if is_sequence_arm(label, description, arm_type):
+            # Registered as the placebo comparator, but the arm receives placebo in one period and an active drug in
+            # another ("Placebo/30 mg/kg Bimagrumab": placebo to week 40, bimagrumab at weeks 52 and 64). It is
+            # neither a placebo arm nor an arm of that drug: no drug, no dose, not placebo; the registered type is
+            # kept in registered_arm_type and the sequence in dose_text.
+            stored_type, drug_slug, is_placebo, dose = SEQUENCE_ARM_TYPE, None, False, None
+            sequence_text = f"treatment sequence as registered (registered arm type PLACEBO_COMPARATOR): {description or label}"
+        elif arm_type == "PLACEBO_COMPARATOR":
+            # The registry classifies the arm as the placebo comparator; a matching placebo named after a drug
+            # ("Bimagrumab Placebo + Tirzepatide Placebo") does not make it an arm of that drug.
             if not is_placebo:
-                sequence_text = f"placebo-comparator arm as registered; arm label: {label}"  # keep the sequence visible
+                sequence_text = f"placebo-comparator arm as registered; arm label: {label}"
             drug_slug, is_placebo, dose = "placebo", True, None
         arm.origin = Origin.REGISTRY.value
         arm.norm_label = norm_arm_label(label)
-        arm.arm_type = arm_type
+        arm.arm_type = stored_type
+        arm.registered_arm_type = arm_type if arm_type != RESULTS_GROUP else None
         arm.description = description
         arm.interventions = list(interventions or [])
         arm.drug_slug = drug_slug
@@ -483,11 +496,25 @@ class _StudyArms:
                 drug_slug, is_placebo = arm_drug_slug(arm.label)
                 dose = parse_single_dose(arm.label) if _single_drug(drug_slug) else None
                 arm.origin, arm.arm_type, arm.description, arm.interventions, arm.n_randomized = curated, "CURATED", None, [], None
+                arm.registered_arm_type = None
                 arm.drug_slug, arm.is_placebo = drug_slug, is_placebo
                 arm.dose_amount, arm.dose_unit = dose if dose is not None else (None, None)
             else:
                 self.session.delete(arm)
                 self.arms.remove(arm)
+
+
+def assign_arm_roles(session: Session, study: Study) -> None:
+    """Store every arm's role (``vocab.classify_arm_role``) from its stored data and the trial's drug roles.
+
+    Run after the registry ingest, after the watchlist sets the trial's drug roles and after curated arms are
+    created, so the stored role always reflects the current arm data.
+    """
+    drug_roles = {link.drug.slug: link.role for link in session.scalars(select(StudyDrug).where(StudyDrug.study_id == study.id))}
+    for arm in session.scalars(select(StudyArm).where(StudyArm.study_id == study.id)):
+        role, basis = classify_arm_role(arm_type=arm.arm_type, is_placebo=arm.is_placebo, drug_slug=arm.drug_slug, label=arm.label, drug_roles=drug_roles)
+        arm.arm_role, arm.arm_role_basis = role.value, basis
+    session.flush()
 
 
 def _single_drug(drug_slug: str | None) -> bool:
@@ -606,6 +633,7 @@ class CTGovAdapter:
             self._extract_results(session, study, parsed, source, arms)
         arms.retire_unused()
         session.flush()
+        assign_arm_roles(session, study)
         return study
 
     @staticmethod
@@ -1161,12 +1189,13 @@ class CTGovAdapter:
             for milestone in period.get("milestones", []):
                 if milestone.get("type") == "STARTED":
                     started = {a.get("groupId"): to_int(a.get("numSubjects")) for a in milestone.get("achievements", [])}
-            # A group with nobody starting a period is not part of it (e.g. randomized arms during a lead-in):
-            # its posted zeros are structural and are not stored as "0 of 0".
-            in_period = {gid for gid, n in started.items() if n}
+            # A group the registry posts as STARTED 0 is not part of the period (e.g. randomized arms during a
+            # lead-in): its posted zeros are structural and are not stored as "0 of 0". Only a posted zero excludes a
+            # group: a STARTED count that is missing or cannot be read stays NULL and the group's rows are kept.
+            in_period = {gid for gid in groups if started.get(gid) != 0}
             for gid in in_period:
                 # Participants entering the study in this group: the first period in which the group has any.
-                if gid in arm_for_group and arm_for_group[gid].n_randomized is None:
+                if gid in arm_for_group and arm_for_group[gid].n_randomized is None and started.get(gid):
                     arm_for_group[gid].n_randomized = started[gid]
 
             def flow(gid, kind, label, n, *, comment=None, where="", _started=started, _p_idx=p_idx, _title=title):
