@@ -43,7 +43,7 @@ from ..engines.interpretation import classify_drug, interpret_analysis
 from ..engines.safety import SPONTANEOUS_REPORT_CAVEATS
 from ..models import Drug, EvidenceClaim, EvidenceGap, OutcomeResult, StatisticalAnalysis, Study
 from ..review import policy
-from ..vocab import DRUG_ALIASES
+from ..vocab import DRUG_ALIASES, is_placebo_arm
 from .claims import Vocabulary
 from .facts import (
     EvidenceFact,
@@ -254,7 +254,7 @@ def _best_weight_result(session: Session, study: Study, estimand: str | None = N
       dispersion, then a reported number analysed, then the record stored first). The other sources are not hidden
       from the user: findings and comparisons list them.
     """
-    rows = [r for r in study.results if r.endpoint.category == "WEIGHT_PCT_CHANGE" and r.value is not None and r.scope == "ARM" and r.arm is not None and not r.arm.is_placebo and not r.arm.is_pooled and " minus " not in r.arm_label and " to " not in r.arm_label.lower()
+    rows = [r for r in study.results if r.endpoint.category == "WEIGHT_PCT_CHANGE" and r.value is not None and r.scope == "ARM" and r.arm is not None and not is_placebo_arm(r.arm) and not r.arm.is_pooled and " minus " not in r.arm_label and " to " not in r.arm_label.lower()
             and policy.is_usable(r.verification_status)]
     weeks = (study.design_features or {}).get("treatment_weeks")
     if weeks:

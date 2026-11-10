@@ -33,6 +33,7 @@ from sqlalchemy.orm import Session
 from ..enums import TIER_LABEL, EstimandLabel, EvidenceTier
 from ..models import AdverseEvent, OutcomeResult, Study, StudyArm
 from ..review.policy import is_usable
+from ..vocab import ARM_ROLE_LABEL, is_placebo_arm
 from .findings import (
     BASELINE_CLASS_LABEL,
     DISPLAY_RULE,
@@ -86,7 +87,7 @@ def period_end_weeks(period: str | None) -> float | None:
 
 
 def _arm_key(arm: StudyArm) -> str:
-    if arm.is_placebo:
+    if is_placebo_arm(arm):
         return "placebo"
     if arm.drug_slug and arm.dose_amount is not None and "+" not in arm.drug_slug and arm.drug_slug != "eloralintide-tirzepatide":
         return f"{arm.drug_slug}|{arm.dose_amount:g}|{arm.formulation_key or ''}"
@@ -141,7 +142,7 @@ def arm_profiles(session: Session, nct_id: str, estimand: str | None = None, tim
         """The record that names the group: the registered arm, unless only a reporting label states the dose."""
         rows = sorted(members[group_key], key=lambda x: x.id)
         registered = next((x for x in rows if f"arm:{x.id}" == group_key), rows[0])
-        if registered.is_placebo or registered.dose_amount is not None:
+        if is_placebo_arm(registered) or registered.dose_amount is not None:
             return registered
         return next((x for x in rows if x.dose_amount is not None), registered)
 
@@ -161,7 +162,10 @@ def arm_profiles(session: Session, nct_id: str, estimand: str | None = None, tim
                 # Every stored arm record that is this randomized group (registry arm, results group, curated labels).
                 "labels_merged": [x.label for x in sorted(members[ident.group_key], key=lambda x: x.id)],
                 "drug_slug": rep.drug_slug,
-                "is_placebo": rep.is_placebo,
+                "is_placebo": is_placebo_arm(rep),
+                # The stored role of the arm that names the group (vocab.ArmRole); SEQUENCE is never placebo or a dose.
+                "arm_role": rep.arm_role if rep.arm_role in ARM_ROLE_LABEL else None,
+                "arm_role_label": ARM_ROLE_LABEL.get(rep.arm_role) if rep.arm_role else None,
                 "dose_amount": rep.dose_amount,
                 "dose_unit": rep.dose_unit,
                 "dose_text": rep.dose_text,

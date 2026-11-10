@@ -110,7 +110,7 @@ from ..models import (
 from ..reports.export import comparison_report_markdown, study_report_markdown
 from ..review import regulatory
 from ..review.policy import STATUS_LABEL, canonical_status, is_usable
-from ..vocab import norm_arm_label
+from ..vocab import ARM_ROLE_LABEL, norm_arm_label
 from .auth import require_reviewer, reviewer_name
 from .limits import RequestBodyLimitMiddleware, RouteBudgetMiddleware, limit_assistant, limit_simulation
 from .routers.review import router as review_router
@@ -448,6 +448,8 @@ def meta(db: Db) -> dict[str, Any]:
         "tier_labels": {t.value: TIER_LABEL[t] for t in EvidenceTier},
         "llm": provider_status(cfg),
         "review_enabled": cfg.review_enabled,
+        # PERSONAL_TOKENS: the reviewer name is the server's (bound to the token), a client must not type one.
+        "reviewer_identity": cfg.reviewer_identity_mode,
         "notice": "Public data only. Research use by qualified researchers. Not medical advice, not a treatment recommendation, not a regulatory submission.",
     }
 
@@ -632,7 +634,8 @@ def get_study(nct: str, db: Db) -> dict[str, Any]:
         "countries": study.countries,
         "source": source_ref(study.source),
         "population": {"diabetes_status": population.diabetes_status, "diabetes_basis": population.diabetes_basis, "sex": population.sex, "min_age": population.min_age, "max_age": population.max_age, "summary": population.summary, "baseline": population.baseline[:120], "baseline_total": len(population.baseline)} if population else None,
-        "arms": [{"id": a.id, "label": a.label, "arm_type": a.arm_type, "drug_slug": a.drug_slug, "dose_amount": a.dose_amount, "dose_unit": a.dose_unit, "dose_text": a.dose_text, "formulation_key": a.formulation_key, "is_placebo": a.is_placebo, "is_pooled": a.is_pooled, "n_randomized": a.n_randomized, "description": a.description, "origin": a.origin} for a in study.arms],
+        "arms": [{"id": a.id, "label": a.label, "arm_type": a.arm_type, "drug_slug": a.drug_slug, "dose_amount": a.dose_amount, "dose_unit": a.dose_unit, "dose_text": a.dose_text, "formulation_key": a.formulation_key, "is_placebo": a.is_placebo, "is_pooled": a.is_pooled, "n_randomized": a.n_randomized, "description": a.description, "origin": a.origin,
+                  "arm_role": a.arm_role, "arm_role_label": ARM_ROLE_LABEL.get(a.arm_role) if a.arm_role else None} for a in study.arms],
         "protocol_endpoints": [{"title": e.title, "role": e.role, "category": e.category, "timeframe": e.timeframe_text, "description": e.description} for e in study.endpoints if e.kind == "PROTOCOL"],
         "estimands": [{"id": e.id, "label": e.label, "basis": e.basis, "description": e.description, "quote": e.quote, "explainer": ESTIMAND_EXPLAINER.get(e.label), "strategies": [{"event": s.event, "strategy": s.strategy, "basis": s.basis, "quote": s.quote} for s in e.strategies], "source": source_ref(e.source)} for e in study.estimands],
         "endpoint_groups": groups,

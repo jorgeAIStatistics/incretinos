@@ -29,6 +29,7 @@ from ..models import (
     Study,
     StudyDrug,
 )
+from ..vocab import is_placebo_arm
 from .findings import baseline_class
 
 DEFAULT_WEIGHTS = {"clinical_importance": 0.4, "uncertainty": 0.3, "tractability": 0.15, "actionability": 0.15}
@@ -342,11 +343,11 @@ def detect_gaps(session: Session, today: date | None = None) -> list[GapDraft]:
             for r in study.results:
                 if r.value is None or r.scope != "ARM" or r.arm is None or r.estimand is None or r.estimand.label == "NOT_STATED":
                     continue
-                if r.arm.dose_amount is None and not r.arm.is_placebo:
+                if r.arm.dose_amount is None and not is_placebo_arm(r.arm):
                     continue
                 # A documented exposure-equivalent dose identifies the same arm under another formulation's label.
                 dose = equivalent_dose.get((r.arm.formulation_key, r.arm.dose_amount), r.arm.dose_amount)
-                arm_key = "placebo" if r.arm.is_placebo else f"{r.arm.drug_slug}|{dose:g}"
+                arm_key = "placebo" if is_placebo_arm(r.arm) else f"{r.arm.drug_slug}|{dose:g}"
                 if r.endpoint.category not in ("WEIGHT_PCT_CHANGE", "HBA1C_CHANGE") or " minus " in r.arm_label:
                     continue
                 groups[(r.endpoint.category, arm_key, r.estimand.label, r.timepoint_weeks, baseline_class(study.design_features, r.baseline_definition))].append(r)

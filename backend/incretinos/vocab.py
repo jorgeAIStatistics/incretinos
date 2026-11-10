@@ -90,6 +90,21 @@ def classify_arm_role(
     return ArmRole.UNCLASSIFIED, "The arm's treatment is not linked to a drug with a recorded role in this trial."
 
 
+def is_placebo_arm(arm: object | None) -> bool:
+    """True only for a pure placebo arm, for the engines that branch on placebo.
+
+    The stored placebo flag, unless the arm's stored role or type says otherwise: a treatment sequence (``SEQUENCE``:
+    placebo in one period, an active drug in another) is never a placebo arm, and an arm whose stored role is
+    anything but PLACEBO is not treated as one (``classify_arm_role`` explains why in ``arm_role_basis``).
+    """
+    if arm is None or not getattr(arm, "is_placebo", False):
+        return False
+    role = getattr(arm, "arm_role", None)
+    if getattr(arm, "arm_type", None) == SEQUENCE_ARM_TYPE or role == ArmRole.SEQUENCE.value:
+        return False
+    return role in (None, ArmRole.PLACEBO.value)
+
+
 _SEQUENCE_WORDS = re.compile(r"\bfollowed by\b|\bthen\b|\bswitch(?:ed|es|ing)?\b|\bfor an additional\b|\bthereafter\b", re.IGNORECASE)
 
 

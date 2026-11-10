@@ -650,5 +650,4 @@ def review_summary(db: Db) -> dict[str, Any]:
     from ...config import get_settings
 
     settings = get_settings()
-    mode = "PERSONAL_TOKENS" if settings.reviewers_file else ("SHARED_TOKEN_SELF_DECLARED" if settings.reviewer_token else "READ_ONLY")
-    return {**queries.summarize(db), "review_enabled": settings.review_enabled, "reviewer_identity": mode}
+    return {**queries.summarize(db), "review_enabled": settings.review_enabled, "reviewer_identity": settings.reviewer_identity_mode}

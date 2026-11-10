@@ -181,6 +181,14 @@ class Settings(BaseSettings):
         """True when some credential can write: personal reviewer tokens, or the shared development token."""
         return bool(self.reviewers_file or self.reviewer_token)
 
+    @property
+    def reviewer_identity_mode(self) -> str:
+        """How a decision's reviewer name is established: PERSONAL_TOKENS (the server's, from the token),
+        SHARED_TOKEN_SELF_DECLARED (typed by the client) or READ_ONLY (no credential configured)."""
+        if self.reviewers_file:
+            return "PERSONAL_TOKENS"
+        return "SHARED_TOKEN_SELF_DECLARED" if self.reviewer_token else "READ_ONLY"
+
     def reviewer_credentials(self) -> tuple[tuple[str, bytes], ...]:
         """The configured personal tokens as (name, sha256 digest). Raises ReviewerCredentialsError when unusable."""
         if not self.reviewers_file:

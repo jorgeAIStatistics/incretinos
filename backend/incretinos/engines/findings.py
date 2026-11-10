@@ -40,7 +40,7 @@ from ..models import (
     StudyArm,
 )
 from ..review.policy import is_usable
-from ..vocab import DirectionBasis
+from ..vocab import ARM_ROLE_LABEL, DirectionBasis, is_placebo_arm
 from .stats import StatsInputError, ci_from_se
 
 EFFICACY_CATEGORIES = {
@@ -193,7 +193,7 @@ RESULTS_GROUP = "RESULTS_GROUP"
 
 
 def _placebo_like(arm: StudyArm) -> bool:
-    return bool(arm.is_placebo) or (arm.arm_type or "").upper() == "PLACEBO_COMPARATOR"
+    return is_placebo_arm(arm) or (arm.arm_type or "").upper() == "PLACEBO_COMPARATOR"
 
 
 def _is_registered_group(arm: StudyArm) -> bool:
@@ -630,6 +630,10 @@ class Finding:
     statement: str = ""
     #: The value exactly as the source printed it (for example '-25.0'), so its reported precision can be shown. None when not stored.
     value_text: str | None = None
+    #: The arm's stored role in its trial (vocab.ArmRole: PLACEBO, ACTIVE_COMPARATOR, STUDY_DRUG, SEQUENCE, UNCLASSIFIED)
+    #: and its label; None when the arm has no stored role (a database not re-ingested since roles were stored).
+    arm_role: str | None = None
+    arm_role_label: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         data = asdict(self)
@@ -838,7 +842,7 @@ def build_finding(session: Session, result: OutcomeResult) -> Finding:
         dose_unit=arm.dose_unit if arm else None,
         dose_text=arm.dose_text if arm else None,
         formulation_key=arm.formulation_key if arm else None,
-        is_placebo=bool(arm.is_placebo) if arm else False,
+        is_placebo=is_placebo_arm(arm),
         is_pooled=bool(arm.is_pooled) if arm else result.scope == "POOLED",
         endpoint_id=endpoint.id,
         endpoint_title=endpoint.title,
@@ -854,6 +858,8 @@ def build_finding(session: Session, result: OutcomeResult) -> Finding:
         param_type=result.param_type,
         value=result.value,
         value_text=result.value_text,
+        arm_role=arm.arm_role if arm is not None and arm.arm_role in ARM_ROLE_LABEL else None,
+        arm_role_label=ARM_ROLE_LABEL.get(arm.arm_role) if arm is not None and arm.arm_role else None,
         value_low=result.value_low,
         value_high=result.value_high,
         unit=result.unit,

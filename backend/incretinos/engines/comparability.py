@@ -59,6 +59,7 @@ from ..models import (
     StudyDrug,
 )
 from ..review.policy import is_usable
+from ..vocab import is_placebo_arm
 from .findings import (
     BASELINE_CLASS_LABEL,
     EFFICACY_CATEGORIES,
@@ -652,9 +653,9 @@ def build_factors(session: Session, a: Finding, b: Finding) -> list[Factor]:
     f.append(_duration_factor(a, b))
 
     # 13 dose / titration / formulation
-    dose_a = f"{_fmt(a.dose_amount)} {a.dose_unit}" if a.dose_amount is not None else _show(a.dose_text, "placebo" if a.is_placebo else "not parsed from arm label")
-    dose_b = f"{_fmt(b.dose_amount)} {b.dose_unit}" if b.dose_amount is not None else _show(b.dose_text, "placebo" if b.is_placebo else "not parsed from arm label")
-    if a.drug_slug and a.drug_slug == b.drug_slug and not a.is_placebo:
+    dose_a = f"{_fmt(a.dose_amount)} {a.dose_unit}" if a.dose_amount is not None else _show(a.dose_text, "placebo" if is_placebo_arm(a) else "not parsed from arm label")
+    dose_b = f"{_fmt(b.dose_amount)} {b.dose_unit}" if b.dose_amount is not None else _show(b.dose_text, "placebo" if is_placebo_arm(b) else "not parsed from arm label")
+    if a.drug_slug and a.drug_slug == b.drug_slug and not is_placebo_arm(a):
         if a.formulation_key and b.formulation_key and a.formulation_key != b.formulation_key:
             eq = documented_equivalence(session, a.formulation_key, a.dose_amount, b.formulation_key, b.dose_amount)
             if eq is not None:
@@ -963,7 +964,7 @@ def compare_findings(session: Session, a: Finding, b: Finding) -> Comparison:
                     f"A registered trial includes both agents: {trial['display_name']} ({trial['nct_id']}), status {trial['overall_status']}, {when}; "
                     + ("results are posted in the registry." if trial["has_results"] else "no results are posted in the registry.")
                 )
-        elif not same_study and a.drug_slug and b.drug_slug and a.drug_slug != b.drug_slug and not (a.is_placebo or b.is_placebo):
+        elif not same_study and a.drug_slug and b.drug_slug and a.drug_slug != b.drug_slug and not (is_placebo_arm(a) or is_placebo_arm(b)):
             requirements.append("No registered trial including both agents was found among the tracked studies (this is a statement about tracked registry records, not proof that none exists).")
         requirements += [
             "Without a head-to-head trial: individual participant data from at least one trial for a matching-adjusted or simulated-treatment comparison, with all effect modifiers measured in both.",
