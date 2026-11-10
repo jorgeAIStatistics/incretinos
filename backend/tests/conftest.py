@@ -88,3 +88,23 @@ def result_id(db, nct: str, arm_contains: str, *, category: str = "WEIGHT_PCT_CH
             continue
         return r.id
     raise AssertionError(f"No result for {nct} / {arm_contains} / {estimand} / {tier}")
+
+
+def analysis_id(db, nct: str, treatment_contains: str, *, comparator_contains: str = "placebo", category: str = "WEIGHT_PCT_CHANGE", weeks: float | None = 72,
+                origin: str | None = "REGISTRY", estimand: str | None = None) -> int:
+    """Locate a stored between-arm analysis by its scientific description (ids are not stable across seeds)."""
+    from sqlalchemy import select
+
+    from incretinos.models import Study
+
+    study = db.scalar(select(Study).where(Study.nct_id == nct))
+    assert study is not None, f"{nct} not seeded"
+    for a in sorted(study.analyses, key=lambda x: x.id):
+        if a.endpoint.category != category or (weeks is not None and a.timepoint_weeks != weeks) or (origin and a.origin != origin):
+            continue
+        if treatment_contains.lower() not in (a.treatment_label or "").lower() or comparator_contains.lower() not in (a.comparator_label or "").lower():
+            continue
+        if estimand and (a.estimand.label if a.estimand else "NOT_STATED") != estimand:
+            continue
+        return a.id
+    raise AssertionError(f"No analysis for {nct} / {treatment_contains} vs {comparator_contains} / {category} / week {weeks}")
