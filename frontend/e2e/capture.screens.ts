@@ -26,6 +26,14 @@ const EXTRA: [name: string, path: string][] = [
   ["quality", "/quality"],
   ["conflicts", "/conflicts"],
 ];
+// Tab and selection states that are not the default view of a route. Each is captured and measured like a route.
+const STATES: [name: string, path: string, tab: string][] = [
+  ["design-simulation", "/design", "Synthetic simulation and sensitivity"],
+  ["design-coverage", "/design", "Population coverage"],
+  ["design-eligibility", "/design", "Eligibility and amendments"],
+  ["sources-changes", "/sources", "Changes and review queue"],
+  ["sources-validation", "/sources", "Validation rules"],
+];
 const VIEWPORTS = [
   { name: "1440x900", width: 1440, height: 900 },
   { name: "834x1112", width: 834, height: 1112 },
@@ -36,11 +44,11 @@ test.beforeAll(() => {
   mkdirSync(OUT, { recursive: true });
 });
 
-const routes = process.env.CAPTURE_EXTRA ? [...ROUTES, ...EXTRA] : ROUTES;
+const routes: [name: string, path: string, tab?: string][] = [...(process.env.CAPTURE_EXTRA ? [...ROUTES, ...EXTRA] : ROUTES), ...STATES];
 let first = true;
 
 for (const viewport of VIEWPORTS) {
-  for (const [name, path] of routes) {
+  for (const [name, path, tab] of routes) {
     test(`${name} at ${viewport.name}`, async ({ page }, testInfo) => {
       if (first && testInfo.retry === 0 && viewport === VIEWPORTS[0] && name === routes[0][0]) rmSync(METRICS, { force: true });
       first = false;
@@ -48,6 +56,8 @@ for (const viewport of VIEWPORTS) {
       await page.goto(path, { waitUntil: "networkidle" });
       await page.locator("h1").first().waitFor({ state: "visible", timeout: 60_000 });
       // Wait until no loading placeholder is left, then let late requests settle.
+      if (tab) await page.getByRole("tab", { name: tab, exact: true }).click();
+      await page.waitForLoadState("networkidle");
       await page.waitForFunction(() => !document.querySelector('[role="status"][aria-label^="Loading"], .skeleton'), null, { timeout: 60_000 }).catch(() => undefined);
       await page.waitForLoadState("networkidle");
       await page.evaluate(() => window.scrollTo(0, 0));
@@ -61,7 +71,7 @@ for (const viewport of VIEWPORTS) {
           headings: Array.from(document.querySelectorAll("h1,h2,h3,h4")).map((h) => `${h.tagName.toLowerCase()}:${(h.textContent ?? "").trim().slice(0, 60)}`),
         };
       });
-      appendFileSync(METRICS, `${JSON.stringify({ route: path, name, viewport: viewport.name, ...metrics })}\n`);
+      appendFileSync(METRICS, `${JSON.stringify({ route: path, ...(tab ? { tab } : {}), name, viewport: viewport.name, ...metrics })}\n`);
       await page.screenshot({ path: `${OUT}/${name}-${viewport.name}.png`, fullPage: true, animations: "disabled", style: "nextjs-portal { display: none !important; }" });
     });
   }
