@@ -470,7 +470,8 @@ def test_believe_contrasts_follow_the_registrys_stated_direction(db):
         assert description.endswith("vs Placebo")
         assert row.group_description == description and row.direction_basis == DirectionBasis.GROUP_DESCRIPTION.value
         assert row.group_labels == [titles[g] for g in analysis["groupIds"]]  # posted order kept
-        assert row.comparator_label == "Placebo/30 mg/kg Bimagrumab" and row.comparator_arm.is_placebo
+        # The reference group: placebo through week 40, then bimagrumab at weeks 52 and 64 — a sequence arm, not stored as placebo.
+        assert row.comparator_label == "Placebo/30 mg/kg Bimagrumab" and row.comparator_arm.arm_role == "SEQUENCE" and not row.comparator_arm.is_placebo
         assert row.treatment_label != row.comparator_label and not row.treatment_arm.is_placebo
         assert row.estimate == float(analysis["paramValue"])
     first = stored["resultsSection.outcomeMeasuresModule.outcomeMeasures[0].analyses[0]"]
@@ -581,7 +582,9 @@ def test_no_placebo_arm_is_attributed_to_a_drug(db):
         assert arm.is_placebo and arm.drug_slug == "placebo" and arm.dose_amount is None, (arm.study.nct_id, arm.label, arm.drug_slug)
     assert not [(a.study.nct_id, a.label, a.drug_slug) for a in arms if a.is_placebo and a.drug_slug != "placebo"]
     believe = next(a for a in _study(db, "NCT05616013").arms if a.label == "Placebo/30 mg/kg Bimagrumab")
-    assert believe.is_placebo and believe.drug_slug == "placebo"  # was stored as a bimagrumab arm carrying 67 results
+    # Registered as the placebo comparator but switched to bimagrumab at week 52: neither a bimagrumab arm (as it was
+    # first stored, carrying 67 results) nor a placebo arm (as the data repair stored it) — a sequence arm.
+    assert not believe.is_placebo and believe.drug_slug is None and believe.registered_arm_type == "PLACEBO_COMPARATOR" and believe.arm_type == "SEQUENCE"
     assert arm_drug_slug("Part A: Bimagrumab Placebo + Tirzepatide Placebo") == ("placebo", True)
     assert arm_drug_slug("Part A: Bimagrumab Placebo + Tirzepatide Dose 2") == ("tirzepatide", False)
     assert arm_drug_slug("placebo to match tirzepatide") == ("placebo", True)
@@ -763,7 +766,8 @@ def test_participant_flow_is_complete_for_every_study(db):
         expected = 0
         for period in module.get("periods", []):
             started = {a["groupId"]: to_float(a.get("numSubjects")) for m in period.get("milestones", []) if m.get("type") == "STARTED" for a in m.get("achievements", [])}
-            part = {g for g, n in started.items() if n}
+            groups = {g["id"] for g in module.get("groups", [])}
+            part = {g for g in groups if started.get(g) != 0}  # only a posted zero takes a group out of a period
             expected += sum(1 for d in period.get("dropWithdraws", []) for r in d.get("reasons", []) if r.get("groupId") in part)
         stored = db.scalar(select(func.count()).select_from(ParticipantFlow).where(ParticipantFlow.study_id == study.id, ParticipantFlow.kind == "WITHDRAWAL_REASON"))
         assert stored == expected, (path.stem, stored, expected)
@@ -843,3 +847,299 @@ def test_no_seeded_evidence_is_human_verified(db):
         assert "HUMAN_VERIFIED" not in statuses, model.__tablename__
     assert {s for (s,) in db.execute(select(ParticipantFlow.verification_status).distinct())} == {"MACHINE_EXTRACTED"}
     assert get_settings().curated_dir.is_dir()
+
+
+# =========================================================================== Session 2 P0 data fixes (review DR-*, CK-*)
+
+
+# --------------------------------------------------------------------------- DR-1: one source table, one endpoint record
+
+
+def test_rows_of_one_source_table_share_one_endpoint_record(db):
+    """Role and multiplicity are not endpoint identity: placebo, low-dose and comparator rows stay with the active arms."""
+    # ATTAIN-1, Foundayo label "% of patients who lost ≥20% body weight 2.9 5.9 8.9 18.4": four arms, one endpoint record.
+    attain1 = _study(db, "NCT05869903")
+    label20 = [r for r in attain1.results if r.origin == "CURATED" and r.source.key == "openfda-label:foundayo" and r.endpoint.category == "WEIGHT_RESPONDER" and r.endpoint.threshold == 20.0]
+    assert sorted(r.value for r in label20) == [2.9, 5.9, 8.9, 18.4] and len({r.endpoint_id for r in label20}) == 1
+    # The label's primary-endpoint table: placebo -2.1 with the three Foundayo doses.
+    label_pct = [r for r in attain1.results if r.origin == "CURATED" and r.source.key == "openfda-label:foundayo" and r.endpoint.category == "WEIGHT_PCT_CHANGE"]
+    assert -2.1 in {r.value for r in label_pct} and len({r.endpoint_id for r in label_pct if r.estimand_id == label_pct[0].estimand_id}) == 1
+    # TRIUMPH-2: the 4 mg arm is not split off; EloraTZP: the tirzepatide comparator and monotherapies sit with the combinations.
+    for nct, arms in (("NCT05929079", 4), ("NCT06603571", 9)):
+        rows = [r for r in _study(db, nct).results if r.origin == "CURATED" and r.endpoint.category == "WEIGHT_PCT_CHANGE" and r.source.tier == "PRESS_RELEASE"]
+        by_endpoint: dict[int, set] = defaultdict(set)
+        for r in rows:
+            by_endpoint[r.endpoint_id].add(r.arm_label)
+        assert max(len(v) for v in by_endpoint.values()) >= arms, (nct, by_endpoint)
+    # Curated endpoints of a study are never two records of one (title, category, threshold, unit, time point).
+    seen = Counter((e.study_id, e.title, e.category, e.threshold, e.unit, e.timepoint_weeks) for e in db.scalars(select(Endpoint).where(Endpoint.origin == "CURATED", Endpoint.kind == "CURATED")))
+    hand = {(e.study_id, e.title) for e in db.scalars(select(Endpoint).where(Endpoint.origin == "CURATED")) if e.title[:1].isupper()}  # hand-curated titles
+    assert not [k for k, n in seen.items() if n > 1 and (k[0], k[1]) not in hand]
+
+
+def test_endpoint_role_and_multiplicity_are_settled_over_all_rows_of_the_endpoint(converter):
+    endpoint = {"title": "t", "role": "SECONDARY", "multiplicity_controlled": "YES"}
+
+    def entry(arm, role, mult, active=True, quote="q"):
+        return {"role": role, "multiplicity_controlled": mult, "active": active, "quote": quote, "arm": arm, "row": {"notes": None}}
+
+    agree = [entry("9 mg", "PRIMARY", "YES"), entry("12 mg", "PRIMARY", "YES"), entry("placebo", "NOT_STATED", "NOT_STATED", active=False)]
+    assert converter.settle_endpoint_status("NCT0", endpoint, agree) == [] and (endpoint["role"], endpoint["multiplicity_controlled"]) == ("PRIMARY", "YES")
+    # the active arms disagree (5.5 mg not in the controlled hierarchy): NOT_STATED, each row keeps its note's statement
+    split = [entry("5.5 mg", "KEY_SECONDARY", "NO"), entry("9 mg", "KEY_SECONDARY", "YES"), entry("17.2 mg", "KEY_SECONDARY", "YES")]
+    lines = converter.settle_endpoint_status("NCT0", endpoint, split)
+    assert endpoint["multiplicity_controlled"] == "NOT_STATED" and endpoint["role"] == "KEY_SECONDARY"
+    assert len(lines) == 1 and "needs human curation" in lines[0]
+    assert "not controlled (NO)" in split[0]["row"]["notes"] and "controlled (YES)" in split[1]["row"]["notes"]
+    # a role the quote itself names settles a disagreement, but only if it is one of the recorded roles
+    named = [entry("4 mg", "KEY_SECONDARY", "YES"), entry("9 mg", "PRIMARY", "YES", quote="For the primary endpoint, participants taking 9 mg lost …")]
+    converter.settle_endpoint_status("NCT0", endpoint, named)
+    assert endpoint["role"] == "PRIMARY" and "KEY_SECONDARY" in named[0]["row"]["notes"]
+
+
+# --------------------------------------------------------------------------- DR-2: a share of participants is not a mean change
+
+
+BELIEVE_RESPONDER = "Percentage of Participants With Reduction in Body Weight ≥ 5%, ≥ 10% and ≥15% at Week 48"
+
+
+def test_participant_shares_are_never_filed_as_mean_change():
+    assert categorize_endpoint(BELIEVE_RESPONDER, "percentage of participants") == (categorize_endpoint("≥5% body weight reduction")[0], None)
+    assert categorize_endpoint(BELIEVE_RESPONDER)[0].value == "WEIGHT_RESPONDER"
+    for title in (
+        "Percentage of Participants With Reduction in Waist Circumference Greater Than or Equal to (≥) 5 cm at Week 48",
+        "Percentage of Participants With Body Mass Index (BMI) Categories at Baseline and Week 48",
+        "Percentage of Participants With Reduction in Fat Mass ≥ 5% ≥ 10% ≥ 15% by DXA at Week 48",
+        "Percentage of Participants Achieving HbA1c ≤6.5% and ≥10% Weight Reduction",  # a composite target
+    ):
+        assert categorize_endpoint(title, "percentage of participants")[0].value == "OTHER", title
+    # a mean share of an earlier loss is not a change in body weight either
+    assert categorize_endpoint("Percent Maintenance of Body Weight Reduction Achieved in SURMOUNT-5")[0].value == "OTHER"
+    assert categorize_endpoint("Percentage of Body Weight Reduction Achieved at Week 80 that is Maintained at Week 116")[0].value == "OTHER"
+    # still a change when it is one
+    assert categorize_endpoint("Percent Change From Baseline in Body Weight", "percent change")[0].value == "WEIGHT_PCT_CHANGE"
+    assert categorize_endpoint("Change From Baseline in Waist Circumference", "centimeters")[0].value == "WAIST_CHANGE"
+
+
+def test_no_stored_share_of_participants_sits_in_a_measurement_category(db):
+    from incretinos.vocab import MEASUREMENT_CATEGORIES, counts_participants
+
+    measurement = {c.value for c in MEASUREMENT_CATEGORIES}
+    wrong = [
+        (e.study.nct_id, e.category, e.title, e.unit)
+        for e in db.scalars(select(Endpoint).where(Endpoint.category.in_(measurement)))
+        if counts_participants(e.title, e.unit)
+    ]
+    assert not wrong
+    believe = [r for r in _study(db, "NCT05616013").results if r.origin == "REGISTRY" and r.endpoint.title == BELIEVE_RESPONDER]
+    assert believe and {r.endpoint.category for r in believe} == {"WEIGHT_RESPONDER"}
+    # benefit-risk no longer reads the responder shares as percent change in body weight
+    profiles = arm_profiles(db, "NCT05616013")
+    weight = [a["efficacy"]["weight_pct"] for a in profiles["arms"] if "weight_pct" in a["efficacy"]]
+    assert all("participants" not in (w.get("unit") or "") for w in weight)
+
+
+# --------------------------------------------------------------------------- DR-4 / WEB-06: stored arm roles
+
+
+def test_switch_arm_is_a_sequence_not_a_placebo_arm(db):
+    from incretinos.engines.safety import arm_role
+
+    believe = next(a for a in _study(db, "NCT05616013").arms if a.label == "Placebo/30 mg/kg Bimagrumab")
+    assert (believe.is_placebo, believe.drug_slug, believe.dose_amount) == (False, None, None)
+    assert (believe.arm_type, believe.registered_arm_type, believe.arm_role) == ("SEQUENCE", "PLACEBO_COMPARATOR", "SEQUENCE")
+    assert "followed by" in believe.dose_text and believe.n_randomized
+    assert arm_role(believe, {})["arm_role"] == "SEQUENCE"
+    profiles = arm_profiles(db, "NCT05616013")
+    assert not [a["label"] for a in profiles["arms"] if a["is_placebo"] and "Bimagrumab" in a["label"]]
+    triumph6 = next(a for a in _study(db, "NCT06859268").arms if a.label == "Retatrutide Dose 1 to Placebo")
+    assert (triumph6.arm_role, triumph6.is_placebo) == ("SEQUENCE", False)
+    # a curated "placebo to retatrutide MTD" arm is a sequence too, not a retatrutide arm
+    curated = next(a for a in _study(db, "NCT05929066").arms if a.label == "placebo to retatrutide MTD")
+    assert (curated.arm_role, curated.drug_slug, curated.is_placebo) == ("SEQUENCE", None, False)
+
+
+def test_every_arm_stores_the_role_the_shared_rule_gives(db):
+    from incretinos.vocab import classify_arm_role
+
+    arms = list(db.scalars(select(StudyArm)))
+    assert arms and all(a.arm_role for a in arms)
+    for arm in arms:
+        roles = {link.drug.slug: link.role for link in arm.study.drug_links}
+        role, basis = classify_arm_role(arm_type=arm.arm_type, is_placebo=arm.is_placebo, drug_slug=arm.drug_slug, label=arm.label, drug_roles=roles)
+        assert (arm.arm_role, arm.arm_role_basis) == (role.value, basis), (arm.study.nct_id, arm.label)
+        if arm.arm_role == "PLACEBO":
+            assert arm.is_placebo and arm.drug_slug == "placebo"
+    # WEB-06: in EloraTZP the tirzepatide-alone arms are the active comparator, the combinations the study drug
+    elora = {a.label: a.arm_role for a in _study(db, "NCT06603571").arms}
+    assert elora["Tirzepatide Dose 3"] == "ACTIVE_COMPARATOR" and elora["tirzepatide 15 mg"] == "ACTIVE_COMPARATOR"
+    assert elora["LY3841136 Dose 3 + Tirzepatide Dose 3"] == "STUDY_DRUG" and elora["Placebo"] == "PLACEBO"
+
+
+# --------------------------------------------------------------------------- DR-5: dose lists and titrations
+
+
+def test_dose_lists_and_titrations_are_not_one_dose(db):
+    for label in ("tirzepatide MTD (10 or 15 mg)", "15 mg or MTD - Tirzepatide", "semaglutide MTD (1.7 or 2.4 mg)", "retatrutide 4 mg to MTD", "up to 36 mg orforglipron", "tirzepatide 10 mg and 15 mg", "10, 15 mg"):
+        assert parse_single_dose(label) is None, label
+    for label, dose in (("Placebo + 2.4 mg Semaglutide", (2.4, "mg")), ("Group 2, 10 mg Tirzepatide", (10.0, "mg")), ("FOUNDAYO 5.5 mg once daily", (5.5, "mg"))):
+        assert parse_single_dose(label) == dose, label
+    surmount5 = {a.label: a for a in _study(db, "NCT05822830").arms}
+    assert surmount5["15 mg or MTD - Tirzepatide"].dose_amount is None and surmount5["tirzepatide MTD (10 or 15 mg)"].dose_amount is None
+    triumph1 = {a.label: a.dose_amount for a in _study(db, "NCT05929066").arms}
+    assert triumph1["retatrutide 4 mg to MTD"] is None and triumph1["retatrutide 4 mg"] == 4.0
+
+
+# --------------------------------------------------------------------------- DR-6: source labels attach to the registered arm
+
+
+def test_source_labels_attach_to_the_one_registered_arm_of_that_drug_and_dose(db):
+    achieve3 = _study(db, "NCT06045221")
+    for analysis in (a for a in achieve3.analyses if a.origin == "CURATED"):
+        for arm in (analysis.treatment_arm, analysis.comparator_arm):
+            assert arm.origin == "REGISTRY", (analysis.treatment_label, analysis.comparator_label, arm.label)
+    sema7 = next(a for a in achieve3.analyses if a.origin == "CURATED" and a.comparator_label.startswith("oral semaglutide 7 mg"))
+    assert sema7.comparator_arm.label == "7 mg Semaglutide" and "attached to the registered arm '7 mg Semaglutide'" in sema7.notes
+    # Foundayo label dosages: the documented bioequivalent dose of the ATTAIN-1 capsule arms
+    attain1 = _study(db, "NCT05869903")
+    label55 = [r for r in attain1.results if r.origin == "CURATED" and r.arm_label.startswith("FOUNDAYO 5.5 mg")]
+    assert label55 and {r.arm.label for r in label55} == {"6 mg Orforglipron"} and all("documented bioequivalent" in r.notes for r in label55)
+    believe = next(r for r in _study(db, "NCT05616013").results if r.origin == "CURATED" and r.arm_label == "semaglutide 2.4 mg")
+    assert believe.arm.label == "Placebo + 2.4 mg Semaglutide"
+    # never: a pooled or titrated group, or a label without one single dose
+    assert loader.registered_arm_for(db, _study(db, "NCT04881760"), "retatrutide 4 mg (combined)") == (None, None)
+    assert loader.registered_arm_for(db, _study(db, "NCT05929066"), "retatrutide 4 mg to MTD") == (None, None)
+    assert loader.registered_arm_for(db, attain1, "FOUNDAYO 14.5 mg once daily") == (None, None)  # no such arm
+    for arm in db.scalars(select(StudyArm).where(StudyArm.origin == "CURATED")):
+        mapped, _ = loader.registered_arm_for(db, arm.study, arm.label)
+        assert mapped is None, (arm.study.nct_id, arm.label, mapped.label)  # every curated-only arm has no unique registered twin
+
+
+# --------------------------------------------------------------------------- DR-7: a reported number is stored once
+
+
+def test_achieve4_publication_counts_are_stored_once(db, converted):
+    achieve4 = _study(db, "NCT05803421")
+    rows = [r for r in achieve4.results if r.origin == "CURATED" and r.source.key == "pubmed:42815506"]
+    counts = Counter(r.value for r in rows if r.endpoint.category in ("MACE", "MORTALITY"))
+    assert counts == {1.4: 1, 3.2: 1, 4.2: 1, 5.0: 1}, counts  # MACE-4 and all-cause death, each once
+    # No curated value is stored more often than its quote prints it (per study).
+    per_quote = Counter((r.study_id, r.locator_quote, r.value) for r in db.scalars(select(OutcomeResult).where(OutcomeResult.origin == "CURATED", OutcomeResult.value.is_not(None))))
+    printed = {k: sum(1 for magnitude, _ in quote_numbers(k[1]) if abs(magnitude - abs(k[2])) < 1e-9) for k in per_quote}
+    assert not [k for k, n in per_quote.items() if n > printed[k]]
+    assert "orforglipron:F429: result not generated — the hand-curated file NCT05803421.yaml already holds this row" in "\n".join(converted["rejected"])
+
+
+# --------------------------------------------------------------------------- DR-8: bioequivalence ratios
+
+
+def test_bioequivalence_ratios_are_ratios_of_geometric_means(db):
+    from incretinos.review.checks import evaluate_all
+
+    rows = [a for a in _study(db, "NCT06440980").analyses if a.origin == "CURATED"]
+    assert len(rows) == 12
+    assert {(a.param_type, a.ci_level) for a in rows} == {("Ratio of geometric least-squares means", 90.0)}
+    flags = evaluate_all(db)
+    assert not [f for a in rows for f in flags[("analysis", a.id)] if f.code == "ANALYSIS_SCALE_AMBIGUOUS"]
+
+
+# --------------------------------------------------------------------------- DR-9: A1C
+
+
+def test_a1c_change_is_an_hba1c_change(db):
+    assert categorize_endpoint("change in A1C from baseline", "%")[0].value == "HBA1C_CHANGE"
+    rows = [r for r in _study(db, "NCT06603571").results if r.origin == "CURATED" and "A1C" in r.endpoint.title]
+    assert len(rows) == 9 and {r.endpoint.category for r in rows} == {"HBA1C_CHANGE"}
+
+
+# --------------------------------------------------------------------------- DR-10: missing STARTED is not zero
+
+
+def test_unreadable_started_count_keeps_the_group_with_a_null_denominator(scratch):
+    nct = "NCT05822830"
+    raw = _raw(nct)
+    period = raw["resultsSection"]["participantFlowModule"]["periods"][0]
+    started = next(m for m in period["milestones"] if m["type"] == "STARTED")
+    group = started["achievements"][0]["groupId"]
+    started["achievements"][0]["numSubjects"] = "NA"
+    expected = sum(1 for d in period.get("dropWithdraws", []) for r in d.get("reasons", []) if r.get("groupId") == group)
+    assert expected
+    CTGovAdapter(FixtureTransport(FIXTURES)).ingest_study(scratch, nct, raw_override=json.dumps(raw).encode())
+    title = next(g["title"] for g in raw["resultsSection"]["participantFlowModule"]["groups"] if g["id"] == group)
+    rows = list(scratch.scalars(select(ParticipantFlow).where(ParticipantFlow.arm_label == title, ParticipantFlow.period_index == 0, ParticipantFlow.kind == "WITHDRAWAL_REASON")))
+    assert len(rows) == expected
+    assert all(r.n_started is None and "n_started" in r.missing_fields for r in rows)
+
+
+# --------------------------------------------------------------------------- CK-1 / CK-2: checks read stored fields
+
+
+def test_reference_check_reads_the_stored_direction_basis(db):
+    from incretinos.review.checks import evaluate_all
+
+    flags = evaluate_all(db)
+    assumed = [a for a in db.scalars(select(StatisticalAnalysis).where(StatisticalAnalysis.origin == "REGISTRY")) if any(f.code == "ANALYSIS_REFERENCE_FROM_ARM_ROLE" for f in flags[("analysis", a.id)])]
+    assert len(assumed) > 50  # the 62 flags had fallen to 0 when a comment phrase changed
+    assert {a.direction_basis for a in assumed} <= {DirectionBasis.ARM_TYPE.value, DirectionBasis.PLACEBO_GROUP.value}
+    stated = [a for a in db.scalars(select(StatisticalAnalysis)) if a.direction_basis == DirectionBasis.GROUP_DESCRIPTION.value]
+    assert stated and not [a for a in stated if any(f.code.startswith("ANALYSIS_REFERENCE") for f in flags[("analysis", a.id)])]
+
+
+def test_a_stored_threshold_that_contradicts_title_and_quote_is_flagged(db):
+    from incretinos.review.checks import evaluate
+
+    row = next(r for r in _study(db, "NCT05869903").results if r.origin == "CURATED" and r.source.key == "openfda-label:foundayo" and r.value == 18.4)
+    assert row.endpoint.threshold == 20.0 and not {f.code for f in evaluate(db, "result", row)} & {"ENDPOINT_THRESHOLD_CONTRADICTED", "ENDPOINT_THRESHOLD_VS_TITLE"}
+    row.endpoint.threshold = 10.0  # rolled back by the fixture
+    db.flush()
+    found = {f.code for f in evaluate(db, "result", row)}
+    assert {"ENDPOINT_THRESHOLD_CONTRADICTED", "ENDPOINT_THRESHOLD_VS_TITLE"} <= found
+
+
+# --------------------------------------------------------------------------- F22: non-inferiority conclusions
+
+
+def test_ni_met_is_set_only_from_a_quote_that_states_it(db, converter):
+    for nct in ("NCT06045221", "NCT04255433"):  # ACHIEVE-3, SURPASS-CVOT: the stored text gives p-values, not the conclusion
+        rows = [a for a in _study(db, nct).analyses if a.origin == "CURATED" and a.hypothesis_type == "NON_INFERIORITY"]
+        assert rows and all(a.ni_met == "NOT_STATED" and "no quote from the cited source states in words" in a.notes for a in rows), nct
+    achieve4 = next(a for a in _study(db, "NCT05803421").analyses if a.origin == "CURATED" and a.hypothesis_type == "NON_INFERIORITY")
+    assert achieve4.ni_met == "YES"
+    hand = yaml.safe_load((converter.DATA_DIR / "studies" / "NCT05803421.yaml").read_text())
+    assert any("demonstrating non-inferiority" in q for a in hand["analyses"] for q in a.get("extra_quotes", []))
+    row = {"quote": "(hazard ratio, 0.92; 95.3% confidence interval, 0.83 to 1.01; P = 0.003 for noninferiority)"}
+    converter.settle_ni_met(row)
+    assert "ni_met" not in row and "NOT_STATED" in row["notes"]
+    row = {"quote": "tirzepatide was noninferior to dulaglutide (hazard ratio, 0.92)"}
+    converter.settle_ni_met(row)
+    assert row["ni_met"] == "YES"
+
+
+# --------------------------------------------------------------------------- BR-4: SURMOUNT-4 assessment week
+
+
+def test_surmount4_default_week_is_the_reported_assessment_week(db):
+    study = _study(db, "NCT04660643")
+    assert (study.design_features["treatment_weeks"], study.design_features["randomized_period_weeks"], study.design_features["lead_in_weeks"]) == (88, 52, 36)
+    primary = _raw("NCT04660643")["protocolSection"]["outcomesModule"]["primaryOutcomes"][0]["timeFrame"]
+    assert "Week 88" in primary and "Week 36" in primary
+    profiles = arm_profiles(db, "NCT04660643")
+    assert profiles["selection"]["weight_pct"]["timepoint_weeks"] == 88
+    assert [a for a in profiles["arms"] if "weight_pct" in a["efficacy"]] and not profiles["messages"]
+
+
+# --------------------------------------------------------------------------- WEB-17: reported text of curated values
+
+
+def test_curated_values_keep_their_reported_text(db):
+    assert loader.reported_text(-25.0, "and -25.0% (12-mg dose)") == "-25.0"
+    assert loader.reported_text(4.2, "57 (4·2%) of 1358") == "4.2"
+    assert loader.reported_text(0.956, "1.01 (0.9560, 1.0705)") == "0.9560"
+    assert loader.reported_text(-6.7, "lost 6.7%") == "-6.7"  # sign stated in words: printed digits, stored sign
+    assert loader.reported_text(None, "x") is None
+    rows = list(db.scalars(select(OutcomeResult).where(OutcomeResult.origin == "CURATED", OutcomeResult.value.is_not(None))))
+    assert rows and all(r.value_text is not None and float(r.value_text) == r.value for r in rows)
+    trailing = [r for r in rows if r.value_text.endswith("0") and "." in r.value_text]
+    assert trailing  # e.g. "-25.0", which used to become "-25"
+    for analysis in db.scalars(select(StatisticalAnalysis).where(StatisticalAnalysis.origin == "CURATED", StatisticalAnalysis.estimate.is_not(None))):
+        assert float(analysis.estimate_text) == analysis.estimate
