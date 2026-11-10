@@ -29,6 +29,7 @@ from ..models import (
     EvidenceSource,
     EvidenceVersion,
     Formulation,
+    FullTextExtraction,
     OutcomeResult,
     ReviewDecision,
     SourceSnapshot,
@@ -37,7 +38,7 @@ from ..models import (
     StudyArm,
 )
 from . import identity, regulatory
-from .anchoring import ANCHOR_BASIS_LABEL, FULL_TEXT, STRUCTURED_PAYLOAD, anchor
+from .anchoring import ANCHOR_BASIS_LABEL, FULL_TEXT, FULLTEXT_EXTRACTION, STRUCTURED_PAYLOAD, anchor
 from .lifecycle import (
     REASON_TEXT,
     DecisionFact,
@@ -490,6 +491,11 @@ def _quote_context(quote: str, text: str, width: int = 240) -> str | None:
 
 
 def _anchoring_block(row: Any, quote: str | None, locator: str | None, snapshot: SourceSnapshot | None, structured: bool) -> dict[str, Any]:
+    if getattr(row, "origin", None) == identity.FULLTEXT:
+        return {"basis": FULLTEXT_EXTRACTION, "basis_label": ANCHOR_BASIS_LABEL[FULLTEXT_EXTRACTION], "quote": quote, "locator": locator, "context": None,
+                "checked_against_snapshot_version": snapshot.version_no if snapshot else None,
+                "note": "The quote is assembled from the cells (or the sentence) the value was read from, joined with ' | '. See the full-text block for the "
+                        "table as extracted, the cells used, the parsing method and the quality assessment."}
     if structured:
         return {"basis": STRUCTURED_PAYLOAD, "basis_label": ANCHOR_BASIS_LABEL[STRUCTURED_PAYLOAD], "quote": None, "locator": locator, "context": None,
                 "checked_against_snapshot_version": snapshot.version_no if snapshot else None,
@@ -504,6 +510,48 @@ def _anchoring_block(row: Any, quote: str | None, locator: str | None, snapshot:
 
 
 _FRAGMENT_LIMIT = 6000
+
+
+def _fulltext_block(session: Session, row: Any) -> dict[str, Any] | None:
+    """For a FULLTEXT row: the document and its licence, the table as extracted with the cells used, the method and the quality."""
+    extraction_id = getattr(row, "fulltext_extraction_id", None)
+    if getattr(row, "origin", None) != identity.FULLTEXT:
+        return None
+    extraction = session.get(FullTextExtraction, extraction_id) if extraction_id else None
+    if extraction is None:
+        return {"document": None, "table": None, "extraction": None, "used_cells": [],
+                "note": "This full-text row has lost its link to the cells it was read from (the extraction was rebuilt without it); reload the full-text step."}
+    document = extraction.document
+    table = extraction.table
+    used = sorted({(c["row_index"], c["col_index"]) for c in extraction.cells or [] if isinstance(c, dict) and c.get("row_index") is not None and c.get("col_index") is not None})
+    used_columns = sorted({c["col_index"] for c in extraction.cells or [] if isinstance(c, dict) and c.get("row_index") is None and c.get("col_index") is not None})
+    return {
+        "document": {
+            "key": document.key, "kind": document.kind, "title": document.title, "url": document.url, "pmcid": document.pmcid, "pmid": document.pmid,
+            "doi": document.doi, "application_number": document.application_number, "licence": document.licence, "licence_url": document.licence_url,
+            "licence_basis": document.licence_basis, "open_access_flag": document.open_access_flag, "full_text_storable": document.full_text_storable,
+            "full_text_stored": document.full_text_stored, "storage_basis": document.storage_basis, "content_hash": document.content_hash,
+            "byte_size": document.byte_size, "page_count": document.page_count, "retrieved_at": document.retrieved_at, "fetch_status": document.fetch_status,
+            "parse_status": document.parse_status, "extraction_scope": document.extraction_scope, "limitations": document.limitations or [],
+        },
+        "table": None if table is None else {
+            "label": table.label, "caption": table.caption, "locator": table.locator, "section": table.section, "element_id": table.element_id,
+            "page_start": table.page_start, "page_end": table.page_end, "printed_page": table.printed_page, "authorship": table.authorship,
+            "source_line": table.source_line, "header_rows": table.header_rows or [], "body_rows": table.body_rows or [], "footnotes": table.footnotes or [],
+            "abbreviations": table.abbreviations or {}, "units": table.units or [], "n_columns": table.n_columns, "parse_method": table.parse_method,
+            "parse_version": table.parse_version, "structural_notes": table.structural_notes or [], "content_hash": table.content_hash,
+        },
+        "extraction": {
+            "target": extraction.target, "row_label": extraction.row_label, "column_header": extraction.column_header,
+            "comparator_header": extraction.comparator_header, "cells": extraction.cells or [], "passage": extraction.passage,
+            "parse_method": extraction.parse_method, "parse_version": extraction.parse_version, "quality": extraction.quality or {},
+            "confidence": extraction.confidence, "notes": extraction.notes,
+        },
+        "used_cells": [list(c) for c in used],
+        "used_header_columns": used_columns,
+        "note": "Extraction confidence and the quality assessment describe how the value was read. They are not evidence that the value is right.",
+    }
+
 
 
 def _registry_block(session: Session, row: Any, snapshot: SourceSnapshot | None) -> dict[str, Any] | None:
@@ -830,6 +878,7 @@ def evidence_detail(session: Session, evidence_type: str, row: Any) -> dict[str,
         "source": _source_block(session, source, snapshot),
         "anchoring": _anchoring_block(row, quote, locator, snapshot, structured),
         "registry": _registry_block(session, row, snapshot) if structured else None,
+        "fulltext": _fulltext_block(session, row),
         "values": {name: snapshot_fields.get(name, getattr(row, name, None)) for name in _VALUE_KEYS[evidence_type]},
         "confidence_interval": ci,
         "missing_fields": list(getattr(row, "missing_fields", None) or []),

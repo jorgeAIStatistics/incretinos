@@ -104,6 +104,73 @@ export type AnchoringBlock = {
   note?: string | null;
 };
 
+/** A full-text document, the table as extracted and the exact cells a FULLTEXT row was read from (review API `fulltext`). */
+export type FullTextHeaderCell = { text: string; col: number; colspan?: number; rowspan?: number };
+export type FullTextBodyRow = { stub: string; cells: Record<string, string>; group?: string | null; kind?: string; footnote_refs?: string[]; lines?: number; panel?: number; indent?: number };
+export type FullTextCell = { role: string; row_index?: number | null; col_index?: number | null; row_label?: string | null; column_header?: string | null; text?: string | null; marker?: string; panel?: string | null; via?: string };
+export type FullTextBlock = {
+  document?: {
+    key: string;
+    kind: string;
+    title: string;
+    url?: string | null;
+    pmcid?: string | null;
+    pmid?: string | null;
+    doi?: string | null;
+    application_number?: string | null;
+    licence?: string | null;
+    licence_url?: string | null;
+    licence_basis?: string | null;
+    open_access_flag?: string | null;
+    full_text_storable: boolean;
+    full_text_stored: boolean;
+    storage_basis?: string | null;
+    content_hash?: string | null;
+    byte_size?: number | null;
+    page_count?: number | null;
+    retrieved_at?: string | null;
+    fetch_status: string;
+    parse_status: string;
+    extraction_scope?: string | null;
+    limitations?: { code: string; where: string; text: string }[];
+  } | null;
+  table?: {
+    label: string;
+    caption?: string | null;
+    locator: string;
+    section?: string | null;
+    page_start?: number | null;
+    page_end?: number | null;
+    printed_page?: string | null;
+    authorship: string;
+    source_line?: string | null;
+    header_rows?: FullTextHeaderCell[][];
+    body_rows?: FullTextBodyRow[];
+    footnotes?: { marker?: string | null; kind?: string; text: string }[];
+    abbreviations?: Record<string, string>;
+    n_columns?: number;
+    parse_method: string;
+    parse_version: string;
+    structural_notes?: string[];
+  } | null;
+  extraction?: {
+    target: string;
+    row_label?: string | null;
+    column_header?: string | null;
+    comparator_header?: string | null;
+    cells?: FullTextCell[];
+    passage?: Record<string, unknown> | null;
+    parse_method: string;
+    parse_version: string;
+    quality?: Record<string, unknown>;
+    confidence: string;
+    notes?: string | null;
+  } | null;
+  used_cells?: number[][];
+  used_header_columns?: number[];
+  note: string;
+};
+
 export type RegistryBlock = { location: string; resolved?: boolean; fragment?: unknown; fragment_text?: string | null; fragment_truncated?: boolean; labels?: Record<string, unknown>; note?: string | null };
 
 export type DecisionOut = {
@@ -252,6 +319,7 @@ export type EvidenceDetail = {
   source?: SourceBlock | null;
   anchoring?: AnchoringBlock | null;
   registry?: RegistryBlock | null;
+  fulltext?: FullTextBlock | null;
   values?: Record<string, unknown>;
   confidence_interval?: { low?: number | null; high?: number | null; level?: number | null; sides?: string | null; status?: string | null } | null;
   missing_fields?: string[];
