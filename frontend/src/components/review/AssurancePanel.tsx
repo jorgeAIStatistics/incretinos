@@ -4,7 +4,9 @@ import { CheckSquare, GitCommitVertical, Square } from "lucide-react";
 import Link from "next/link";
 import { Callout, Disclosure, Missing, TierBadge, VerificationBadge } from "@/components/ui";
 import { titleCase } from "@/lib/api";
-import { decisionLabel, type DecisionOut, type EvidenceDetail, fieldLabel, recordHref, type RelatedRow, shortHash, stamp } from "@/lib/review";
+import { ClassBadge } from "@/components/conflicts/ClassBadge";
+import type { ConflictClass } from "@/components/conflicts/types";
+import { decisionLabel, type DecisionOut, type EvidenceDetail, fieldLabel, recordHref, type RelatedRow, shortHash, type SourceConflict, stamp } from "@/lib/review";
 import { estimandLabel } from "@/lib/rows";
 import { Block, Diff, JsonBlock, Severity, Stored } from "./bits";
 
@@ -51,6 +53,36 @@ function SameQuantity({ rows }: { rows: RelatedRow[] }) {
         );
       })}
     </ul>
+  );
+}
+
+/** The source-conflict classification of this row against every other source of the same quantity (read-only). */
+function ConflictSummary({ conflict }: { conflict: SourceConflict | null | undefined }) {
+  if (!conflict) return null;
+  return (
+    <div className="mb-2 flex flex-col gap-1.5 text-data" data-testid="source-conflict">
+      {conflict.class ? (
+        <p className="flex flex-wrap items-center gap-1.5">
+          <ClassBadge value={conflict.class as ConflictClass} label={conflict.class_label} />
+          {conflict.href ? (
+            <Link href={conflict.href} className="text-accent hover:underline">
+              Open the comparison
+            </Link>
+          ) : null}
+        </p>
+      ) : null}
+      <p className="text-ink-2">{conflict.explanation}</p>
+      {conflict.comparisons.length ? (
+        <ul className="flex flex-col gap-1">
+          {conflict.comparisons.map((c) => (
+            <li key={`${c.evidence_type}-${c.id}`} className="text-caption text-ink-2">
+              <span className="font-medium text-ink">{c.class_label}</span> against <span className="num">{(c.value_printed ?? "").replace(/^-(?=\d)/, "−")}</span>
+              {c.tier ? ` (${titleCase(c.tier)})` : ""}: {c.explanation}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   );
 }
 
@@ -151,6 +183,7 @@ export function AssurancePanel({ detail }: { detail: EvidenceDetail }) {
       ) : null}
 
       <Block title="Same quantity from other sources" level={3}>
+        <ConflictSummary conflict={detail.source_conflict} />
         <SameQuantity rows={detail.same_quantity_other_sources ?? []} />
       </Block>
 
