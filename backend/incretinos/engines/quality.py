@@ -534,6 +534,10 @@ def collect(session: Session, *, as_of: datetime | None = None, refresh_days: di
 
 def _labels(session: Session, evidence: list[Item], sources: list[Item]) -> dict[str, dict[str, str]]:
     drugs = dict(session.execute(select(Drug.slug, Drug.name)).all())
+    for item in evidence:
+        for slug in item.groups.get("drug", ()):
+            # An arm drug stored on an arm (placebo, a combination of two molecules) that is not a tracked molecule.
+            drugs.setdefault(slug, f"{slug} (arm drug as stored; not a tracked molecule)")
     studies = {}
     for nct, name in session.execute(select(Study.nct_id, Study.display_name)):
         studies[nct] = f"{name} ({nct})" if name and name != nct else nct
@@ -990,7 +994,8 @@ def _width_out(facts: Facts) -> dict[str, Any]:
     return {
         "note": "Descriptive. Widths are ci_high minus ci_low as stored. They are compared only inside one group (same evidence type, endpoint category, "
                 f"parameter, unit and confidence level), and a group is shown only when it holds at least {MIN_WIDTH_GROUP} intervals. "
-                "A narrow interval is not a better result; it usually reflects a larger trial or a less variable measure.",
+                "A narrow interval is not a better result; it usually reflects a larger trial or a less variable measure. For a ratio (odds, hazard "
+                "or risk ratio) the width is taken on the ratio scale as stored.",
         "min_group_size": MIN_WIDTH_GROUP,
         "groups": [{**g, "endpoint_label": labels.get(g["endpoint_category"] or "", g["endpoint_category"]), "links": links(metric, g["key"])} for g in shown],
         "groups_too_small": len(groups) - len(shown),
