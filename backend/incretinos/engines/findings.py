@@ -1126,6 +1126,18 @@ def analysis_direction(a: StatisticalAnalysis, scale: str) -> dict[str, Any]:
                      "the registry does not state it and the sign could not be checked against arm-level values."}
 
 
+def analysis_population(a: StatisticalAnalysis) -> dict[str, Any]:
+    """The analysed population of a between-arm analysis as its arm-level rows state it (same endpoint, estimand and time point)."""
+    rows = [r for r in a.study.results if r.endpoint_id == a.endpoint_id and r.estimand_id == a.estimand_id
+            and (a.timepoint_weeks is None or r.timepoint_weeks is None or r.timepoint_weeks == a.timepoint_weeks) and is_usable(r.verification_status, r.review_hold)]
+    trt = [r for r in rows if r.arm_id == a.treatment_arm_id and a.treatment_arm_id is not None]
+    cmp_ = [r for r in rows if r.arm_id == a.comparator_arm_id and a.comparator_arm_id is not None]
+    texts = sorted({r.analysis_population.strip() for r in trt + cmp_ if r.analysis_population and r.analysis_population.strip()})
+    return {"description": texts[0] if len(texts) == 1 else None, "descriptions": texts,
+            "n_treatment": trt[0].n_analyzed if len(trt) == 1 else None, "n_comparator": cmp_[0].n_analyzed if len(cmp_) == 1 else None,
+            "status": "STATED" if texts else "NOT_STORED"}
+
+
 def _log(value: float) -> float:
     return math.log(value)
 
@@ -1217,6 +1229,7 @@ def analysis_dto(a: StatisticalAnalysis) -> dict[str, Any]:
     if not direction["established"]:
         labels.append({"code": "DIRECTION_NOT_ESTABLISHED", "text": "Direction not established", "tone": "warn", "detail": direction["basis"]})
     consistency = interval_p_value_consistency(a.estimate, a.ci_low, a.ci_high, a.ci_level, level_status, a.ci_sides, scale["scale"], scale["null_value"], a.p_value_text, a.hypothesis_type)
+    population = analysis_population(a)
     if consistency["status"] not in ("CONSISTENT", "NOT_CHECKABLE"):
         labels.append({"code": "INTERNALLY_INCONSISTENT", "text": "Record internally inconsistent", "tone": "warn", "detail": consistency["detail"]})
     return {
@@ -1257,6 +1270,9 @@ def analysis_dto(a: StatisticalAnalysis) -> dict[str, Any]:
         "p_value_status": "REPORTED" if a.p_value_text else "NOT_REPORTED",
         # Whether the stored interval, estimate and p-value agree with each other (see interval_p_value_consistency).
         "internal_consistency": consistency,
+        # Who was analysed: the analysis-population text and the number analysed of each compared arm, from the arm-level rows of the
+        # same endpoint, estimand and time point (None where the source posts no such row).
+        "analysis_population": population,
         "method": a.method,
         "ni_margin": a.ni_margin,
         "ni_margin_text": a.ni_margin_text,

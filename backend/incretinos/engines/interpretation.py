@@ -333,6 +333,10 @@ def interpret_analysis(a: dict[str, Any]) -> dict[str, Any]:
         missing.append("P-value (not reported).")
     if a["estimand_label"] == EstimandLabel.NOT_STATED.value:
         missing.append("Estimand for this analysis.")
+    if lo is not None and hi is not None and (a.get("ci_sides") or "NOT_STATED") == "NOT_STATED":
+        missing.append("Whether the confidence interval is one- or two-sided (not stated in the stored source); the interval is read at its stated level only.")
+    if (a.get("verification_status") or "") in ("PENDING_HUMAN_REVIEW", "CURATED_PENDING_REVIEW", "SOURCE_CHANGED_RECHECK_REQUIRED"):
+        not_established.append("A reviewed value: this record awaits a human decision, so it is shown for inspection and is not used in calculations.")
 
     return {
         "analysis_id": a["id"],
@@ -349,6 +353,7 @@ def interpret_analysis(a: dict[str, Any]) -> dict[str, Any]:
         "ci_excludes_no_difference_kind": "INFERENCE (read from the reported interval at its stated confidence level, against the null value of the stated scale)"
         if not inconsistent else "NOT_READ (the stored interval, estimate and p-value disagree with each other)",
         "internal_consistency": consistency,
+        "reported_effect": reported_effect(a, scale, direction, level_status, consistency),
         "establishes": establishes,
         "does_not_establish": not_established,
         "missing": missing,
@@ -356,6 +361,115 @@ def interpret_analysis(a: dict[str, Any]) -> dict[str, Any]:
         "sources": [a["source"]] if a["source"] else [],
         "locator_quote": a["locator_quote"],
         "verification_status": a["verification_status"],
+    }
+
+
+_MULTIPLICITY_TEXT = {
+    TriState.YES.value: "inside the trial's multiplicity-control (type I error) strategy, as stated by the source",
+    TriState.NO.value: "outside the multiplicity-control strategy: the p-value is nominal",
+    TriState.NOT_STATED.value: "not stated in the stored source",
+}
+_HYPOTHESIS_TEXT = {
+    "SUPERIORITY": "superiority",
+    "NON_INFERIORITY": "non-inferiority (not the same question as superiority)",
+    "EQUIVALENCE": "equivalence",
+    "OTHER": "registered as 'other' (not a superiority or non-inferiority test)",
+    "NOT_STATED": "not stated in the stored source",
+}
+
+
+def reported_effect(a: dict[str, Any], scale: dict[str, Any] | None = None, direction: dict[str, Any] | None = None, level_status: str | None = None,
+                    consistency: dict[str, Any] | None = None) -> dict[str, Any]:
+    """The treatment effect of a direct randomized comparison exactly as stored: scale, orientation, interval (level and sidedness),
+    p-value, estimand, analysed population, multiplicity status, hypothesis — and one plain reading that never goes beyond those fields.
+
+    The reading names the interval at its stated level and sidedness; it says nothing about significance when the level is unknown,
+    keeps a non-inferiority result apart from superiority, does not read the sign when the direction is not established, and does
+    not read a record whose interval, estimate and p-value disagree.
+    """
+    scale = scale or a.get("effect_scale") or effect_scale(a.get("param_type"), a.get("unit"))
+    direction = direction or a.get("direction") or {"established": False, "basis": "Direction was not assessed for this record."}
+    lo, hi, estimate = a.get("ci_low"), a.get("ci_high"), a.get("estimate")
+    level_status = level_status or a.get("ci_level_status") or ("NOT_REPORTED" if lo is None or hi is None else "VALID" if a.get("ci_level") is not None and 50 <= a["ci_level"] < 100 else "LEVEL_NOT_REPORTED" if a.get("ci_level") is None else "INVALID_LEVEL")
+    consistency = consistency or a.get("internal_consistency") or {"status": "NOT_CHECKABLE"}
+    sides = (a.get("ci_sides") or "NOT_STATED").upper()
+    treatment, comparator = a.get("treatment_label") or "treatment not stated", a.get("comparator_label") or "comparator not stated"
+    kind = scale["scale"]
+    if not direction.get("established"):
+        orientation = f"{treatment} and {comparator}: which group is the reference is not established, so no orientation is asserted"
+        operator = None
+    elif kind == "RATIO":
+        orientation, operator = f"{treatment} ÷ {comparator}", "÷"
+    elif kind == "DIFFERENCE":
+        orientation, operator = f"{treatment} − {comparator}", "−"
+    else:
+        orientation, operator = f"{treatment} versus {comparator} (neither a difference nor a ratio is established)", None
+    if lo is None or hi is None:
+        interval = "No confidence interval in the stored source (none is estimated)."
+    elif level_status == "VALID":
+        interval = f"{_fmt(a['ci_level'], 2)}% CI {_fmt(lo)} to {_fmt(hi)}, " + {"TWO_SIDED": "two-sided", "ONE_SIDED": "one-sided"}.get(sides, "sidedness not stated") + "."
+    elif level_status == "LEVEL_NOT_REPORTED":
+        interval = f"Interval {_fmt(lo)} to {_fmt(hi)}; its confidence level is not stated, so nothing about significance is read from it."
+    else:
+        interval = f"Interval {_fmt(lo)} to {_fmt(hi)}; the stored level ({_fmt(a.get('ci_level'), 2)}) is not a valid percentage, so the interval is not read."
+    population = a.get("analysis_population") or {}
+    pop_text = population.get("description") or ("; ".join(population.get("descriptions") or []) or None)
+    n_t, n_c = population.get("n_treatment"), population.get("n_comparator")
+    n_text = f" (n analysed: {n_t if n_t is not None else 'not stored'} versus {n_c if n_c is not None else 'not stored'})" if population else ""
+    hypothesis = a.get("hypothesis_type") or "NOT_STATED"
+    multiplicity = a.get("multiplicity_controlled") or TriState.NOT_STATED.value
+
+    # The plain reading: estimate with orientation, the interval at its own level, and only what those fields allow.
+    unit = a.get("unit")
+    value = _fmt(estimate) if estimate is not None else "not reported"
+    parts: list[str] = []
+    if operator:
+        parts.append(f"The source reports {a.get('param_type') or 'an estimate'} for {orientation} of {value}.")
+    else:
+        parts.append(f"The source reports {a.get('param_type') or 'an estimate'} of {value} for {orientation}.")
+    readable = (kind in ("DIFFERENCE", "RATIO") and level_status == "VALID" and lo is not None and hi is not None and bool(direction.get("established"))
+                and consistency.get("status") in ("CONSISTENT", "NOT_CHECKABLE"))
+    null = scale.get("null_value")
+    if consistency.get("status") not in ("CONSISTENT", "NOT_CHECKABLE"):
+        parts.append("The stored interval, estimate and p-value disagree with each other, so no conclusion is drawn from this record.")
+    elif readable and null is not None:
+        excludes = not (min(lo, hi) <= null <= max(lo, hi))
+        sided = {"TWO_SIDED": "two-sided ", "ONE_SIDED": "one-sided "}.get(sides, "")
+        parts.append(f"The {sided}{_fmt(a['ci_level'], 2)}% interval {'excludes' if excludes else 'includes'} {_fmt(null)}, the value of no difference"
+                     + (" (sidedness not stated)" if sides == "NOT_STATED" else "") + ".")
+        if hypothesis == "NON_INFERIORITY":
+            ni = a.get("ni_met") or TriState.NOT_STATED.value
+            parts.append("This was a non-inferiority test" + (": the source states the margin was met" if ni == TriState.YES.value else ": the source states the margin was not met" if ni == TriState.NO.value else "; whether the margin was met is not stated")
+                         + ". Non-inferiority is not superiority" + (", and the source reports a superiority test as met." if a.get("superiority_met") == TriState.YES.value else "; no superiority conclusion is drawn."))
+        elif hypothesis != "SUPERIORITY":
+            parts.append("The hypothesis tested is not recorded as superiority, so the interval is described, not read as a confirmatory test.")
+        if multiplicity == TriState.NO.value:
+            parts.append("The comparison was outside multiplicity control: any p-value is nominal.")
+        elif multiplicity == TriState.NOT_STATED.value:
+            parts.append("Whether it was inside multiplicity control is not stated.")
+    elif lo is not None and hi is not None and level_status != "VALID":
+        parts.append("No statement about significance is made: the interval's confidence level is not established.")
+    elif not direction.get("established"):
+        parts.append("Which group the estimate favours is not stated, so its sign is not read.")
+    if (a.get("verification_status") or "") in ("PENDING_HUMAN_REVIEW", "CURATED_PENDING_REVIEW", "SOURCE_CHANGED_RECHECK_REQUIRED"):
+        parts.append("This record awaits human review.")
+    return {
+        "scale": kind,
+        "null_value": null,
+        "orientation": orientation,
+        "operator": operator,
+        "estimate": estimate,
+        "estimate_text": a.get("estimate_text") or (value if estimate is not None else None),
+        "unit": unit,
+        "ci": {"low": lo, "high": hi, "level": a.get("ci_level") if level_status == "VALID" else None, "level_status": level_status, "sides": sides, "text": interval},
+        "p_value_text": a.get("p_value_text"),
+        "p_value": a.get("p_value_text") or "not reported in this source",
+        "estimand": {"label": a.get("estimand_label") or EstimandLabel.NOT_STATED.value, "basis": a.get("estimand_basis") or "NOT_DETERMINABLE"},
+        "analysis_population": (pop_text or "not stored for this analysis") + n_text,
+        "multiplicity": {"status": multiplicity, "text": _MULTIPLICITY_TEXT.get(multiplicity, multiplicity)},
+        "hypothesis": {"type": hypothesis, "text": _HYPOTHESIS_TEXT.get(hypothesis, hypothesis)},
+        "verification_status": a.get("verification_status"),
+        "plain_reading": " ".join(parts),
     }
 
 
