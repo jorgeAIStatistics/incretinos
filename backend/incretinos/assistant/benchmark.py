@@ -139,9 +139,13 @@ def resolve_evidence(session: Session, spec: dict[str, Any]) -> EvidenceFact:
             raise BenchmarkError(f"no claim with key {spec.get('key')!r}")
         fact = fact_from_claim(claim)
     elif kind == "drug_status":
-        drug = session.scalar(select(Drug).where(Drug.slug == spec.get("drug")))
+        # ``drug:`` names the drug's slug; ``slug:`` is accepted as the same field (heldout-v2 writes it that way).
+        if spec.get("drug") is not None and spec.get("slug") is not None and spec["drug"] != spec["slug"]:
+            raise BenchmarkError(f"a drug_status selector names two different drugs: {spec}")
+        slug = spec.get("drug") if spec.get("drug") is not None else spec.get("slug")
+        drug = session.scalar(select(Drug).where(Drug.slug == slug))
         if drug is None:
-            raise BenchmarkError(f"no drug with slug {spec.get('drug')!r}")
+            raise BenchmarkError(f"no drug with slug {slug!r}")
         fact = fact_from_drug(session, drug)
     elif kind == "answer_card":
         fact = _answer_card(session, spec)

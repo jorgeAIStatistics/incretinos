@@ -54,6 +54,7 @@ jobs:
       - name: Claim-verification benchmarks (reported; a set that cannot be run fails the step)
         run: |
           incretinos benchmark-claims --set dev
+          incretinos benchmark-claims --set dev-review
           incretinos benchmark-claims --set heldout
 
   backend-postgres:
