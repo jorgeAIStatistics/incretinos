@@ -5,7 +5,8 @@
   "plugins": ["typescript", "react", "jsx-a11y", "nextjs", "unicorn", "oxc"],
   "categories": { "correctness": "error", "suspicious": "warn" },
   "env": { "browser": true, "es2022": true },
-  "ignorePatterns": [".next/**", ".next-e2e/**", "node_modules/**", "next-env.d.ts", "playwright-report/**", "test-results/**"],
+  // Every Next.js build directory (.next, and any NEXT_DIST_DIR such as .next-e2e or .next-e2e-prod) is generated code.
+  "ignorePatterns": [".next/**", ".next*/**", "node_modules/**", "next-env.d.ts", "playwright-report/**", "test-results/**", "blob-report/**"],
   "rules": {
     // Hooks: breaking the rules of hooks is a bug; a missing dependency is reviewed case by case.
     "react/rules-of-hooks": "error",
@@ -15,8 +16,10 @@
     "react/set-state-in-effect": "warn",
     // role="status", "region" and "search" on generic elements are deliberate and widely supported.
     "jsx-a11y/prefer-tag-over-role": "off",
-    // Untyped API payloads hide exactly the mistakes this product cannot afford. Warn everywhere, fail in the foundation (below).
-    "typescript/no-explicit-any": "warn",
+    // Untyped API payloads hide exactly the mistakes this product cannot afford. An error everywhere, except in the
+    // files listed at the end that still contain `any` (a warning there until they are typed; remove a file from that
+    // list as soon as it has none, so it cannot gain one back).
+    "typescript/no-explicit-any": "error",
     // Accessibility rules the design system depends on.
     "jsx-a11y/alt-text": "error",
     "jsx-a11y/anchor-is-valid": "error",
@@ -55,11 +58,22 @@
       ],
       "rules": { "typescript/no-explicit-any": "error", "react/set-state-in-effect": "error", "react/exhaustive-deps": "error", "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }] }
     },
+    { "files": ["e2e/**", "*.config.ts"], "rules": { "no-console": "off" } },
     {
-      // Kept untyped until the charts and number formatting, which own it, are typed.
-      "files": ["src/lib/rows.ts"],
+      // Files that still contain `any` (audit WEB-15). src/lib/rows.ts waits for the charts and number formatting,
+      // which own it, to be typed; the pages wait for their DTOs from src/lib/types.ts.
+      "files": [
+        "src/lib/rows.ts",
+        "src/app/assistant/page.tsx",
+        "src/app/benefit-risk/page.tsx",
+        "src/app/compare/page.tsx",
+        "src/app/design/page.tsx",
+        "src/app/molecules/page.tsx",
+        "src/app/safety/page.tsx",
+        "src/app/trials/[[]nct]/page.tsx",
+        "e2e/presentation.spec.ts"
+      ],
       "rules": { "typescript/no-explicit-any": "warn" }
-    },
-    { "files": ["e2e/**", "*.config.ts"], "rules": { "no-console": "off" } }
+    }
   ]
 }

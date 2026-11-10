@@ -968,6 +968,8 @@ def test_safe_defaults():
     fields = Settings.model_fields
     assert fields["reviewer_token"].default is None and fields["offline"].default is True and fields["llm_provider"].default == "none"
     assert fields["docs_enabled"].default is False and fields["rate_limit_enabled"].default is True and fields["rate_limit_proxy_hops"].default == 0
+    assert fields["rate_limit_trusted_proxies"].default == "" and fields["rate_limit_query_per_minute"].default > 0
+    assert fields["max_request_body_bytes"].default <= 64 * 1024 and fields["max_review_body_bytes"].default <= 256 * 1024
     assert fields["refresh_hours"].default == 0.0 and "*" not in fields["cors_origins"].default
     assert defaults.model_config.get("env_file") is None
 
@@ -1031,7 +1033,9 @@ def enforced_limits(monkeypatch):
     monkeypatch.setattr(settings, "rate_limit_enabled", True)
     monkeypatch.setattr(settings, "rate_limit_simulation_per_minute", 2)
     monkeypatch.setattr(settings, "rate_limit_assistant_per_minute", 1)
+    monkeypatch.setattr(settings, "rate_limit_query_per_minute", 3)
     monkeypatch.setattr(settings, "rate_limit_proxy_hops", 0)
+    monkeypatch.setattr(settings, "rate_limit_trusted_proxies", "")
     limits.limiter.reset()
     yield settings
     limits.limiter.reset()
@@ -1053,13 +1057,18 @@ def test_expensive_endpoints_answer_429_with_retry_after(client, enforced_limits
     assert all(client.post("/api/design/power", json={"design": "two_means", "delta": 5, "sd": 10}).status_code == 200 for _ in range(5))
     # A caller cannot buy a fresh budget by claiming to be someone else ...
     assert client.post("/api/design/simulate", json=SIMULATION, headers={"X-Forwarded-For": "203.0.113.9"}).status_code == 429
-    # ... unless the deployment says there is a trusted proxy in front, which then names the client.
+    # ... not even with a hop count, as long as no proxy is trusted (SEC-02: the header is the caller's to write) ...
     monkeypatch.setattr(enforced_limits, "rate_limit_proxy_hops", 1)
-    assert client.post("/api/design/simulate", json=SIMULATION, headers={"X-Forwarded-For": "198.51.100.7, 203.0.113.9"}).status_code == 200
-    assert client.post("/api/design/simulate", json=SIMULATION, headers={"X-Forwarded-For": "spoofed-by-client, 203.0.113.9"}).status_code == 200
-    assert client.post("/api/design/simulate", json=SIMULATION, headers={"X-Forwarded-For": "another-spoof, 203.0.113.9"}).status_code == 429
+    assert client.post("/api/design/simulate", json=SIMULATION, headers={"X-Forwarded-For": "198.51.100.7, 203.0.113.10"}).status_code == 429
+    # ... and a trusted proxy is believed only on its own connections.
+    monkeypatch.setattr(enforced_limits, "rate_limit_trusted_proxies", "10.0.0.0/24")
+    assert client.post("/api/design/simulate", json=SIMULATION, headers={"X-Forwarded-For": "198.51.100.7, 203.0.113.10"}).status_code == 429
+    proxy = TestClient(client.app, client=("10.0.0.5", 41000))
+    assert proxy.post("/api/design/simulate", json=SIMULATION, headers={"X-Forwarded-For": "198.51.100.7, 203.0.113.9"}).status_code == 200
+    assert proxy.post("/api/design/simulate", json=SIMULATION, headers={"X-Forwarded-For": "spoofed-by-client, 203.0.113.9"}).status_code == 200
+    assert proxy.post("/api/design/simulate", json=SIMULATION, headers={"X-Forwarded-For": "another-spoof, 203.0.113.9"}).status_code == 429
     # A rejected request is rejected before validation or any work: an invalid body still gets 429.
-    assert client.post("/api/design/simulate", json={"n_per_arm": 0}, headers={"X-Forwarded-For": "203.0.113.9"}).status_code == 429
+    assert proxy.post("/api/design/simulate", json={"n_per_arm": 0}, headers={"X-Forwarded-For": "203.0.113.9"}).status_code == 429
 
 
 def test_rate_limits_can_be_switched_off(client, enforced_limits, monkeypatch):
@@ -1078,3 +1087,327 @@ def test_the_two_expensive_open_routes_are_rate_limited():
                 limited[(method, route.path)] = dependency.call
     assert limited.get(("POST", "/api/design/simulate")) is limits.limit_simulation
     assert limited.get(("POST", "/api/assistant/ask")) is limits.limit_assistant
+
+
+# --------------------------------------------------------------------------- SEC-01 / SEC-05: request bodies and 422 reports
+
+
+def _route_url(path: str, samples: dict) -> str:
+    values = _path_values(samples)
+    return re.sub(r"{(\w+)(?::[^}]*)?}", lambda m: str(values.get(m.group(1), 1)), path)
+
+
+def _body_routes() -> list[tuple[str, APIRoute]]:
+    return [(method, route) for method, route in _api_routes() if method in ("POST", "PUT", "PATCH")]
+
+
+def test_every_route_with_a_body_has_a_size_limit_suited_to_it():
+    """An open route is sized by the table in api/limits.py; a route not listed there must need the reviewer token."""
+    settings = get_settings()
+    for method, route in _body_routes():
+        path = _route_url(route.path, {"a": 1, "analysis": 1, "source": 1, "gap": 1, "item": 1, "a_key": "k"})
+        sized = any(m == method and p.fullmatch(path) for m, p, _ in limits.ROUTE_BODY_LIMITS)
+        reviewer = any(m == method and p.fullmatch(path) for m, p in limits.REVIEW_BODY_ROUTES)
+        assert sized != reviewer, f"{method} {route.path}: list it in exactly one of ROUTE_BODY_LIMITS / REVIEW_BODY_ROUTES"
+        assert reviewer == _requires_reviewer(route), f"{method} {route.path}: only reviewer routes may accept the larger reviewer body"
+        open_limit = limits.body_limit(method, path, has_reviewer_token=False, cfg=settings)
+        assert open_limit <= settings.max_request_body_bytes <= 64 * 1024, (method, route.path, open_limit)
+    # Every table entry names a route that exists, so a renamed route cannot silently lose its limit.
+    served = {(method, route.path) for method, route in _body_routes()}
+    for method, pattern, _ in limits.ROUTE_BODY_LIMITS:
+        assert any(m == method and pattern.fullmatch(_route_url(p, {"a": 1, "analysis": 1, "source": 1, "gap": 1, "item": 1, "a_key": "k"})) for m, p in served), pattern.pattern
+
+
+def _largest_valid_bodies() -> dict[str, dict]:
+    """The largest body each open calculation route can legitimately need (UTF-8 text, the most entries allowed)."""
+    big = -123456.78901234567
+    return {
+        "/api/compare": {"a": 2**31 - 1, "b": 2**31 - 2},
+        "/api/stats/risk-contrast": {"ae_a": 2**31 - 1, "ae_b": 2**31 - 2},
+        "/api/safety/disproportionality": {k: 10**9 for k in ("drug_event", "drug_total", "event_total", "all_total")},
+        "/api/design/power": {"design": "noninferiority_hr_events", "alpha": 0.025, "power": 0.9, "ratio": 1.5, "delta": big, "sd": 1e5, "p1": 0.12345678901234, "p2": 0.23456789012345,
+                              "margin": 1.3, "true_difference": big, "hazard_ratio": 0.9, "true_hazard_ratio": 1.0, "attrition": 0.15},
+        "/api/design/simulate": {"n_per_arm": 20000, "mean_treatment": big, "mean_control": big, "sd": 9.87654321, "dropout_treatment": 0.25, "dropout_control": 0.25,
+                                 "missing_handling": "JUMP_TO_REFERENCE", "n_sims": 200, "alpha": 0.05, "seed": 2**31 - 1},
+        "/api/design/sensitivity": {"delta": big, "sd": 1e5, "n_randomized_per_group": 100000, "attrition_rates": [0.123456789012345] * 20, "alpha": 0.05,
+                                    "mean_treatment": big, "mean_control": big, "missing_treatment": 0.5, "missing_control": 0.5, "deltas": [big] * 20},
+        "/api/assistant/ask": {"question": "Ω—é" * 333},
+        "/api/benefit-risk/utility": {"nct": "NCT04184622", "estimand": "TREATMENT_REGIMEN", "weeks": 72,
+                                      "criteria": {f"{i:02d}" + "é" * 58: {"weight": 99.5, "best": big, "worst": big} for i in range(20)}},
+        "/api/benefit-risk/dose-scenario": {"nct": "NCT04184622", "estimand": "TREATMENT_REGIMEN", "weeks": 72, "metric": "weight_pct",
+                                            "shares": {f"{i:02d}" + "x" * 398: 0.02 for i in range(50)}, "non_persistent_share": 0.0, "non_persistent_value": big},
+    }
+
+
+def test_largest_legitimate_bodies_fit_their_limits(client):
+    settings = get_settings()
+    for path, body in _largest_valid_bodies().items():
+        size = len(json.dumps(body, indent=2, ensure_ascii=False).encode())  # pretty-printed, as some clients send it
+        assert size <= limits.body_limit("POST", path, has_reviewer_token=False, cfg=settings), (path, size)
+        response = client.post(path, content=json.dumps(body, indent=2, ensure_ascii=False).encode(), headers={"content-type": "application/json"})
+        assert response.status_code != 413, (path, response.text[:200])
+
+
+def test_oversized_bodies_are_refused_with_413_before_they_are_read(client, samples):
+    settings = get_settings()
+    for method, route in _body_routes():
+        url = _route_url(route.path, samples)
+        for token in ({}, TOKEN):
+            limit = limits.body_limit(method, url, has_reviewer_token=bool(token), cfg=settings)
+            padding = b" " * (limit + 1 - len(b'{"a": 1}'))
+            # Declared size over the limit: refused from the header alone.
+            declared = client.request(method, url, content=b'{"a": 1}' + padding, headers={"content-type": "application/json", **token})
+            assert declared.status_code == 413, (method, route.path, declared.status_code)
+            assert f"{limit:,} bytes" in declared.json()["detail"] and declared.headers["x-content-type-options"] == "nosniff"
+
+            # Streamed without a length (chunked): refused as well (how much is read is checked below, at the ASGI level).
+            stream = iter([b'{"a": "', *([b"x" * 1024] * (limit // 1024 + 2)), b'"}'])
+            streamed = client.request(method, url, content=stream, headers={"content-type": "application/json", **token})
+            assert streamed.status_code == 413, (method, route.path, streamed.status_code)
+    # The larger reviewer allowance needs the reviewer header; without it the open ceiling applies.
+    review = _route_url("/api/review/evidence/{evidence_type}/{row_id}/decisions", samples)
+    assert limits.body_limit("POST", review, has_reviewer_token=True, cfg=settings) == settings.max_review_body_bytes > settings.max_request_body_bytes
+    assert limits.body_limit("POST", review, has_reviewer_token=False, cfg=settings) == settings.max_request_body_bytes
+    # Any other request, a GET included, is held to the open ceiling.
+    assert client.request("GET", "/api/health", content=b"x" * (settings.max_request_body_bytes + 1)).status_code == 413
+    assert client.get("/api/health").status_code == 200
+    bad_length = client.post("/api/compare", content=b'{"a": 1, "b": 2}', headers={"content-type": "application/json", "content-length": "12abc"})
+    assert bad_length.status_code in (400, 413)
+
+
+def test_a_body_over_the_limit_is_never_read_past_it():
+    import asyncio
+
+    def run(headers: list[tuple[bytes, bytes]]) -> tuple[int, list[str], list[dict]]:
+        received, reached, sent = [0], [], []
+
+        async def endless_body() -> dict:
+            received[0] += 1
+            return {"type": "http.request", "body": b"x" * 1024, "more_body": True}
+
+        async def application(scope, receive, send) -> None:
+            reached.append(scope["path"])
+
+        async def send(message: dict) -> None:
+            sent.append(message)
+
+        scope = {"type": "http", "method": "POST", "path": "/api/compare", "headers": [(b"content-type", b"application/json"), *headers]}
+        asyncio.run(limits.RequestBodyLimitMiddleware(application)(scope, endless_body, send))
+        return received[0], reached, sent
+
+    # Streamed: the 4 KiB route stops reading at the fifth kibibyte, and the application never sees the request.
+    received, reached, sent = run([(b"transfer-encoding", b"chunked")])
+    assert received == 5 and reached == [] and sent[0]["status"] == 413
+    # Declared too large: nothing is read at all.
+    received, reached, sent = run([(b"content-length", b"1000000000")])
+    assert received == 0 and reached == [] and sent[0]["status"] == 413
+
+
+def test_body_limits_follow_the_settings(client, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "max_request_body_bytes", 2048)
+    assert limits.body_limit("POST", "/api/benefit-risk/dose-scenario", has_reviewer_token=False, cfg=settings) == 2048  # the setting is a ceiling for every open route
+    assert limits.body_limit("POST", "/api/compare", has_reviewer_token=False, cfg=settings) == 2048  # a route's own limit only ever tightens it
+    monkeypatch.setattr(settings, "max_request_body_bytes", 4096)
+    assert limits.body_limit("POST", "/api/compare", has_reviewer_token=False, cfg=settings) == 4096
+    assert limits.body_limit("POST", "/api/assistant/ask", has_reviewer_token=False, cfg=settings) == 4096
+    escaped = json.dumps({"question": "é" * 1000}).encode()  # \u00e9 escapes: 6 bytes a character
+    assert client.post("/api/assistant/ask", content=escaped, headers={"content-type": "application/json"}).status_code == 413
+    with pytest.raises(ValueError):
+        Settings(_env_file=None, max_request_body_bytes=10)
+
+
+def test_validation_errors_report_where_and_why_but_never_echo_the_input(client):
+    marker = "ECHO-MARKER-"
+    body = {"shares": {f"{marker}{i:05d}" + "y" * 200: "not a number" for i in range(200)}, "nct": "NCT04184622", "x": [marker] * 1000}
+    raw = json.dumps(body).encode()
+    assert len(raw) < get_settings().max_request_body_bytes
+    response = client.post("/api/benefit-risk/dose-scenario", content=raw, headers={"content-type": "application/json"})
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert len(detail) == 21 and detail[-1]["type"] == "too_many_errors" and "further errors" in detail[-1]["msg"]
+    assert all(set(item) == {"type", "loc", "msg"} for item in detail)
+    assert len(response.content) < 12_000, len(response.content)  # was 3-5 times the request size
+    assert all(len(str(part)) <= 81 for item in detail for part in item["loc"])  # a key from the body is named, truncated, once
+    assert '"input"' not in response.text and '"ctx"' not in response.text and "not a number" not in response.text
+    # The usual shape still says where and why (the web client prints loc and msg).
+    simple = client.post("/api/design/power", json={"design": "two_means", "alpha": 0.9}).json()["detail"]
+    assert simple == [{"type": "less_than", "loc": ["body", "alpha"], "msg": "Input should be less than 0.5"}]
+    assert client.post("/api/compare", content=b'{"a": 1,', headers={"content-type": "application/json"}).json()["detail"][0]["type"] == "json_invalid"
+
+
+LONE_SURROGATE_BODIES = [
+    '{"question": "lone \\ud800 surrogate"}',
+    '{"question": "lone low \\udc00 surrogate"}',
+    '{"question": "reversed \\udc00\\ud800 pair"}',
+    '{"question": "high at the end \\ud83d"}',
+    '{"question": "high then text \\ud83dx"}',
+    '{"\\ud800": 1, "a": 1, "b": 2}',
+]
+
+
+def test_lone_surrogates_are_refused_with_422_never_500(client, samples):
+    plain = TestClient(client.app, raise_server_exceptions=False)
+    for method, route in _body_routes():
+        url = _route_url(route.path, samples)
+        for body in LONE_SURROGATE_BODIES:
+            for headers in ({"content-type": "application/json"}, {"content-type": "application/json", **TOKEN}):
+                response = plain.request(method, url, content=body.encode(), headers=headers)
+                assert response.status_code == 422, (method, route.path, body, response.status_code)
+                assert response.json()["detail"][0]["type"] == "string_unicode"
+    # Surrogate bytes written raw (not escaped) are refused the same way.
+    assert plain.post("/api/assistant/ask", content=b'{"question": "raw ' + b"\xed\xa0\x80" + b' bytes"}', headers={"content-type": "application/json"}).status_code in (400, 422)
+    # Valid text is untouched: a properly paired escape, and an escaped backslash followed by "ud800".
+    for question in ('"Which outcomes in EloraTZP are exploratory? \\ud83d\\ude00"', '"Which outcomes in EloraTZP are exploratory? \\\\ud800"'):
+        ok = plain.post("/api/assistant/ask", content=f'{{"question": {question}}}'.encode(), headers={"content-type": "application/json"})
+        assert ok.status_code == 200, (question, ok.text[:200])
+
+
+def test_lone_surrogate_detection():
+    lone = limits.has_lone_surrogate
+    for body in LONE_SURROGATE_BODIES:
+        assert lone(body.encode()), body
+    for body in ('{"q": "\\ud83d\\ude00"}', '{"q": "\\\\ud800"}', '{"q": "\\\\\\\\ud800"}', '{"q": "😀 plain"}', '{"q": "\\u00e9\\n\\""}', "not json at all", ""):
+        assert not lone(body.encode()), body
+    assert lone(b'{"q": "\\\\\\ud800"}')  # escaped backslash, then a real lone escape
+    assert lone('{"q": "x"}'.encode("utf-16")) is False and lone('{"q": "\\ud800"}'.encode("utf-16"))
+
+
+def test_the_422_report_encodes_whatever_the_error_holds():
+    from incretinos.api.main import validation_detail
+
+    errors = [{"type": "extra_forbidden", "loc": ("body", "\ud800" + "k" * 500, 3), "msg": "bad \udfff " + "m" * 1000, "input": "x" * 10**6, "ctx": {"error": ValueError("v")}}]
+    detail = validation_detail(errors)
+    encoded = json.dumps({"detail": detail}, ensure_ascii=False).encode("utf-8")  # what JSONResponse does; raised before
+    assert b"xxxx" not in encoded and len(encoded) < 600
+    assert detail[0]["loc"][0] == "body" and detail[0]["loc"][2] == 3 and detail[0]["loc"][1].startswith("\\ud800")
+
+
+# --------------------------------------------------------------------------- SEC-02: who the client is
+
+
+def test_forwarded_header_is_read_only_from_a_trusted_proxy(monkeypatch):
+    cfg = Settings(_env_file=None)
+    assert cfg.rate_limit_trusted_proxies == ""
+    # Default: the socket peer, whatever the header says, from loopback (the same-host web proxy) or anywhere else.
+    for peer in ("127.0.0.1", "::1", "10.0.0.5", "testclient"):
+        assert limits.client_address(peer, ["203.0.113.1"], cfg) == peer
+    assert limits.client_address(None, ["203.0.113.1"], cfg) == "unknown"
+    hops = Settings(_env_file=None, rate_limit_proxy_hops=1)
+    assert limits.client_address("127.0.0.1", ["203.0.113.1"], hops) == "127.0.0.1"  # a hop count alone trusts nobody
+
+    trusted = Settings(_env_file=None, rate_limit_trusted_proxies="10.0.0.0/24, 192.0.2.7, 2001:db8::/32")
+    assert limits.client_address("10.0.0.99", ["198.51.100.1, 203.0.113.5"], trusted) == "203.0.113.5"
+    assert limits.client_address("10.0.0.99", ["198.51.100.1", "203.0.113.5, 192.0.2.7"], trusted) == "203.0.113.5"  # trusted hops are skipped
+    assert limits.client_address("::ffff:10.0.0.3", ["203.0.113.5"], trusted) == "203.0.113.5"
+    assert limits.client_address("2001:db8::1", ["203.0.113.6"], trusted) == "203.0.113.6"
+    assert limits.client_address("10.0.0.99", [], trusted) == "10.0.0.99"
+    assert limits.client_address("10.0.1.1", ["203.0.113.5"], trusted) == "10.0.1.1"  # outside the trusted network
+    assert limits.client_address("127.0.0.1", ["203.0.113.5"], trusted) == "127.0.0.1"
+    counted = Settings(_env_file=None, rate_limit_trusted_proxies="10.0.0.0/24", rate_limit_proxy_hops=2)
+    assert limits.client_address("10.0.0.2", ["forged, 198.51.100.4, 10.0.0.1"], counted) == "198.51.100.4"
+    assert limits.client_address("10.0.0.2", ["198.51.100.4"], counted) == "10.0.0.2"
+    for bad in ("10.0.0.0/33", "proxy.internal", "10.0.0.1;"):
+        with pytest.raises(ValueError):
+            Settings(_env_file=None, rate_limit_trusted_proxies=bad)
+
+
+def test_every_launcher_keeps_uvicorn_from_rewriting_the_client_address(monkeypatch):
+    import uvicorn
+
+    from incretinos import cli
+
+    seen = {}
+    monkeypatch.setattr(uvicorn, "run", lambda *args, **kwargs: seen.update(kwargs))
+    cli.serve(host="127.0.0.1", port=8999, reload=False)
+    assert seen.get("proxy_headers") is False
+    assert "--no-proxy-headers" in (BACKEND / "Dockerfile").read_text().split("CMD", 1)[1]
+    playwright = (BACKEND.parent / "frontend" / "playwright.config.ts").read_text()
+    assert all("--no-proxy-headers" in line for line in playwright.splitlines() if "uvicorn " in line)
+
+
+# --------------------------------------------------------------------------- SEC-12: budgets for the expensive reads
+
+
+def test_expensive_reads_share_a_query_budget(client, enforced_limits):
+    assert [client.get("/api/validation").status_code for _ in range(2)] == [200, 200]
+    assert client.get("/api/findings", params={"limit": 1}).status_code == 200
+    limited = client.get("/api/review/summary")
+    assert limited.status_code == 429 and int(limited.headers["retry-after"]) >= 1 and "limit 3 per minute" in limited.json()["detail"]
+    assert limited.headers["x-content-type-options"] == "nosniff"
+    # Cheap reads and the other budgets are not affected; another client has its own budget.
+    assert client.get("/api/health").status_code == 200 and client.get("/api/drugs").status_code == 200
+    assert TestClient(client.app, client=("198.51.100.20", 5000)).get("/api/validation").status_code == 200
+    # A forged forwarded address does not buy a fresh budget.
+    assert client.get("/api/safety/trial-ae", params={"limit": 1}, headers={"X-Forwarded-For": "203.0.113.77"}).status_code == 429
+
+
+def test_query_budget_names_real_routes_and_can_be_switched_off(client, enforced_limits, monkeypatch):
+    served = {(method, route.path) for method, route in _api_routes()}
+    assert limits.QUERY_BUDGET_ROUTES <= served, sorted(limits.QUERY_BUDGET_ROUTES - served)
+    monkeypatch.setattr(enforced_limits, "rate_limit_query_per_minute", 0)
+    assert all(client.get("/api/validation").status_code == 200 for _ in range(5))
+
+
+# --------------------------------------------------------------------------- SEC-07: Markdown table cells
+
+
+def test_every_value_in_a_report_table_row_escapes_pipes(db, monkeypatch):
+    import dataclasses
+
+    from incretinos.engines.findings import get_finding
+    from incretinos.reports import export
+
+    finding = get_finding(db, result_id(db, "NCT04184622", "15 mg", estimand="TREATMENT_REGIMEN", tier="PEER_REVIEWED", weeks=72))
+    reading = export.interpret_finding(finding)
+    monkeypatch.setattr(export, "interpret_finding", lambda _: reading)
+    hostile = {f.name: f"{getattr(finding, f.name)} | PIPE-{f.name} |" for f in dataclasses.fields(finding) if isinstance(getattr(finding, f.name), str)}
+    hostile.update(dose_amount=5.0, dispersion_value=0.4, formulation_key="INJ | PIPE-formulation |", dose_unit="mg | PIPE-unit |", dispersion_type="SD | PIPE-dispersion |")
+    lines = export._finding_block("A", dataclasses.replace(finding, **hostile), 1)
+    rows = [line for line in lines if line.startswith("| ") and not line.startswith("|---")]
+    assert len(rows) >= 12
+    for line in rows:
+        cells = re.split(r"(?<!\\)\|", line.strip())[1:-1]
+        assert len(cells) == 2, line
+    by_name = {re.split(r"(?<!\\)\|", line)[1].strip(): line for line in rows}
+    assert "0.4" in by_name["Uncertainty"] and "PIPE-dispersion" in by_name["Uncertainty"]
+    assert "PIPE-unit" in by_name["Arm / dose"] and "PIPE-formulation" in by_name["Arm / dose"]
+    for name in ("nct_id", "role", "multiplicity_controlled", "estimand_label", "estimand_basis", "verification_status"):
+        if name in hostile:
+            assert any(f"pipe-{name}" in line.lower().replace("\\_", "_") or f"pipe-{name}".replace("_", " ") in line.lower() for line in rows), name
+    markdown_it = pytest.importorskip("markdown_it")
+    tokens = markdown_it.MarkdownIt("commonmark").enable("table").parse("\n".join(lines))
+    cells = [tokens[i + 1].content for i, t in enumerate(tokens) if t.type == "td_open"]
+    uncertainty = cells[cells.index("Uncertainty") + 1]
+    assert uncertainty.endswith("0.4") and "PIPE-dispersion" in uncertainty
+
+
+# --------------------------------------------------------------------------- SEC-09 / SEC-11: images and pins
+
+
+def _ignore_lines(path: Path) -> set[str]:
+    return {line.strip() for line in path.read_text().splitlines() if line.strip() and not line.startswith("#")}
+
+
+def test_image_build_contexts_exclude_secrets_and_local_build_output():
+    for context in (BACKEND, BACKEND.parent / "frontend"):
+        ignored = _ignore_lines(context / ".dockerignore")
+        assert {".env*", "!.env.example", ".git"} <= ignored, context
+    assert {".next", ".next-*", "*.tsbuildinfo", "var", "test-results", "playwright-report", "e2e", "AGENTS.md"} <= _ignore_lines(BACKEND.parent / "frontend" / ".dockerignore")
+    assert {"var", ".venv", "tests", "**/__pycache__"} <= _ignore_lines(BACKEND / ".dockerignore")
+
+
+def test_constraints_pin_final_releases_and_runtime_needs_no_test_only_stack():
+    import tomllib
+
+    pins = [line.strip() for line in (BACKEND / "constraints.txt").read_text().splitlines() if line.strip() and not line.startswith("#")]
+    names = [pin.split("==")[0].lower().replace("_", "-") for pin in pins]
+    assert all("==" in pin for pin in pins) and len(names) == len(set(names))
+    prereleases = [pin for pin in pins if re.search(r"(a|b|rc|\.dev|\.post\d+\.dev)\d*$", pin.split("==")[1])]
+    assert not prereleases, f"pre-release pins (pip chose them because a requirement names a pre-release): {prereleases}"
+    project = tomllib.loads((BACKEND / "pyproject.toml").read_text())["project"]
+    runtime = {re.split(r"[<>=\[ ;]", dep)[0].lower() for dep in project["dependencies"]}
+    assert not runtime & {"pandas", "statsmodels"}, "test-only reference libraries belong to the dev extra"
+    assert any(dep.startswith("statsmodels") for dep in project["optional-dependencies"]["dev"])
+    for path in (BACKEND / "incretinos").rglob("*.py"):
+        assert not re.search(r"^\s*(import|from)\s+(pandas|statsmodels)\b", path.read_text(), re.M), path

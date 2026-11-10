@@ -106,20 +106,43 @@ jobs:
         run: pytest -q
 
   images:
-    name: Container images build
+    name: Container images build and start
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: The Compose file is valid
         run: docker compose config --quiet
       - name: Build the API and web images (the API image installs from backend/constraints.txt)
         run: docker compose build
+      - name: Start the stack (migrate, seed from the fixtures, serve) and wait until every service is up
+        run: docker compose up -d --wait --wait-timeout 420
+      - name: Smoke test through the published ports
+        run: |
+          set -eu
+          # The API through the web server's baked /api rewrite, and directly on its loopback port.
+          curl -fsS --retry 20 --retry-delay 3 --retry-all-errors http://127.0.0.1:3000/api/health
+          curl -fsS http://127.0.0.1:8000/api/health
+          # A page from the standalone server, with the production Content-Security-Policy (no eval, no websocket).
+          curl -fsS -o /dev/null -D web-headers.txt http://127.0.0.1:3000/
+          grep -qi "^content-security-policy: default-src 'self'" web-headers.txt
+          if grep -qiE "unsafe-eval|ws: wss:" web-headers.txt; then echo "development CSP served by the production image"; exit 1; fi
+          # The image ships no environment file from the build context.
+          test -z "$(docker compose exec -T web sh -c 'ls -a /app | grep "^\.env" || true')"
+          # An oversized body is refused before it is parsed, also through the proxy.
+          status=$(head -c 70000 /dev/zero | tr '\0' ' ' | curl -s -o /dev/null -w '%{http_code}' -H 'content-type: application/json' --data-binary @- http://127.0.0.1:3000/api/compare)
+          test "$status" = 413
+      - name: Service logs
+        if: always()
+        run: docker compose logs --no-color --tail 200
+      - name: Stop the stack and remove its volume
+        if: always()
+        run: docker compose down -v
 
   frontend:
     name: Frontend and browser tests
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
     needs: backend
     steps:
       - uses: actions/checkout@v4
@@ -145,13 +168,19 @@ jobs:
           mkdir -p var  # the test server writes its seed log and database here
       - working-directory: frontend
         run: npm ci --no-audit --no-fund
-      - working-directory: frontend
+      - name: Type-check (application and browser tests), lint, build
+        working-directory: frontend
         run: npm run typecheck && npm run lint && npm run build
       - working-directory: frontend
         run: npx playwright install --with-deps chromium
       - name: Browser tests (workflows, design foundation, scientific presentation; each fails on any browser-console error)
         working-directory: frontend
         # Named explicitly so that a removed or renamed spec file fails the step instead of silently running fewer tests.
+        run: npx playwright test e2e/workflows.spec.ts e2e/foundation.spec.ts e2e/presentation.spec.ts
+      - name: The same browser tests against the production build (standalone server, production Content-Security-Policy)
+        working-directory: frontend
+        env:
+          E2E_WEB: production
         run: npx playwright test e2e/workflows.spec.ts e2e/foundation.spec.ts e2e/presentation.spec.ts
       - name: Keep the traces and the seed log when a browser test fails
         if: failure()
