@@ -91,17 +91,18 @@ Columns added by the data-integrity revision (65bce81e7f45), and where each belo
 ``estimand.origin``
     Neither. It records which loader owns the estimand record (and may delete it on a rebuild). It
     is implied by the row's own ``origin``, which is in the key, because a curated row may link only
-    to an estimand of its own source; the estimand's label and basis are in the fingerprint.
+    to an estimand of its own source; the estimand's definition (label, basis, text, strategies) is in the fingerprint.
 ``participant_flow``
     Not reviewable: it has no evidence key, takes no decisions and is rebuilt on every ingest.
 
 Fingerprint content per evidence type
 -------------------------------------
 See the ``_load_*`` functions below, which build each snapshot: values and limits, interval and
-level, n, dispersion, units, estimand label and basis, baseline definition, population and method
+level, n, dispersion, units, the estimand (label, basis, description, population text, quote and the sorted
+intercurrent-event strategies: they define what the number estimates), baseline definition, population and method
 text, time point, the curated locator, the quote, notes, source key and tier, and the full arm and
-endpoint description including the platform's own classification of them (drug, dose, formulation,
-endpoint category, role, threshold). The JSON path of a registry row is a list position that shifts
+endpoint description (title, time frame, the endpoint's own description text and whether it pools arms) including
+the platform's own classification of them (drug, dose, formulation, endpoint category, role, threshold). The JSON path of a registry row is a list position that shifts
 when the sponsor inserts an outcome measure, so it is left out of both the key and the fingerprint;
 the review API reads it from the row and resolves it against the stored snapshot.
 """
@@ -134,6 +135,7 @@ from ..models import (
     ExposureEquivalence,
     Formulation,
     Indication,
+    IntercurrentEventStrategy,
     OutcomeResult,
     SourceSnapshot,
     StatisticalAnalysis,
@@ -180,6 +182,7 @@ class StoredState:
     source_snapshot_id: int | None
     check_flags: list[dict[str, Any]] | None
     risk_level: str | None
+    review_hold: bool = False
 
 
 @dataclass(slots=True)
@@ -286,6 +289,32 @@ def is_value_change(evidence_type: str, changed_fields: Iterable[dict[str, Any]]
     return any("." not in c["field"] and c["field"] in names for c in changed_fields)
 
 
+def content_anchor(evidence_type: str, snapshot: dict[str, Any] | None) -> str | None:
+    """A secondary identity that survives a relabel: the same reported values, from the same place in the same source.
+
+    Built from the stored snapshot only (so it can be computed for any version ever seen): evidence type, origin,
+    study (or drug), source key, the normalised locator quote, the curated locator text, and every reported value
+    field of the type (``VALUE_FIELDS``). It leaves out every label the natural key holds (outcome, group and arm
+    titles, terms, baseline definitions, estimand labels): those are what a sponsor retitles or a curator rewords,
+    and such an edit changes the evidence key without changing what was measured. None when the snapshot carries
+    no reported value at all (an anchor of labels-free nulls would match unrelated rows).
+    """
+    if not snapshot:
+        return None
+    values = [[name, snapshot.get(name)] for name in sorted(VALUE_FIELDS.get(evidence_type, ()))]
+    if all(value is None for _, value in values):
+        return None
+    source = snapshot.get("source") if isinstance(snapshot.get("source"), dict) else {}
+    origin = snapshot.get("origin")
+    locator = None if origin == REGISTRY else key_text(snapshot.get("locator"))
+    return digest(["anchor", evidence_type, origin, snapshot.get("study"), snapshot.get("drug"), source.get("key"), key_text(snapshot.get("quote")), locator, values])
+
+
+def snapshot_distance(a: dict[str, Any] | None, b: dict[str, Any] | None) -> int:
+    """Number of flattened fields that differ between two snapshots (used to pick the closest anchor match)."""
+    return len(diff_snapshots(a, b))
+
+
 # --------------------------------------------------------------------------- registry JSON fragments
 
 _PARSED_SNAPSHOTS: OrderedDict[str, Any] = OrderedDict()
@@ -353,11 +382,12 @@ def _c(entity: Any, prefix: str, *names: str) -> list[Any]:
     return [getattr(entity, name).label(f"{prefix}_{name}") for name in names]
 
 
-_STATE = ("id", "evidence_key", "fingerprint", "verification_status", "base_verification_status", "source_snapshot_id", "check_flags", "risk_level")
+_STATE = ("id", "evidence_key", "fingerprint", "verification_status", "base_verification_status", "source_snapshot_id", "check_flags", "risk_level", "review_hold")
 
 
 def _state(row: Any) -> StoredState:
-    return StoredState(row.evidence_key, row.fingerprint, row.verification_status, row.base_verification_status, row.source_snapshot_id, row.check_flags, row.risk_level)
+    return StoredState(row.evidence_key, row.fingerprint, row.verification_status, row.base_verification_status, row.source_snapshot_id, row.check_flags, row.risk_level,
+                       bool(row.review_hold))
 
 
 def _rows(session: Session, stmt: Any) -> list[Any]:
@@ -375,7 +405,37 @@ def _endpoint_snapshot(row: Any) -> dict[str, Any]:
         "timepoint_weeks": row.e_timepoint_weeks,
         "hierarchy_rank": row.e_hierarchy_rank,
         "multiplicity_controlled": row.e_multiplicity_controlled,
+        "description": row.e_description,
+        "is_pooled_arms": row.e_is_pooled_arms,
     }
+
+
+def _estimand_snapshot(row: Any, strategies: dict[int, list[list[Any]]]) -> dict[str, Any]:
+    """Everything that defines what the number estimates: label and basis, and the definition text and
+    intercurrent-event strategies a reviewer reads in the dossier. A change to any of them is a change of meaning."""
+    return {
+        "label": row.es_label,
+        "basis": row.es_basis,
+        "description": row.es_description,
+        "population_text": row.es_population_text,
+        "quote": row.es_quote,
+        "strategies": strategies.get(row.es_id, []) if row.es_id is not None else [],
+    }
+
+
+def _estimand_strategies(session: Session) -> dict[int, list[list[Any]]]:
+    """estimand id -> sorted [event, strategy, basis] triples."""
+    out: dict[int, list[list[Any]]] = defaultdict(list)
+    s = IntercurrentEventStrategy
+    for estimand_id, event, strategy, basis in session.execute(select(s.estimand_id, s.event, s.strategy, s.basis)):
+        out[estimand_id].append([event, strategy, basis])
+    return {k: sorted(v, key=lambda t: tuple(str(x) for x in t)) for k, v in out.items()}
+
+
+_ESTIMAND_COLS = (
+    Estimand.id.label("es_id"), Estimand.label.label("es_label"), Estimand.basis.label("es_basis"), Estimand.description.label("es_description"),
+    Estimand.population_text.label("es_population_text"), Estimand.quote.label("es_quote"),
+)
 
 
 def _arm_snapshot(row: Any, prefix: str, label: str | None) -> dict[str, Any]:
@@ -393,7 +453,8 @@ def _arm_snapshot(row: Any, prefix: str, label: str | None) -> dict[str, Any]:
 
 
 _ARM_COLS = ("drug_slug", "dose_amount", "dose_unit", "dose_text", "formulation_key", "is_placebo", "is_pooled")
-_ENDPOINT_COLS = ("title", "category", "role", "threshold", "unit", "timeframe_text", "timepoint_weeks", "hierarchy_rank", "multiplicity_controlled")
+_ENDPOINT_COLS = ("title", "category", "role", "threshold", "unit", "timeframe_text", "timepoint_weeks", "hierarchy_rank", "multiplicity_controlled", "description",
+                  "is_pooled_arms")
 
 
 def _study_drugs(session: Session) -> dict[int, tuple[str, ...]]:
@@ -412,7 +473,7 @@ def _drugs(*groups: Iterable[str | None]) -> tuple[str, ...]:
     return tuple(out)
 
 
-def _load_results(session: Session, study_drugs: dict[int, tuple[str, ...]]) -> list[EvidenceRecord]:
+def _load_results(session: Session, study_drugs: dict[int, tuple[str, ...]], strategies: dict[int, list[list[Any]]]) -> list[EvidenceRecord]:
     r = OutcomeResult
     stmt = (
         select(
@@ -423,7 +484,7 @@ def _load_results(session: Session, study_drugs: dict[int, tuple[str, ...]]) -> 
             Study.nct_id, Study.display_name,
             *_c(Endpoint, "e", *_ENDPOINT_COLS),
             *_c(StudyArm, "a", *_ARM_COLS),
-            Estimand.label.label("es_label"), Estimand.basis.label("es_basis"),
+            *_ESTIMAND_COLS,
             EvidenceSource.key.label("s_key"), EvidenceSource.source_type.label("s_type"),
         )
         .join(Study, r.study_id == Study.id)
@@ -441,7 +502,7 @@ def _load_results(session: Session, study_drugs: dict[int, tuple[str, ...]]) -> 
             "source": {"key": row.s_key, "tier": row.tier},
             "endpoint": _endpoint_snapshot(row),
             "arm": _arm_snapshot(row, "a", row.arm_label),
-            "estimand": {"label": row.es_label, "basis": row.es_basis},
+            "estimand": _estimand_snapshot(row, strategies),
             "scope": row.scope,
             "class_title": row.class_title,
             "param_type": row.param_type,
@@ -484,7 +545,7 @@ def _load_results(session: Session, study_drugs: dict[int, tuple[str, ...]]) -> 
     return out
 
 
-def _load_analyses(session: Session, study_drugs: dict[int, tuple[str, ...]], snapshots: dict[int, SnapshotRef]) -> list[EvidenceRecord]:
+def _load_analyses(session: Session, study_drugs: dict[int, tuple[str, ...]], snapshots: dict[int, SnapshotRef], strategies: dict[int, list[list[Any]]]) -> list[EvidenceRecord]:
     a = StatisticalAnalysis
     trt, cmp_ = aliased(StudyArm), aliased(StudyArm)
     stmt = (
@@ -498,7 +559,7 @@ def _load_analyses(session: Session, study_drugs: dict[int, tuple[str, ...]], sn
             *_c(Endpoint, "e", *_ENDPOINT_COLS),
             *_c(trt, "t", *_ARM_COLS),
             *_c(cmp_, "c", *_ARM_COLS),
-            Estimand.label.label("es_label"), Estimand.basis.label("es_basis"),
+            *_ESTIMAND_COLS,
             EvidenceSource.key.label("s_key"), EvidenceSource.source_type.label("s_type"),
         )
         .join(Study, a.study_id == Study.id)
@@ -524,7 +585,7 @@ def _load_analyses(session: Session, study_drugs: dict[int, tuple[str, ...]], sn
             "origin": row.origin,
             "source": {"key": row.s_key, "tier": row.tier},
             "endpoint": _endpoint_snapshot(row),
-            "estimand": {"label": row.es_label, "basis": row.es_basis},
+            "estimand": _estimand_snapshot(row, strategies),
             "treatment": _arm_snapshot(row, "t", row.treatment_label),
             "comparator": _arm_snapshot(row, "c", row.comparator_label),
             "group_description": group_description,
@@ -802,9 +863,10 @@ def load_records(session: Session, snapshots: dict[int, SnapshotRef] | None = No
     """Every reviewable row in the database (rejected ones included) with key, fingerprint and snapshot."""
     snapshots = snapshots if snapshots is not None else latest_snapshots(session)
     study_drugs = _study_drugs(session)
+    strategies = _estimand_strategies(session)
     records = [
-        *_load_results(session, study_drugs),
-        *_load_analyses(session, study_drugs, snapshots),
+        *_load_results(session, study_drugs, strategies),
+        *_load_analyses(session, study_drugs, snapshots, strategies),
         *_load_adverse_events(session, study_drugs),
         *_load_claims(session, study_drugs),
         *_load_mechanisms(session),

@@ -33,6 +33,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     event,
+    false,
 )
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
 
@@ -65,11 +66,17 @@ class ReviewableMixin:
     * ``base_verification_status`` the mechanical status, kept beside the effective ``verification_status``
     * ``source_snapshot_id``       the source snapshot the row was extracted from or anchored against
     * ``check_flags`` / ``risk_level``  automated findings about the row (explanations, never corrections)
+    * ``review_hold``              True while the row's latest decisive decision is a rejection made on another
+                                   version: it is excluded like a REJECTED row until a person decides again
+
+    ``review_hold`` is NOT NULL and false for a freshly inserted row; only the review lifecycle sets it (with Core
+    statements), and the ORM refuses an attribute assignment.
     """
 
     evidence_key: Mapped[str | None] = mapped_column(String(64), unique=True, index=True)
     fingerprint: Mapped[str | None] = mapped_column(String(64))
     base_verification_status: Mapped[str | None] = mapped_column(String(40))
+    review_hold: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     check_flags: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
     risk_level: Mapped[str | None] = mapped_column(String(10))
 
@@ -201,6 +208,13 @@ class ReviewDecision(Base):
     status_before: Mapped[str | None] = mapped_column(String(40))
     status_after: Mapped[str | None] = mapped_column(String(40))
     imported_from: Mapped[str | None] = mapped_column(String(80))  # ledger file hash when restored by `review import`
+    # How the reviewer name was established (policy.IDENTITY_*): a personal reviewer token, a name typed under the shared
+    # development token, or unknown for an import from a ledger that did not record it.
+    identity_basis: Mapped[str | None] = mapped_column(String(40))
+    # Imported decisions only: MATCHED_VERSION (the database already held the reviewed version), SNAPSHOT_VERIFIED (the
+    # ledger carried the reviewed content and it hashes to the fingerprint) or UNMATCHED (neither: kept as history and
+    # reported as orphaned, never applied to any row).
+    ledger_match: Mapped[str | None] = mapped_column(String(20))
 
 
 class EvidenceVersion(Base):
@@ -247,6 +261,10 @@ class EvidenceVersion(Base):
     last_source_snapshot_version: Mapped[int | None] = mapped_column(Integer)
     mechanical_status: Mapped[str | None] = mapped_column(String(40))
     effective_status: Mapped[str | None] = mapped_column(String(40))
+    review_hold: Mapped[bool | None] = mapped_column(Boolean, default=False)
+    # Decisions recorded under another evidence key that apply to this one because their reviewed content is the same
+    # quantity (same study, origin, source, quote / locator and values) after a relabel; see review.lifecycle.
+    inherited_decision_ids: Mapped[list[int] | None] = mapped_column(JSON)
     risk_level: Mapped[str | None] = mapped_column(String(10))
     check_flags: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
     # The version of the same evidence key that this one replaced, and what changed (field, before, after).
@@ -957,6 +975,12 @@ def _refuse_human_status(target: Any, value: Any, oldvalue: Any, initiator: Any)
         )
 
 
+def _refuse_hold_write(target: Any, value: Any, oldvalue: Any, initiator: Any) -> None:
+    raise HumanStatusWriteError(
+        f"{type(target).__name__}.review_hold is derived from the decision history and is written by incretinos.review.lifecycle alone."
+    )
+
+
 def _refuse_change(mapper: Any, connection: Any, target: Any) -> None:
     raise PermissionError(f"{type(target).__name__} rows are append-only: record a new row instead of changing or deleting one.")
 
@@ -967,6 +991,8 @@ for _model in (*REVIEWABLE_MODELS.values(), ParticipantFlow):
     # Participant flow carries the status vocabulary without being reviewable: no decision can ever apply to
     # one of its rows, so a human status there could not be supported by anything and is refused as well.
     event.listen(_model.verification_status, "set", _refuse_human_status)
+for _model in REVIEWABLE_MODELS.values():
+    event.listen(_model.review_hold, "set", _refuse_hold_write)
 for _model in (ReviewDecision, AuditEvent):
     event.listen(_model, "before_update", _refuse_change)
     event.listen(_model, "before_delete", _refuse_change)

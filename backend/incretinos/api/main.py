@@ -34,7 +34,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, joinedload, selectinload
 from starlette.datastructures import MutableHeaders
@@ -43,7 +43,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from .. import __version__
 from ..assistant.answer import ask
 from ..assistant.providers import get_provider, provider_status
-from ..config import describe_settings_sources, get_settings
+from ..config import ReviewerIdentity, describe_settings_sources, get_settings
 from ..db import INCLUDE_REJECTED, get_db
 from ..engines import benefit_risk, design, stats
 from ..engines.comparability import compare_findings, harmonize_dose
@@ -109,9 +109,10 @@ from ..models import (
     StudyPublication,
 )
 from ..reports.export import comparison_report_markdown, study_report_markdown
-from ..review.policy import STATUS_LABEL, canonical_status, is_usable, reviewer_problem
+from ..review import regulatory
+from ..review.policy import STATUS_LABEL, canonical_status, is_usable
 from ..vocab import norm_arm_label
-from .auth import require_reviewer
+from .auth import require_reviewer, reviewer_name
 from .limits import limit_assistant, limit_simulation
 from .routers.review import router as review_router
 
@@ -146,7 +147,9 @@ async def lifespan(_: FastAPI):
     _log.info(describe_settings_sources())
     _log.info(
         "write access: %s; API documentation: %s",
-        "reviewer token configured" if cfg.reviewer_token else "none (read-only: no reviewer token is configured)",
+        ("personal reviewer tokens (INCRETINOS_REVIEWERS_FILE); reviewer names are taken from the tokens" if cfg.reviewers_file
+         else "shared reviewer token configured (development mode: reviewer names are self-declared)" if cfg.reviewer_token
+         else "none (read-only: no reviewer token is configured)"),
         "served at /docs" if cfg.docs_enabled else "not served (set INCRETINOS_DOCS_ENABLED=true to serve it)",
     )
     scheduler = start_scheduler(cfg)
@@ -424,7 +427,7 @@ def meta(db: Db) -> dict[str, Any]:
         "result_tiers": dict(tiers),
         "tier_labels": {t.value: TIER_LABEL[t] for t in EvidenceTier},
         "llm": provider_status(cfg),
-        "review_enabled": bool(cfg.reviewer_token),
+        "review_enabled": cfg.review_enabled,
         "notice": "Public data only. Research use by qualified researchers. Not medical advice, not a treatment recommendation, not a regulatory submission.",
     }
 
@@ -439,10 +442,14 @@ def validation(db: Db) -> dict[str, Any]:
 # --------------------------------------------------------------------------- drugs
 
 
-def _drug_summary(db: Session, drug: Drug, n_studies: int | None = None) -> dict[str, Any]:
+def _drug_summary(db: Session, drug: Drug, n_studies: int | None = None, claims: dict[str, Any] | None = None) -> dict[str, Any]:
     cls = classify_drug([(m.target, m.action) for m in drug.mechanisms])
     if n_studies is None:
         n_studies = db.scalar(select(func.count()).select_from(StudyDrug).where(StudyDrug.drug_id == drug.id))
+    # The drug's status columns are a copy of its reviewed regulatory-status statement: when a reviewer excluded that
+    # statement, no status is shown (UNKNOWN, no summary, date or source) rather than the copy.
+    claim = (claims if claims is not None else regulatory.status_claims(db, [drug.slug])).get(drug.slug)
+    reg = regulatory.regulatory_view(drug, claim)
     return {
         "slug": drug.slug,
         "name": drug.name,
@@ -454,10 +461,13 @@ def _drug_summary(db: Session, drug: Drug, n_studies: int | None = None) -> dict
         "tier_group": drug.tier_group,
         "is_combination": drug.is_combination,
         "component_slugs": drug.component_slugs,
-        "regulatory_status": drug.regulatory_status,
-        "regulatory_summary": drug.regulatory_summary,
-        "regulatory_as_of": drug.regulatory_as_of,
-        "regulatory_source": source_ref(drug.regulatory_source),
+        "regulatory_status": reg["regulatory_status"],
+        "regulatory_summary": reg["regulatory_summary"],
+        "regulatory_as_of": reg["regulatory_as_of"],
+        "regulatory_source": source_ref(drug.regulatory_source) if reg["regulatory_status_available"] else None,
+        "regulatory_status_available": reg["regulatory_status_available"],
+        "regulatory_status_note": reg["regulatory_status_note"],
+        "regulatory_statement_status": reg["regulatory_statement_status"],
         "classification": cls,
         "n_studies": n_studies,
         "notes": drug.notes,
@@ -469,7 +479,8 @@ def _drug_rows(db: Session) -> list[dict[str, Any]]:
     order = {"CORE": 0, "ADJACENT": 1, "COMPARATOR": 2}
     drugs = sorted(db.scalars(select(Drug).options(selectinload(Drug.mechanisms), joinedload(Drug.regulatory_source))), key=lambda d: (order.get(d.tier_group, 9), d.id))
     n_studies = {drug_id: n for drug_id, n in db.execute(select(StudyDrug.drug_id, func.count()).group_by(StudyDrug.drug_id))}
-    return [_drug_summary(db, d, n_studies.get(d.id, 0)) for d in drugs]
+    claims = regulatory.status_claims(db, [d.slug for d in drugs])
+    return [_drug_summary(db, d, n_studies.get(d.id, 0), claims) for d in drugs]
 
 
 @app.get("/api/drugs", tags=["drugs"])
@@ -1138,23 +1149,32 @@ def list_gaps(db: Db, drug: Filter = None, category: Filter = None, nature: Filt
 
 class GapReview(Strict):
     review_status: Literal["OPEN", "IN_REVIEW", "CONFIRMED", "DISMISSED", "RESOLVED"]
-    reviewer_note: str | None = Field(None, max_length=2000)
-    clinical_importance: int | None = Field(None, ge=1, le=5)
-    reviewer: str = Field(min_length=2, max_length=120)
+    reviewer_note: str | None = Field(None, min_length=1, max_length=2000, description="A new note. Notes are append-only: an earlier note is never erased; omit this field to keep the current one.")
+    clinical_importance: StrictInt | None = Field(None, ge=1, le=5)
+    reviewer: str | None = Field(None, min_length=2, max_length=120, description="Required under the shared development token; with a personal reviewer token the name is the token's.")
 
 
 @app.patch("/api/gaps/{gap_id}", tags=["gaps"])
-def review_gap(gap_id: PathId, body: GapReview, db: Db, _: Annotated[str, Depends(require_reviewer)]) -> dict[str, Any]:
+def review_gap(gap_id: PathId, body: GapReview, db: Db, identity: Annotated[ReviewerIdentity, Depends(require_reviewer)]) -> dict[str, Any]:
+    """Triage a gap. The same reviewer rules as an evidence decision; notes are append-only (each one stays in the
+    decision history and the audit log, and a request without a note keeps the current one)."""
+    reviewer = reviewer_name(identity, body.reviewer)
+    note = body.reviewer_note.strip() if body.reviewer_note is not None else None
+    if body.reviewer_note is not None and not note:
+        raise HTTPException(status_code=422, detail="An empty note cannot replace a reviewer note; omit reviewer_note to keep the current one.")
     gap = db.get(EvidenceGap, gap_id)
     if gap is None:
         raise HTTPException(status_code=404, detail="Gap not found")
-    before = {"review_status": gap.review_status, "clinical_importance": gap.clinical_importance}
+    before = {"review_status": gap.review_status, "clinical_importance": gap.clinical_importance, "reviewer_note": gap.reviewer_note}
     gap.review_status = body.review_status
-    gap.reviewer_note = body.reviewer_note
+    if note is not None:
+        gap.reviewer_note = note
     if body.clinical_importance is not None:
         gap.clinical_importance = body.clinical_importance
-    db.add(ReviewDecision(target_type="evidence_gap", target_id=gap.id, decision=body.review_status, reviewer=body.reviewer, rationale=body.reviewer_note or ""))
-    audit(db, "gap.reviewed", actor=body.reviewer, target_type="evidence_gap", target_id=gap.id, before=before, after={"review_status": gap.review_status, "clinical_importance": gap.clinical_importance})
+    db.add(ReviewDecision(target_type="evidence_gap", target_id=gap.id, decision=body.review_status, reviewer=reviewer, rationale=note or "",
+                          identity_basis=identity.basis))
+    audit(db, "gap.reviewed", actor=reviewer, target_type="evidence_gap", target_id=gap.id, identity_basis=identity.basis, before=before,
+          after={"review_status": gap.review_status, "clinical_importance": gap.clinical_importance, "reviewer_note": gap.reviewer_note})
     db.commit()
     return _gap_dto(gap)
 
@@ -1398,13 +1418,13 @@ def review_queue(db: Db, status: Filter = "OPEN", item_type: Filter = None, limi
     items = db.scalars(select(ReviewQueueItem).where(*conditions).order_by(by_priority, ReviewQueueItem.id).limit(limit).offset(offset)).all()
     counts = db.execute(select(ReviewQueueItem.item_type, ReviewQueueItem.status, func.count()).group_by(ReviewQueueItem.item_type, ReviewQueueItem.status)).all()
     rows = [{"id": i.id, "item_type": i.item_type, "target_type": i.target_type, "target_id": i.target_id, "title": i.title, "reason": i.reason, "priority": i.priority, "status": i.status, "payload": i.payload, "created_at": i.created_at.isoformat()} for i in items]
-    return _page(rows, total, limit, offset, counts=[{"item_type": t, "status": s, "n": n} for t, s, n in sorted(counts)], review_enabled=bool(get_settings().reviewer_token),
+    return _page(rows, total, limit, offset, counts=[{"item_type": t, "status": s, "n": n} for t, s, n in sorted(counts)], review_enabled=get_settings().review_enabled,
                  evidence_review="/api/review/evidence")
 
 
 class DecisionRequest(Strict):
     decision: Literal["APPROVE", "REJECT", "NEEDS_INFO", "REOPEN"]
-    reviewer: str = Field(min_length=2, max_length=120)
+    reviewer: str | None = Field(None, min_length=2, max_length=120)
     rationale: str = Field(min_length=3, max_length=2000)
 
 
@@ -1421,7 +1441,7 @@ QUEUE_TRANSITIONS: dict[tuple[str, str], str] = {
 
 
 @app.post("/api/review-queue/{item_id}/decision", tags=["provenance"])
-def decide(item_id: PathId, body: DecisionRequest, db: Db, _: Annotated[str, Depends(require_reviewer)]) -> dict[str, Any]:
+def decide(item_id: PathId, body: DecisionRequest, db: Db, identity: Annotated[ReviewerIdentity, Depends(require_reviewer)]) -> dict[str, Any]:
     """Decide on a queue item (a source change, a reconciliation problem, an ingestion failure).
 
     This never changes the verification status of evidence: that is done per evidence row through
@@ -1438,22 +1458,21 @@ def decide(item_id: PathId, body: DecisionRequest, db: Db, _: Annotated[str, Dep
             "evidence_review": "/api/review/evidence?status=PENDING_HUMAN_REVIEW" + (f"&source_key={item.payload['source_key']}" if (item.payload or {}).get("source_key") else ""),
             "decision_endpoint": "POST /api/review/evidence/{evidence_type}/{id}/decisions",
         })
-    problem = reviewer_problem(body.reviewer)
-    if problem:
-        raise HTTPException(status_code=422, detail=problem)
+    reviewer = reviewer_name(identity, body.reviewer)
     next_status = QUEUE_TRANSITIONS.get((item.status, body.decision))
     if next_status is None:
         hint = "Send decision REOPEN to reopen it before deciding again." if item.status == "RESOLVED" else "REOPEN applies to resolved items only."
         raise HTTPException(status_code=409, detail=f"Item {item.id} is {item.status}; decision {body.decision} is not allowed in that state. {hint}")
     previous = item.status
-    db.add(ReviewDecision(queue_item_id=item.id, target_type=item.target_type, target_id=item.target_id, decision=body.decision, reviewer=body.reviewer, rationale=body.rationale))
+    db.add(ReviewDecision(queue_item_id=item.id, target_type=item.target_type, target_id=item.target_id, decision=body.decision, reviewer=reviewer, rationale=body.rationale,
+                          identity_basis=identity.basis))
     item.status = next_status
     if item.item_type == "SOURCE_CHANGE" and item.target_id:
         event = db.get(ChangeEvent, item.target_id)
         if event is not None:
             event.review_status = item.status
-    audit(db, "review.decision", actor=body.reviewer, target_type="review_queue_item", target_id=item.id, decision=body.decision, rationale=body.rationale,
-          item_type=item.item_type, status_before=previous, status_after=item.status)
+    audit(db, "review.decision", actor=reviewer, target_type="review_queue_item", target_id=item.id, decision=body.decision, rationale=body.rationale,
+          item_type=item.item_type, status_before=previous, status_after=item.status, identity_basis=identity.basis)
     db.commit()
     return {"id": item.id, "status": item.status, "decision": body.decision, "previous_status": previous}
 

@@ -13,6 +13,11 @@ decision or of a change detected after one:
 - REJECTED: an authorized person rejected it. Rejected evidence is kept for audit and excluded from use.
 - SOURCE_CHANGED_RECHECK_REQUIRED: a decision exists, but the record or its source changed afterwards.
 
+A row whose latest decisive decision is a rejection stays out of every analytic surface until a person
+decides again, even when its content changed since (its status is then SOURCE_CHANGED_RECHECK_REQUIRED).
+That exclusion is the ``review_hold`` flag stored beside the status; the session-level rule in
+``incretinos.db`` hides held rows exactly as it hides REJECTED ones.
+
 The stored column ``verification_status`` holds the *effective* status (what every reader should act on).
 The mechanical status the row would have without any decision is kept beside it in
 ``base_verification_status`` so the interface can say "quote-anchored; human-verified by ... on ...".
@@ -21,6 +26,7 @@ The mechanical status the row would have without any decision is kept beside it 
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 
 from ..enums import ActorKind, ReviewDecisionKind, VerificationStatus
@@ -76,9 +82,25 @@ def canonical_status(status: str | None) -> str | None:
     return LEGACY_STATUS_ALIASES.get(status, status)
 
 
-def is_usable(status: str | None) -> bool:
-    """False for evidence a reviewer rejected: it must not feed comparisons, summaries or reports."""
-    return canonical_status(status) not in EXCLUDED_STATUSES
+def is_usable(status: str | None, hold: bool | None = False) -> bool:
+    """False for evidence a reviewer rejected, or held out of use after a rejection: it must not feed
+    comparisons, summaries or reports."""
+    return not hold and canonical_status(status) not in EXCLUDED_STATUSES
+
+
+HOLD_EXPLANATION = (
+    "A reviewer rejected an earlier version of this evidence. It stays excluded from every comparison, summary and report "
+    "until a reviewer decides on the current version."
+)
+
+
+def exclusion_reason(status: str | None, hold: bool | None) -> str | None:
+    """Why a row is excluded from analytic use, or None when it is usable."""
+    if canonical_status(status) in EXCLUDED_STATUSES:
+        return "Rejected in review on this exact content."
+    if hold:
+        return HOLD_EXPLANATION
+    return None
 
 
 def is_human_verified(status: str | None) -> bool:
@@ -103,7 +125,12 @@ MIN_RATIONALE_DISTINCT_WORDS = 3
 _BOILERPLATE_RATIONALE = re.compile(
     r"^(approved?|reject(ed)?|decision|review(ed)?)\s+recorded\s+(from|in|via)\s+the\s+review\s+(queue|page|screen)\.?$", re.IGNORECASE
 )
-RESERVED_REVIEWER_NAMES = frozenset({"system", "api", "reviewer", "admin", "automation", "anonymous", "unknown"})
+RESERVED_REVIEWER_NAMES = frozenset({
+    "system", "api", "reviewer", "admin", "administrator", "automation", "anonymous", "unknown", "bot", "robot", "script", "service",
+    "none", "null", "nobody", "na", "nn", "tbd", "test", "tester", "user", "root", "ci", "cron", "scheduler", "importer", "ledger",
+})
+#: Words that name software, not a person, wherever they appear in a name ("automation-bot", "review system").
+_NON_PERSON_WORDS = frozenset({"system", "bot", "robot", "automation", "automated", "script", "api", "service", "cron", "scheduler", "daemon"})
 
 
 def rationale_problem(rationale: str | None) -> str | None:
@@ -126,16 +153,47 @@ def rationale_problem(rationale: str | None) -> str | None:
     return None
 
 
+def normalise_reviewer(reviewer: str | None) -> str:
+    """A reviewer name as stored: Unicode NFKC, invisible format characters removed, whitespace collapsed."""
+    text = unicodedata.normalize("NFKC", reviewer or "")
+    text = "".join(ch for ch in text if unicodedata.category(ch) not in ("Cf", "Cc", "Cs", "Co", "Cn"))
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _name_words(name: str) -> list[str]:
+    return re.findall(r"[^\W\d_]+", name.casefold())
+
+
 def reviewer_problem(reviewer: str | None) -> str | None:
-    """Why a reviewer name is not acceptable, or None when it is."""
-    name = re.sub(r"\s+", " ", reviewer or "").strip()
+    """Why a reviewer name is not acceptable, or None when it is.
+
+    The comparison with reserved names ignores case, spacing, punctuation, digits and invisible characters, so
+    "System.", "sys tem" and "sys\u200btem" are all "system". A name must contain at least two different letters.
+    """
+    name = normalise_reviewer(reviewer)
     if len(name) < 2 or not re.search(r"[^\W\d_]", name):
         return "The reviewer name must identify a person (at least two characters including a letter)."
     if len(name) > 120:
         return "The reviewer name is too long (120 characters at most)."
-    if name.lower() in RESERVED_REVIEWER_NAMES:
+    words = _name_words(name)
+    compact = "".join(words)
+    if len(set(compact)) < 2:
+        return "The reviewer name must identify a person, not repeat one character."
+    if compact in RESERVED_REVIEWER_NAMES or " ".join(words) in RESERVED_REVIEWER_NAMES or any(w in _NON_PERSON_WORDS for w in words):
         return f"'{name}' is a reserved name and cannot be used as a reviewer identity."
     return None
+
+
+# How the reviewer identity of a decision was established. Stored with every decision and shown with it.
+IDENTITY_AUTHENTICATED = "AUTHENTICATED_REVIEWER_TOKEN"  # the name is bound to the reviewer's own token on the server
+IDENTITY_SELF_DECLARED = "SELF_DECLARED_SHARED_TOKEN"  # one shared token; the name was typed by the client
+IDENTITY_IMPORTED_UNKNOWN = "IMPORTED_UNRECORDED"  # restored from a ledger that did not say how the name was established
+IDENTITY_BASES = frozenset({IDENTITY_AUTHENTICATED, IDENTITY_SELF_DECLARED, IDENTITY_IMPORTED_UNKNOWN})
+IDENTITY_LABEL = {
+    IDENTITY_AUTHENTICATED: "Authenticated reviewer (personal token)",
+    IDENTITY_SELF_DECLARED: "Self-declared name under the shared development token",
+    IDENTITY_IMPORTED_UNKNOWN: "Imported; how the name was established is not recorded",
+}
 
 
 def is_decisive(decision: str, actor_kind: str | None, attested: bool | None) -> bool:

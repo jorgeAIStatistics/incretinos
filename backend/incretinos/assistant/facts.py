@@ -23,7 +23,7 @@ from ..engines.findings import Finding, analysis_dto, build_finding, population_
 from ..engines.interpretation import classify_drug, interpret_analysis
 from ..enums import TIER_LABEL, EvidenceTier, VerificationStatus
 from ..models import Drug, EvidenceClaim, OutcomeResult, StatisticalAnalysis, Study, StudyArm
-from ..review import policy
+from ..review import policy, regulatory
 from ..vocab import DRUG_ALIASES
 
 # Fact kinds. The first four are the kinds a benchmark case can select; the last two exist because
@@ -526,23 +526,25 @@ def fact_from_drug(session: Session, drug: Drug, text: str | None = None) -> Evi
     status_claim = session.scalar(select(EvidenceClaim).where(EvidenceClaim.key == f"{drug.slug}:regulatory-status").execution_options(include_rejected=True))
     if status_claim is not None:
         records.insert(0, {"type": "claim", "id": status_claim.id, "verification_status": policy.canonical_status(status_claim.verification_status)})
+    # A statement rejected in review, or held after a rejected earlier version, is not the drug's status: never shown or cited.
+    available = regulatory.statement_usable((status_claim.verification_status, bool(status_claim.review_hold)) if status_claim is not None else None)
     statuses = [r["verification_status"] for r in records if r["verification_status"]]
-    source_ids = list(dict.fromkeys(s for s in [drug.regulatory_source_id, *(m.source_id for m in mechanisms)] if s))
+    source_ids = list(dict.fromkeys(s for s in [drug.regulatory_source_id if available else None, *(m.source_id for m in mechanisms)] if s))
     tier = drug.regulatory_source.tier if drug.regulatory_source is not None else (status_claim.tier if status_claim is not None else None)
     return EvidenceFact(
         fact_id=f"drug:{drug.slug}",
         kind=REGULATORY_STATUS,
-        text=text or drug_profile_text(drug),
+        text=(text or drug_profile_text(drug)) if available else f"{drug.name}: regulatory status unavailable. {regulatory.UNAVAILABLE_NOTE}",
         ref_type="drug",
         ref_id=drug.id,
-        source_id=drug.regulatory_source_id,
+        source_id=drug.regulatory_source_id if available else None,
         source_ids=source_ids,
         records=records,
         drugs=expand_drugs(drug.slug),
         tier=tier,
         verification_status=weakest_status(statuses),
         verification_statuses=statuses,
-        regulatory_status=drug.regulatory_status,
+        regulatory_status=drug.regulatory_status if available else None,
         context=" ".join(part for part in (drug.name, drug.code_name or "", " ".join(drug.brand_names or []), _tier_label(tier), " ".join(_status_label(s) for s in dict.fromkeys(statuses))) if part),
     )
 
