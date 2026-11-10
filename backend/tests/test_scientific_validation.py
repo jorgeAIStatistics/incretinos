@@ -1088,6 +1088,161 @@ def test_rejected_evidence_is_excluded_from_comparisons_and_profiles(db):
         assert get_finding(db, high.result_id).verification_status == "REJECTED"
 
 
+# ---- INT-2 (review 1): the language guard, rebuilt with clause-scoped negation and broad claim coverage
+#
+# Each probe is (text, context). The context names the evidence the sentence would be describing, exactly as
+# guard_statement is told it by its callers. The reviewer's 50 probes come first: the 7 honest statements the old
+# guard flagged and the 14 claims it missed are quoted from the review; the remaining 29 are the review's other
+# probes of the same kinds (its script was not kept). Then 60 more, half honest and half claims.
+
+_CROSS = {"cross_trial": True}
+_NI = {"hypothesis_type": "NON_INFERIORITY", "superiority_met": "NOT_STATED"}
+_EXPLORATORY = {"exploratory": True}
+_SPONTANEOUS = {"data_family": "SPONTANEOUS"}
+_LEAN = {"lean_mass": True}
+_NONE: dict = {}
+
+REVIEW1_HONEST = [
+    # flagged by the old guard
+    ("Whether retatrutide is more effective than tirzepatide is unknown.", _CROSS),
+    ("A head-to-head trial would be needed to establish superiority.", _CROSS),
+    ("Claims of superiority would require a randomized comparison.", _CROSS),
+    ("It would be wrong to say that retatrutide beats tirzepatide.", _CROSS),
+    ("Calling either agent superior would overstate the evidence.", _CROSS),
+    ("Without a randomized comparison, no one can say which drug is more effective.", _CROSS),
+    ("Any suggestion that retatrutide outperforms tirzepatide is unsupported.", _CROSS),
+    # passed by the old guard
+    ("Superiority was not demonstrated.", _CROSS),
+    ("There is no evidence that retatrutide is superior to tirzepatide.", _CROSS),
+    ("These cross-trial values do not show that either drug is better.", _CROSS),
+    ("It is not known whether retatrutide is more effective than tirzepatide.", _CROSS),
+    ("No statistically significant difference can be claimed across trials.", _CROSS),
+    ("The two values may be tabulated side by side with their study context.", _CROSS),
+    ("Neither superiority nor a statistically significant difference may be claimed.", _CROSS),
+    ("The trials were not randomized against each other.", _CROSS),
+    ("Retatrutide is not superior, better, or more effective than tirzepatide on this evidence.", _CROSS),
+    ("Do not rank the two drugs by these values.", _CROSS),
+    ("Cross-trial differences may reflect populations rather than treatments.", _CROSS),
+    ("Superiority of retatrutide over tirzepatide has not been shown.", _CROSS),
+    ("The difference was non-significant.", _CROSS),
+    ("Statistical significance cannot be inferred from two separate trials.", _CROSS),
+    ("No head-to-head trial has compared retatrutide with tirzepatide.", _CROSS),
+    ("Orforglipron was non-inferior to insulin glargine; superiority was not demonstrated.", _NI),
+    ("Report counts cannot be read as incidence and do not show that the drug causes the event.", _SPONTANEOUS),
+    ("DXA lean mass decreased; this is not a direct measure of muscle loss.", _LEAN),
+]
+
+REVIEW1_CLAIMS = [
+    # missed by the old guard
+    ("Tirzepatide is inferior to retatrutide.", _CROSS),
+    ("Patients lose more weight on retatrutide than on tirzepatide.", _CROSS),
+    ("Retatrutide is roughly twice as effective as tirzepatide.", _CROSS),
+    ("Retatrutide has a clear edge over tirzepatide in weight reduction.", _CROSS),
+    ("Retatrutide wins on weight loss.", _CROSS),
+    ("Never before has a drug outperformed tirzepatide the way retatrutide does.", _CROSS),
+    ("No other incretin comes close to retatrutide.", _CROSS),
+    ("There is no comparison: retatrutide is far better.", _CROSS),
+    ("Retatrutide is the preferred treatment for obesity.", _NONE),
+    ("Tirzepatide reduced cardiovascular events by 8% versus dulaglutide.", _NI),
+    ("Tirzepatide lowered the risk of MACE compared with dulaglutide.", _NI),
+    ("This exploratory endpoint shows that tirzepatide improves sleep apnea.", _EXPLORATORY),
+    ("Tirzepatide triggers pancreatitis, as FAERS reports show.", _SPONTANEOUS),
+    ("Patients on tirzepatide lost lean mass, that is, muscle.", _LEAN),
+    # caught by the old guard
+    ("Retatrutide is superior to tirzepatide.", _CROSS),
+    ("Retatrutide outperformed tirzepatide.", _CROSS),
+    ("Retatrutide is more effective than tirzepatide.", _CROSS),
+    ("The difference between retatrutide and tirzepatide was statistically significant.", _CROSS),
+    ("Retatrutide achieved larger weight loss than tirzepatide (p<0.05).", _CROSS),
+    ("Without doubt, retatrutide is superior to tirzepatide.", _CROSS),
+    ("Orforglipron was superior to insulin glargine on MACE-4.", _NI),
+    ("Orforglipron demonstrated a reduction in all-cause death.", _EXPLORATORY),
+    ("These reports prove tirzepatide causes gastroparesis.", _SPONTANEOUS),
+    ("Participants lost muscle on tirzepatide.", _LEAN),
+    ("Patients should switch to retatrutide.", _NONE),
+]
+
+MORE_HONEST = [
+    ("Superiority over tirzepatide would need a randomized head-to-head trial.", _CROSS),
+    ("Whether one drug leads to more weight loss than the other cannot be judged from these trials.", _CROSS),
+    ("It is unclear whether retatrutide outperforms tirzepatide.", _CROSS),
+    ("Nobody can tell from separate trials which agent is more potent.", _CROSS),
+    ("It would be misleading to call retatrutide the stronger drug.", _CROSS),
+    ("Statements that retatrutide beats tirzepatide are not supported by a randomized comparison.", _CROSS),
+    ("Any claim that tirzepatide is inferior would be premature.", _CROSS),
+    ("The reported mean was numerically larger in TRIUMPH-1 than in SURMOUNT-1, but the trials differ.", _CROSS),
+    ("Weight loss was greater with tirzepatide than with placebo in SURMOUNT-1.", _CROSS),
+    ("More than half of participants lost at least 15% of body weight.", _CROSS),
+    ("A trial designed to show superiority of retatrutide over tirzepatide has not been reported.", _CROSS),
+    ("Retatrutide was not shown to be more effective than tirzepatide, and no trial has compared them.", _CROSS),
+    ("The difference between the trials may reflect their populations, not the drugs.", _CROSS),
+    ("Superiority was not tested in ACHIEVE-4; only non-inferiority was.", _NI),
+    ("Orforglipron was non-inferior to insulin glargine for MACE-4.", _NI),
+    ("The hazard ratio is compatible with benefit, no difference or harm.", _NI),
+    ("Non-inferiority does not mean that tirzepatide reduced cardiovascular events.", _NI),
+    ("A reduction in MACE was not established.", _NI),
+    ("This exploratory endpoint is hypothesis-generating and does not confirm an effect.", _EXPLORATORY),
+    ("The exploratory result needs confirmation in a dedicated trial.", _EXPLORATORY),
+    ("An effect on sleep apnea severity has not been demonstrated in a confirmatory analysis.", _EXPLORATORY),
+    ("FAERS counts cannot show that tirzepatide causes pancreatitis.", _SPONTANEOUS),
+    ("Spontaneous reports do not establish an incidence of pancreatitis.", _SPONTANEOUS),
+    ("FAERS received 120 reports of pancreatitis for tirzepatide.", _SPONTANEOUS),
+    ("Whether tirzepatide triggers pancreatitis is not established by these reports.", _SPONTANEOUS),
+    ("DXA lean mass fell by 10%; lean mass is not the same as skeletal muscle.", _LEAN),
+    ("Lean mass declined; whether skeletal muscle declined was not measured.", _LEAN),
+    ("Participants lost weight, including fat mass and lean mass.", _LEAN),
+    ("This platform does not recommend any treatment.", _NONE),
+    ("Treatment decisions belong to the patient and the clinician.", _NONE),
+]
+
+MORE_CLAIMS = [
+    ("Retatrutide is clearly the better drug.", _CROSS),
+    ("Retatrutide surpasses tirzepatide for weight loss.", _CROSS),
+    ("Tirzepatide falls short of retatrutide.", _CROSS),
+    ("Retatrutide is the most effective incretin.", _CROSS),
+    ("Retatrutide ranks first among incretins.", _CROSS),
+    ("Tirzepatide lags behind retatrutide on weight reduction.", _CROSS),
+    ("Retatrutide produced deeper weight loss than tirzepatide.", _CROSS),
+    ("Participants lost less weight with tirzepatide than with retatrutide.", _CROSS),
+    ("Retatrutide is as effective as tirzepatide.", _CROSS),
+    ("Retatrutide is unmatched among obesity drugs.", _CROSS),
+    ("The weight-loss gap between the trials is due to retatrutide's triple agonism.", _CROSS),
+    ("Retatrutide cannot be beaten on weight loss.", _CROSS),
+    ("Nothing comes close to retatrutide.", _CROSS),
+    ("Retatrutide is way better than tirzepatide, not just numerically.", _CROSS),
+    ("Retatrutide gave significantly more weight loss than tirzepatide.", _CROSS),
+    ("Retatrutide has the advantage over tirzepatide.", _CROSS),
+    ("Retatrutide is three times as potent as tirzepatide.", _CROSS),
+    ("Tirzepatide is less effective than retatrutide.", _CROSS),
+    ("Orforglipron protected against cardiovascular events compared with insulin glargine.", _NI),
+    ("Tirzepatide cut the risk of death versus dulaglutide.", _NI),
+    ("MACE was reduced with orforglipron relative to insulin glargine.", _NI),
+    ("Tirzepatide showed a 12% lower risk of MACE than dulaglutide.", _NI),
+    ("The exploratory analysis proves that bimagrumab preserves lean mass.", _EXPLORATORY),
+    ("This post hoc result confirms a benefit on kidney function.", _EXPLORATORY),
+    ("FAERS data show that tirzepatide leads to gastroparesis.", _SPONTANEOUS),
+    ("Spontaneous reports demonstrate an event rate of 3 per 1,000 patients.", _SPONTANEOUS),
+    ("Tirzepatide caused muscle wasting in the DXA substudy.", _LEAN),
+    ("The lean-mass loss, i.e. muscle, was 10%.", _LEAN),
+    ("Patients can use tirzepatide 15 mg for weight loss.", _NONE),
+    ("Tirzepatide is the drug of choice for obesity.", _NONE),
+]
+
+
+def test_int2_probe_sets_have_the_stated_sizes():
+    assert (len(REVIEW1_HONEST), len(REVIEW1_CLAIMS), len(MORE_HONEST), len(MORE_CLAIMS)) == (25, 25, 30, 30)
+
+
+@pytest.mark.parametrize(("text", "context"), REVIEW1_HONEST + MORE_HONEST)
+def test_int2_honest_statements_are_not_flagged(text, context):
+    assert not guard_statement(text, **context), text
+
+
+@pytest.mark.parametrize(("text", "context"), REVIEW1_CLAIMS + MORE_CLAIMS)
+def test_int2_claims_are_flagged(text, context):
+    assert guard_statement(text, **context), text
+
+
 # ---- Review 1, comparability track: CMP-1..3, INT-1, INT-3, FE-1 and WEB-17 (API side)
 
 SM_OSA_TRIAL, ORFO_P2, ATTAIN2 = "NCT05412004", "NCT05051579", "NCT05872620"
