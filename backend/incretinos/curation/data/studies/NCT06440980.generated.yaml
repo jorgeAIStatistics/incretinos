@@ -4,37 +4,25 @@
 study: NCT06440980
 estimands: []
 endpoints:
-- key: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-auc-12a7c27f
+- key: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-auc-2db68143
   title: ratio of geometric LS means, steady-state AUC over dosing interval (tablet/capsule)
-  role: SECONDARY
+  role: NOT_STATED
   category: PHARMACOKINETICS
   unit: ratio
   multiplicity_controlled: NOT_STATED
-- key: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-cma-86ddb298
+- key: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-cma-9203f5b4
   title: ratio of geometric LS means, steady-state Cmax (tablet/capsule)
-  role: SECONDARY
-  category: PHARMACOKINETICS
-  unit: ratio
-  multiplicity_controlled: NOT_STATED
-- key: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-auc-c0ab56bf
-  title: ratio of geometric LS means, steady-state AUC over dosing interval (tablet/capsule)
-  role: PRIMARY
-  category: PHARMACOKINETICS
-  unit: ratio
-  multiplicity_controlled: NOT_STATED
-- key: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-cma-8d9449eb
-  title: ratio of geometric LS means, steady-state Cmax (tablet/capsule)
-  role: PRIMARY
+  role: NOT_STATED
   category: PHARMACOKINETICS
   unit: ratio
   multiplicity_controlled: NOT_STATED
 results: []
 analyses:
-- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-auc-12a7c27f
+- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-auc-2db68143
   treatment: tablet 0.8 mg
   comparator: capsule 1 mg
   hypothesis_type: NOT_STATED
-  param_type: Estimated treatment difference
+  param_type: Ratio of geometric least-squares means
   estimate: 0.97
   unit: ratio
   ci_low: 0.9419
@@ -46,12 +34,12 @@ analyses:
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 0.973 (0.9505, 0.9957) and Cmax,ss 0.980 (0.9540, 1.0077). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role (primary at capsule doses 3, 6, 12, 36 mg; secondary at 1 and 24 mg) is taken
-    from the bioequivalence publication (S9).
-- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-cma-86ddb298
+    from the bioequivalence publication (S9). The research note for this row records the endpoint role of this comparison as SECONDARY; the endpoint record holds NOT_STATED.
+- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-cma-9203f5b4
   treatment: tablet 0.8 mg
   comparator: capsule 1 mg
   hypothesis_type: NOT_STATED
-  param_type: Estimated treatment difference
+  param_type: Ratio of geometric least-squares means
   estimate: 0.97
   unit: ratio
   ci_low: 0.9438
@@ -62,12 +50,13 @@ analyses:
   quote: 1 mg 0.8 mg 0.97 (0.9419, 0.9892) 0.97 (0.9438, 1.0003)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 0.973 (0.9505, 0.9957) and Cmax,ss 0.980 (0.9540, 1.0077). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
-    Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9).
-- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-auc-c0ab56bf
+    Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9). The research note for this
+    row records the endpoint role of this comparison as SECONDARY; the endpoint record holds NOT_STATED.
+- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-auc-2db68143
   treatment: tablet 2.5 mg
   comparator: capsule 3 mg
   hypothesis_type: NOT_STATED
-  param_type: Estimated treatment difference
+  param_type: Ratio of geometric least-squares means
   estimate: 1.0
   unit: ratio
   ci_low: 0.9728
@@ -79,12 +68,12 @@ analyses:
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 1.004 (0.9789, 1.0295) and Cmax,ss 1.014 (0.9849, 1.0448). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role (primary at capsule doses 3, 6, 12, 36 mg; secondary at 1 and 24 mg) is taken
-    from the bioequivalence publication (S9).
-- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-cma-8d9449eb
+    from the bioequivalence publication (S9). The research note for this row records the endpoint role of this comparison as PRIMARY; the endpoint record holds NOT_STATED.
+- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-cma-9203f5b4
   treatment: tablet 2.5 mg
   comparator: capsule 3 mg
   hypothesis_type: NOT_STATED
-  param_type: Estimated treatment difference
+  param_type: Ratio of geometric least-squares means
   estimate: 1.01
   unit: ratio
   ci_low: 0.9802
@@ -95,12 +84,13 @@ analyses:
   quote: 3 mg 2.5 mg 1.00 (0.9728, 1.0254) 1.01 (0.9802, 1.0427)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 1.004 (0.9789, 1.0295) and Cmax,ss 1.014 (0.9849, 1.0448). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
-    Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9).
-- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-auc-c0ab56bf
+    Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9). The research note for this
+    row records the endpoint role of this comparison as PRIMARY; the endpoint record holds NOT_STATED.
+- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-auc-2db68143
   treatment: tablet 5.5 mg
   comparator: capsule 6 mg
   hypothesis_type: NOT_STATED
-  param_type: Estimated treatment difference
+  param_type: Ratio of geometric least-squares means
   estimate: 0.99
   unit: ratio
   ci_low: 0.9514
@@ -112,12 +102,12 @@ analyses:
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 0.980 (0.9483, 1.0136) and Cmax,ss 0.973 (0.9283, 1.0201). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role (primary at capsule doses 3, 6, 12, 36 mg; secondary at 1 and 24 mg) is taken
-    from the bioequivalence publication (S9).
-- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-cma-8d9449eb
+    from the bioequivalence publication (S9). The research note for this row records the endpoint role of this comparison as PRIMARY; the endpoint record holds NOT_STATED.
+- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-cma-9203f5b4
   treatment: tablet 5.5 mg
   comparator: capsule 6 mg
   hypothesis_type: NOT_STATED
-  param_type: Estimated treatment difference
+  param_type: Ratio of geometric least-squares means
   estimate: 0.97
   unit: ratio
   ci_low: 0.9269
@@ -128,12 +118,13 @@ analyses:
   quote: 6 mg 5.5 mg 0.99 (0.9514, 1.0207) 0.97 (0.9269, 1.0169)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 0.980 (0.9483, 1.0136) and Cmax,ss 0.973 (0.9283, 1.0201). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
-    Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9).
-- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-auc-c0ab56bf
+    Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9). The research note for this
+    row records the endpoint role of this comparison as PRIMARY; the endpoint record holds NOT_STATED.
+- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-auc-2db68143
   treatment: tablet 9 mg
   comparator: capsule 12 mg
   hypothesis_type: NOT_STATED
-  param_type: Estimated treatment difference
+  param_type: Ratio of geometric least-squares means
   estimate: 0.95
   unit: ratio
   ci_low: 0.9201
@@ -145,12 +136,12 @@ analyses:
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 0.948 (0.9199, 0.9780) and Cmax,ss 0.976 (0.9344, 1.0200). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role (primary at capsule doses 3, 6, 12, 36 mg; secondary at 1 and 24 mg) is taken
-    from the bioequivalence publication (S9).
-- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-cma-8d9449eb
+    from the bioequivalence publication (S9). The research note for this row records the endpoint role of this comparison as PRIMARY; the endpoint record holds NOT_STATED.
+- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-cma-9203f5b4
   treatment: tablet 9 mg
   comparator: capsule 12 mg
   hypothesis_type: NOT_STATED
-  param_type: Estimated treatment difference
+  param_type: Ratio of geometric least-squares means
   estimate: 0.97
   unit: ratio
   ci_low: 0.9321
@@ -161,12 +152,13 @@ analyses:
   quote: 12 mg 9 mg 0.95 (0.9201, 0.9777) 0.97 (0.9321, 1.0133)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 0.948 (0.9199, 0.9780) and Cmax,ss 0.976 (0.9344, 1.0200). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
-    Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9).
-- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-auc-12a7c27f
+    Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9). The research note for this
+    row records the endpoint role of this comparison as PRIMARY; the endpoint record holds NOT_STATED.
+- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-auc-2db68143
   treatment: tablet 14.5 mg
   comparator: capsule 24 mg
   hypothesis_type: NOT_STATED
-  param_type: Estimated treatment difference
+  param_type: Ratio of geometric least-squares means
   estimate: 0.98
   unit: ratio
   ci_low: 0.9316
@@ -178,12 +170,12 @@ analyses:
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 0.971 (0.9268, 1.0171) and Cmax,ss 1.009 (0.9534, 1.0673). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role (primary at capsule doses 3, 6, 12, 36 mg; secondary at 1 and 24 mg) is taken
-    from the bioequivalence publication (S9).
-- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-cma-86ddb298
+    from the bioequivalence publication (S9). The research note for this row records the endpoint role of this comparison as SECONDARY; the endpoint record holds NOT_STATED.
+- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-cma-9203f5b4
   treatment: tablet 14.5 mg
   comparator: capsule 24 mg
   hypothesis_type: NOT_STATED
-  param_type: Estimated treatment difference
+  param_type: Ratio of geometric least-squares means
   estimate: 1.01
   unit: ratio
   ci_low: 0.956
@@ -194,12 +186,13 @@ analyses:
   quote: 24 mg 14.5 mg 0.98 (0.9316, 1.0217) 1.01 (0.9560, 1.0705)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 0.971 (0.9268, 1.0171) and Cmax,ss 1.009 (0.9534, 1.0673). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
-    Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9).
-- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-auc-c0ab56bf
+    Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9). The research note for this
+    row records the endpoint role of this comparison as SECONDARY; the endpoint record holds NOT_STATED.
+- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-auc-2db68143
   treatment: tablet 17.2 mg
   comparator: capsule 36 mg
   hypothesis_type: NOT_STATED
-  param_type: Estimated treatment difference
+  param_type: Ratio of geometric least-squares means
   estimate: 1.0
   unit: ratio
   ci_low: 0.9495
@@ -211,12 +204,12 @@ analyses:
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 0.995 (0.9484, 1.0442) and Cmax,ss 1.068 (1.0082, 1.1304). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
     Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role (primary at capsule doses 3, 6, 12, 36 mg; secondary at 1 and 24 mg) is taken
-    from the bioequivalence publication (S9).
-- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-cma-8d9449eb
+    from the bioequivalence publication (S9). The research note for this row records the endpoint role of this comparison as PRIMARY; the endpoint record holds NOT_STATED.
+- endpoint: pharmacokinetics-wna-ratio-of-geometric-ls-means-steady-state-cma-9203f5b4
   treatment: tablet 17.2 mg
   comparator: capsule 36 mg
   hypothesis_type: NOT_STATED
-  param_type: Estimated treatment difference
+  param_type: Ratio of geometric least-squares means
   estimate: 1.07
   unit: ratio
   ci_low: 1.0093
@@ -227,7 +220,8 @@ analyses:
   quote: 36 mg 17.2 mg 1.00 (0.9495, 1.0455) 1.07 (1.0093, 1.1305)
   notes: FDA Table 17, PDF page 80 (review page 57), source 'FDA analysis'. Ratio is tablet/capsule geometric least-squares mean ratio at steady state with 90% CI. Applicant's own analysis (Table 6.1, PDF
     page 76) reports AUC 0.995 (0.9484, 1.0442) and Cmax,ss 1.068 (1.0082, 1.1304). Footnote 'a' (reference-scaled procedure) applies to some cells but its placement is ambiguous in the extracted PDF text.
-    Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9).
+    Numbers were machine-extracted from the PDF table; mapping itself is also stated in prose in the same review. Endpoint role is taken from the bioequivalence publication (S9). The research note for this
+    row records the endpoint role of this comparison as PRIMARY; the endpoint record holds NOT_STATED.
 adverse_events: []
 claims:
 - key: note:orforglipron:F49

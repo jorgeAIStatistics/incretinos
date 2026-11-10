@@ -13,29 +13,22 @@ estimands:
     strategy: HYPOTHETICAL
   quote: The efficacy estimand represents efficacy had all randomized participants remained on study intervention (with possible dose interruptions and/or dose modifications) for 48 weeks.
 endpoints:
-- key: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-25c30ee2
+- key: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   title: percent change in body weight from baseline
-  role: PRIMARY
+  role: NOT_STATED
   category: WEIGHT_PCT_CHANGE
   unit: '%'
   timepoint_weeks: 48
   multiplicity_controlled: NOT_STATED
-- key: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-d90005df
-  title: percent change in body weight from baseline
-  role: SECONDARY
-  category: WEIGHT_PCT_CHANGE
-  unit: '%'
-  timepoint_weeks: 48
-  multiplicity_controlled: NOT_STATED
-- key: other-w48-change-in-a1c-from-baseline-f64405ef
+- key: hba1c-change-w48-change-in-a1c-from-baseline-28f4c9ff
   title: change in A1C from baseline
   role: SECONDARY
-  category: OTHER
+  category: HBA1C_CHANGE
   unit: '%'
   timepoint_weeks: 48
   multiplicity_controlled: NOT_STATED
 results:
-- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-25c30ee2
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: eloralintide 3 mg + tirzepatide 5 mg
   scope: ARM
@@ -45,8 +38,9 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: Elora 3 mg + TZP 5 mg | -13.2 % | -30.7 lbs | -2.2 %
   notes: 'Table row from release (cells joined with ''|''). Value is the within-arm change from baseline, not a difference vs placebo. Absolute change as stated: -30.7 lbs. Per-arm n, CI and p-value not
-    reported. Combination arm: per the release footnote the primary endpoint was percent change in body weight for EloraTZP vs. placebo. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-25c30ee2
+    reported. Combination arm: per the release footnote the primary endpoint was percent change in body weight for EloraTZP vs. placebo. ci_not_reported_in_this_source The research note for this row records
+    the endpoint role of this comparison as PRIMARY; the endpoint record holds NOT_STATED.'
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: eloralintide 6 mg + tirzepatide 5 mg
   scope: ARM
@@ -56,8 +50,9 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: Elora 6 mg + TZP 5 mg | -19.4 % | -45.1 lbs | -2.7 %
   notes: 'Table row from release (cells joined with ''|''). Value is the within-arm change from baseline, not a difference vs placebo. Absolute change as stated: -45.1 lbs. Per-arm n, CI and p-value not
-    reported. Combination arm: per the release footnote the primary endpoint was percent change in body weight for EloraTZP vs. placebo. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-25c30ee2
+    reported. Combination arm: per the release footnote the primary endpoint was percent change in body weight for EloraTZP vs. placebo. ci_not_reported_in_this_source The research note for this row records
+    the endpoint role of this comparison as PRIMARY; the endpoint record holds NOT_STATED.'
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: eloralintide 6 mg + tirzepatide 10 mg
   scope: ARM
@@ -67,8 +62,9 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: Elora 6 mg + TZP 10 mg | -19.9 % | -46.2 lbs | -2.6 %
   notes: 'Table row from release (cells joined with ''|''). Value is the within-arm change from baseline, not a difference vs placebo. Absolute change as stated: -46.2 lbs. Per-arm n, CI and p-value not
-    reported. Combination arm: per the release footnote the primary endpoint was percent change in body weight for EloraTZP vs. placebo. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-25c30ee2
+    reported. Combination arm: per the release footnote the primary endpoint was percent change in body weight for EloraTZP vs. placebo. ci_not_reported_in_this_source The research note for this row records
+    the endpoint role of this comparison as PRIMARY; the endpoint record holds NOT_STATED.'
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: eloralintide 9 mg + tirzepatide 15 mg
   scope: ARM
@@ -78,8 +74,9 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: Elora 9 mg + TZP 15 mg | -23.3 % | -54.1 lbs | -2.9 %
   notes: 'Table row from release (cells joined with ''|''). Value is the within-arm change from baseline, not a difference vs placebo. Absolute change as stated: -54.1 lbs. Per-arm n, CI and p-value not
-    reported. Combination arm: per the release footnote the primary endpoint was percent change in body weight for EloraTZP vs. placebo. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-d90005df
+    reported. Combination arm: per the release footnote the primary endpoint was percent change in body weight for EloraTZP vs. placebo. ci_not_reported_in_this_source The research note for this row records
+    the endpoint role of this comparison as PRIMARY; the endpoint record holds NOT_STATED.'
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: tirzepatide 15 mg
   scope: ARM
@@ -89,8 +86,9 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: TZP 15 mg | -14.8 % | -34.4 lbs | -2.4 %
   notes: 'Table row from release (cells joined with ''|''). Value is the within-arm change from baseline, not a difference vs placebo. Absolute change as stated: -34.4 lbs. Per-arm n, CI and p-value not
-    reported. Per the release footnote, comparisons other than EloraTZP vs. placebo were secondary endpoints. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-d90005df
+    reported. Per the release footnote, comparisons other than EloraTZP vs. placebo were secondary endpoints. ci_not_reported_in_this_source The research note for this row records the endpoint role of this
+    comparison as SECONDARY; the endpoint record holds NOT_STATED.'
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: eloralintide 3 mg
   scope: ARM
@@ -100,8 +98,9 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: Elora 3 mg | -8.2 % | -19.1 lbs | -1.1 %
   notes: 'Table row from release (cells joined with ''|''). Value is the within-arm change from baseline, not a difference vs placebo. Absolute change as stated: -19.1 lbs. Per-arm n, CI and p-value not
-    reported. Per the release footnote, comparisons other than EloraTZP vs. placebo were secondary endpoints. Note the eloralintide-alone values are not monotonic in dose (6 mg -12.3%, 9 mg -11.1%). ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-d90005df
+    reported. Per the release footnote, comparisons other than EloraTZP vs. placebo were secondary endpoints. Note the eloralintide-alone values are not monotonic in dose (6 mg -12.3%, 9 mg -11.1%). ci_not_reported_in_this_source
+    The research note for this row records the endpoint role of this comparison as SECONDARY; the endpoint record holds NOT_STATED.'
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: eloralintide 6 mg
   scope: ARM
@@ -111,8 +110,9 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: Elora 6 mg | -12.3 % | -28.6 lbs | -1.4 %
   notes: 'Table row from release (cells joined with ''|''). Value is the within-arm change from baseline, not a difference vs placebo. Absolute change as stated: -28.6 lbs. Per-arm n, CI and p-value not
-    reported. Per the release footnote, comparisons other than EloraTZP vs. placebo were secondary endpoints. Note the eloralintide-alone values are not monotonic in dose (6 mg -12.3%, 9 mg -11.1%). ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-d90005df
+    reported. Per the release footnote, comparisons other than EloraTZP vs. placebo were secondary endpoints. Note the eloralintide-alone values are not monotonic in dose (6 mg -12.3%, 9 mg -11.1%). ci_not_reported_in_this_source
+    The research note for this row records the endpoint role of this comparison as SECONDARY; the endpoint record holds NOT_STATED.'
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: eloralintide 9 mg
   scope: ARM
@@ -122,8 +122,9 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: Elora 9 mg | -11.1 % | -25.8 lbs | -1.3 %
   notes: 'Table row from release (cells joined with ''|''). Value is the within-arm change from baseline, not a difference vs placebo. Absolute change as stated: -25.8 lbs. Per-arm n, CI and p-value not
-    reported. Per the release footnote, comparisons other than EloraTZP vs. placebo were secondary endpoints. Note the eloralintide-alone values are not monotonic in dose (6 mg -12.3%, 9 mg -11.1%). ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-25c30ee2
+    reported. Per the release footnote, comparisons other than EloraTZP vs. placebo were secondary endpoints. Note the eloralintide-alone values are not monotonic in dose (6 mg -12.3%, 9 mg -11.1%). ci_not_reported_in_this_source
+    The research note for this row records the endpoint role of this comparison as SECONDARY; the endpoint record holds NOT_STATED.'
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: placebo
   scope: ARM
@@ -133,8 +134,9 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: Placebo | -3.0 % | -7.0 lbs | -0.3 %
   notes: 'Table row from release (cells joined with ''|''). Value is the within-arm change from baseline, not a difference vs placebo. Absolute change as stated: -7.0 lbs. Per-arm n, CI and p-value not
-    reported. Placebo arm is the comparator for the primary comparison (EloraTZP vs. placebo). ci_not_reported_in_this_source'
-- endpoint: other-w48-change-in-a1c-from-baseline-f64405ef
+    reported. Placebo arm is the comparator for the primary comparison (EloraTZP vs. placebo). ci_not_reported_in_this_source The research note for this row records the endpoint role of this comparison
+    as PRIMARY; the endpoint record holds NOT_STATED.'
+- endpoint: hba1c-change-w48-change-in-a1c-from-baseline-28f4c9ff
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: eloralintide 3 mg + tirzepatide 5 mg
   scope: ARM
@@ -144,7 +146,7 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: Elora 3 mg + TZP 5 mg | -13.2 % | -30.7 lbs | -2.2 %
   notes: 'Table row from release (cells joined with ''|''); column header ''Secondary endpoint: Change in A1C from an avg. baseline of 8.1%''. Per-arm n, CI and p-value not reported. ci_not_reported_in_this_source'
-- endpoint: other-w48-change-in-a1c-from-baseline-f64405ef
+- endpoint: hba1c-change-w48-change-in-a1c-from-baseline-28f4c9ff
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: eloralintide 6 mg + tirzepatide 5 mg
   scope: ARM
@@ -154,7 +156,7 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: Elora 6 mg + TZP 5 mg | -19.4 % | -45.1 lbs | -2.7 %
   notes: 'Table row from release (cells joined with ''|''); column header ''Secondary endpoint: Change in A1C from an avg. baseline of 8.1%''. Per-arm n, CI and p-value not reported. ci_not_reported_in_this_source'
-- endpoint: other-w48-change-in-a1c-from-baseline-f64405ef
+- endpoint: hba1c-change-w48-change-in-a1c-from-baseline-28f4c9ff
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: eloralintide 6 mg + tirzepatide 10 mg
   scope: ARM
@@ -164,7 +166,7 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: Elora 6 mg + TZP 10 mg | -19.9 % | -46.2 lbs | -2.6 %
   notes: 'Table row from release (cells joined with ''|''); column header ''Secondary endpoint: Change in A1C from an avg. baseline of 8.1%''. Per-arm n, CI and p-value not reported. ci_not_reported_in_this_source'
-- endpoint: other-w48-change-in-a1c-from-baseline-f64405ef
+- endpoint: hba1c-change-w48-change-in-a1c-from-baseline-28f4c9ff
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: eloralintide 9 mg + tirzepatide 15 mg
   scope: ARM
@@ -174,7 +176,7 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: Elora 9 mg + TZP 15 mg | -23.3 % | -54.1 lbs | -2.9 %
   notes: 'Table row from release (cells joined with ''|''); column header ''Secondary endpoint: Change in A1C from an avg. baseline of 8.1%''. Per-arm n, CI and p-value not reported. ci_not_reported_in_this_source'
-- endpoint: other-w48-change-in-a1c-from-baseline-f64405ef
+- endpoint: hba1c-change-w48-change-in-a1c-from-baseline-28f4c9ff
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: tirzepatide 15 mg
   scope: ARM
@@ -184,7 +186,7 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: TZP 15 mg | -14.8 % | -34.4 lbs | -2.4 %
   notes: 'Table row from release (cells joined with ''|''); column header ''Secondary endpoint: Change in A1C from an avg. baseline of 8.1%''. Per-arm n, CI and p-value not reported. ci_not_reported_in_this_source'
-- endpoint: other-w48-change-in-a1c-from-baseline-f64405ef
+- endpoint: hba1c-change-w48-change-in-a1c-from-baseline-28f4c9ff
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: eloralintide 3 mg
   scope: ARM
@@ -194,7 +196,7 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: Elora 3 mg | -8.2 % | -19.1 lbs | -1.1 %
   notes: 'Table row from release (cells joined with ''|''); column header ''Secondary endpoint: Change in A1C from an avg. baseline of 8.1%''. Per-arm n, CI and p-value not reported. ci_not_reported_in_this_source'
-- endpoint: other-w48-change-in-a1c-from-baseline-f64405ef
+- endpoint: hba1c-change-w48-change-in-a1c-from-baseline-28f4c9ff
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: eloralintide 6 mg
   scope: ARM
@@ -204,7 +206,7 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: Elora 6 mg | -12.3 % | -28.6 lbs | -1.4 %
   notes: 'Table row from release (cells joined with ''|''); column header ''Secondary endpoint: Change in A1C from an avg. baseline of 8.1%''. Per-arm n, CI and p-value not reported. ci_not_reported_in_this_source'
-- endpoint: other-w48-change-in-a1c-from-baseline-f64405ef
+- endpoint: hba1c-change-w48-change-in-a1c-from-baseline-28f4c9ff
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: eloralintide 9 mg
   scope: ARM
@@ -214,7 +216,7 @@ results:
   source: web:lilly-pr-2026-09-30-eloratzp
   quote: Elora 9 mg | -11.1 % | -25.8 lbs | -1.3 %
   notes: 'Table row from release (cells joined with ''|''); column header ''Secondary endpoint: Change in A1C from an avg. baseline of 8.1%''. Per-arm n, CI and p-value not reported. ci_not_reported_in_this_source'
-- endpoint: other-w48-change-in-a1c-from-baseline-f64405ef
+- endpoint: hba1c-change-w48-change-in-a1c-from-baseline-28f4c9ff
   estimand: efficacy@web:lilly-pr-2026-09-30-eloratzp
   arm: placebo
   scope: ARM

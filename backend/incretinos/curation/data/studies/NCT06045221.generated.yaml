@@ -31,28 +31,21 @@ estimands:
   - event: TREATMENT_DISCONTINUATION
     strategy: TREATMENT_POLICY
 endpoints:
-- key: hba1c-change-w52-change-from-baseline-in-hba1c-02d057a8
+- key: hba1c-change-w52-change-from-baseline-in-hba1c-51fb5c81
   title: change from baseline in HbA1c
   role: PRIMARY
   category: HBA1C_CHANGE
   unit: '% HbA1c'
   timepoint_weeks: 52
   multiplicity_controlled: NOT_STATED
-- key: hba1c-change-w52-estimated-treatment-difference-in-hba1c-chan-675f9f72
+- key: hba1c-change-w52-estimated-treatment-difference-in-hba1c-chan-747e4a4f
   title: estimated treatment difference in HbA1c change
-  role: PRIMARY
+  role: NOT_STATED
   category: HBA1C_CHANGE
   unit: '% HbA1c'
   timepoint_weeks: 52
   multiplicity_controlled: 'YES'
-- key: hba1c-change-w52-estimated-treatment-difference-in-hba1c-chan-e9b3bb95
-  title: estimated treatment difference in HbA1c change
-  role: KEY_SECONDARY
-  category: HBA1C_CHANGE
-  unit: '% HbA1c'
-  timepoint_weeks: 52
-  multiplicity_controlled: 'YES'
-- key: weight-pct-change-w52-percent-change-in-body-weight-from-baseline-78f624d7
+- key: weight-pct-change-w52-percent-change-in-body-weight-from-baseline-005a662b
   title: percent change in body weight from baseline
   role: KEY_SECONDARY
   category: WEIGHT_PCT_CHANGE
@@ -60,7 +53,7 @@ endpoints:
   timepoint_weeks: 52
   multiplicity_controlled: NOT_STATED
 results:
-- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-02d057a8
+- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-51fb5c81
   estimand: treatment_regimen@pubmed:41765029
   arm: orforglipron 12 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -71,7 +64,7 @@ results:
   source: pubmed:41765029
   quote: -1·71% (SE 0·07) with orforglipron 12 mg
   notes: Lancet abstract; SE 0.07 reported, per-arm CI not reported. n = number randomized. ci_not_reported_in_this_source
-- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-02d057a8
+- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-51fb5c81
   estimand: treatment_regimen@pubmed:41765029
   arm: orforglipron 36 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -82,7 +75,7 @@ results:
   source: pubmed:41765029
   quote: -1·91% (0·08) with orforglipron 36 mg
   notes: Lancet abstract; SE 0.08 reported, per-arm CI not reported. n = number randomized. ci_not_reported_in_this_source
-- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-02d057a8
+- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-51fb5c81
   estimand: treatment_regimen@pubmed:41765029
   arm: oral semaglutide 7 mg once daily
   scope: ARM
@@ -93,7 +86,7 @@ results:
   source: pubmed:41765029
   quote: -1·23% (0·05) with semaglutide 7 mg
   notes: Lancet abstract; SE 0.05 reported, per-arm CI not reported. n = number randomized. ci_not_reported_in_this_source
-- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-02d057a8
+- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-51fb5c81
   estimand: treatment_regimen@pubmed:41765029
   arm: oral semaglutide 14 mg once daily
   scope: ARM
@@ -104,7 +97,7 @@ results:
   source: pubmed:41765029
   quote: -1·47% (0·06) with semaglutide 14 mg
   notes: Lancet abstract; SE 0.06 reported, per-arm CI not reported. n = number randomized. ci_not_reported_in_this_source
-- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-02d057a8
+- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-51fb5c81
   estimand: efficacy@web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior
   arm: orforglipron 12 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -116,7 +109,7 @@ results:
   quote: Efficacy Estimand Results … -1.9%
   notes: 'Press-release table (flattened); the same values appear in the 2026-02-26 release (S22) and, relabelled as Foundayo 9 mg / 17.2 mg, in the 2026-06-08 release (S23). Registry-posted on-treatment
     LS means (S12): -1.91, -2.16, -1.11, -1.45. Do not pool with treatment-regimen values. ci_not_reported_in_this_source'
-- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-02d057a8
+- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-51fb5c81
   estimand: efficacy@web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior
   arm: orforglipron 36 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -128,7 +121,7 @@ results:
   quote: Efficacy Estimand Results … -2.2%
   notes: 'Press-release table (flattened); the same values appear in the 2026-02-26 release (S22) and, relabelled as Foundayo 9 mg / 17.2 mg, in the 2026-06-08 release (S23). Registry-posted on-treatment
     LS means (S12): -1.91, -2.16, -1.11, -1.45. Do not pool with treatment-regimen values. ci_not_reported_in_this_source'
-- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-02d057a8
+- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-51fb5c81
   estimand: efficacy@web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior
   arm: oral semaglutide 7 mg once daily
   scope: ARM
@@ -140,7 +133,7 @@ results:
   quote: Efficacy Estimand Results … -1.1 %
   notes: 'Press-release table (flattened); the same values appear in the 2026-02-26 release (S22) and, relabelled as Foundayo 9 mg / 17.2 mg, in the 2026-06-08 release (S23). Registry-posted on-treatment
     LS means (S12): -1.91, -2.16, -1.11, -1.45. Do not pool with treatment-regimen values. ci_not_reported_in_this_source'
-- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-02d057a8
+- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-51fb5c81
   estimand: efficacy@web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior
   arm: oral semaglutide 14 mg once daily
   scope: ARM
@@ -152,7 +145,7 @@ results:
   quote: Efficacy Estimand Results … -1.4 %
   notes: 'Press-release table (flattened); the same values appear in the 2026-02-26 release (S22) and, relabelled as Foundayo 9 mg / 17.2 mg, in the 2026-06-08 release (S23). Registry-posted on-treatment
     LS means (S12): -1.91, -2.16, -1.11, -1.45. Do not pool with treatment-regimen values. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w52-percent-change-in-body-weight-from-baseline-78f624d7
+- endpoint: weight-pct-change-w52-percent-change-in-body-weight-from-baseline-005a662b
   estimand: treatment_regimen@web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior
   arm: orforglipron 12 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -163,7 +156,7 @@ results:
   source: web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior
   quote: -6.1% (12 mg) and -8.2% (36 mg) with orforglipron vs. -3.9% (7 mg) and -5.3% (14 mg) with oral semaglutide
   notes: Lilly topline release of 2025-09-17; the Lancet abstract does not report body-weight values. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w52-percent-change-in-body-weight-from-baseline-78f624d7
+- endpoint: weight-pct-change-w52-percent-change-in-body-weight-from-baseline-005a662b
   estimand: treatment_regimen@web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior
   arm: orforglipron 36 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -174,7 +167,7 @@ results:
   source: web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior
   quote: -6.1% (12 mg) and -8.2% (36 mg) with orforglipron vs. -3.9% (7 mg) and -5.3% (14 mg) with oral semaglutide
   notes: Lilly topline release of 2025-09-17; the Lancet abstract does not report body-weight values. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w52-percent-change-in-body-weight-from-baseline-78f624d7
+- endpoint: weight-pct-change-w52-percent-change-in-body-weight-from-baseline-005a662b
   estimand: treatment_regimen@web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior
   arm: oral semaglutide 7 mg once daily
   scope: ARM
@@ -185,7 +178,7 @@ results:
   source: web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior
   quote: -6.1% (12 mg) and -8.2% (36 mg) with orforglipron vs. -3.9% (7 mg) and -5.3% (14 mg) with oral semaglutide
   notes: Lilly topline release of 2025-09-17; the Lancet abstract does not report body-weight values. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w52-percent-change-in-body-weight-from-baseline-78f624d7
+- endpoint: weight-pct-change-w52-percent-change-in-body-weight-from-baseline-005a662b
   estimand: treatment_regimen@web:eli-lilly-an-2025-09-17-lilly-s-oral-glp-1-orforglipron-superior
   arm: oral semaglutide 14 mg once daily
   scope: ARM
@@ -197,7 +190,7 @@ results:
   quote: -6.1% (12 mg) and -8.2% (36 mg) with orforglipron vs. -3.9% (7 mg) and -5.3% (14 mg) with oral semaglutide
   notes: Lilly topline release of 2025-09-17; the Lancet abstract does not report body-weight values. ci_not_reported_in_this_source
 analyses:
-- endpoint: hba1c-change-w52-estimated-treatment-difference-in-hba1c-chan-675f9f72
+- endpoint: hba1c-change-w52-estimated-treatment-difference-in-hba1c-chan-747e4a4f
   estimand: treatment_regimen@pubmed:41765029
   treatment: orforglipron 12 mg
   comparator: oral semaglutide 7 mg
@@ -214,8 +207,10 @@ analyses:
   source: pubmed:41765029
   quote: -0·48% (95% CI -0·65 to -0·31; p<0·0001) for orforglipron 12 mg versus semaglutide 7 mg
   notes: 'Lancet abstract. The two ''primary'' comparisons are the prespecified non-inferiority pairs (margin 0.3%); superiority and cross-dose comparisons were tested hierarchically. Endpoint role for
-    the cross-dose comparisons is taken from the registry (listed under secondary outcome: non-inferiority of 12 mg vs semaglutide 14 mg and superiority comparisons).'
-- endpoint: hba1c-change-w52-estimated-treatment-difference-in-hba1c-chan-675f9f72
+    the cross-dose comparisons is taken from the registry (listed under secondary outcome: non-inferiority of 12 mg vs semaglutide 14 mg and superiority comparisons). ni_met is left NOT_STATED: no quote
+    from the cited source states in words that non-inferiority was met (the quote gives a non-inferiority p-value or the design, not the conclusion) — needs human curation. The research note for this row
+    records the endpoint role of this comparison as PRIMARY; the endpoint record holds NOT_STATED.'
+- endpoint: hba1c-change-w52-estimated-treatment-difference-in-hba1c-chan-747e4a4f
   estimand: treatment_regimen@pubmed:41765029
   treatment: orforglipron 36 mg
   comparator: oral semaglutide 14 mg
@@ -232,8 +227,10 @@ analyses:
   source: pubmed:41765029
   quote: -0·44% (-0·62 to -0·26; p<0·0001) for orforglipron 36 mg versus semaglutide 14 mg
   notes: 'Lancet abstract. The two ''primary'' comparisons are the prespecified non-inferiority pairs (margin 0.3%); superiority and cross-dose comparisons were tested hierarchically. Endpoint role for
-    the cross-dose comparisons is taken from the registry (listed under secondary outcome: non-inferiority of 12 mg vs semaglutide 14 mg and superiority comparisons).'
-- endpoint: hba1c-change-w52-estimated-treatment-difference-in-hba1c-chan-e9b3bb95
+    the cross-dose comparisons is taken from the registry (listed under secondary outcome: non-inferiority of 12 mg vs semaglutide 14 mg and superiority comparisons). ni_met is left NOT_STATED: no quote
+    from the cited source states in words that non-inferiority was met (the quote gives a non-inferiority p-value or the design, not the conclusion) — needs human curation. The research note for this row
+    records the endpoint role of this comparison as PRIMARY; the endpoint record holds NOT_STATED.'
+- endpoint: hba1c-change-w52-estimated-treatment-difference-in-hba1c-chan-747e4a4f
   estimand: treatment_regimen@pubmed:41765029
   treatment: orforglipron 12 mg
   comparator: oral semaglutide 14 mg
@@ -250,8 +247,10 @@ analyses:
   source: pubmed:41765029
   quote: -0·24% (95% CI -0·41 to -0·072; p=0·0050) for orforglipron 12 mg versus semaglutide 14 mg
   notes: 'Lancet abstract. The two ''primary'' comparisons are the prespecified non-inferiority pairs (margin 0.3%); superiority and cross-dose comparisons were tested hierarchically. Endpoint role for
-    the cross-dose comparisons is taken from the registry (listed under secondary outcome: non-inferiority of 12 mg vs semaglutide 14 mg and superiority comparisons).'
-- endpoint: hba1c-change-w52-estimated-treatment-difference-in-hba1c-chan-e9b3bb95
+    the cross-dose comparisons is taken from the registry (listed under secondary outcome: non-inferiority of 12 mg vs semaglutide 14 mg and superiority comparisons). ni_met is left NOT_STATED: no quote
+    from the cited source states in words that non-inferiority was met (the quote gives a non-inferiority p-value or the design, not the conclusion) — needs human curation. The research note for this row
+    records the endpoint role of this comparison as KEY_SECONDARY; the endpoint record holds NOT_STATED.'
+- endpoint: hba1c-change-w52-estimated-treatment-difference-in-hba1c-chan-747e4a4f
   estimand: treatment_regimen@pubmed:41765029
   treatment: orforglipron 36 mg
   comparator: oral semaglutide 7 mg
@@ -268,7 +267,9 @@ analyses:
   source: pubmed:41765029
   quote: -0·68% (-0·85 to -0·50; p<0·0001) for orforglipron 36 mg versus semaglutide 7 mg
   notes: 'Lancet abstract. The two ''primary'' comparisons are the prespecified non-inferiority pairs (margin 0.3%); superiority and cross-dose comparisons were tested hierarchically. Endpoint role for
-    the cross-dose comparisons is taken from the registry (listed under secondary outcome: non-inferiority of 12 mg vs semaglutide 14 mg and superiority comparisons).'
+    the cross-dose comparisons is taken from the registry (listed under secondary outcome: non-inferiority of 12 mg vs semaglutide 14 mg and superiority comparisons). ni_met is left NOT_STATED: no quote
+    from the cited source states in words that non-inferiority was met (the quote gives a non-inferiority p-value or the design, not the conclusion) — needs human curation. The research note for this row
+    records the endpoint role of this comparison as KEY_SECONDARY; the endpoint record holds NOT_STATED.'
 adverse_events:
 - arm: orforglipron 12 mg once daily (investigational capsule dose as reported)
   scope: ARM

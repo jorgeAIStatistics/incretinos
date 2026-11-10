@@ -67,29 +67,14 @@ estimands:
   - event: TREATMENT_DISCONTINUATION
     strategy: TREATMENT_POLICY
 endpoints:
-- key: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-f4db4beb
-  title: percent change in body weight from baseline
-  role: PRIMARY
-  category: WEIGHT_PCT_CHANGE
-  unit: '%'
-  timepoint_weeks: 72
-  multiplicity_controlled: NOT_STATED
-- key: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-11392013
+- key: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   title: percent change in body weight from baseline
   role: PRIMARY
   category: WEIGHT_PCT_CHANGE
   unit: '%'
   timepoint_weeks: 72
   multiplicity_controlled: 'YES'
-- key: weight-responder-ge5pct-w72-proportion-of-patients-with-5-body-weight-re-b6e51e27
-  title: proportion of patients with >=5% body-weight reduction
-  role: KEY_SECONDARY
-  category: WEIGHT_RESPONDER
-  threshold: 5.0
-  unit: '% of patients'
-  timepoint_weeks: 72
-  multiplicity_controlled: NOT_STATED
-- key: weight-responder-ge5pct-w72-proportion-of-patients-with-5-body-weight-re-93e88a7f
+- key: weight-responder-ge5pct-w72-proportion-of-patients-with-5-body-weight-re-e350c57b
   title: proportion of patients with >=5% body-weight reduction
   role: KEY_SECONDARY
   category: WEIGHT_RESPONDER
@@ -97,15 +82,7 @@ endpoints:
   unit: '% of patients'
   timepoint_weeks: 72
   multiplicity_controlled: 'YES'
-- key: weight-responder-ge10pct-w72-proportion-of-patients-with-10-body-weight-r-bf2f05fc
-  title: proportion of patients with >=10% body-weight reduction
-  role: KEY_SECONDARY
-  category: WEIGHT_RESPONDER
-  threshold: 10.0
-  unit: '% of patients'
-  timepoint_weeks: 72
-  multiplicity_controlled: NOT_STATED
-- key: weight-responder-ge10pct-w72-proportion-of-patients-with-10-body-weight-r-675de8d0
+- key: weight-responder-ge10pct-w72-proportion-of-patients-with-10-body-weight-r-fa19ead1
   title: proportion of patients with >=10% body-weight reduction
   role: KEY_SECONDARY
   category: WEIGHT_RESPONDER
@@ -113,7 +90,7 @@ endpoints:
   unit: '% of patients'
   timepoint_weeks: 72
   multiplicity_controlled: 'YES'
-- key: weight-responder-ge15pct-w72-proportion-of-patients-with-15-body-weight-r-80d876c0
+- key: weight-responder-ge15pct-w72-proportion-of-patients-with-15-body-weight-r-f50c8e32
   title: proportion of patients with >=15% body-weight reduction
   role: KEY_SECONDARY
   category: WEIGHT_RESPONDER
@@ -121,31 +98,7 @@ endpoints:
   unit: '% of patients'
   timepoint_weeks: 72
   multiplicity_controlled: NOT_STATED
-- key: weight-responder-ge15pct-w72-proportion-of-patients-with-15-body-weight-r-6e232e07
-  title: proportion of patients with >=15% body-weight reduction
-  role: KEY_SECONDARY
-  category: WEIGHT_RESPONDER
-  threshold: 15.0
-  unit: '% of patients'
-  timepoint_weeks: 72
-  multiplicity_controlled: 'NO'
-- key: weight-responder-ge15pct-w72-proportion-of-patients-with-15-body-weight-r-64085331
-  title: proportion of patients with >=15% body-weight reduction
-  role: KEY_SECONDARY
-  category: WEIGHT_RESPONDER
-  threshold: 15.0
-  unit: '% of patients'
-  timepoint_weeks: 72
-  multiplicity_controlled: 'YES'
-- key: weight-responder-ge20pct-w72-proportion-of-patients-with-20-body-weight-r-b9582c58
-  title: proportion of patients with >=20% body-weight reduction
-  role: KEY_SECONDARY
-  category: WEIGHT_RESPONDER
-  threshold: 20.0
-  unit: '% of patients'
-  timepoint_weeks: 72
-  multiplicity_controlled: NOT_STATED
-- key: weight-responder-ge20pct-w72-proportion-of-patients-with-20-body-weight-r-beb53c9c
+- key: weight-responder-ge20pct-w72-proportion-of-patients-with-20-body-weight-r-94ffed72
   title: proportion of patients with >=20% body-weight reduction
   role: KEY_SECONDARY
   category: WEIGHT_RESPONDER
@@ -153,7 +106,7 @@ endpoints:
   unit: '% of patients'
   timepoint_weeks: 72
   multiplicity_controlled: 'NO'
-- key: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-e0e3776a
+- key: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-b37aff7c
   title: proportion of participants with >=5% body-weight reduction
   role: KEY_SECONDARY
   category: WEIGHT_RESPONDER
@@ -161,15 +114,7 @@ endpoints:
   unit: '% of participants'
   timepoint_weeks: 72
   multiplicity_controlled: 'YES'
-- key: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-0bffa93d
-  title: proportion of participants with >=5% body-weight reduction
-  role: KEY_SECONDARY
-  category: WEIGHT_RESPONDER
-  threshold: 5.0
-  unit: '% of participants'
-  timepoint_weeks: 72
-  multiplicity_controlled: NOT_STATED
-- key: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-f6c85e0a
+- key: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-fda8a4d1
   title: proportion of participants with >=10% body-weight reduction
   role: KEY_SECONDARY
   category: WEIGHT_RESPONDER
@@ -177,40 +122,16 @@ endpoints:
   unit: '% of participants'
   timepoint_weeks: 72
   multiplicity_controlled: 'YES'
-- key: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-aa5585de
-  title: proportion of participants with >=10% body-weight reduction
-  role: KEY_SECONDARY
-  category: WEIGHT_RESPONDER
-  threshold: 10.0
-  unit: '% of participants'
-  timepoint_weeks: 72
-  multiplicity_controlled: NOT_STATED
-- key: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-df352937
+- key: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-e20e546b
   title: proportion of participants with >=15% body-weight reduction
-  role: SECONDARY
-  category: WEIGHT_RESPONDER
-  threshold: 15.0
-  unit: '% of participants'
-  timepoint_weeks: 72
-  multiplicity_controlled: 'NO'
-- key: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-99c3a732
-  title: proportion of participants with >=15% body-weight reduction
-  role: KEY_SECONDARY
-  category: WEIGHT_RESPONDER
-  threshold: 15.0
-  unit: '% of participants'
-  timepoint_weeks: 72
-  multiplicity_controlled: 'YES'
-- key: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-3c0f7b06
-  title: proportion of participants with >=15% body-weight reduction
-  role: KEY_SECONDARY
+  role: NOT_STATED
   category: WEIGHT_RESPONDER
   threshold: 15.0
   unit: '% of participants'
   timepoint_weeks: 72
   multiplicity_controlled: NOT_STATED
 results:
-- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-f4db4beb
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   estimand: treatment_regimen@pubmed:41275875
   arm: orforglipron 6 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -224,7 +145,7 @@ results:
   source: pubmed:41275875
   quote: -5·1% (95% CI -6·0 to -4·2) with 6 mg
   notes: Publication abstract. p-value is for the comparison with placebo as stated in the abstract. n = number randomized to the arm (from registry/label).
-- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-f4db4beb
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   estimand: treatment_regimen@pubmed:41275875
   arm: orforglipron 12 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -238,7 +159,7 @@ results:
   source: pubmed:41275875
   quote: -7·0% (-7·8 to -6·2) with 12 mg
   notes: Publication abstract. p-value is for the comparison with placebo as stated in the abstract. n = number randomized to the arm (from registry/label).
-- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-f4db4beb
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   estimand: treatment_regimen@pubmed:41275875
   arm: orforglipron 36 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -252,7 +173,7 @@ results:
   source: pubmed:41275875
   quote: -9·6% (-10·5 to -8·7) with 36 mg orforglipron
   notes: Publication abstract. p-value is for the comparison with placebo as stated in the abstract. n = number randomized to the arm (from registry/label).
-- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-f4db4beb
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   estimand: treatment_regimen@pubmed:41275875
   arm: placebo
   scope: ARM
@@ -266,7 +187,7 @@ results:
   source: pubmed:41275875
   quote: versus -2·5% (-3·0 to -1·9) with placebo
   notes: Publication abstract. n = number randomized to the arm (from registry/label).
-- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-f4db4beb
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   estimand: treatment_regimen@openfda-label:foundayo
   arm: placebo
   scope: ARM
@@ -279,7 +200,7 @@ results:
   notes: Label Table 6 is headed 'Intent-to-Treat (ITT) Population' with missing Week-72 data imputed by 'primary modified multiple imputation' (ANCOVA); label Figures 1-2 call the Week-72 estimate 'treatment
     effect under treatment regimen estimand', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule arm in the
     publication/registry. Row lists Trial 1 then Trial 2, each in the order placebo, 5.5 mg, 9 mg, 17.2 mg. Per-arm CI not given in the label (CI is given for the difference from placebo). ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-11392013
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   estimand: treatment_regimen@openfda-label:foundayo
   arm: FOUNDAYO 5.5 mg once daily (label dosage; investigational formulation shown as equivalent dosage)
   scope: ARM
@@ -292,7 +213,7 @@ results:
   notes: Label Table 6 is headed 'Intent-to-Treat (ITT) Population' with missing Week-72 data imputed by 'primary modified multiple imputation' (ANCOVA); label Figures 1-2 call the Week-72 estimate 'treatment
     effect under treatment regimen estimand', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule arm in the
     publication/registry. Row lists Trial 1 then Trial 2, each in the order placebo, 5.5 mg, 9 mg, 17.2 mg. Per-arm CI not given in the label (CI is given for the difference from placebo). ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-11392013
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   estimand: treatment_regimen@openfda-label:foundayo
   arm: FOUNDAYO 9 mg once daily (label dosage; investigational formulation shown as equivalent dosage)
   scope: ARM
@@ -305,7 +226,7 @@ results:
   notes: Label Table 6 is headed 'Intent-to-Treat (ITT) Population' with missing Week-72 data imputed by 'primary modified multiple imputation' (ANCOVA); label Figures 1-2 call the Week-72 estimate 'treatment
     effect under treatment regimen estimand', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule arm in the
     publication/registry. Row lists Trial 1 then Trial 2, each in the order placebo, 5.5 mg, 9 mg, 17.2 mg. Per-arm CI not given in the label (CI is given for the difference from placebo). ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-11392013
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   estimand: treatment_regimen@openfda-label:foundayo
   arm: FOUNDAYO 17.2 mg once daily (label dosage; investigational formulation shown as equivalent dosage)
   scope: ARM
@@ -318,7 +239,7 @@ results:
   notes: Label Table 6 is headed 'Intent-to-Treat (ITT) Population' with missing Week-72 data imputed by 'primary modified multiple imputation' (ANCOVA); label Figures 1-2 call the Week-72 estimate 'treatment
     effect under treatment regimen estimand', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule arm in the
     publication/registry. Row lists Trial 1 then Trial 2, each in the order placebo, 5.5 mg, 9 mg, 17.2 mg. Per-arm CI not given in the label (CI is given for the difference from placebo). ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-f4db4beb
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   estimand: treatment_regimen@web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul
   arm: placebo
   scope: ARM
@@ -330,7 +251,7 @@ results:
   quote: Estimate (%), LSMean (SE) -2.5 (0.3) -5.1 (0.4) -7.0 (0.4) -9.6 (0.5)
   notes: 'FDA table on PDF page 167, ''Source: FDA analysis''; ANCOVA with modified multiple imputation for missing Week-72 values; SE 0.3 reported instead of a per-arm CI. FDA states it agrees with use
     of the treatment-regimen estimand for the primary analyses. Column order: placebo, OFG 6 mg, 12 mg, 36 mg. Machine-extracted from PDF table. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-f4db4beb
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   estimand: treatment_regimen@web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul
   arm: orforglipron 6 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -342,7 +263,7 @@ results:
   quote: Estimate (%), LSMean (SE) -2.5 (0.3) -5.1 (0.4) -7.0 (0.4) -9.6 (0.5)
   notes: 'FDA table on PDF page 167, ''Source: FDA analysis''; ANCOVA with modified multiple imputation for missing Week-72 values; SE 0.4 reported instead of a per-arm CI. FDA states it agrees with use
     of the treatment-regimen estimand for the primary analyses. Column order: placebo, OFG 6 mg, 12 mg, 36 mg. Machine-extracted from PDF table. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-f4db4beb
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   estimand: treatment_regimen@web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul
   arm: orforglipron 12 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -354,7 +275,7 @@ results:
   quote: Estimate (%), LSMean (SE) -2.5 (0.3) -5.1 (0.4) -7.0 (0.4) -9.6 (0.5)
   notes: 'FDA table on PDF page 167, ''Source: FDA analysis''; ANCOVA with modified multiple imputation for missing Week-72 values; SE 0.4 reported instead of a per-arm CI. FDA states it agrees with use
     of the treatment-regimen estimand for the primary analyses. Column order: placebo, OFG 6 mg, 12 mg, 36 mg. Machine-extracted from PDF table. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-f4db4beb
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   estimand: treatment_regimen@web:u-s-fda-ce-2026-05-15-nda-220934-foundayo-orforglipron-nda-mul
   arm: orforglipron 36 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -366,7 +287,7 @@ results:
   quote: Estimate (%), LSMean (SE) -2.5 (0.3) -5.1 (0.4) -7.0 (0.4) -9.6 (0.5)
   notes: 'FDA table on PDF page 167, ''Source: FDA analysis''; ANCOVA with modified multiple imputation for missing Week-72 values; SE 0.5 reported instead of a per-arm CI. FDA states it agrees with use
     of the treatment-regimen estimand for the primary analyses. Column order: placebo, OFG 6 mg, 12 mg, 36 mg. Machine-extracted from PDF table. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-11392013
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   estimand: efficacy@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: orforglipron 6 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -378,7 +299,7 @@ results:
   quote: -5.5% (-5.5 kg; -12.1 lbs)
   notes: Company press release table/text; release footnote says the superiority test was controlled for family-wise type 1 error. The release presents the efficacy estimand first, but the publication and
     FDA designate the treatment-regimen estimand as primary. Do not pool with treatment-regimen values. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-11392013
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   estimand: efficacy@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: orforglipron 12 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -390,7 +311,7 @@ results:
   quote: -7.8% (-7.9 kg; -17.4 lbs)
   notes: Company press release table/text; release footnote says the superiority test was controlled for family-wise type 1 error. The release presents the efficacy estimand first, but the publication and
     FDA designate the treatment-regimen estimand as primary. Do not pool with treatment-regimen values. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-11392013
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   estimand: efficacy@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: orforglipron 36 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -402,7 +323,7 @@ results:
   quote: -10.5% (-10.4 kg; -22.9 lbs)
   notes: Company press release table/text; release footnote says the superiority test was controlled for family-wise type 1 error. The release presents the efficacy estimand first, but the publication and
     FDA designate the treatment-regimen estimand as primary. Do not pool with treatment-regimen values. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-f4db4beb
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   estimand: efficacy@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: placebo
   scope: ARM
@@ -414,7 +335,7 @@ results:
   quote: -2.2% (-2.3 kg; -5.1 lbs)
   notes: Company press release table/text; release footnote says the superiority test was controlled for family-wise type 1 error. The release presents the efficacy estimand first, but the publication and
     FDA designate the treatment-regimen estimand as primary. Do not pool with treatment-regimen values. ci_not_reported_in_this_source
-- endpoint: weight-responder-ge5pct-w72-proportion-of-patients-with-5-body-weight-re-b6e51e27
+- endpoint: weight-responder-ge5pct-w72-proportion-of-patients-with-5-body-weight-re-e350c57b
   estimand: treatment_regimen@openfda-label:foundayo
   arm: placebo
   scope: ARM
@@ -427,7 +348,7 @@ results:
   notes: Label Table 6 is headed 'Intent-to-Treat (ITT) Population' with missing Week-72 data imputed by 'primary modified multiple imputation' (ANCOVA); label Figures 1-2 call the Week-72 estimate 'treatment
     effect under treatment regimen estimand', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule arm in the
     publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). ci_not_reported_in_this_source
-- endpoint: weight-responder-ge5pct-w72-proportion-of-patients-with-5-body-weight-re-93e88a7f
+- endpoint: weight-responder-ge5pct-w72-proportion-of-patients-with-5-body-weight-re-e350c57b
   estimand: treatment_regimen@openfda-label:foundayo
   arm: FOUNDAYO 5.5 mg once daily (label dosage; investigational formulation shown as equivalent dosage)
   scope: ARM
@@ -440,7 +361,7 @@ results:
   notes: 'Label Table 6 is headed ''Intent-to-Treat (ITT) Population'' with missing Week-72 data imputed by ''primary modified multiple imputation'' (ANCOVA); label Figures 1-2 call the Week-72 estimate
     ''treatment effect under treatment regimen estimand'', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule
     arm in the publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). Label difference from placebo (95% CI): 20.6 (13.9, 27.3); p<0.001, controlled for multiplicity. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge5pct-w72-proportion-of-patients-with-5-body-weight-re-93e88a7f
+- endpoint: weight-responder-ge5pct-w72-proportion-of-patients-with-5-body-weight-re-e350c57b
   estimand: treatment_regimen@openfda-label:foundayo
   arm: FOUNDAYO 9 mg once daily (label dosage; investigational formulation shown as equivalent dosage)
   scope: ARM
@@ -453,7 +374,7 @@ results:
   notes: 'Label Table 6 is headed ''Intent-to-Treat (ITT) Population'' with missing Week-72 data imputed by ''primary modified multiple imputation'' (ANCOVA); label Figures 1-2 call the Week-72 estimate
     ''treatment effect under treatment regimen estimand'', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule
     arm in the publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). Label difference from placebo (95% CI): 27.9 (21.3, 34.5); p<0.001, controlled for multiplicity. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge5pct-w72-proportion-of-patients-with-5-body-weight-re-93e88a7f
+- endpoint: weight-responder-ge5pct-w72-proportion-of-patients-with-5-body-weight-re-e350c57b
   estimand: treatment_regimen@openfda-label:foundayo
   arm: FOUNDAYO 17.2 mg once daily (label dosage; investigational formulation shown as equivalent dosage)
   scope: ARM
@@ -466,7 +387,7 @@ results:
   notes: 'Label Table 6 is headed ''Intent-to-Treat (ITT) Population'' with missing Week-72 data imputed by ''primary modified multiple imputation'' (ANCOVA); label Figures 1-2 call the Week-72 estimate
     ''treatment effect under treatment regimen estimand'', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule
     arm in the publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). Label difference from placebo (95% CI): 40.2 (33.8, 46.6); p<0.001, controlled for multiplicity. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge10pct-w72-proportion-of-patients-with-10-body-weight-r-bf2f05fc
+- endpoint: weight-responder-ge10pct-w72-proportion-of-patients-with-10-body-weight-r-fa19ead1
   estimand: treatment_regimen@openfda-label:foundayo
   arm: placebo
   scope: ARM
@@ -479,7 +400,7 @@ results:
   notes: Label Table 6 is headed 'Intent-to-Treat (ITT) Population' with missing Week-72 data imputed by 'primary modified multiple imputation' (ANCOVA); label Figures 1-2 call the Week-72 estimate 'treatment
     effect under treatment regimen estimand', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule arm in the
     publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). ci_not_reported_in_this_source
-- endpoint: weight-responder-ge10pct-w72-proportion-of-patients-with-10-body-weight-r-675de8d0
+- endpoint: weight-responder-ge10pct-w72-proportion-of-patients-with-10-body-weight-r-fa19ead1
   estimand: treatment_regimen@openfda-label:foundayo
   arm: FOUNDAYO 5.5 mg once daily (label dosage; investigational formulation shown as equivalent dosage)
   scope: ARM
@@ -492,7 +413,7 @@ results:
   notes: 'Label Table 6 is headed ''Intent-to-Treat (ITT) Population'' with missing Week-72 data imputed by ''primary modified multiple imputation'' (ANCOVA); label Figures 1-2 call the Week-72 estimate
     ''treatment effect under treatment regimen estimand'', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule
     arm in the publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). Label difference from placebo (95% CI): 13.3 (8.1, 18.5); p<0.001, controlled for multiplicity. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge10pct-w72-proportion-of-patients-with-10-body-weight-r-675de8d0
+- endpoint: weight-responder-ge10pct-w72-proportion-of-patients-with-10-body-weight-r-fa19ead1
   estimand: treatment_regimen@openfda-label:foundayo
   arm: FOUNDAYO 9 mg once daily (label dosage; investigational formulation shown as equivalent dosage)
   scope: ARM
@@ -505,7 +426,7 @@ results:
   notes: 'Label Table 6 is headed ''Intent-to-Treat (ITT) Population'' with missing Week-72 data imputed by ''primary modified multiple imputation'' (ANCOVA); label Figures 1-2 call the Week-72 estimate
     ''treatment effect under treatment regimen estimand'', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule
     arm in the publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). Label difference from placebo (95% CI): 21.9 (16.3, 27.5); p<0.001, controlled for multiplicity. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge10pct-w72-proportion-of-patients-with-10-body-weight-r-675de8d0
+- endpoint: weight-responder-ge10pct-w72-proportion-of-patients-with-10-body-weight-r-fa19ead1
   estimand: treatment_regimen@openfda-label:foundayo
   arm: FOUNDAYO 17.2 mg once daily (label dosage; investigational formulation shown as equivalent dosage)
   scope: ARM
@@ -518,7 +439,7 @@ results:
   notes: 'Label Table 6 is headed ''Intent-to-Treat (ITT) Population'' with missing Week-72 data imputed by ''primary modified multiple imputation'' (ANCOVA); label Figures 1-2 call the Week-72 estimate
     ''treatment effect under treatment regimen estimand'', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule
     arm in the publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). Label difference from placebo (95% CI): 36.4 (30.5, 42.3); p<0.001, controlled for multiplicity. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge15pct-w72-proportion-of-patients-with-15-body-weight-r-80d876c0
+- endpoint: weight-responder-ge15pct-w72-proportion-of-patients-with-15-body-weight-r-f50c8e32
   estimand: treatment_regimen@openfda-label:foundayo
   arm: placebo
   scope: ARM
@@ -531,7 +452,7 @@ results:
   notes: Label Table 6 is headed 'Intent-to-Treat (ITT) Population' with missing Week-72 data imputed by 'primary modified multiple imputation' (ANCOVA); label Figures 1-2 call the Week-72 estimate 'treatment
     effect under treatment regimen estimand', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule arm in the
     publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). ci_not_reported_in_this_source
-- endpoint: weight-responder-ge15pct-w72-proportion-of-patients-with-15-body-weight-r-6e232e07
+- endpoint: weight-responder-ge15pct-w72-proportion-of-patients-with-15-body-weight-r-f50c8e32
   estimand: treatment_regimen@openfda-label:foundayo
   arm: FOUNDAYO 5.5 mg once daily (label dosage; investigational formulation shown as equivalent dosage)
   scope: ARM
@@ -544,8 +465,8 @@ results:
   notes: 'Label Table 6 is headed ''Intent-to-Treat (ITT) Population'' with missing Week-72 data imputed by ''primary modified multiple imputation'' (ANCOVA); label Figures 1-2 call the Week-72 estimate
     ''treatment effect under treatment regimen estimand'', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule
     arm in the publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). Label difference from placebo (95% CI): 3.6 (0.4, 6.8); NOT controlled for multiplicity (label footnote
-    e). ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge15pct-w72-proportion-of-patients-with-15-body-weight-r-64085331
+    e). ci_not_reported_in_this_source The research note for this row records the multiplicity control of this comparison as not controlled (NO); the endpoint record holds NOT_STATED.'
+- endpoint: weight-responder-ge15pct-w72-proportion-of-patients-with-15-body-weight-r-f50c8e32
   estimand: treatment_regimen@openfda-label:foundayo
   arm: FOUNDAYO 9 mg once daily (label dosage; investigational formulation shown as equivalent dosage)
   scope: ARM
@@ -557,8 +478,9 @@ results:
   quote: '% of patients who lost ≥15% body weight 6 14.3 20.1 35.9 3.1 6.7 14.4 25.9'
   notes: 'Label Table 6 is headed ''Intent-to-Treat (ITT) Population'' with missing Week-72 data imputed by ''primary modified multiple imputation'' (ANCOVA); label Figures 1-2 call the Week-72 estimate
     ''treatment effect under treatment regimen estimand'', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule
-    arm in the publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). Label difference from placebo (95% CI): 11.3 (7.3, 15.3); p<0.001, controlled for multiplicity. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge15pct-w72-proportion-of-patients-with-15-body-weight-r-64085331
+    arm in the publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). Label difference from placebo (95% CI): 11.3 (7.3, 15.3); p<0.001, controlled for multiplicity. ci_not_reported_in_this_source
+    The research note for this row records the multiplicity control of this comparison as controlled (YES); the endpoint record holds NOT_STATED.'
+- endpoint: weight-responder-ge15pct-w72-proportion-of-patients-with-15-body-weight-r-f50c8e32
   estimand: treatment_regimen@openfda-label:foundayo
   arm: FOUNDAYO 17.2 mg once daily (label dosage; investigational formulation shown as equivalent dosage)
   scope: ARM
@@ -570,8 +492,9 @@ results:
   quote: '% of patients who lost ≥15% body weight 6 14.3 20.1 35.9 3.1 6.7 14.4 25.9'
   notes: 'Label Table 6 is headed ''Intent-to-Treat (ITT) Population'' with missing Week-72 data imputed by ''primary modified multiple imputation'' (ANCOVA); label Figures 1-2 call the Week-72 estimate
     ''treatment effect under treatment regimen estimand'', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule
-    arm in the publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). Label difference from placebo (95% CI): 22.8 (17.8, 27.8); p<0.001, controlled for multiplicity. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge20pct-w72-proportion-of-patients-with-20-body-weight-r-b9582c58
+    arm in the publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). Label difference from placebo (95% CI): 22.8 (17.8, 27.8); p<0.001, controlled for multiplicity. ci_not_reported_in_this_source
+    The research note for this row records the multiplicity control of this comparison as controlled (YES); the endpoint record holds NOT_STATED.'
+- endpoint: weight-responder-ge20pct-w72-proportion-of-patients-with-20-body-weight-r-94ffed72
   estimand: treatment_regimen@openfda-label:foundayo
   arm: placebo
   scope: ARM
@@ -584,7 +507,7 @@ results:
   notes: Label Table 6 is headed 'Intent-to-Treat (ITT) Population' with missing Week-72 data imputed by 'primary modified multiple imputation' (ANCOVA); label Figures 1-2 call the Week-72 estimate 'treatment
     effect under treatment regimen estimand', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule arm in the
     publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). ci_not_reported_in_this_source
-- endpoint: weight-responder-ge20pct-w72-proportion-of-patients-with-20-body-weight-r-beb53c9c
+- endpoint: weight-responder-ge20pct-w72-proportion-of-patients-with-20-body-weight-r-94ffed72
   estimand: treatment_regimen@openfda-label:foundayo
   arm: FOUNDAYO 5.5 mg once daily (label dosage; investigational formulation shown as equivalent dosage)
   scope: ARM
@@ -598,7 +521,7 @@ results:
     ''treatment effect under treatment regimen estimand'', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule
     arm in the publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). Label difference from placebo (95% CI): 1.8 (-0.2, 3.8); NOT controlled for multiplicity (label footnote
     e). ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge20pct-w72-proportion-of-patients-with-20-body-weight-r-beb53c9c
+- endpoint: weight-responder-ge20pct-w72-proportion-of-patients-with-20-body-weight-r-94ffed72
   estimand: treatment_regimen@openfda-label:foundayo
   arm: FOUNDAYO 9 mg once daily (label dosage; investigational formulation shown as equivalent dosage)
   scope: ARM
@@ -612,7 +535,7 @@ results:
     ''treatment effect under treatment regimen estimand'', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule
     arm in the publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). Label difference from placebo (95% CI): 3.7 (1.4, 6); NOT controlled for multiplicity (label footnote
     e). ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge20pct-w72-proportion-of-patients-with-20-body-weight-r-beb53c9c
+- endpoint: weight-responder-ge20pct-w72-proportion-of-patients-with-20-body-weight-r-94ffed72
   estimand: treatment_regimen@openfda-label:foundayo
   arm: FOUNDAYO 17.2 mg once daily (label dosage; investigational formulation shown as equivalent dosage)
   scope: ARM
@@ -626,7 +549,7 @@ results:
     ''treatment effect under treatment regimen estimand'', and the FDA review says treatment-regimen results were used for labeling. Label arm names are tablet-equivalent dosages; arm N matches the capsule
     arm in the publication/registry. Row lists Trial 1 then Trial 2 (placebo, 5.5 mg, 9 mg, 17.2 mg). Label difference from placebo (95% CI): 10.1 (6.6, 13.5); NOT controlled for multiplicity (label footnote
     e). ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-e0e3776a
+- endpoint: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-b37aff7c
   estimand: treatment_regimen@web:eli-lilly-an-2026-04-01-lilly-medical-information-response-in-at
   arm: orforglipron 6 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -638,7 +561,7 @@ results:
   quote: 47.7* | 54.6* | 67.2* | 26.6
   notes: Lilly Medical Information table (arms labelled 5.5/9/17.2 mg = capsule 6/12/36 mg; asterisk = p<.001 multiplicity-adjusted). The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary
     endpoint and not multiplicity-adjusted. ci_not_reported_in_this_source
-- endpoint: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-e0e3776a
+- endpoint: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-b37aff7c
   estimand: treatment_regimen@web:eli-lilly-an-2026-04-01-lilly-medical-information-response-in-at
   arm: orforglipron 12 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -650,7 +573,7 @@ results:
   quote: 47.7* | 54.6* | 67.2* | 26.6
   notes: Lilly Medical Information table (arms labelled 5.5/9/17.2 mg = capsule 6/12/36 mg; asterisk = p<.001 multiplicity-adjusted). The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary
     endpoint and not multiplicity-adjusted. ci_not_reported_in_this_source
-- endpoint: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-e0e3776a
+- endpoint: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-b37aff7c
   estimand: treatment_regimen@web:eli-lilly-an-2026-04-01-lilly-medical-information-response-in-at
   arm: orforglipron 36 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -662,7 +585,7 @@ results:
   quote: 47.7* | 54.6* | 67.2* | 26.6
   notes: Lilly Medical Information table (arms labelled 5.5/9/17.2 mg = capsule 6/12/36 mg; asterisk = p<.001 multiplicity-adjusted). The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary
     endpoint and not multiplicity-adjusted. ci_not_reported_in_this_source
-- endpoint: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-0bffa93d
+- endpoint: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-b37aff7c
   estimand: treatment_regimen@web:eli-lilly-an-2026-04-01-lilly-medical-information-response-in-at
   arm: placebo
   scope: ARM
@@ -674,7 +597,7 @@ results:
   quote: 47.7* | 54.6* | 67.2* | 26.6
   notes: Lilly Medical Information table (arms labelled 5.5/9/17.2 mg = capsule 6/12/36 mg; asterisk = p<.001 multiplicity-adjusted). The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary
     endpoint and not multiplicity-adjusted. ci_not_reported_in_this_source
-- endpoint: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-e0e3776a
+- endpoint: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-b37aff7c
   estimand: efficacy@web:eli-lilly-an-2026-04-01-lilly-medical-information-response-in-at
   arm: orforglipron 6 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -686,7 +609,7 @@ results:
   quote: 49.8* | 60.2* | 72.8* | 24.4
   notes: 'Lilly Medical Information table (arms labelled 5.5/9/17.2 mg = capsule 6/12/36 mg; asterisk = p<.001 multiplicity-adjusted). The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary
     endpoint and not multiplicity-adjusted. Registry-posted values (S11; on-treatment data points, estimand not named) are identical to these efficacy-estimand values: placebo/6/12/36 mg. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-e0e3776a
+- endpoint: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-b37aff7c
   estimand: efficacy@web:eli-lilly-an-2026-04-01-lilly-medical-information-response-in-at
   arm: orforglipron 12 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -698,7 +621,7 @@ results:
   quote: 49.8* | 60.2* | 72.8* | 24.4
   notes: 'Lilly Medical Information table (arms labelled 5.5/9/17.2 mg = capsule 6/12/36 mg; asterisk = p<.001 multiplicity-adjusted). The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary
     endpoint and not multiplicity-adjusted. Registry-posted values (S11; on-treatment data points, estimand not named) are identical to these efficacy-estimand values: placebo/6/12/36 mg. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-e0e3776a
+- endpoint: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-b37aff7c
   estimand: efficacy@web:eli-lilly-an-2026-04-01-lilly-medical-information-response-in-at
   arm: orforglipron 36 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -710,7 +633,7 @@ results:
   quote: 49.8* | 60.2* | 72.8* | 24.4
   notes: 'Lilly Medical Information table (arms labelled 5.5/9/17.2 mg = capsule 6/12/36 mg; asterisk = p<.001 multiplicity-adjusted). The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary
     endpoint and not multiplicity-adjusted. Registry-posted values (S11; on-treatment data points, estimand not named) are identical to these efficacy-estimand values: placebo/6/12/36 mg. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-0bffa93d
+- endpoint: weight-responder-ge5pct-w72-proportion-of-participants-with-5-body-weigh-b37aff7c
   estimand: efficacy@web:eli-lilly-an-2026-04-01-lilly-medical-information-response-in-at
   arm: placebo
   scope: ARM
@@ -722,7 +645,7 @@ results:
   quote: 49.8* | 60.2* | 72.8* | 24.4
   notes: 'Lilly Medical Information table (arms labelled 5.5/9/17.2 mg = capsule 6/12/36 mg; asterisk = p<.001 multiplicity-adjusted). The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary
     endpoint and not multiplicity-adjusted. Registry-posted values (S11; on-treatment data points, estimand not named) are identical to these efficacy-estimand values: placebo/6/12/36 mg. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-f6c85e0a
+- endpoint: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-fda8a4d1
   estimand: treatment_regimen@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: orforglipron 6 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -733,7 +656,7 @@ results:
   source: web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   quote: 22.6% (6 mg), 31.2% (12 mg), 45.6% (36 mg), 9.0% (placebo)
   notes: Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. ci_not_reported_in_this_source
-- endpoint: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-f6c85e0a
+- endpoint: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-fda8a4d1
   estimand: treatment_regimen@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: orforglipron 12 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -744,7 +667,7 @@ results:
   source: web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   quote: 22.6% (6 mg), 31.2% (12 mg), 45.6% (36 mg), 9.0% (placebo)
   notes: Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. ci_not_reported_in_this_source
-- endpoint: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-f6c85e0a
+- endpoint: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-fda8a4d1
   estimand: treatment_regimen@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: orforglipron 36 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -755,7 +678,7 @@ results:
   source: web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   quote: 22.6% (6 mg), 31.2% (12 mg), 45.6% (36 mg), 9.0% (placebo)
   notes: Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. ci_not_reported_in_this_source
-- endpoint: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-aa5585de
+- endpoint: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-fda8a4d1
   estimand: treatment_regimen@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: placebo
   scope: ARM
@@ -766,7 +689,7 @@ results:
   source: web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   quote: 22.6% (6 mg), 31.2% (12 mg), 45.6% (36 mg), 9.0% (placebo)
   notes: Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. ci_not_reported_in_this_source
-- endpoint: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-f6c85e0a
+- endpoint: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-fda8a4d1
   estimand: efficacy@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: orforglipron 6 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -778,7 +701,7 @@ results:
   quote: 23.9 % | 35.5 % | 50.1 % | 7.0 %
   notes: 'Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. Registry-posted values (S11; on-treatment data
     points, estimand not named) are identical to these efficacy-estimand values: placebo/6/12/36 mg. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-f6c85e0a
+- endpoint: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-fda8a4d1
   estimand: efficacy@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: orforglipron 12 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -790,7 +713,7 @@ results:
   quote: 23.9 % | 35.5 % | 50.1 % | 7.0 %
   notes: 'Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. Registry-posted values (S11; on-treatment data
     points, estimand not named) are identical to these efficacy-estimand values: placebo/6/12/36 mg. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-f6c85e0a
+- endpoint: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-fda8a4d1
   estimand: efficacy@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: orforglipron 36 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -802,7 +725,7 @@ results:
   quote: 23.9 % | 35.5 % | 50.1 % | 7.0 %
   notes: 'Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. Registry-posted values (S11; on-treatment data
     points, estimand not named) are identical to these efficacy-estimand values: placebo/6/12/36 mg. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-aa5585de
+- endpoint: weight-responder-ge10pct-w72-proportion-of-participants-with-10-body-weig-fda8a4d1
   estimand: efficacy@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: placebo
   scope: ARM
@@ -814,7 +737,7 @@ results:
   quote: 23.9 % | 35.5 % | 50.1 % | 7.0 %
   notes: 'Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. Registry-posted values (S11; on-treatment data
     points, estimand not named) are identical to these efficacy-estimand values: placebo/6/12/36 mg. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-df352937
+- endpoint: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-e20e546b
   estimand: treatment_regimen@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: orforglipron 6 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -824,8 +747,10 @@ results:
   timepoint_weeks: 72
   source: web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   quote: 6.8% (6 mg), 14.4% (12 mg), 26.0% (36 mg), 3.0% (placebo)
-  notes: Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. ci_not_reported_in_this_source
-- endpoint: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-99c3a732
+  notes: Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. ci_not_reported_in_this_source The research note
+    for this row records the endpoint role of this comparison as SECONDARY; the endpoint record holds NOT_STATED. The research note for this row records the multiplicity control of this comparison as not
+    controlled (NO); the endpoint record holds NOT_STATED.
+- endpoint: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-e20e546b
   estimand: treatment_regimen@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: orforglipron 12 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -835,8 +760,10 @@ results:
   timepoint_weeks: 72
   source: web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   quote: 6.8% (6 mg), 14.4% (12 mg), 26.0% (36 mg), 3.0% (placebo)
-  notes: Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. ci_not_reported_in_this_source
-- endpoint: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-99c3a732
+  notes: Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. ci_not_reported_in_this_source The research note
+    for this row records the endpoint role of this comparison as KEY_SECONDARY; the endpoint record holds NOT_STATED. The research note for this row records the multiplicity control of this comparison as
+    controlled (YES); the endpoint record holds NOT_STATED.
+- endpoint: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-e20e546b
   estimand: treatment_regimen@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: orforglipron 36 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -846,8 +773,10 @@ results:
   timepoint_weeks: 72
   source: web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   quote: 6.8% (6 mg), 14.4% (12 mg), 26.0% (36 mg), 3.0% (placebo)
-  notes: Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. ci_not_reported_in_this_source
-- endpoint: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-3c0f7b06
+  notes: Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. ci_not_reported_in_this_source The research note
+    for this row records the endpoint role of this comparison as KEY_SECONDARY; the endpoint record holds NOT_STATED. The research note for this row records the multiplicity control of this comparison as
+    controlled (YES); the endpoint record holds NOT_STATED.
+- endpoint: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-e20e546b
   estimand: treatment_regimen@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: placebo
   scope: ARM
@@ -857,8 +786,9 @@ results:
   timepoint_weeks: 72
   source: web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   quote: 6.8% (6 mg), 14.4% (12 mg), 26.0% (36 mg), 3.0% (placebo)
-  notes: Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. ci_not_reported_in_this_source
-- endpoint: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-df352937
+  notes: Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. ci_not_reported_in_this_source The research note
+    for this row records the endpoint role of this comparison as KEY_SECONDARY; the endpoint record holds NOT_STATED.
+- endpoint: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-e20e546b
   estimand: efficacy@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: orforglipron 6 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -869,8 +799,9 @@ results:
   source: web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   quote: 7.3 % | 17.7 % | 28.4 % | 1.9 %
   notes: 'Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. Registry-posted values (S11; on-treatment data
-    points, estimand not named) are identical to these efficacy-estimand values: placebo/6/12/36 mg. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-99c3a732
+    points, estimand not named) are identical to these efficacy-estimand values: placebo/6/12/36 mg. ci_not_reported_in_this_source The research note for this row records the endpoint role of this comparison
+    as SECONDARY; the endpoint record holds NOT_STATED. The research note for this row records the multiplicity control of this comparison as not controlled (NO); the endpoint record holds NOT_STATED.'
+- endpoint: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-e20e546b
   estimand: efficacy@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: orforglipron 12 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -881,8 +812,9 @@ results:
   source: web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   quote: 7.3 % | 17.7 % | 28.4 % | 1.9 %
   notes: 'Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. Registry-posted values (S11; on-treatment data
-    points, estimand not named) are identical to these efficacy-estimand values: placebo/6/12/36 mg. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-99c3a732
+    points, estimand not named) are identical to these efficacy-estimand values: placebo/6/12/36 mg. ci_not_reported_in_this_source The research note for this row records the endpoint role of this comparison
+    as KEY_SECONDARY; the endpoint record holds NOT_STATED. The research note for this row records the multiplicity control of this comparison as controlled (YES); the endpoint record holds NOT_STATED.'
+- endpoint: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-e20e546b
   estimand: efficacy@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: orforglipron 36 mg once daily (investigational capsule dose as reported)
   scope: ARM
@@ -893,8 +825,9 @@ results:
   source: web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   quote: 7.3 % | 17.7 % | 28.4 % | 1.9 %
   notes: 'Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. Registry-posted values (S11; on-treatment data
-    points, estimand not named) are identical to these efficacy-estimand values: placebo/6/12/36 mg. ci_not_reported_in_this_source'
-- endpoint: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-3c0f7b06
+    points, estimand not named) are identical to these efficacy-estimand values: placebo/6/12/36 mg. ci_not_reported_in_this_source The research note for this row records the endpoint role of this comparison
+    as KEY_SECONDARY; the endpoint record holds NOT_STATED. The research note for this row records the multiplicity control of this comparison as controlled (YES); the endpoint record holds NOT_STATED.'
+- endpoint: weight-responder-ge15pct-w72-proportion-of-participants-with-15-body-weig-e20e546b
   estimand: efficacy@web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   arm: placebo
   scope: ARM
@@ -905,7 +838,8 @@ results:
   source: web:eli-lilly-an-2025-08-26-lilly-s-oral-glp-1-orforglipron-is-succe
   quote: 7.3 % | 17.7 % | 28.4 % | 1.9 %
   notes: 'Lilly topline release of 2025-08-26. The >=15% threshold for the 6 mg (5.5 mg) arm was not a key secondary endpoint and not multiplicity-adjusted. Registry-posted values (S11; on-treatment data
-    points, estimand not named) are identical to these efficacy-estimand values: placebo/6/12/36 mg. ci_not_reported_in_this_source'
+    points, estimand not named) are identical to these efficacy-estimand values: placebo/6/12/36 mg. ci_not_reported_in_this_source The research note for this row records the endpoint role of this comparison
+    as KEY_SECONDARY; the endpoint record holds NOT_STATED.'
 analyses: []
 adverse_events:
 - arm: orforglipron 6 mg once daily (investigational capsule dose as reported)
