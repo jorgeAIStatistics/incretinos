@@ -24,13 +24,19 @@ from ..models import (
     ChangeEvent,
     Drug,
     EvidenceGap,
-    ExposureEquivalence,
     SpontaneousReportSeries,
     Study,
     StudyDrug,
 )
-from ..vocab import is_placebo_arm
-from .findings import baseline_class
+from .conflicts import (
+    CLASS_LABEL,
+    TRUE_CONFLICT,
+    ConflictGroup,
+    ConflictIssue,
+    gap_issues,
+    issue_rows,
+    study_groups,
+)
 
 DEFAULT_WEIGHTS = {"clinical_importance": 0.4, "uncertainty": 0.3, "tractability": 0.15, "actionability": 0.15}
 _UNCERTAINTY = {"VERY_LOW": 1.0, "LOW": 0.75, "MODERATE": 0.5, "HIGH": 0.25}
@@ -72,10 +78,6 @@ class GapDraft:
     related_ncts: list[str] = field(default_factory=list)
 
 
-def _decimals(text: str) -> int:
-    return len(text.split(".")[1]) if "." in text else 0
-
-
 def _names(studies: list[Study]) -> str:
     return ", ".join(f"{s.display_name} ({s.nct_id})" for s in studies) or "none"
 
@@ -103,14 +105,56 @@ def _months_since(iso: str | None, today: date) -> float | None:
     return (today - then).days / 30.44
 
 
+def _conflict_gap(drug: Drug, study: Study, issue: ConflictIssue) -> GapDraft:
+    """A gap for a true conflict or an unreconciled difference. The evidence tier is listed with each value as context;
+    nothing here prefers one value over another."""
+    group = issue.group
+    rows = issue_rows(issue)
+    title = group.title()
+    detail = "; ".join(f"{r.printed.replace('−', '-')} ({r.tier.replace('_', ' ').lower()}, source #{r.source_id})" for r in rows)
+    what = f"{title['quantity']} in {study.display_name}, {title['arm']}" + (f", {title['time_point']}" if title["time_point"] else "")
+    reasons = list(dict.fromkeys(reason for c in issue.comparisons for reason in c["possible_reasons"]))
+    missing = list(dict.fromkeys(f"{m['source']}: {m['detail']}" for c in issue.comparisons for m in c["missing_details"]))
+    actions = list(dict.fromkeys(action for c in issue.comparisons for action in c["next_actions"]))
+    if issue.cls == TRUE_CONFLICT:
+        estimand = (rows[0].estimand_label or "").replace("_", " ").lower()
+        question = f"Why do public sources give different values for {what}" + (f" ({estimand} estimand)?" if estimand and rows[0].evidence_type != "adverse_event" else "?")
+        missing_text = ("An explanation of the discrepancy: every stored detail that defines the quantity is the same and the values differ beyond the precision printed. "
+                        + " ".join(reasons[:3]))
+        importance = 4 if any(_material(c) for c in issue.comparisons) else 2
+    else:
+        question = f"Do the public sources' different values for {what} report the same quantity?"
+        missing_text = "The stored records cannot tell whether these values are the same quantity. Missing: " + " ".join(missing[:4])
+        importance = 3
+    return GapDraft(
+        key=f"{drug.slug}:conflict:{study.nct_id}:{issue.key_suffix}", rule_id="G12_SOURCE_CONFLICT", drug_id=drug.id, program=study.program, category="SOURCE_DISCREPANCY",
+        question=question, available_evidence=f"Reported values: {detail}. Classification: {CLASS_LABEL[issue.cls].lower()} (conflict group {group.group_id}).",
+        missing_evidence=missing_text, gap_nature=GapNature.SOURCE_CONFLICT.value, clinical_importance=importance, evidence_certainty="MODERATE", tractability=5,
+        analytic_approach="Show every value with its source, estimand, baseline and analysis set side by side; no value is chosen by the kind of source. " + " ".join(actions[:3]),
+        data_required="Full publication, supplementary appendix, label tables or FDA review tables that state the estimand, analysis set and handling of missing data.",
+        source_ids=sorted({r.source_id for r in rows if r.source_id}), related_ncts=[study.nct_id])
+
+
+def _material(comparison: dict) -> bool:
+    """A difference of half a unit or more on the reported scale (the threshold the earlier rule used for importance)."""
+    try:
+        return comparison["values"]["difference"] is not None and float(comparison["values"]["difference"].replace("−", "-")) >= 0.5
+    except ValueError:
+        return False
+
+
 def detect_gaps(session: Session, today: date | None = None) -> list[GapDraft]:
     today = today or date.today()
     gaps: list[GapDraft] = []
-    drugs = [d for d in session.scalars(select(Drug)) if d.tier_group in ("CORE", "ADJACENT")]
+    groups_by_study: dict[int, list[ConflictGroup]] = {}
+    conflict_keys: set[str] = set()
 
-    equivalent_dose: dict[tuple[str | None, float | None], float] = {}
-    for eq in session.scalars(select(ExposureEquivalence)):
-        equivalent_dose[(eq.dose_b.formulation.key, eq.dose_b.amount)] = eq.dose_a.amount
+    def conflict_groups(study: Study) -> list[ConflictGroup]:
+        if study.id not in groups_by_study:
+            groups_by_study[study.id] = study_groups(session, study)
+        return groups_by_study[study.id]
+
+    drugs = [d for d in session.scalars(select(Drug)) if d.tier_group in ("CORE", "ADJACENT")]
 
     for drug in drugs:
         links = session.scalars(select(StudyDrug).where(StudyDrug.drug_id == drug.id)).all()
@@ -337,39 +381,17 @@ def detect_gaps(session: Session, today: date | None = None) -> list[GapDraft]:
                     analytic_approach="Re-extract on publication and reconcile every topline number against the published value.",
                     data_required="Peer-reviewed article and registry-posted results.", source_ids=sorted({r.source_id for r in study.results if r.source_id}), related_ncts=[study.nct_id]))
 
-        # 12 conflicts between sources
+        # 12 conflicts between sources: the conflict engine classifies every group of rows that report one quantity. True
+        # conflicts and differences the stored records cannot reconcile are open questions; explained differences
+        # (estimand, baseline, analysis set, follow-up, endpoint definition) and agreements are not.
         for study in with_results:
-            groups: dict[tuple, list] = defaultdict(list)
-            for r in study.results:
-                if r.value is None or r.scope != "ARM" or r.arm is None or r.estimand is None or r.estimand.label == "NOT_STATED":
-                    continue
-                if r.arm.dose_amount is None and not is_placebo_arm(r.arm):
-                    continue
-                # A documented exposure-equivalent dose identifies the same arm under another formulation's label.
-                dose = equivalent_dose.get((r.arm.formulation_key, r.arm.dose_amount), r.arm.dose_amount)
-                arm_key = "placebo" if is_placebo_arm(r.arm) else f"{r.arm.drug_slug}|{dose:g}"
-                if r.endpoint.category not in ("WEIGHT_PCT_CHANGE", "HBA1C_CHANGE") or " minus " in r.arm_label:
-                    continue
-                groups[(r.endpoint.category, arm_key, r.estimand.label, r.timepoint_weeks, baseline_class(study.design_features, r.baseline_definition))].append(r)
-            for (category, arm_key, estimand, weeks, _), rows in groups.items():
-                by_source: dict[int, float] = {}
-                precision: dict[int, int] = {}
-                for r in rows:
-                    by_source.setdefault(r.source_id, r.value)
-                    precision.setdefault(r.source_id, _decimals(r.value_text if r.value_text is not None else f"{r.value:g}"))
-                values = sorted(set(by_source.values()))
-                # Values disagree only if they cannot be rounding variants of one another at the coarser reported precision.
-                tolerance = 0.5 * 10 ** (-min(precision.values())) + 1e-9 if precision else 0.0
-                if len(values) > 1 and (max(values) - min(values)) > tolerance:
-                    detail = "; ".join(f"{r.value:g} ({r.source.tier.replace('_', ' ').lower()}, source #{r.source_id})" for r in {r.source_id: r for r in rows}.values())
-                    gaps.append(GapDraft(
-                        key=f"{drug.slug}:conflict:{study.nct_id}:{category}:{arm_key}:{estimand}:{weeks}", rule_id="G12_SOURCE_CONFLICT", drug_id=drug.id, program=study.program, category="SOURCE_DISCREPANCY",
-                        question=f"Why do public sources give different values for {category.replace('_', ' ').lower()} in {study.display_name}, {arm_key.replace('|', ' ')} mg ({estimand.replace('_', ' ').lower()} estimand, week {weeks:g})?" if weeks else f"Why do public sources differ for {study.display_name} {arm_key}?",
-                        available_evidence=f"Reported values: {detail}.",
-                        missing_evidence="An explanation of the discrepancy (rounding, analysis population, data cut, or model) from the statistical analysis plan or full publication.",
-                        gap_nature=GapNature.SOURCE_CONFLICT.value, clinical_importance=2 if (max(values) - min(values)) < 0.5 else 4, evidence_certainty="MODERATE", tractability=5,
-                        analytic_approach="Show each value with its source and tier; prefer the regulator-reviewed or peer-reviewed value for citation and note the others.",
-                        data_required="Full publication, supplementary appendix or FDA review tables.", source_ids=sorted(by_source), related_ncts=[study.nct_id]))
+            for group in conflict_groups(study):
+                for issue in gap_issues(group):
+                    draft = _conflict_gap(drug, study, issue)
+                    if draft.key in conflict_keys:  # two groups under one earlier-style key: the later one is keyed by its group
+                        draft.key = f"{drug.slug}:conflict:{study.nct_id}:{group.group_id.split('-', 1)[1]}:{issue.key_suffix.rsplit(':', 2)[-2]}"
+                    conflict_keys.add(draft.key)
+                    gaps.append(draft)
 
     # specific head-to-head question: retatrutide vs tirzepatide
     reta, tirz = (session.scalar(select(Drug).where(Drug.slug == s)) for s in ("retatrutide", "tirzepatide"))
