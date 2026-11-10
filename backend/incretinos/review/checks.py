@@ -46,20 +46,24 @@ from typing import Any
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from ..db import INCLUDE_REJECTED
 from ..enums import DISCONTINUATION_KINDS, EstimandBasis, Origin
 from ..models import (
     AdverseEvent,
+    Dose,
     Drug,
     Endpoint,
     Estimand,
     EvidenceClaim,
     EvidenceSource,
+    ExposureEquivalence,
+    Formulation,
     OutcomeResult,
     StatisticalAnalysis,
     Study,
     StudyArm,
 )
-from ..vocab import DRUG_ALIASES
+from ..vocab import DRUG_ALIASES, DirectionBasis
 from .policy import SEVERITY_ORDER, CheckFlag
 
 __all__ = ["CHECKS", "QUOTE_BASED_CODES", "change_flag", "evaluate", "evaluate_all"]
@@ -133,6 +137,10 @@ CHECKS: dict[str, dict[str, Any]] = {
         "Responder threshold in the quote differs from the endpoint", HIGH,
         "The quote names a different responder threshold (for example 15% or more) than the endpoint this record is filed under.",
         quote_based=True, applies_to=(_RESULT, _ANALYSIS)),
+    "ENDPOINT_THRESHOLD_VS_TITLE": _check(
+        "Stored responder threshold differs from the endpoint title", HIGH,
+        "The endpoint's stored responder threshold is not among the thresholds its own title names, so engines that read the stored threshold describe a different endpoint.",
+        applies_to=(_RESULT, _ANALYSIS)),
     "ENDPOINT_THRESHOLD_NOT_IN_QUOTE": _check(
         "Responder threshold is not in the quote", MEDIUM,
         "The endpoint has a responder threshold but the quote does not state one, so which threshold the number refers to rests on text outside the quote.",
@@ -240,6 +248,10 @@ CHECKS: dict[str, dict[str, Any]] = {
     "ANALYSIS_REFERENCE_NOT_STATED": _check(
         "Reference group was assumed", MEDIUM,
         "The registry did not say which group is the reference, so treatment and comparator were assigned by listing order and the sign of the difference cannot be interpreted from the record alone.",
+        applies_to=(_ANALYSIS,)),
+    "ANALYSIS_REFERENCE_FROM_ARM_ROLE": _check(
+        "Reference group taken from the arm type, not confirmed", LOW,
+        "The registry analysis does not state the direction of the contrast; the reference group was taken from the registry arm type or a placebo group title, and the arm values of the same source and endpoint do not confirm the sign.",
         applies_to=(_ANALYSIS,)),
     "HYPOTHESIS_FIELDS_INCONSISTENT": _check(
         "Hypothesis fields contradict each other", HIGH,
@@ -768,7 +780,6 @@ _DECREASE = re.compile(r"\blost\b|\bloss(?:es)?\b|\blose\b|reduc\w*|decreas\w*|d
 _INCREASE = re.compile(r"\bgain\w*|\bregain\w*|increas\w*|\brose\b", re.IGNORECASE)
 _RATIO_PARAM = re.compile(r"ratio|\bhr\b|\bor\b|\brr\b", re.IGNORECASE)
 _ESTIMATE_KEYWORD = re.compile(r"differences?|hazard ratio|odds ratio|risk ratio|relative risk|\bratio\b|\bhr\b|\betd\b", re.IGNORECASE)
-_REFERENCE_NOTE = re.compile(r"does not state which group is the reference", re.IGNORECASE)
 
 _DISCONTINUATION_WORD = re.compile(r"discontinu\w*|withdr\w*|did not complete|stopp\w*|drop(?:ped)?[- ]?out\w*", re.IGNORECASE)
 _ANY_REASON = re.compile(r"\bany reason\b|\bany cause\b|\ball[- ]cause\b", re.IGNORECASE)
@@ -879,14 +890,14 @@ _ANALYSIS_COLS = (
     "id", "study_id", "endpoint_id", "estimand_id", "origin", "treatment_arm_id", "comparator_arm_id", "treatment_label",
     "comparator_label", "hypothesis_type", "param_type", "estimate", "unit", "ci_low", "ci_high", "ci_level", "ci_sides",
     "p_value_text", "ni_margin", "ni_met", "superiority_tested", "superiority_met", "timepoint_weeks", "comment", "source_id",
-    "locator_quote", "group_description", "class_title",
+    "locator_quote", "group_description", "class_title", "direction_basis",
 )  # fmt: skip
 _AE_COLS = (
     "id", "study_id", "arm_id", "origin", "arm_label", "scope", "term", "organ_system", "category", "measure_kind", "is_serious",
     "n_affected", "n_at_risk", "n_events", "percent", "percent_low", "percent_high", "period", "source_id", "locator_quote",
 )  # fmt: skip
 _CLAIM_COLS = ("id", "key", "drug_id", "study_id", "topic", "statement", "claim_kind", "source_id", "quote", "origin")
-_ARM_COLS = ("id", "study_id", "label", "drug_slug", "is_placebo", "dose_amount", "dose_unit", "dose_text")
+_ARM_COLS = ("id", "study_id", "label", "drug_slug", "is_placebo", "dose_amount", "dose_unit", "dose_text", "formulation_key")
 _ENDPOINT_COLS = ("id", "study_id", "title", "category", "threshold", "unit")
 _ESTIMAND_COLS = ("id", "study_id", "label", "basis", "source_id", "quote")
 
@@ -924,6 +935,11 @@ class _Context:
     studies: dict[int, Record] = field(default_factory=dict)
     sources: dict[int, str] = field(default_factory=dict)
     drug_aliases: dict[str, set[str]] = field(default_factory=dict)
+    # (formulation key, amount) pairs a source documents as bioequivalent doses (drugs.yaml equivalences), both ways.
+    equivalent_doses: dict[tuple[str, float], set[float]] = field(default_factory=dict)
+    # Arm-level values as posted (review decisions included): only used to confirm the sign convention of a contrast,
+    # so that a reviewer's decision on one value does not change the flags of other records.
+    posted_values: list[Record] = field(default_factory=list)
 
 
 def _load_reference(session: Session, ctx: _Context, study_ids: Iterable[int] | None) -> None:
@@ -949,6 +965,22 @@ def _load_reference(session: Session, ctx: _Context, study_ids: Iterable[int] | 
             names.add(drug["code_name"].lower())
         names.update(b.lower() for b in (drug["brand_names"] or []) if isinstance(b, str))
     ctx.drug_aliases = aliases
+    doses = {r["id"]: r for r in _rows(session, Dose, ("id", "formulation_id", "amount"))}
+    formulations = {r["id"]: r["key"] for r in _rows(session, Formulation, ("id", "key"))}
+    for eq in _rows(session, ExposureEquivalence, ("dose_a_id", "dose_b_id", "basis")):
+        a, b = doses.get(eq["dose_a_id"]), doses.get(eq["dose_b_id"])
+        if eq["basis"] != "DOCUMENTED_BIOEQUIVALENCE" or a is None or b is None:
+            continue
+        for x, y in ((a, b), (b, a)):
+            ctx.equivalent_doses.setdefault((formulations.get(x["formulation_id"]), float(x["amount"])), set()).add(float(y["amount"]))
+
+
+_POSTED_COLS = ("study_id", "endpoint_id", "arm_id", "source_id", "scope", "value")
+
+
+def _posted_values(session: Session, *where: Any) -> list[Record]:
+    stmt = select(*[getattr(OutcomeResult, c) for c in _POSTED_COLS]).where(OutcomeResult.value.is_not(None), *where).execution_options(**{INCLUDE_REJECTED: True})
+    return [dict(zip(_POSTED_COLS, row, strict=True)) for row in session.execute(stmt).all()]
 
 
 def _load_all(session: Session) -> _Context:
@@ -956,6 +988,7 @@ def _load_all(session: Session) -> _Context:
     _load_reference(session, ctx, None)
     for etype, (model, cols) in _MODELS.items():
         ctx.records[etype] = _rows(session, model, cols)
+    ctx.posted_values = _posted_values(session)
     return ctx
 
 
@@ -977,6 +1010,7 @@ def _load_for(session: Session, etype: str, target: Record) -> _Context:
             ctx.records[etype] = _rows(session, model, cols, or_(*clauses))
         if etype == _ANALYSIS and study_id is not None:
             ctx.records[_RESULT] = _rows(session, OutcomeResult, _RESULT_COLS, OutcomeResult.study_id == study_id)
+            ctx.posted_values = _posted_values(session, OutcomeResult.study_id == study_id)
     _load_reference(session, ctx, [study_id])
     return ctx
 
@@ -1080,6 +1114,10 @@ class _Engine:
                 self.arm_values[(rec["endpoint_id"], rec["arm_id"], rec["source_id"])].append(rec)
         for rec in ctx.records[_ANALYSIS]:
             self.analysis_groups[_analysis_group(rec)].append(rec)
+        self.posted_values: dict[tuple, list[float]] = defaultdict(list)
+        for rec in ctx.posted_values:
+            if rec["arm_id"] is not None and rec["scope"] == "ARM":
+                self.posted_values[(rec["endpoint_id"], rec["arm_id"], rec["source_id"])].append(rec["value"])
 
     # ---------------------------------------------------------------------------------------- dispatch
 
@@ -1570,14 +1608,27 @@ class _Engine:
             record = f"the estimand record's quote {_q(est_quote, 60)} does not name it either"
         out.append(_flag("ESTIMAND_NOT_SUPPORTED", f"The record is filed under the {_ESTIMAND_NAME[label]} as stated by the source, but its quote {_q(q.text)} does not name that estimand, and {record}.", "estimand_id", "locator_quote"))
 
+    def _threshold_vs_title(self, out: list[CheckFlag], rec: Record) -> None:
+        """The endpoint's stored responder threshold must be one its own title names (when the title names any)."""
+        endpoint = self.ctx.endpoints.get(rec["endpoint_id"]) if rec.get("endpoint_id") is not None else None
+        if endpoint is None or endpoint.get("threshold") is None:
+            return
+        named = _thresholds(endpoint.get("title"))
+        stored = float(endpoint["threshold"])
+        if named and not any(_same_number(stored, t) for t in named):
+            out.append(_flag("ENDPOINT_THRESHOLD_VS_TITLE", f"The endpoint {_q(endpoint.get('title'))} stores the responder threshold {_g(stored)}%, but its title names {', '.join(_q(w) for w in named.values())}.", "endpoint.threshold", "endpoint_id"))
+
     def _endpoint_in_quote(self, out: list[CheckFlag], rec: Record, q: _Quote) -> None:
         endpoint = self.ctx.endpoints.get(rec["endpoint_id"]) if rec.get("endpoint_id") is not None else None
         if endpoint is None:
             return
         title = endpoint.get("title") or ""
-        wanted = _thresholds(title)
+        # The stored threshold is what engines read: when there is one, the quote is compared with it alone (a title
+        # threshold cannot excuse a stored threshold the quote contradicts). Without one, the title's thresholds.
         if endpoint.get("threshold") is not None:
-            wanted.setdefault(float(endpoint["threshold"]), f"threshold {_g(endpoint['threshold'])}")
+            wanted = {float(endpoint["threshold"]): f"threshold {_g(endpoint['threshold'])}"}
+        else:
+            wanted = _thresholds(title)
         if wanted:
             printed = _thresholds(q.text)
             if printed and not set(printed) & set(wanted):
@@ -1625,7 +1676,12 @@ class _Engine:
                 if per_kg and "kg" not in unit:
                     cached.append(_flag("ARM_DOSE_INCONSISTENT", f"The arm label {shown} gives {_q(per_kg[0].text)}, a dose per kilogram of body weight; the arm stores dose_amount = {_g(amount)} with dose_unit = {_q(unit or 'none')}.", label_field, "arm.dose_amount", "arm.dose_unit"))
                 named = sorted({d for m in marks for d in m.doses})
-                if named and amount not in named:
+                documented = self.ctx.equivalent_doses.get((arm.get("formulation_key"), amount), set())
+                if len(named) == 1 and named[0] in documented:
+                    # The label gives the documented bioequivalent dose of another formulation (a Foundayo tablet
+                    # dosage for an investigational-capsule arm): the arm is the same, the dose is not misread.
+                    pass
+                elif named and amount not in named:
                     cached.append(_flag("ARM_DOSE_INCONSISTENT", f"The arm label {shown} names the dose(s) {', '.join(_g(d) for d in named)} mg; the arm stores dose_amount = {_g(amount)}.", label_field, "arm.dose_amount"))
                 elif len(named) > 1:
                     cached.append(_flag("ARM_DOSE_SIMPLIFIED", f"The arm label {shown} names {len(named)} doses ({', '.join(_g(d) for d in named)} mg); the arm stores the single dose_amount = {_g(amount)}.", label_field, "arm.dose_amount"))
@@ -1686,6 +1742,7 @@ class _Engine:
                 self._endpoint_in_quote(out, r, q)
 
         # structure
+        self._threshold_vs_title(out, r)
         self._arm_dose(out, r["arm_label"], r["arm_id"], "arm_label")
         self._interval(out, value, r["ci_low"], r["ci_high"], r["ci_level"], estimate_field="value")
         if r["value_low"] is not None and r["value_high"] is not None and r["value_low"] > r["value_high"]:
@@ -1774,6 +1831,7 @@ class _Engine:
                 self._endpoint_in_quote(out, a, q)
 
         # structure
+        self._threshold_vs_title(out, a)
         self._arm_dose(out, a["treatment_label"], a["treatment_arm_id"], "treatment_label")
         self._arm_dose(out, a["comparator_label"], a["comparator_arm_id"], "comparator_label")
         self._interval(out, estimate, low, high, a["ci_level"], estimate_field="estimate")
@@ -1791,8 +1849,6 @@ class _Engine:
             if t.sign == "-" or (t.val > 1 and t.decimals > 0):
                 out.append(_flag("VALUE_OUT_OF_RANGE", f"p_value_text {_q(a['p_value_text'])} contains {t.text}; a p-value lies between 0 and 1.", "p_value_text"))
                 break
-        if _REFERENCE_NOTE.search(a["comment"] or ""):
-            out.append(_flag("ANALYSIS_REFERENCE_NOT_STATED", f"The record's comment says the registry does not state which group is the reference; {pair} follows the registry's listing order, so the direction of the estimate {_g(estimate)} cannot be read from this record alone.", "treatment_label", "comparator_label", "estimate"))
 
         hypothesis = a["hypothesis_type"]
         null = 1.0 if ratio else 0.0
@@ -1816,6 +1872,7 @@ class _Engine:
             out.append(_flag("NI_MARGIN_MISSING", f"hypothesis_type is NON_INFERIORITY for the estimate {_g(estimate)}, but ni_margin is empty.", "hypothesis_type", "ni_margin"))
 
         # the estimate against the arm-level values of the same source and endpoint
+        confirmed_by_arms = False
         if estimate is not None and not ratio and a["treatment_arm_id"] is not None and a["comparator_arm_id"] is not None:
             treated = self.arm_values.get((a["endpoint_id"], a["treatment_arm_id"], a["source_id"]), [])
             compared = self.arm_values.get((a["endpoint_id"], a["comparator_arm_id"], a["source_id"]), [])
@@ -1836,6 +1893,22 @@ class _Engine:
                             out.append(_flag("ANALYSIS_SCALE_VS_ARMS", f"The stored estimate is {_g(estimate)} with the unit {_q(a['unit'])}; the arm values of the same source and endpoint give {arithmetic}; the estimate equals that, within rounding, only after multiplying it by 100 ({_g(round(100 * estimate, 6))}){sign_note}.", "estimate", "unit"))
                             if flipped and not scaled:
                                 out.append(_flag("ANALYSIS_DIRECTION_VS_ARMS", f"The stored estimate is {_g(estimate)} (on a 0 to 1 scale); the arm values of the same source and endpoint give {arithmetic}, the opposite sign.", "estimate", "treatment_label", "comparator_label"))
+
+        # which group is the reference: from the stored direction basis, never from comment wording
+        basis = a.get("direction_basis")
+        if estimate is not None and not ratio and a["treatment_arm_id"] is not None and a["comparator_arm_id"] is not None:
+            posted_t = self.posted_values.get((a["endpoint_id"], a["treatment_arm_id"], a["source_id"]), [])
+            posted_c = self.posted_values.get((a["endpoint_id"], a["comparator_arm_id"], a["source_id"]), [])
+            if len(posted_t) == 1 and len(posted_c) == 1:
+                diff = posted_t[0] - posted_c[0]
+                noise = _half_unit(posted_t[0]) + _half_unit(posted_c[0])
+                confirmed_by_arms = abs(estimate - diff) <= noise + _half_unit(estimate) + 0.1 * abs(diff) and abs(diff) > noise
+        if basis == DirectionBasis.NOT_STATED.value:
+            out.append(_flag("ANALYSIS_REFERENCE_NOT_STATED", f"The registry does not state which group is the reference (direction basis NOT_STATED); {pair} follows the registry's listing order, so the direction of the estimate {_g(estimate)} cannot be read from this record alone.", "treatment_label", "comparator_label", "estimate"))
+        elif basis in (DirectionBasis.ARM_TYPE.value, DirectionBasis.PLACEBO_GROUP.value) and not confirmed_by_arms:
+            how = "the registry arm type" if basis == DirectionBasis.ARM_TYPE.value else "the group titled as placebo"
+            why = "a ratio cannot be checked against arm differences" if ratio else "no single arm value per group of the same source and endpoint confirms the sign"
+            out.append(_flag("ANALYSIS_REFERENCE_FROM_ARM_ROLE", f"The registry analysis does not state the direction of {pair}; the reference group was taken from {how}, and {why}.", "treatment_label", "comparator_label"))
 
         # siblings: the same contrast reported with another value
         if estimate is not None:
