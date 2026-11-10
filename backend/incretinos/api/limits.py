@@ -185,7 +185,8 @@ limit_assistant = rate_limit("assistant", "rate_limit_assistant_per_minute", "as
 #: (measured on the seeded database: /api/validation about 0.7 s, /api/safety/trial-ae?limit=5000 0.4 s and 9 MB,
 #: /api/findings?limit=2000 0.3 s and 7 MB, /api/review/summary 0.35 s, /api/review/evidence 0.26 s,
 #: /api/analyses?limit=1500 0.1 s and 4 MB, /api/conflicts about 0.7 s, /api/quality about 2 s, /api/quality/records and
-#: /api/quality/assessment about 1.5 s each, all three reading every stored evidence row twice). They share one budget per client: RATE_LIMIT_QUERY_PER_MINUTE.
+#: /api/quality/assessment about 1.5 s each, all three reading every stored evidence row twice,
+#: /api/indirect/feasible?category=WEIGHT_RESPONDER 0.8 s for 3,777 pairs). They share one budget per client: RATE_LIMIT_QUERY_PER_MINUTE.
 QUERY_BUDGET_ROUTES: frozenset[tuple[str, str]] = frozenset({
     ("GET", "/api/validation"),
     ("GET", "/api/findings"),
@@ -197,6 +198,7 @@ QUERY_BUDGET_ROUTES: frozenset[tuple[str, str]] = frozenset({
     ("GET", "/api/quality"),
     ("GET", "/api/quality/records"),
     ("GET", "/api/quality/assessment"),
+    ("GET", "/api/indirect/feasible"),
 })
 
 
@@ -244,6 +246,8 @@ KIB = 1024
 ROUTE_BODY_LIMITS: tuple[tuple[str, re.Pattern[str], int], ...] = (
     # A few numbers and identifiers.
     ("POST", re.compile(r"/api/compare"), 4 * KIB),
+    # Two identifiers, a level, a tolerance and a justification of at most 600 characters.
+    ("POST", re.compile(r"/api/indirect/assess"), 4 * KIB),
     ("POST", re.compile(r"/api/stats/risk-contrast"), 4 * KIB),
     ("POST", re.compile(r"/api/safety/disproportionality"), 4 * KIB),
     ("POST", re.compile(r"/api/design/power"), 4 * KIB),

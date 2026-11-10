@@ -64,7 +64,7 @@ from incretinos.reports.export import (
     study_report_markdown,
 )
 
-from .conftest import FIXTURES, result_id
+from .conftest import FIXTURES, analysis_id, result_id
 
 TOKEN = {"X-Reviewer-Token": "test-reviewer-token"}
 BACKEND = Path(__file__).resolve().parents[1]
@@ -167,6 +167,8 @@ def samples(seeded) -> dict:
             "source": session.scalar(select(EvidenceSource.id).where(EvidenceSource.key == "ctgov:NCT04184622")),
             "gap": session.scalar(select(EvidenceGap.id).order_by(EvidenceGap.id).limit(1)),
             "item": session.scalar(select(ReviewQueueItem.id).order_by(ReviewQueueItem.id).limit(1)),
+            "indirect_a": analysis_id(session, "NCT04184622", "15 mg Tirzepatide"),
+            "indirect_b": analysis_id(session, "NCT05869903", "36 mg Orforglipron"),
             "ae_a": nausea["15 mg Tirzepatide"],
             "ae_b": nausea["Placebo"],
             # A source-conflict group (ATTAIN-1, 36 mg, week 72): its identifier is derived from the natural key, not row ids.
@@ -195,12 +197,14 @@ def _query_samples(samples: dict) -> dict[str, dict[str, object]]:
         "/api/reports/comparison": {"a": samples["a"], "b": samples["b"]},
         "/api/quality/records": {"metric": "result_no_ci"},
         "/api/quality/assessment": {"drug": "tirzepatide"},
+        "/api/indirect/candidates": {"drug": "tirzepatide", "comparator": "placebo", "category": "WEIGHT_PCT_CHANGE"},
     }
 
 
 def _body_samples(samples: dict) -> dict[tuple[str, str], dict]:
     return {
         ("POST", "/api/compare"): {"a": samples["a"], "b": samples["b"]},
+        ("POST", "/api/indirect/assess"): {"a": samples["indirect_a"], "b": samples["indirect_b"]},
         ("POST", "/api/benefit-risk/utility"): {"nct": "NCT04184622"},
         ("POST", "/api/benefit-risk/dose-scenario"): {"nct": "NCT04184622", "shares": {"tirzepatide|5|": 0.5, "tirzepatide|15|": 0.5}},
         ("POST", "/api/stats/risk-contrast"): {"ae_a": samples["ae_a"], "ae_b": samples["ae_b"]},
@@ -1131,6 +1135,8 @@ def _largest_valid_bodies() -> dict[str, dict]:
     big = -123456.78901234567
     return {
         "/api/compare": {"a": 2**31 - 1, "b": 2**31 - 2},
+        "/api/indirect/assess": {"a": 2**31 - 1, "b": 2**31 - 2, "ci_level": 0.95123456789, "followup_tolerance_weeks": 11.123456789,
+                                 "followup_tolerance_justification": "Ω—é" * 200},
         "/api/stats/risk-contrast": {"ae_a": 2**31 - 1, "ae_b": 2**31 - 2},
         "/api/safety/disproportionality": {k: 10**9 for k in ("drug_event", "drug_total", "event_total", "all_total")},
         "/api/design/power": {"design": "noninferiority_hr_events", "alpha": 0.025, "power": 0.9, "ratio": 1.5, "delta": big, "sd": 1e5, "p1": 0.12345678901234, "p2": 0.23456789012345,

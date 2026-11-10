@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { type BarFill, ChartFrame, ChartTable, FacetedChart, Reported } from "@/components/charts";
+import { IndirectComparison } from "@/components/indirect/IndirectComparison";
+import type { ReportedEffect as ReportedEffectData } from "@/components/indirect/types";
 import { Badge, Callout, ClassificationBadge, ErrorNote, ErrorState, Loading, PageHeader, Panel, Qualifiers, Section, Select, SourceLine, VerificationBadge, buttonClass } from "@/components/ui";
 import { apiPost, fmt, phaseLabel, titleCase, useApi, diabetesLabel } from "@/lib/api";
 import { useRows } from "@/lib/paging";
@@ -106,6 +108,31 @@ function FindingCard({ side, f, reading }: { side: string; f: any; reading: any 
       {/* Registry locators are long unbroken paths: they wrap instead of widening the page. */}
       <p className="mt-2.5 [overflow-wrap:anywhere]"><SourceLine source={f.source} quote={f.locator_quote} location={f.origin === "REGISTRY" ? f.source_location : null} /></p>
     </Panel>
+  );
+}
+
+/** The treatment effect of a direct randomized comparison exactly as stored, and one plain reading that does not go beyond it. */
+function ReportedEffect({ effect }: { effect: ReportedEffectData | undefined }) {
+  if (!effect) return null;
+  const rows: [string, string][] = [
+    ["Scale and orientation", `${effect.scale === "RATIO" ? "Ratio" : effect.scale === "DIFFERENCE" ? "Difference" : "Not established"}: ${effect.orientation}`],
+    ["Interval", effect.ci.low == null || effect.ci.high == null ? effect.ci.text
+      : effect.ci.level_status === "VALID" ? `${fmt(effect.ci.level)}% CI ${fmt(effect.ci.low)} to ${fmt(effect.ci.high)}, ${effect.ci.sides === "TWO_SIDED" ? "two-sided" : effect.ci.sides === "ONE_SIDED" ? "one-sided" : "sidedness not stated"}`
+      : `Interval ${fmt(effect.ci.low)} to ${fmt(effect.ci.high)}; ${effect.ci.level_status === "LEVEL_NOT_REPORTED" ? "its confidence level is not stated, so nothing about significance is read from it" : "the stored level is not a valid percentage, so the interval is not read"}`],
+    ["p-value", effect.p_value],
+    ["Estimand", `${titleCase(effect.estimand.label)} (${effect.estimand.basis.toLowerCase().replace(/_/g, " ")})`],
+    ["Analysis population", effect.analysis_population],
+    ["Hypothesis", effect.hypothesis.text],
+    ["Multiplicity control", effect.multiplicity.text],
+  ];
+  return (
+    <div className="mt-2 rounded-control border border-hairline bg-sunken px-3 py-2" data-testid="reported-effect">
+      <p className="text-[12.5px] font-semibold text-ink">Reported treatment effect (direct randomized comparison)</p>
+      <dl className="mt-1 grid grid-cols-1 gap-x-4 gap-y-0.5 text-[12.5px] sm:grid-cols-[max-content_minmax(0,1fr)]">
+        {rows.map(([k, v]) => <div key={k} className="contents"><dt className="text-ink-3">{k}</dt><dd className="min-w-0 break-words text-ink-2">{v}</dd></div>)}
+      </dl>
+      <p className="mt-1.5 text-[12.5px] text-ink" data-testid="reported-effect-reading">{effect.plain_reading}</p>
+    </div>
   );
 }
 
@@ -294,6 +321,7 @@ function Lab() {
                       </p>
                     ) : null}
                     <p className="mt-0.5">p-value: {an.p_value_text ?? "not reported in this source"}{an.unit ? ` · outcome unit as stored: ${an.unit}` : ""}</p>
+                    <ReportedEffect effect={result.analysis_interpretations[i]?.reported_effect} />
                     <div className="mt-1.5"><Qualifiers labels={an.labels} /></div>
                     <ul className="mt-2 list-disc space-y-1 pl-5">{[...result.analysis_interpretations[i].establishes.map((s: string) => `Establishes: ${s}`), ...result.analysis_interpretations[i].does_not_establish.slice(0, 3).map((s: string) => `Does not establish: ${s}`)].map((s) => <li key={s}>{s}</li>)}</ul>
                     <p className="mt-2 [overflow-wrap:anywhere]"><SourceLine source={an.source} compact location={an.origin === "REGISTRY" ? an.source_location : null} /></p>
@@ -354,6 +382,7 @@ function Lab() {
           {c.requirements.length ? <div className="mt-4"><Panel><h2 className="mb-1.5 text-[13.5px] font-semibold text-ink">What a rigorous comparison would require</h2><ul className="list-disc space-y-1.5 pl-5 text-[13px] text-ink-2">{c.requirements.map((s: string) => <li key={s}>{s}</li>)}</ul></Panel></div> : null}
         </div>
       ) : null}
+      <IndirectComparison />
     </>
   );
 }

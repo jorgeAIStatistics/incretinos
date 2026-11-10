@@ -110,6 +110,23 @@ export const GLOSSARY = {
     definition: "Setting results from two different trials side by side. Because participants were not randomized between the trials, differences in population, duration or analysis can explain the gap.",
     caution: "It is descriptive only and is not head-to-head evidence.",
   },
+  "anchored-indirect-comparison": {
+    term: "Anchored indirect comparison",
+    definition:
+      "An estimate of drug A versus drug B built from two trials that share a comparator C: the A-versus-C effect minus the B-versus-C effect (the Bucher method). Randomization is kept within each trial, but A and B were never randomized against each other.",
+    caution: "It is an inference that holds only if the two trials do not differ in anything that changes the treatment effects. It is not head-to-head evidence and not a ranking.",
+  },
+  transitivity: {
+    term: "Transitivity",
+    definition:
+      "The assumption behind an indirect comparison: the trials are similar enough in everything that modifies the treatment effects that the A-versus-C and B-versus-C effects can be chained through C.",
+    caution: "With two trials and summary data it cannot be tested, only argued from what is reported.",
+  },
+  "effect-modifier": {
+    term: "Effect modifier",
+    definition:
+      "A characteristic that changes how large a treatment's effect is, such as baseline weight, diabetes status or background therapy. If two trials differ in one, their effects relative to a common comparator are not exchangeable.",
+  },
   "evidence-gap": {
     term: "Evidence gap",
     definition: "A question the public record does not answer yet. A gap in public reporting is not confirmation that the sponsor has no data.",
