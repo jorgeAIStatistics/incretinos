@@ -22,6 +22,7 @@ import hmac
 import ipaddress
 import json
 import os
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -171,6 +172,19 @@ class Settings(BaseSettings):
                     ipaddress.ip_network(part, strict=False)
                 except ValueError as exc:
                     raise ValueError(f"INCRETINOS_RATE_LIMIT_TRUSTED_PROXIES: {part!r} is not an IP address or network") from exc
+        return value
+
+    # Evidence Quality freshness rule: days after which a source of a given type is due a refresh, overriding the
+    # defaults in engines/quality.py, e.g. "CTGOV=14,PUBMED=730". Empty keeps the defaults.
+    quality_refresh_days: str = ""
+
+    @field_validator("quality_refresh_days")
+    @classmethod
+    def _refresh_rule_is_well_formed(cls, value: str) -> str:
+        """A misspelt rule must fail at start-up rather than silently fall back to the defaults."""
+        for part in (p.strip() for p in value.split(",")):
+            if part and not re.fullmatch(r"[A-Z][A-Z0-9_]{0,39}\s*=\s*[1-9]\d{0,4}", part):
+                raise ValueError(f"INCRETINOS_QUALITY_REFRESH_DAYS: {part!r} is not SOURCE_TYPE=days (a whole number of days, at least 1)")
         return value
 
     http_timeout_s: float = 30.0
