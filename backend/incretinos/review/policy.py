@@ -82,9 +82,20 @@ def canonical_status(status: str | None) -> str | None:
     return LEGACY_STATUS_ALIASES.get(status, status)
 
 
-def is_usable(status: str | None, hold: bool | None = False) -> bool:
+#: Origin of evidence read from a full-text document by a parser (``incretinos.fulltext``).
+FULLTEXT_ORIGIN = "FULLTEXT"
+FULLTEXT_PENDING_EXPLANATION = (
+    "Read from a full-text document by a parser and not yet approved by a reviewer. Full-text evidence stays out of every "
+    "comparison, summary and report until a reviewer approves it (HUMAN_VERIFIED)."
+)
+
+
+def is_usable(status: str | None, hold: bool | None = False, origin: str | None = None) -> bool:
     """False for evidence a reviewer rejected, or held out of use after a rejection: it must not feed
-    comparisons, summaries or reports."""
+    comparisons, summaries or reports. With ``origin``, also False for full-text evidence no reviewer has approved
+    (the session rule in ``incretinos.db`` keeps it out the same way)."""
+    if origin == FULLTEXT_ORIGIN and canonical_status(status) != VerificationStatus.HUMAN_VERIFIED.value:
+        return False
     return not hold and canonical_status(status) not in EXCLUDED_STATUSES
 
 
@@ -94,12 +105,14 @@ HOLD_EXPLANATION = (
 )
 
 
-def exclusion_reason(status: str | None, hold: bool | None) -> str | None:
+def exclusion_reason(status: str | None, hold: bool | None, origin: str | None = None) -> str | None:
     """Why a row is excluded from analytic use, or None when it is usable."""
     if canonical_status(status) in EXCLUDED_STATUSES:
         return "Rejected in review on this exact content."
     if hold:
         return HOLD_EXPLANATION
+    if origin == FULLTEXT_ORIGIN and canonical_status(status) != VerificationStatus.HUMAN_VERIFIED.value:
+        return FULLTEXT_PENDING_EXPLANATION
     return None
 
 

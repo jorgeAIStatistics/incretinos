@@ -82,3 +82,14 @@ def test_ci_runs_every_browser_spec_in_both_modes():
     runs = [sorted(re.findall(r"e2e/([\w.-]+\.spec\.ts)", line)) for line in workflow.splitlines() if "npx playwright test" in line]
     assert len(runs) == 2 and "E2E_WEB: production" in workflow
     assert runs[0] == runs[1] == specs, (runs, specs)
+
+
+def test_evidence_review_says_an_unreviewed_fulltext_row_is_out_of_analytic_use(client, db):
+    """The review list and dossier state the quarantine the session rule applies: not usable, and why."""
+    listed = client.get("/api/review/evidence", params={"origin": "FULLTEXT", "limit": 5}).json()["rows"]
+    assert listed and all(r["usable"] is False and "until a reviewer approves it" in r["exclusion_reason"] for r in listed)
+    detail = client.get(f"/api/review/evidence/{listed[0]['evidence_type']}/{listed[0]['id']}").json()
+    assert detail["status"]["usable"] is False and "until a reviewer approves it" in detail["status"]["exclusion_reason"]
+    # A registry row pending nothing stays usable: the rule is about full-text origin only.
+    registry = client.get("/api/review/evidence", params={"origin": "REGISTRY", "limit": 1}).json()["rows"][0]
+    assert registry["usable"] is True and registry["exclusion_reason"] is None

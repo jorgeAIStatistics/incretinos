@@ -736,11 +736,13 @@ def decide_on_evidence(
         db.rollback()
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     db.commit()
+    decided = queries.find_row(db, evidence_type, row_id=row_id)
+    origin = getattr(decided, "origin", None)
     return {
         "decision_id": recorded.decision_id, "uid": recorded.uid, "evidence_type": evidence_type, "id": row_id, "evidence_key": recorded.evidence_key,
         "fingerprint": recorded.fingerprint, "decision": recorded.decision, "status_before": recorded.status_before, "status_after": recorded.status_after,
-        "status_label": STATUS_LABEL.get(recorded.status_after), "usable": is_usable(recorded.status_after, recorded.hold_after),
-        "review_hold": recorded.hold_after, "exclusion_reason": exclusion_reason(recorded.status_after, recorded.hold_after), "reason": recorded.reason,
+        "status_label": STATUS_LABEL.get(recorded.status_after), "usable": is_usable(recorded.status_after, recorded.hold_after, origin),
+        "review_hold": recorded.hold_after, "exclusion_reason": exclusion_reason(recorded.status_after, recorded.hold_after, origin), "reason": recorded.reason,
         "reason_text": REASON_TEXT.get(recorded.reason, "Recorded as an open request; the verification status is unchanged."),
         "reviewer": reviewer, "identity_basis": recorded.identity_basis, "identity_label": IDENTITY_LABEL.get(recorded.identity_basis),
         "gaps_refreshed": recorded.gaps_refreshed,

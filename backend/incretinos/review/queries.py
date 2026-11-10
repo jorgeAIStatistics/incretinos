@@ -352,8 +352,8 @@ def list_evidence(session: Session, filters: EvidenceFilters, *, sort: str = "st
             "drugs": row.drugs, "origin": row.origin, "source_key": row.source_key, "source_type": row.source_type, "tier": row.tier,
             "tier_label": _tier_label(row.tier), "endpoint_category": row.endpoint_category, "verification_status": row.effective_status,
             "status_label": STATUS_LABEL.get(row.effective_status or "", row.effective_status), "base_verification_status": row.mechanical_status,
-            "usable": is_usable(row.effective_status, row.review_hold), "review_hold": bool(row.review_hold),
-            "exclusion_reason": exclusion_reason(row.effective_status, row.review_hold), "risk_level": row.risk_level or "NONE", "n_flags": len(flags), "flag_codes": [str(f.get("code")) for f in flags],
+            "usable": is_usable(row.effective_status, row.review_hold, row.origin), "review_hold": bool(row.review_hold),
+            "exclusion_reason": exclusion_reason(row.effective_status, row.review_hold, row.origin), "risk_level": row.risk_level or "NONE", "n_flags": len(flags), "flag_codes": [str(f.get("code")) for f in flags],
             "missing_fields": row.missing, "changed_since_last_seen": _changed_since_last_seen(row, state), "changed_since_review": row.effective_status == RECHECK,
             "changed_at": row.current_since if row.supersedes_id is not None else None, "first_seen_at": first_seen_at,
             "open_requests": len(state.open_requests.get(key, ())), "last_decision": _decision_brief(state.latest_decisive.get(key)),
@@ -686,7 +686,7 @@ def _related(evidence_type: str, row: Any, relation: str) -> dict[str, Any]:
     base = {
         "evidence_type": evidence_type, "id": row.id, "evidence_key": row.evidence_key, "relation": relation, "verification_status": row.verification_status,
         "tier": getattr(row, "tier", None), "source_key": source.key if source else None, "origin": getattr(row, "origin", None),
-        "usable": is_usable(row.verification_status, getattr(row, "review_hold", False)),
+        "usable": is_usable(row.verification_status, getattr(row, "review_hold", False), getattr(row, "origin", None)),
     }
     if evidence_type == "result":
         base.update({"label": f"{row.endpoint.title} — {row.arm_label}", "values": {
@@ -869,8 +869,8 @@ def evidence_detail(session: Session, evidence_type: str, row: Any) -> dict[str,
         "reconciled": bool(row.evidence_key and row.fingerprint and current is not None),
         "status": {
             "verification_status": status, "label": STATUS_LABEL.get(status, status), "base_verification_status": row.base_verification_status,
-            "base_label": STATUS_LABEL.get(row.base_verification_status or "", row.base_verification_status), "usable": is_usable(status, row.review_hold),
-            "review_hold": bool(row.review_hold), "exclusion_reason": exclusion_reason(status, row.review_hold),
+            "base_label": STATUS_LABEL.get(row.base_verification_status or "", row.base_verification_status), "usable": is_usable(status, row.review_hold, getattr(row, "origin", None)),
+            "review_hold": bool(row.review_hold), "exclusion_reason": exclusion_reason(status, row.review_hold, getattr(row, "origin", None)),
             "reason": outcome.reason if outcome else None, "reason_text": REASON_TEXT.get(outcome.reason) if outcome else None,
             "derived_status": outcome.status if outcome else None, "derived_hold": outcome.hold if outcome else None,
             "decided_by": _decision_brief(decided_by), "open_requests": [_decision_out(d, row) for d in decisions if d.id in open_ids][:DOSSIER_DECISION_LIMIT],
