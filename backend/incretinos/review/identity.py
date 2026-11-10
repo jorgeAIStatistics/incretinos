@@ -66,6 +66,13 @@ indication
     drug slug · brand · jurisdiction · indication text
 equivalence
     the two dose keys
+result / analysis / adverse_event (full text, origin FULLTEXT)
+    study NCT · origin · source key · document key · table label (for a sentence: section, paragraph and the
+    statistic's lead phrase) · row label · column heading · comparator heading. The fingerprint also holds the
+    extraction itself (the cells used, parse method and version, quality assessment, confidence), so a re-parse
+    that reads the same place differently asks for a recheck instead of starting a new identity.
+claim (full text)
+    the claim key, which names the document, topic and passage
 
 The source key is part of the key where one quantity may legitimately be stored once per source
 (results, analyses, adverse events). For claims, mechanisms, indications and equivalences the loader
@@ -133,7 +140,10 @@ from ..models import (
     EvidenceClaim,
     EvidenceSource,
     ExposureEquivalence,
+    ExtractedTable,
     Formulation,
+    FullTextDocument,
+    FullTextExtraction,
     Indication,
     IntercurrentEventStrategy,
     OutcomeResult,
@@ -146,6 +156,7 @@ from ..models import (
 
 REGISTRY = Origin.REGISTRY.value
 CURATED = Origin.CURATED.value
+FULLTEXT = Origin.FULLTEXT.value
 
 #: Fields whose change means the reported number itself changed (HIGH significance, see lifecycle).
 VALUE_FIELDS: dict[str, frozenset[str]] = {
@@ -394,6 +405,38 @@ def _rows(session: Session, stmt: Any) -> list[Any]:
     return session.execute(stmt.execution_options(**{INCLUDE_REJECTED: True})).all()
 
 
+def _extractions(session: Session) -> dict[int, dict[str, Any]]:
+    """extraction id -> the cell-level provenance of a FULLTEXT row, as it enters that row's key and fingerprint."""
+    x, d, t = FullTextExtraction, FullTextDocument, ExtractedTable
+    out: dict[int, dict[str, Any]] = {}
+    stmt = (select(x.id, d.key, d.content_hash, t.label, t.locator, x.row_label, x.column_header, x.comparator_header, x.cells, x.passage, x.parse_method,
+                   x.parse_version, x.quality, x.confidence)
+            .join(d, x.document_id == d.id).outerjoin(t, x.table_id == t.id))
+    for (xid, doc_key, doc_hash, label, locator, row_label, column_header, comparator_header, cells, passage, method, version, quality, confidence) in session.execute(stmt):
+        place = label or " / ".join(str(v) for v in ((passage or {}).get("section"), (passage or {}).get("paragraph_id") or (passage or {}).get("page"), (passage or {}).get("lead")) if v)
+        out[xid] = {
+            "document": doc_key, "document_hash": doc_hash, "table": label, "table_locator": locator, "place": place, "row_label": row_label,
+            "column_header": column_header, "comparator_header": comparator_header, "cells": cells or [], "passage": passage, "parse_method": method,
+            "parse_version": version, "quality": quality or {}, "confidence": confidence,
+        }
+    return out
+
+
+def _extraction_snapshot(info: dict[str, Any] | None) -> dict[str, Any] | None:
+    """What a reviewer signs off on about HOW a FULLTEXT value was read: the cells used, the method, the quality assessment."""
+    if info is None:
+        return None
+    return {k: info[k] for k in ("document", "table", "place", "row_label", "column_header", "comparator_header", "cells", "parse_method", "parse_version", "quality", "confidence")}
+
+
+def _fulltext_natural(evidence_type: str, nct: str | None, source_key: str | None, info: dict[str, Any] | None, *fallback: Any) -> list[Any]:
+    """Which cells of which document: document key, table label (or paragraph and lead phrase), row label, column headings."""
+    if info is None:
+        return [evidence_type, FULLTEXT, nct, source_key, "unlinked", *fallback]
+    return [evidence_type, FULLTEXT, nct, source_key, info["document"], key_text(info["place"]), key_text(info["row_label"]), key_text(info["column_header"]),
+            key_text(info["comparator_header"])]
+
+
 def _endpoint_snapshot(row: Any) -> dict[str, Any]:
     return {
         "title": row.e_title,
@@ -473,12 +516,14 @@ def _drugs(*groups: Iterable[str | None]) -> tuple[str, ...]:
     return tuple(out)
 
 
-def _load_results(session: Session, study_drugs: dict[int, tuple[str, ...]], strategies: dict[int, list[list[Any]]]) -> list[EvidenceRecord]:
+def _load_results(session: Session, study_drugs: dict[int, tuple[str, ...]], strategies: dict[int, list[list[Any]]],
+                  extractions: dict[int, dict[str, Any]] | None = None) -> list[EvidenceRecord]:
+    extractions = extractions if extractions is not None else {}
     r = OutcomeResult
     stmt = (
         select(
             *[getattr(r, n) for n in _STATE],
-            r.study_id, r.origin, r.arm_label, r.scope, r.class_title, r.param_type, r.value, r.value_text, r.value_low, r.value_high, r.unit,
+            r.study_id, r.origin, r.fulltext_extraction_id, r.arm_label, r.scope, r.class_title, r.param_type, r.value, r.value_text, r.value_low, r.value_high, r.unit,
             r.dispersion_type, r.dispersion_value, r.ci_low, r.ci_high, r.ci_level, r.n_analyzed, r.analysis_population, r.analysis_method,
             r.baseline_definition, r.timepoint_weeks, r.timeframe_text, r.source_id, r.source_location, r.locator_quote, r.tier, r.missing_fields, r.notes,
             Study.nct_id, Study.display_name,
@@ -526,7 +571,11 @@ def _load_results(session: Session, study_drugs: dict[int, tuple[str, ...]], str
             "quote": row.locator_quote,
             "notes": row.notes,
         }
-        if registry:
+        if row.origin == FULLTEXT:
+            info = extractions.get(row.fulltext_extraction_id)
+            snapshot["extraction"] = _extraction_snapshot(info)
+            natural = _fulltext_natural("result", row.nct_id, row.s_key, info, key_text(row.source_location))
+        elif registry:
             natural = ["result", REGISTRY, row.nct_id, row.s_key, key_text(row.e_title), key_text(row.e_timeframe_text), key_text(row.e_unit),
                        key_text(row.param_type), key_text(row.class_title), key_text(row.arm_label)]
         else:
@@ -545,7 +594,9 @@ def _load_results(session: Session, study_drugs: dict[int, tuple[str, ...]], str
     return out
 
 
-def _load_analyses(session: Session, study_drugs: dict[int, tuple[str, ...]], snapshots: dict[int, SnapshotRef], strategies: dict[int, list[list[Any]]]) -> list[EvidenceRecord]:
+def _load_analyses(session: Session, study_drugs: dict[int, tuple[str, ...]], snapshots: dict[int, SnapshotRef], strategies: dict[int, list[list[Any]]],
+                   extractions: dict[int, dict[str, Any]] | None = None) -> list[EvidenceRecord]:
+    extractions = extractions if extractions is not None else {}
     a = StatisticalAnalysis
     trt, cmp_ = aliased(StudyArm), aliased(StudyArm)
     stmt = (
@@ -554,7 +605,7 @@ def _load_analyses(session: Session, study_drugs: dict[int, tuple[str, ...]], sn
             a.study_id, a.origin, a.treatment_label, a.comparator_label, a.hypothesis_type, a.param_type, a.estimate, a.estimate_text, a.unit,
             a.ci_low, a.ci_high, a.ci_level, a.ci_sides, a.p_value_text, a.method, a.ni_margin, a.ni_margin_text, a.ni_met, a.superiority_tested,
             a.superiority_met, a.multiplicity_controlled, a.timepoint_weeks, a.comment, a.source_id, a.source_location, a.locator_quote, a.tier,
-            a.missing_fields, a.notes, a.group_description, a.group_labels, a.direction_basis, a.class_title,
+            a.missing_fields, a.notes, a.group_description, a.group_labels, a.direction_basis, a.class_title, a.fulltext_extraction_id,
             Study.nct_id, Study.display_name,
             *_c(Endpoint, "e", *_ENDPOINT_COLS),
             *_c(trt, "t", *_ARM_COLS),
@@ -615,7 +666,11 @@ def _load_analyses(session: Session, study_drugs: dict[int, tuple[str, ...]], sn
             "quote": row.locator_quote,
             "notes": row.notes,
         }
-        if registry:
+        if row.origin == FULLTEXT:
+            info = extractions.get(row.fulltext_extraction_id)
+            snapshot["extraction"] = _extraction_snapshot(info)
+            natural = _fulltext_natural("analysis", row.nct_id, row.s_key, info, key_text(row.source_location))
+        elif registry:
             groups = sorted(g for g in (key_text(row.treatment_label), key_text(row.comparator_label)) if g)
             natural = ["analysis", REGISTRY, row.nct_id, row.s_key, key_text(row.e_title), key_text(row.e_timeframe_text), key_text(row.e_unit), groups,
                        key_text(row.param_type), key_text(row.method), row.hypothesis_type, key_text(group_description)]
@@ -637,14 +692,15 @@ def _load_analyses(session: Session, study_drugs: dict[int, tuple[str, ...]], sn
     return out
 
 
-def _load_adverse_events(session: Session, study_drugs: dict[int, tuple[str, ...]]) -> list[EvidenceRecord]:
+def _load_adverse_events(session: Session, study_drugs: dict[int, tuple[str, ...]], extractions: dict[int, dict[str, Any]] | None = None) -> list[EvidenceRecord]:
+    extractions = extractions if extractions is not None else {}
     ae = AdverseEvent
     stmt = (
         select(
             *[getattr(ae, n) for n in _STATE],
             ae.study_id, ae.origin, ae.arm_label, ae.scope, ae.term, ae.organ_system, ae.category, ae.measure_kind, ae.is_serious, ae.severity,
             ae.n_affected, ae.n_at_risk, ae.n_events, ae.percent, ae.percent_low, ae.percent_high, ae.period, ae.source_id, ae.source_location,
-            ae.locator_quote, ae.tier, ae.missing_fields, ae.notes,
+            ae.locator_quote, ae.tier, ae.missing_fields, ae.notes, ae.fulltext_extraction_id,
             Study.nct_id, Study.display_name,
             *_c(StudyArm, "a", *_ARM_COLS),
             EvidenceSource.key.label("s_key"), EvidenceSource.source_type.label("s_type"),
@@ -679,7 +735,11 @@ def _load_adverse_events(session: Session, study_drugs: dict[int, tuple[str, ...
             "quote": row.locator_quote,
             "notes": row.notes,
         }
-        if registry:
+        if row.origin == FULLTEXT:
+            info = extractions.get(row.fulltext_extraction_id)
+            snapshot["extraction"] = _extraction_snapshot(info)
+            natural = _fulltext_natural("adverse_event", row.nct_id, row.s_key, info, key_text(row.source_location))
+        elif registry:
             period = key_text(row.period) if row.measure_kind in DISCONTINUATION_KINDS else None
             natural = ["adverse_event", REGISTRY, row.nct_id, row.s_key, key_text(row.arm_label), row.scope, key_text(row.term), row.measure_kind,
                        bool(row.is_serious), key_text(row.organ_system), period]
@@ -698,12 +758,13 @@ def _load_adverse_events(session: Session, study_drugs: dict[int, tuple[str, ...
     return out
 
 
-def _load_claims(session: Session, study_drugs: dict[int, tuple[str, ...]]) -> list[EvidenceRecord]:
+def _load_claims(session: Session, study_drugs: dict[int, tuple[str, ...]], extractions: dict[int, dict[str, Any]] | None = None) -> list[EvidenceRecord]:
+    extractions = extractions if extractions is not None else {}
     c = EvidenceClaim
     stmt = (
         select(
             *[getattr(c, n) for n in _STATE],
-            c.key, c.study_id, c.topic, c.statement, c.claim_kind, c.tier, c.source_id, c.locator, c.quote, c.origin,
+            c.key, c.study_id, c.topic, c.statement, c.claim_kind, c.tier, c.source_id, c.locator, c.quote, c.origin, c.fulltext_extraction_id,
             Drug.slug.label("d_slug"), Drug.name.label("d_name"), Study.nct_id, Study.display_name,
             EvidenceSource.key.label("s_key"), EvidenceSource.source_type.label("s_type"),
         )
@@ -725,6 +786,8 @@ def _load_claims(session: Session, study_drugs: dict[int, tuple[str, ...]]) -> l
             "locator": row.locator,
             "quote": row.quote,
         }
+        if row.origin == FULLTEXT:
+            snapshot["extraction"] = _extraction_snapshot(extractions.get(row.fulltext_extraction_id))
         subject = row.display_name or row.d_name
         label = " — ".join(p for p in (subject, row.topic.replace("_", " ").title() if row.topic else None, _clip(row.statement, 160)) if p)
         out.append(
@@ -864,11 +927,12 @@ def load_records(session: Session, snapshots: dict[int, SnapshotRef] | None = No
     snapshots = snapshots if snapshots is not None else latest_snapshots(session)
     study_drugs = _study_drugs(session)
     strategies = _estimand_strategies(session)
+    extractions = _extractions(session)
     records = [
-        *_load_results(session, study_drugs, strategies),
-        *_load_analyses(session, study_drugs, snapshots, strategies),
-        *_load_adverse_events(session, study_drugs),
-        *_load_claims(session, study_drugs),
+        *_load_results(session, study_drugs, strategies, extractions),
+        *_load_analyses(session, study_drugs, snapshots, strategies, extractions),
+        *_load_adverse_events(session, study_drugs, extractions),
+        *_load_claims(session, study_drugs, extractions),
         *_load_mechanisms(session),
         *_load_indications(session),
         *_load_equivalences(session),

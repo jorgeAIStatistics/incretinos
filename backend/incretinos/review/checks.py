@@ -58,6 +58,7 @@ from ..models import (
     EvidenceSource,
     ExposureEquivalence,
     Formulation,
+    FullTextExtraction,
     OutcomeResult,
     StatisticalAnalysis,
     Study,
@@ -313,6 +314,39 @@ CHECKS: dict[str, dict[str, Any]] = {
         "Duplicate record", MEDIUM,
         "Another record has the same key and the same values, so the same fact is stored twice.",
         applies_to=_ALL),
+    # --- full-text extraction (origin FULLTEXT): what the parser could not settle about where the value came from
+    "FULLTEXT_LINK_MISSING": _check(
+        "Full-text row without its cells", HIGH,
+        "This row says it was read from a full-text document, but its link to the document cells it was read from is missing.",
+        applies_to=_ALL),
+    "FULLTEXT_ARM_AMBIGUOUS": _check(
+        "Column not matched to one registered arm", HIGH,
+        "The column heading the value was read under fits several registered arms of the study, or none, so the row is kept without an arm link.",
+        applies_to=_NUMERIC),
+    "FULLTEXT_ARM_INDIRECT": _check(
+        "Column matched to an arm indirectly", MEDIUM,
+        "The column heading was matched to a registered arm by the drug alone, through a documented exposure equivalence, or as a subgroup or cohort of the arm.",
+        applies_to=_NUMERIC),
+    "FULLTEXT_UNIT_NOT_FOUND": _check(
+        "Unit not printed with the value", MEDIUM,
+        "No unit was found in the cell's row label, its group label, a sibling row label, the caption or the sentence.",
+        applies_to=_NUMERIC),
+    "FULLTEXT_ESTIMAND_NOT_IN_TABLE": _check(
+        "Estimand not stated where the value is printed", MEDIUM,
+        "The table caption and footnotes (or the sentence) do not name the estimand: it is either attributed from text elsewhere in the document or not attributed at all.",
+        applies_to=(_RESULT, _ANALYSIS)),
+    "FULLTEXT_SUBGROUP_POST_HOC": _check(
+        "Post hoc subgroup result", MEDIUM,
+        "The value comes from a post hoc analysis of a subgroup; it is not the trial's primary result and must not be read as one.",
+        applies_to=_NUMERIC),
+    "FULLTEXT_IRREGULAR_CELL": _check(
+        "Cell printed irregularly", MEDIUM,
+        "The printed cell departs from the pattern it was read with (for example a doubled bracket or a space inside a negative number); the reading is reported, not corrected.",
+        applies_to=_NUMERIC),
+    "FULLTEXT_VALUE_FROM_TEXT": _check(
+        "Value read from running text", LOW,
+        "The value was read from a sentence rather than a table cell; the sentence is the quote.",
+        applies_to=_NUMERIC),
     # --- history
     "CHANGED_SINCE_LAST_INGESTION": _check(
         "Changed since the last ingestion", MEDIUM,
@@ -884,19 +918,19 @@ def _is_result_number(tok: _Tok) -> bool:
 _RESULT_COLS = (
     "id", "study_id", "endpoint_id", "arm_id", "estimand_id", "origin", "arm_label", "scope", "class_title", "param_type",
     "value", "value_low", "value_high", "unit", "dispersion_type", "dispersion_value", "ci_low", "ci_high", "ci_level",
-    "n_analyzed", "baseline_definition", "timepoint_weeks", "source_id", "locator_quote",
+    "n_analyzed", "baseline_definition", "timepoint_weeks", "source_id", "locator_quote", "fulltext_extraction_id",
 )  # fmt: skip
 _ANALYSIS_COLS = (
     "id", "study_id", "endpoint_id", "estimand_id", "origin", "treatment_arm_id", "comparator_arm_id", "treatment_label",
     "comparator_label", "hypothesis_type", "param_type", "estimate", "unit", "ci_low", "ci_high", "ci_level", "ci_sides",
     "p_value_text", "ni_margin", "ni_met", "superiority_tested", "superiority_met", "timepoint_weeks", "comment", "source_id",
-    "locator_quote", "group_description", "class_title", "direction_basis",
+    "locator_quote", "group_description", "class_title", "direction_basis", "fulltext_extraction_id",
 )  # fmt: skip
 _AE_COLS = (
     "id", "study_id", "arm_id", "origin", "arm_label", "scope", "term", "organ_system", "category", "measure_kind", "is_serious",
-    "n_affected", "n_at_risk", "n_events", "percent", "percent_low", "percent_high", "period", "source_id", "locator_quote",
+    "n_affected", "n_at_risk", "n_events", "percent", "percent_low", "percent_high", "period", "source_id", "locator_quote", "fulltext_extraction_id",
 )  # fmt: skip
-_CLAIM_COLS = ("id", "key", "drug_id", "study_id", "topic", "statement", "claim_kind", "source_id", "quote", "origin")
+_CLAIM_COLS = ("id", "key", "drug_id", "study_id", "topic", "statement", "claim_kind", "source_id", "quote", "origin", "fulltext_extraction_id")
 _ARM_COLS = ("id", "study_id", "label", "drug_slug", "is_placebo", "dose_amount", "dose_unit", "dose_text", "formulation_key")
 _ENDPOINT_COLS = ("id", "study_id", "title", "category", "threshold", "unit")
 _ESTIMAND_COLS = ("id", "study_id", "label", "basis", "source_id", "quote")
@@ -940,6 +974,8 @@ class _Context:
     # Arm-level values as posted (review decisions included): only used to confirm the sign convention of a contrast,
     # so that a reviewer's decision on one value does not change the flags of other records.
     posted_values: list[Record] = field(default_factory=list)
+    # Full-text extractions (id -> quality assessment and the place read), for the FULLTEXT_* checks.
+    extractions: dict[int, Record] = field(default_factory=dict)
 
 
 def _load_reference(session: Session, ctx: _Context, study_ids: Iterable[int] | None) -> None:
@@ -955,6 +991,7 @@ def _load_reference(session: Session, ctx: _Context, study_ids: Iterable[int] | 
         target.update({r["id"]: r for r in loaded})
     ctx.studies = {r["id"]: r for r in _rows(session, Study, ("id", "nct_id", "acronym", "display_name"))}
     ctx.sources = {r["id"]: r["key"] for r in _rows(session, EvidenceSource, ("id", "key"))}
+    ctx.extractions = {r["id"]: r for r in _rows(session, FullTextExtraction, ("id", "table_id", "passage", "quality"))}
     aliases: dict[str, set[str]] = {slug: {a.lower() for a in names} for slug, names in DRUG_ALIASES.items()}
     for drug in _rows(session, Drug, ("slug", "name", "code_name", "brand_names")):
         names = aliases.setdefault(drug["slug"], set())
@@ -1019,6 +1056,9 @@ def _load_for(session: Session, etype: str, target: Record) -> _Context:
 
 
 def _arm_key(rec: Record, id_field: str = "arm_id", label_field: str = "arm_label") -> Any:
+    if rec.get("origin") == Origin.FULLTEXT.value and rec.get(id_field) is not None:
+        # A full-text column may be a cohort or subgroup of a registered arm: its printed heading tells two such columns apart.
+        return (rec.get(id_field), "label:" + _fold(rec.get(label_field)))
     return rec.get(id_field) if rec.get(id_field) is not None else "label:" + _fold(rec.get(label_field))
 
 
@@ -1133,8 +1173,55 @@ class _Engine:
             self._claim(out, rec)
         else:
             raise ValueError(f"Unknown evidence type {etype!r}; expected one of {_ALL}")
+        if rec.get("origin") == Origin.FULLTEXT.value:
+            self._fulltext(out, etype, rec)
         self._duplicates(out, etype, rec)
         return _ordered(out)
+
+    # --------------------------------------------------------------------------------------- full text
+
+    def _fulltext(self, out: list[CheckFlag], etype: str, rec: Record) -> None:
+        """What the full-text parser reported it could not settle, as flags. The quality assessment is read, never re-derived."""
+        extraction = self.ctx.extractions.get(rec.get("fulltext_extraction_id")) if rec.get("fulltext_extraction_id") is not None else None
+        if extraction is None:
+            out.append(_flag("FULLTEXT_LINK_MISSING", "The row is of origin FULLTEXT but no extraction record (document, table, cells) is linked to it.", "fulltext_extraction_id"))
+            return
+        if etype == _CLAIM:
+            return
+        quality = extraction.get("quality") or {}
+        ambiguous: list[tuple[str, str]] = []
+        indirect: list[tuple[str, str]] = []
+        for role, field_name in (("arm_match", "arm_id" if etype != _ANALYSIS else "treatment_arm_id"), ("comparator_match", "comparator_arm_id")):
+            match = quality.get(role)
+            if not isinstance(match, dict):
+                continue
+            status, header = match.get("status"), match.get("header")
+            if status in ("AMBIGUOUS", "NONE"):
+                candidates = ", ".join(_q(c, 40) for c in (match.get("candidates") or [])[:5]) or "none"
+                ambiguous.append((field_name, f"The heading {_q(header)} {'fits several registered arms' if status == 'AMBIGUOUS' else 'fits no registered arm'} "
+                                              f"(candidates: {candidates}); {match.get('basis')}."))
+            elif status in ("UNIQUE_BY_DRUG_ONLY", "VIA_EQUIVALENCE", "SUBSET_OF_ARM"):
+                indirect.append((field_name, f"The heading {_q(header)} was matched to {_q(match.get('arm_label'))} {status.replace('_', ' ').lower()}: {match.get('basis')}."))
+        # One flag per code: the treatment and comparator headings are described in the same flag.
+        if ambiguous:
+            out.append(_flag("FULLTEXT_ARM_AMBIGUOUS", " ".join(text for _, text in ambiguous), *[f for f, _ in ambiguous]))
+        if indirect:
+            out.append(_flag("FULLTEXT_ARM_INDIRECT", " ".join(text for _, text in indirect), *[f for f, _ in indirect]))
+        unit = quality.get("unit")
+        if isinstance(unit, dict) and unit.get("value") is None:
+            out.append(_flag("FULLTEXT_UNIT_NOT_FOUND", "No unit is printed in the row label, group label, sibling rows, caption or sentence the value was read from.", "unit"))
+        estimand = quality.get("estimand")
+        if etype in (_RESULT, _ANALYSIS) and isinstance(estimand, dict) and not estimand.get("in_table"):
+            label = estimand.get("label")
+            out.append(_flag("FULLTEXT_ESTIMAND_NOT_IN_TABLE", (f"The estimand is not named where the value is printed; {label} is attributed from {estimand.get('stated_in')}." if label else
+                                                                f"No estimand is attributed: {estimand.get('stated_in')}."), "estimand_id"))
+        if quality.get("subgroup") == "SUBGROUP_POST_HOC":
+            out.append(_flag("FULLTEXT_SUBGROUP_POST_HOC", f"Population: {quality.get('population')}. Not the trial's primary result.", "class_title" if etype == _ANALYSIS else "arm_label"))
+        interval = str(quality.get("interval") or "")
+        if interval.startswith("PARSED_IRREGULAR"):
+            out.append(_flag("FULLTEXT_IRREGULAR_CELL", f"The printed cell was read although {interval.split(':', 1)[-1].strip()}.", "estimate_text" if etype == _ANALYSIS else "value_text"))
+        if str(quality.get("value_source", "")).startswith("running text"):
+            out.append(_flag("FULLTEXT_VALUE_FROM_TEXT", "The value was read from a sentence of the document, not from a table cell.", "locator_quote"))
 
     # --------------------------------------------------------------------------------------- identity
 

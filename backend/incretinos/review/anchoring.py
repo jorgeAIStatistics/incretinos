@@ -25,6 +25,7 @@ VERIFIED_EXCERPT = "VERIFIED_EXCERPT"
 NOT_ANCHORED = "NOT_ANCHORED"
 NO_QUOTE = "NO_QUOTE"
 STRUCTURED_PAYLOAD = "STRUCTURED_PAYLOAD"  # registry rows: parsed from stored JSON, no quote involved
+FULLTEXT_EXTRACTION = "FULLTEXT_EXTRACTION"  # full-text rows: parsed from document cells; never mechanically verified
 
 ANCHOR_BASIS_LABEL = {
     FULL_TEXT: "Quote found in the stored full text of the source",
@@ -32,6 +33,7 @@ ANCHOR_BASIS_LABEL = {
     NOT_ANCHORED: "Quote not found in the stored text or verified excerpts of the source",
     NO_QUOTE: "No locator quote was curated",
     STRUCTURED_PAYLOAD: "Parsed from the stored structured registry payload",
+    FULLTEXT_EXTRACTION: "Parsed from the cells (or a sentence) of a full-text document; a parse is not a verification, so it waits for a person",
 }
 
 
