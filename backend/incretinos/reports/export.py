@@ -66,7 +66,7 @@ _LEADING_ORDERED = re.compile(r"^(\d{1,9})([.)])")
 _SAFE_URL = re.compile(r"https?://[^\s<>]+")
 
 
-def _md(text: Any, *, lead: bool = False) -> str:
+def _md(text: Any, *, lead: bool = False, table: bool = False) -> str:
     """Inline text that renders as the same characters it was given.
 
     Line breaks and control characters become one space, so a value can never start a new block (heading,
@@ -77,6 +77,8 @@ def _md(text: Any, *, lead: bool = False) -> str:
 
     ``lead=True`` is for a value that opens a block (a list item or a paragraph): a leading ``#``, ``>``, ``-``,
     ``+``, ``=``, ``[`` or ``1.`` is neutralised as well, which also rules out link definitions and task boxes.
+    ``table=True`` is for every value written inside a table row, whole cell or part of one: ``|`` is escaped so
+    that it cannot end the cell (GFM drops the cells beyond the header's count, and their text with them).
     """
     out = _BIDI.sub("", _CONTROL.sub(" ", str(text))).strip()
     out = out.replace("\\", "\\\\")
@@ -88,6 +90,8 @@ def _md(text: Any, *, lead: bool = False) -> str:
         if out[:1] in ("#", ">", "-", "+", "=", "["):
             out = "\\" + out
         out = _LEADING_ORDERED.sub(r"\1\\\2", out)
+    if table:
+        out = out.replace("|", "\\|")
     return out
 
 
@@ -109,7 +113,7 @@ def _link(url: Any) -> str:
 
 def _cell(text: Any) -> str:
     """A table cell: inline text in which a pipe cannot end the cell."""
-    return _md(text if text not in (None, "") else "—").replace("|", "\\|")
+    return _md(text if text not in (None, "") else "—", table=True)
 
 
 def _item(text: Any) -> str:
@@ -147,17 +151,17 @@ def _finding_block(tag: str, f: Finding, source_no: int) -> list[str]:
         "",
         "| Element | Value |",
         "|---|---|",
-        f"| Study | {_cell(f.study_name)} ({_md(f.nct_id)}), {_cell(f.phase)}, status {_cell(f.study_status)} |",
+        f"| Study | {_cell(f.study_name)} ({_md(f.nct_id, table=True)}), {_cell(f.phase)}, status {_cell(f.study_status)} |",
         f"| Population | {_cell(reading['population'])} |",
-        f"| Arm / dose | {_cell(f.arm_label)}" + (f" — {_fmt(f.dose_amount)} {_md(f.dose_unit or '')}" if f.dose_amount is not None else "") + (f" — formulation {_md(f.formulation_key)}" if f.formulation_key else "") + " |",
-        f"| Endpoint | {_cell(f.endpoint_title)} ({_md(f.role.replace('_', ' ').lower())}; multiplicity control: {_md(f.multiplicity_controlled.replace('_', ' ').lower())}) |",
-        f"| Estimand | {_md(f.estimand_label.replace('_', ' ').lower())} ({_md(f.estimand_basis.replace('_', ' ').lower())}) |",
+        f"| Arm / dose | {_cell(f.arm_label)}" + (f" — {_fmt(f.dose_amount)} {_md(f.dose_unit or '', table=True)}" if f.dose_amount is not None else "") + (f" — formulation {_md(f.formulation_key, table=True)}" if f.formulation_key else "") + " |",
+        f"| Endpoint | {_cell(f.endpoint_title)} ({_md(f.role.replace('_', ' ').lower(), table=True)}; multiplicity control: {_md(f.multiplicity_controlled.replace('_', ' ').lower(), table=True)}) |",
+        f"| Estimand | {_md(f.estimand_label.replace('_', ' ').lower(), table=True)} ({_md(f.estimand_basis.replace('_', ' ').lower(), table=True)}) |",
         f"| Reported value | {_cell(format_value(f))} |",
-        f"| Uncertainty | {_cell(format_ci(f))}" + (f"; {_md(f.dispersion_type or '')} {_fmt(f.dispersion_value)}" if f.dispersion_value is not None else "") + " |",
+        f"| Uncertainty | {_cell(format_ci(f))}" + (f"; {_md(f.dispersion_type or '', table=True)} {_fmt(f.dispersion_value)}" if f.dispersion_value is not None else "") + " |",
         f"| Participants analysed | {_cell(f.n_analyzed if f.n_analyzed is not None else 'not reported')} |",
         f"| Baseline / time point | {_cell(f.baseline_definition or 'not stated')} → week {_cell(_fmt(f.timepoint_weeks, 0) if f.timepoint_weeks is not None else 'not stated')} |",
         f"| Evidence tier | {_cell((f.source or {}).get('tier_label', f.tier))} |",
-        f"| Verification | {_md(f.verification_status.replace('_', ' ').lower())} |",
+        f"| Verification | {_md(f.verification_status.replace('_', ' ').lower(), table=True)} |",
         "",
         "Qualifiers: " + "; ".join(_md(label["text"]) for label in f.labels) + ".",
         "",
