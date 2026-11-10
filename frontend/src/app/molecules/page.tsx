@@ -71,7 +71,7 @@ function MoleculeDetail({ slug }: { slug: string }) {
         <h2 className="text-[22px] font-semibold text-ink">{d.name}</h2>
         {d.code_name ? <span className="mono text-ink-3">{d.code_name}</span> : null}
         {d.brand_names?.length ? <span className="text-[13px] text-ink-2">{d.brand_names.join(" · ")}</span> : null}
-        <RegulatoryBadge status={d.regulatory_status} />
+        <RegulatoryBadge status={d.regulatory_status} available={d.regulatory_status_available} note={d.regulatory_status_note} />
       </div>
       <Panel className="mb-6">
         <p className="text-data font-medium text-ink-3">Pharmacologic class — derived from the receptor actions below</p>

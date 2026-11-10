@@ -137,7 +137,7 @@ const PORTFOLIO: Column<DrugSummary>[] = [
     },
   },
   { key: "class", header: "Class (derived)", className: "min-w-[180px]", cell: (d) => d.classification.class_label },
-  { key: "status", header: "Regulatory status", cell: (d) => <RegulatoryBadge status={d.regulatory_status} /> },
+  { key: "status", header: "Regulatory status", cell: (d) => <RegulatoryBadge status={d.regulatory_status} available={d.regulatory_status_available} note={d.regulatory_status_note} /> },
   {
     key: "source",
     header: "Status source",

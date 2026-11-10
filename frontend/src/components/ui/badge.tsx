@@ -98,7 +98,12 @@ export function ClassificationBadge({ value }: { value: string }) {
   return <Badge tone={CLASS_TONE[value] ?? "muted"}>{titleCase(value)}</Badge>;
 }
 
-export function RegulatoryBadge({ status }: { status: string }) {
+/**
+ * `available` is the API's `regulatory_status_available`: false when the statement the status rests on was rejected in
+ * review (or is held), in which case the API withholds the status and `note` says why.
+ */
+export function RegulatoryBadge({ status, available, note }: { status: string; available?: boolean | null; note?: string | null }) {
+  if (available === false) return <Badge tone="muted" title={note ?? "The regulatory-status statement on record was rejected in review; no status is shown."}>Status withheld in review</Badge>;
   if (status === "APPROVED") return <Badge tone="ok" title="FDA labeling for this drug is ingested and cited.">FDA-approved</Badge>;
   if (status === "INVESTIGATIONAL") return <Badge tone="warn" title="Not approved for any indication. Status is re-checked against the FDA label database at each ingestion.">Investigational</Badge>;
   if (status === "SUBMITTED") return <Badge tone="info">Under regulatory review</Badge>;
