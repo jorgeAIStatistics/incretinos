@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-const SHOTS = "../docs/screenshots";
+// The documentation images in docs/screenshots are tracked: they are rewritten only when CAPTURE_DOC_SCREENSHOTS=1
+// asks for it. Otherwise every capture goes to a git-ignored directory, so a test run leaves the worktree unchanged.
+const SHOTS = process.env.CAPTURE_DOC_SCREENSHOTS === "1" ? "../docs/screenshots" : "test-results/workflow-screenshots";
 // Animations are fast-forwarded and the dev-server badge hidden so captures are complete and repeatable.
 const shot = (page: import("@playwright/test").Page, name: string) =>
   page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true, animations: "disabled", style: "nextjs-portal { display: none !important; }" });

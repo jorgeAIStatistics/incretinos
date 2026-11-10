@@ -83,7 +83,7 @@ cd frontend && npx playwright install chromium && npx playwright test
 ```
 
 - **Backend: 159 tests**, all offline — ingestion and transport failure handling, identifier reconciliation, estimand classification, comparability, the twelve mandatory scientific cases (each with a negative test that corrupts the evidence and checks the rule fires), statistics validated against statsmodels/scipy and published worked values, safety guards, citation fidelity of the assistant, permissions and reports.
-- **Frontend: 11 browser tests** covering the principal workflows, each failing on any browser-console error; they also capture the screenshots in [docs/screenshots](docs/screenshots).
+- **Frontend: 11 browser tests** covering the principal workflows, each failing on any browser-console error; they also capture the screenshots in [docs/screenshots](docs/screenshots) when run with `CAPTURE_DOC_SCREENSHOTS=1` (otherwise the captures go to the git-ignored `frontend/test-results/workflow-screenshots`).
 - CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs lint, tests, the migration, a fresh seed, the validation rules and the browser tests.
 
 ## How evidence is kept honest
