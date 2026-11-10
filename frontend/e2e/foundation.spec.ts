@@ -20,6 +20,7 @@ const ROUTES: [path: string, title: RegExp][] = [
   ["/sources", /^Sources & Audit · IncretinOS$/],
   ["/review", /^Evidence Review · IncretinOS$/],
   ["/quality", /^Evidence Quality · IncretinOS$/],
+  ["/quality/records?metric=result_no_ci", /^Quality Records · IncretinOS$/],
   ["/conflicts", /^Conflicts · IncretinOS$/],
 ];
 

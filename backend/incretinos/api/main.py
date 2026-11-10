@@ -114,6 +114,7 @@ from ..vocab import ARM_ROLE_LABEL, norm_arm_label
 from .auth import require_reviewer, reviewer_name
 from .limits import RequestBodyLimitMiddleware, RouteBudgetMiddleware, limit_assistant, limit_simulation
 from .routers.conflicts import router as conflicts_router
+from .routers.quality import router as quality_router
 from .routers.review import router as review_router
 
 settings = get_settings()
@@ -220,6 +221,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(review_router)
 app.include_router(conflicts_router)
+app.include_router(quality_router)
 
 
 # A validation error names where the request is wrong and why, never what was sent: the rejected input can be as

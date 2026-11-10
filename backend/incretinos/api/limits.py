@@ -184,7 +184,8 @@ limit_assistant = rate_limit("assistant", "rate_limit_assistant_per_minute", "as
 #: Open reads that cost the single worker hundreds of milliseconds and megabytes each at their largest page
 #: (measured on the seeded database: /api/validation about 0.7 s, /api/safety/trial-ae?limit=5000 0.4 s and 9 MB,
 #: /api/findings?limit=2000 0.3 s and 7 MB, /api/review/summary 0.35 s, /api/review/evidence 0.26 s,
-#: /api/analyses?limit=1500 0.1 s and 4 MB, /api/conflicts about 0.7 s). They share one budget per client: RATE_LIMIT_QUERY_PER_MINUTE.
+#: /api/analyses?limit=1500 0.1 s and 4 MB, /api/conflicts about 0.7 s, /api/quality about 2 s, /api/quality/records and
+#: /api/quality/assessment about 1.5 s each, all three reading every stored evidence row twice). They share one budget per client: RATE_LIMIT_QUERY_PER_MINUTE.
 QUERY_BUDGET_ROUTES: frozenset[tuple[str, str]] = frozenset({
     ("GET", "/api/validation"),
     ("GET", "/api/findings"),
@@ -193,6 +194,9 @@ QUERY_BUDGET_ROUTES: frozenset[tuple[str, str]] = frozenset({
     ("GET", "/api/review/evidence"),
     ("GET", "/api/review/summary"),
     ("GET", "/api/conflicts"),
+    ("GET", "/api/quality"),
+    ("GET", "/api/quality/records"),
+    ("GET", "/api/quality/assessment"),
 })
 
 
