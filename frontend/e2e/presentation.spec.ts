@@ -28,6 +28,11 @@ const json = async (request: APIRequestContext, path: string): Promise<any> => {
 };
 /** A stored number exactly as the page must print it: every digit, a true minus sign, nothing rounded. */
 const num = (v: number): string => String(v).replace("-", "−");
+/** A stored value as the page prints it: the source's own text where it is the same number ("−25.0"; WEB-17), else the value. */
+const printed = (f: any): string => {
+  const text = String(f.value_text ?? "").trim().replace(/^[-−]/, "-");
+  return /^-?\d+(\.\d+)?$/.test(text) && Number(text) === f.value ? text.replace("-", "−") : num(f.value);
+};
 /** A number calculated by the application, at two decimals. */
 const calc2 = (v: number): string => String(Number(v.toFixed(2))).replace("-", "−");
 const ESTIMAND: Record<string, string> = { EFFICACY: "Efficacy estimand", TREATMENT_REGIMEN: "Treatment-regimen estimand", NOT_STATED: "Estimand not stated" };
@@ -263,7 +268,7 @@ async function expectOneCoherentSet(hero: Locator, sets: any[][]): Promise<any[]
     const source = await hero.getByTestId("hero-source").innerText();
     // The plotted set is identified from what the page itself claims, then checked against the stored results.
     const matches = sets.filter(
-      (set) => caption.includes(basisText(set[0])) && source.includes(set[0].source.title) && set.length === rowTexts.length && set.every((f) => rowTexts.some((t) => t.includes(f.arm_label) && t.includes(`${num(f.value)}%`))),
+      (set) => caption.includes(basisText(set[0])) && source.includes(set[0].source.title) && set.length === rowTexts.length && set.every((f) => rowTexts.some((t) => t.includes(f.arm_label) && t.includes(`${printed(f)}%`))),
     );
     expect(matches.length, `caption "${caption}" names a stored result set whose values are exactly the plotted rows`).toBeGreaterThanOrEqual(1);
     shown = matches[0];
