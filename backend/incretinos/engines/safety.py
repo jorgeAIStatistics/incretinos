@@ -24,7 +24,8 @@ from sqlalchemy.orm import Session
 
 from ..enums import AE_KIND_LABEL, DISCONTINUATION_KINDS
 from ..models import AdverseEvent, Drug, LabelRecord, SpontaneousReportSeries, Study, StudyArm, StudyDrug
-from ..vocab import arm_drug_slug
+from ..vocab import ARM_ROLE_LABEL as VOCAB_ARM_ROLE_LABEL
+from ..vocab import ArmRole, classify_arm_role
 from .findings import ae_dto, source_ref
 from .stats import StatsInputError
 
@@ -176,29 +177,19 @@ def spontaneous_overview(session: Session, drug: Drug) -> dict[str, Any]:
     }
 
 
-ARM_ROLE_LABEL = {
-    "PLACEBO": "Placebo",
-    "ACTIVE_COMPARATOR": "Active comparator",
-    "STUDY_DRUG": "Study drug",
-    "UNCLASSIFIED": "Role not classified",
-}
+#: Labels of the stored arm roles (vocab.ArmRole). SEQUENCE marks a placebo/active switch arm.
+ARM_ROLE_LABEL = VOCAB_ARM_ROLE_LABEL
 
 
 def arm_role(arm: StudyArm | None, drug_roles: dict[str, str]) -> dict[str, Any]:
     """What an arm is in its trial, read from stored data — never from the wording of its label.
 
-    Inputs are the arm's parsed content (``is_placebo``, ``drug_slug``), the arm type the sponsor
-    registered, and the role each drug has in this trial (``StudyDrug.role``). The registered type
-    "Experimental" does not decide the role (in factorial trials every arm is registered that way);
-    a registered comparator type does. When the registered type and the content disagree about a
-    placebo arm, the role is left unclassified and the reason is given, so a switch or add-on arm
-    is never presented as a pure placebo arm.
-
-    The registry adapter stores every arm the sponsor registered as a placebo comparator as a placebo
-    arm, including one that switches to an active drug later ("Placebo/30 mg/kg Bimagrumab"). For an
-    arm stored as placebo the content is therefore read once more with the vocabulary's own arm
-    parser (``vocab.arm_drug_slug``, the parser ingestion uses): if it finds an active drug among the
-    components of the label, the registered type and the content disagree and the arm is unclassified.
+    The role is stored on the arm (``StudyArm.arm_role`` / ``arm_role_basis``) by ingestion and the curated loader,
+    using ``vocab.classify_arm_role``: the arm's parsed content (``is_placebo``, ``drug_slug``), its stored type
+    (as registered, or ``SEQUENCE`` for a placebo/active switch arm) and the role each drug has in this trial
+    (``StudyDrug.role``). A registered comparator type decides the role; "Experimental" does not. A switch arm
+    ("Placebo/30 mg/kg Bimagrumab") is SEQUENCE and an add-on arm stored as placebo is UNCLASSIFIED, so neither is
+    ever presented as a pure placebo arm. An arm stored before roles were stored is classified here by the same rule.
     """
     fields: dict[str, Any] = {
         "arm_type": arm.arm_type if arm else None,
@@ -212,34 +203,14 @@ def arm_role(arm: StudyArm | None, drug_roles: dict[str, str]) -> dict[str, Any]
         return {"arm_role": role, "arm_role_label": ARM_ROLE_LABEL[role], "arm_role_basis": basis, **fields}
 
     if arm is None:
-        return out("UNCLASSIFIED", "This row is not linked to an arm record.")
-    registered = arm.arm_type if arm.arm_type in ("PLACEBO_COMPARATOR", "ACTIVE_COMPARATOR", "EXPERIMENTAL") else None
-    if arm.is_placebo:
-        named_drug, pure_placebo = arm_drug_slug(getattr(arm, "label", None) or "")
-        if named_drug and not pure_placebo:
-            return out(
-                "UNCLASSIFIED",
-                "Stored as a placebo arm (the registry lists it as a placebo comparator), but its label also names an active treatment, "
-                "as for a switch or add-on arm. It is not treated as placebo.",
-            )
-        if registered in ("ACTIVE_COMPARATOR", "EXPERIMENTAL"):
-            return out("PLACEBO", f"Stored as a placebo arm; the registry lists the arm type as {registered.replace('_', ' ').lower()}.")
-        return out("PLACEBO", "Stored as a placebo arm.")
-    if registered == "PLACEBO_COMPARATOR":
-        return out(
-            "UNCLASSIFIED",
-            "Registered as a placebo comparator, but the arm is not stored as a pure placebo arm (its label names an active treatment, "
-            "for example a switch or add-on arm). It is not treated as placebo.",
-        )
-    if registered == "ACTIVE_COMPARATOR":
-        return out("ACTIVE_COMPARATOR", "Registered by the sponsor as an active comparator arm.")
-    components = [c for c in (arm.drug_slug or "").split("+") if c]
-    roles = [drug_roles.get(c) for c in components]
-    if components and any(r == "INVESTIGATIONAL" for r in roles):
-        return out("STUDY_DRUG", "The arm includes a drug recorded as investigational in this trial.")
-    if components and all(r == "COMPARATOR" for r in roles):
-        return out("ACTIVE_COMPARATOR", "The arm's only active treatment is recorded as a comparator drug in this trial.")
-    return out("UNCLASSIFIED", "The arm's treatment is not linked to a drug with a recorded role in this trial.")
+        return out(ArmRole.UNCLASSIFIED.value, "This row is not linked to an arm record.")
+    stored = getattr(arm, "arm_role", None)
+    if stored in ARM_ROLE_LABEL:
+        return out(stored, arm.arm_role_basis or "")
+    role, basis = classify_arm_role(
+        arm_type=arm.arm_type, is_placebo=arm.is_placebo, drug_slug=arm.drug_slug, label=getattr(arm, "label", None), drug_roles=drug_roles
+    )
+    return out(role.value, basis)
 
 
 def _ae_filters(query, drug_slug: str | None, nct_id: str | None):

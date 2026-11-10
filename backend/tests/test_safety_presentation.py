@@ -61,7 +61,8 @@ def test_semaglutide_arms_named_placebo_plus_are_active_comparators(client):
         assert row["arm_drug_slug"] == "semaglutide"
     # No arm of this adverse-event table is a pure placebo arm, so none may be presented as one.
     assert [r["arm_label"] for r in rows if r["arm_role"] == "PLACEBO"] == []
-    assert by_label["Placebo/30 mg/kg Bimagrumab"]["arm_role"] == "UNCLASSIFIED"
+    # placebo to week 40, bimagrumab at weeks 52 and 64: a stored sequence arm, never placebo
+    assert by_label["Placebo/30 mg/kg Bimagrumab"]["arm_role"] == "SEQUENCE" and by_label["Placebo/30 mg/kg Bimagrumab"]["arm_is_placebo"] is False
     assert by_label["30 mg/kg Bimagrumab + 2.4 mg Semaglutide"]["arm_role"] == "STUDY_DRUG"
     assert body["arm_role_labels"]["ACTIVE_COMPARATOR"] == "Active comparator"
 

@@ -1251,7 +1251,7 @@ def test_a_changed_curated_value_forces_a_recheck(lab):
     assert detail["values"]["value"] == -15.1 and detail["status"]["verification_status"] == RECHECK
     assert detail["status"]["base_verification_status"] == PENDING and detail["anchoring"]["basis"] == "NOT_ANCHORED"  # the edited quote is not a verified excerpt
     diff = {d["field"]: (d["before"], d["after"]) for d in detail["changed_since_review"]["diff"]}
-    assert diff["value"] == (-15.0, -15.1) and diff["value_text"] == ("-15", "-15.1") and "quote" in diff and len(diff) == 3
+    assert diff["value"] == (-15.0, -15.1) and diff["value_text"] == ("-15.0", "-15.1") and "quote" in diff and len(diff) == 3
     [change] = report.evidence_changes
     assert change["evidence_key"] == row["evidence_key"] and change["value_changed"] and change["source_changed"] is False
     event = next(e for e in lab.changes() if e["source"]["key"] == "pubmed:35658024")

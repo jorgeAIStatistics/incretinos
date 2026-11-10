@@ -10,10 +10,19 @@ path from those notes into the product, and it is deliberately conservative:
   words), its unit follows the endpoint category's convention, and — for a responder proportion —
   the quote does not name a different threshold from the endpoint;
 * every distinct endpoint gets its own key. The key is built from the complete endpoint text
-  together with category, responder threshold, unit, time point, role and multiplicity status, and
-  the conversion FAILS if two different endpoints would share a key (``EndpointKeyCollision``).
-  An earlier version cut the text to 28 characters, which folded ">=10%", ">=15%" and ">=20%"
-  responder values under ">=5%" and fat mass under lean mass;
+  together with category, responder threshold, unit and time point, and the conversion FAILS if two
+  different endpoints would share a key (``EndpointKeyCollision``). An earlier version cut the text to
+  28 characters, which folded ">=10%", ">=15%" and ">=20%" responder values under ">=5%" and fat mass
+  under lean mass;
+* endpoint role and multiplicity status describe the endpoint, not one arm's value, so they are NOT part
+  of the key: the placebo, lowest-dose and comparator values of one source table stay on the same endpoint
+  as the active arms. When the notes disagree, the endpoint takes the value its active-arm rows share (or
+  the role a quote states), otherwise NOT_STATED; each row whose note says otherwise keeps that in its notes
+  and the disagreement is listed in the report;
+* a row that a hand-curated file of the same study already holds (same source, quote and value) is not
+  generated a second time;
+* a ratio of geometric least-squares means is stored as such (param_type), not as a treatment difference;
+* a non-inferiority conclusion (ni_met) is set only from a quote of the cited source that states it in words;
 * the adverse-event measure kind is read from the endpoint's own wording with parenthetical
   disclaimers set aside, so "incidence of dysesthesia (... NOT discontinuation)" is an incidence;
 * an estimand record is written per source. It is STATED_BY_SOURCE only when a quote from that
@@ -61,7 +70,7 @@ from incretinos.curation.schema import (  # noqa: E402
     row_problem,
 )
 from incretinos.enums import AeMeasureKind, EndpointCategory, EstimandBasis, EstimandLabel  # noqa: E402
-from incretinos.vocab import categorize_endpoint  # noqa: E402
+from incretinos.vocab import arm_drug_slug, categorize_endpoint  # noqa: E402
 
 NOTES_DIR = BACKEND.parent / "research" / "web-notes"
 DATA_DIR = BACKEND / "incretinos" / "curation" / "data"
@@ -143,15 +152,17 @@ def clean_unit(unit: str | None) -> str | None:
 
 
 def endpoint_identity(definition: dict) -> tuple:
-    """Everything that makes an endpoint the endpoint it is. Two definitions with different identities are different endpoints."""
+    """Everything that makes an endpoint the endpoint it is. Two definitions with different identities are different endpoints.
+
+    Role and multiplicity status are not part of it: they describe how the endpoint is tested, which the notes record
+    per comparison, and putting them in the identity split one source table (placebo, a lower dose) off its endpoint.
+    """
     return (
         definition["title"],
         definition["category"],
         definition.get("threshold"),
         definition.get("unit"),
         definition.get("timepoint_weeks"),
-        definition["role"],
-        definition["multiplicity_controlled"],
     )
 
 
@@ -176,7 +187,10 @@ def endpoint_key(definition: dict) -> str:
 
 
 def register_endpoint(endpoints: dict[str, dict], key: str, definition: dict) -> dict:
-    """Record an endpoint under its key; refuse to put a different endpoint under a key already taken."""
+    """Record an endpoint under its key; refuse to put a different endpoint under a key already taken.
+
+    Role and multiplicity are settled afterwards for the whole endpoint (``settle_endpoint_status``).
+    """
     existing = endpoints.get(key)
     if existing is None:
         endpoints[key] = {"key": key, **definition}
@@ -188,6 +202,83 @@ def register_endpoint(endpoints: dict[str, dict], key: str, definition: dict) ->
             "Distinct endpoints must have distinct keys; nothing was written."
         )
     return existing
+
+
+_ROLE_IN_QUOTE = (
+    ("PRIMARY", re.compile(r"\bprimary\s+(?:end\s?point|outcome|efficacy\s+(?:end\s?point|outcome))", re.IGNORECASE)),
+    ("KEY_SECONDARY", re.compile(r"\bkey\s+secondary\b", re.IGNORECASE)),
+)
+STATUS_FIELDS = (("role", "endpoint role"), ("multiplicity_controlled", "multiplicity control"))
+
+
+def settle_endpoint_status(nct: str, endpoint: dict, entries: list[dict]) -> list[str]:
+    """Role and multiplicity status of ONE endpoint, from every row that uses it; report lines for disagreements.
+
+    ``entries`` hold, per row, the status its research note records for that row's comparison, whether the row is an
+    active-arm value, its quote and the row itself. The endpoint takes the value its active-arm rows share (placebo
+    rows usually record nothing); if they disagree, a role that the quotes themselves name ("primary endpoint") and that
+    is among the recorded values settles it; otherwise the endpoint is NOT_STATED. A row whose note records a different
+    value keeps it in its own notes, so nothing the notes say is lost.
+    """
+    lines: list[str] = []
+    for field, what in STATUS_FIELDS:
+        stated = [e for e in entries if e[field] != "NOT_STATED"]
+        values = {e[field] for e in stated if e["active"]} or {e[field] for e in stated}
+        if len(values) <= 1:
+            value = next(iter(values), "NOT_STATED")
+        else:
+            quoted = {role for e in entries for role, pattern in _ROLE_IN_QUOTE if pattern.search(e["quote"] or "")} if field == "role" else set()
+            value = quoted.pop() if len(quoted) == 1 and quoted <= values else "NOT_STATED"
+            per_value = "; ".join(f"{v} for {', '.join(sorted({e['arm'] for e in stated if e[field] == v}))}" for v in sorted(values))
+            settled = f"stored {value} (named by the source quote)" if value != "NOT_STATED" else "stored NOT_STATED; each row keeps its own statement in its notes — needs human curation"
+            lines.append(f"{nct}: endpoint '{endpoint['title'][:70]}' — the research notes record {what} per comparison ({per_value}); {settled}")
+        endpoint[field] = value
+        for e in entries:
+            if e[field] not in ("NOT_STATED", value):
+                shown = {"role": e[field], "multiplicity_controlled": {"YES": "controlled (YES)", "NO": "not controlled (NO)"}.get(e[field], e[field])}[field]
+                note = f"The research note for this row records the {what} of this comparison as {shown}; the endpoint record holds {value}."
+                e["row"]["notes"] = ((e["row"].get("notes") or "") + " " + note).strip()
+    return lines
+
+
+def _norm_quote(quote: str | None) -> str:
+    return " ".join((quote or "").split())
+
+
+def analysis_param_type(endpoint_text: str, unit_raw: str) -> str:
+    """What the estimate of a between-arm quantity is, as the note's endpoint text and unit name it."""
+    text = f"{endpoint_text} {unit_raw}".lower()
+    if "hazard ratio" in text:
+        return "Hazard ratio"
+    if re.search(r"ratio of geometric (?:least[- ]squares |ls )?means?", text):
+        return "Ratio of geometric least-squares means"
+    return "Estimated treatment difference"
+
+
+#: Words in which a source states that non-inferiority was shown (not a p-value or a design statement).
+_NI_CONCLUSION = re.compile(
+    r"\b(?:was|were|is|are|proved|shown to be|found to be)\s+non-?inferior\b"
+    r"|\bdemonstrat\w*\s+(?:the\s+)?non-?inferiority\b"
+    r"|\bnon-?inferiority\s+(?:was|were)\s+(?:met|achieved|demonstrated|shown|established|confirmed)\b"
+    r"|\bmet\s+(?:the\s+)?(?:criteri\w+\s+for\s+)?non-?inferiority\b",
+    re.IGNORECASE,
+)
+NI_NOT_STATED_NOTE = (
+    "ni_met is left NOT_STATED: no quote from the cited source states in words that non-inferiority was met "
+    "(the quote gives a non-inferiority p-value or the design, not the conclusion) — needs human curation."
+)
+
+
+def settle_ni_met(row: dict) -> None:
+    """Set ni_met YES only when the row's own quote states the conclusion in words; otherwise say why it is not set.
+
+    A quote from elsewhere in the source is not used: with several non-inferiority comparisons in one trial it could
+    state the conclusion of another comparison.
+    """
+    if _NI_CONCLUSION.search(" ".join([row.get("quote") or "", *row.get("extra_quotes", [])])):
+        row["ni_met"] = "YES"
+    else:
+        row["notes"] = ((row.get("notes") or "") + " " + NI_NOT_STATED_NOTE).strip()
 
 
 def is_reduction_magnitude(endpoint_text: str, unit_raw: str, value: object) -> bool:
@@ -273,10 +364,22 @@ def convert(notes_dir: Path = NOTES_DIR, data_dir: Path = DATA_DIR) -> dict:
 
     # Studies with a hand-curated file keep their contrasts there; do not also generate them heuristically.
     manual_studies = {p.name.split(".")[0] for p in (data_dir / "studies").glob("*.yaml") if ".generated." not in p.name}
+    # Rows a hand-curated file already holds (same study, source, quote and value) are not generated a second time.
+    manual_rows: dict[tuple, str] = {}
+    for path in sorted((data_dir / "studies").glob("*.yaml")):
+        if ".generated." in path.name:
+            continue
+        doc = yaml.safe_load(path.read_text()) or {}
+        for kind, fields in (("results", ("value", "value_low")), ("analyses", ("estimate",)), ("adverse_events", ("percent", "n_affected", "percent_low"))):
+            for item in doc.get(kind) or []:
+                number = next((item.get(f) for f in fields if item.get(f) is not None), None)
+                manual_rows[(doc.get("study"), kind, item.get("source"), _norm_quote(item.get("quote")), number)] = path.name
+    statuses: dict[tuple[str, str], list[dict]] = defaultdict(list)  # (nct, endpoint key) -> per-row role / multiplicity
     generated_sources: dict[str, dict] = {}
     files: dict[str, dict] = defaultdict(lambda: {"estimands": {}, "endpoints": {}, "results": [], "analyses": [], "adverse_events": [], "claims": []})
     general_claims: list[dict] = []
     rejected: list[str] = []
+    status_notes: list[str] = []  # endpoint role / multiplicity recorded differently per comparison
     kept = 0
 
     all_notes = []
@@ -433,6 +536,11 @@ def convert(notes_dir: Path = NOTES_DIR, data_dir: Path = DATA_DIR) -> dict:
                 except ValidationError as exc:
                     rejected.append(f"{fid}: AE rejected — {first_error(exc)}")
                     continue
+                number = next((row.get(f) for f in ("percent", "n_affected", "percent_low") if row.get(f) is not None), None)
+                held = manual_rows.get((nct, "adverse_events", key, _norm_quote(quote), number))
+                if held:
+                    rejected.append(f"{fid}: AE not generated — the hand-curated file {held} already holds this row (same source, quote and value) ({arm}; {endpoint_text[:50]})")
+                    continue
                 bucket["adverse_events"].append(row)
                 kept += 1
                 continue
@@ -467,7 +575,7 @@ def convert(notes_dir: Path = NOTES_DIR, data_dir: Path = DATA_DIR) -> dict:
                     "treatment": treatment,
                     "comparator": comparator,
                     "hypothesis_type": hypothesis,
-                    "param_type": "Hazard ratio" if "hazard ratio" in unit_raw.lower() else "Estimated treatment difference",
+                    "param_type": analysis_param_type(endpoint_text, unit_raw),
                     "estimate": value,
                     "unit": None if "hazard ratio" in unit_raw.lower() else unit,
                     "ci_low": f.get("ci_low"),
@@ -517,6 +625,13 @@ def convert(notes_dir: Path = NOTES_DIR, data_dir: Path = DATA_DIR) -> dict:
             if row is None:
                 rejected.append(f"{fid}: {what} rejected — {reason}")
                 continue
+            number = row.get("estimate") if is_contrast else (row.get("value") if row.get("value") is not None else row.get("value_low"))
+            held = manual_rows.get((nct, target, key, _norm_quote(quote), number))
+            if held:
+                rejected.append(f"{fid}: {what} not generated — the hand-curated file {held} already holds this row (same source, quote and value) ({arm}; {endpoint_text[:50]})")
+                continue
+            if is_contrast and row.get("hypothesis_type") == "NON_INFERIORITY":
+                settle_ni_met(row)
             est_key = estimand_entry(bucket, est_label, key, nct, quote) if est_label else None
             if est_key:
                 row = {"endpoint": row["endpoint"], "estimand": est_key, **{k: v for k, v in row.items() if k != "endpoint"}}
@@ -527,7 +642,14 @@ def convert(notes_dir: Path = NOTES_DIR, data_dir: Path = DATA_DIR) -> dict:
                 continue
             register_endpoint(bucket["endpoints"], ep_key, definition)
             bucket[target].append(row)
+            statuses[(nct, ep_key)].append(
+                {"role": role, "multiplicity_controlled": mult, "active": is_contrast or not arm_drug_slug(arm)[1], "quote": quote, "arm": arm, "row": row}
+            )
             kept += 1
+
+    # Role and multiplicity belong to the endpoint: settle them once over every row that uses it.
+    for (nct, ep_key), entries in statuses.items():
+        status_notes.extend(settle_endpoint_status(nct, files[nct]["endpoints"][ep_key], entries))
 
     # One endpoint, arm, estimand, source and time point cannot have two different values. If the notes say it
     # does, the notes do not settle which value belongs here: neither is entered.
@@ -575,6 +697,7 @@ def convert(notes_dir: Path = NOTES_DIR, data_dir: Path = DATA_DIR) -> dict:
         "claims": general_claims,
         "kept": kept,
         "rejected": rejected,
+        "status_notes": status_notes,
     }
 
 
@@ -596,6 +719,15 @@ def main() -> None:
     rejected = out["rejected"]
     report = [f"# Notes → curated conversion report ({RETRIEVED})", "", f"Kept {out['kept']} findings; rejected or skipped {len(rejected)}.", ""]
     report += [f"- {line}" for line in rejected]
+    report += [
+        "",
+        "## Endpoint role and multiplicity recorded per comparison",
+        "",
+        "Role and multiplicity status are stored once per endpoint. Where the notes record them differently for the rows of one",
+        "endpoint, the endpoint holds the value below and each row whose note differs keeps its own statement in its notes.",
+        "",
+    ]
+    report += [f"- {line}" for line in out["status_notes"]]
     (NOTES_DIR / "conversion-report.md").write_text("\n".join(report) + "\n", encoding="utf-8")
     summary = {nct: {k: len(v) for k, v in doc.items() if isinstance(v, list)} for nct, doc in out["documents"].items()}
     print(json.dumps({"kept": out["kept"], "rejected": len(rejected), "web_sources": len(out["sources"]), "general_claims": len(out["claims"]), "studies": summary}, indent=1))

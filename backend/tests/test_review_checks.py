@@ -253,6 +253,11 @@ def _hazard_ratio(w: World, **fields: Any) -> StatisticalAnalysis:
     return w.analysis(endpoint=w.endpoint("time to first MACE-3", "MACE", unit=None), **values)
 
 
+def _with_basis(analysis: StatisticalAnalysis, basis: str) -> StatisticalAnalysis:
+    analysis.direction_basis = basis
+    return analysis
+
+
 def _pair_of_results(w: World, first: dict[str, Any], second: dict[str, Any]) -> OutcomeResult:
     row = w.result(**first)
     w.result(**second)
@@ -397,10 +402,21 @@ CASES: dict[str, Case] = {
         lambda w: _hazard_ratio(w, registry=True, locator_quote=None),
         ("'Odds Ratio (OR)'", "'percentage of participants'"),
     ),
+    # Keyed on the stored direction basis, never on comment wording (CK-1): the comment below no longer matters.
     "ANALYSIS_REFERENCE_NOT_STATED": (
-        lambda w: w.analysis(registry=True, comment="Registry does not state which group is the reference; groups listed in registry order."),
-        lambda w: w.analysis(registry=True, comment="Mixed model for repeated measures."),
-        ("'tirzepatide 15 mg' vs 'placebo'", "-17.8"),
+        lambda w: w.analysis(registry=True, direction_basis="NOT_STATED", comment="Mixed model for repeated measures."),
+        lambda w: w.analysis(registry=True, direction_basis="REGISTRY_GROUP_DESCRIPTION", comment="Registry does not state which group is the reference."),
+        ("'tirzepatide 15 mg' vs 'placebo'", "-17.8", "NOT_STATED"),
+    ),
+    "ANALYSIS_REFERENCE_FROM_ARM_ROLE": (
+        lambda w: _hazard_ratio(w, registry=True, locator_quote=None, direction_basis="REGISTRY_ARM_TYPE"),
+        lambda w: _with_basis(_contrast(w, -14.5, treated=-17.79, placebo=-3.31), "REGISTRY_ARM_TYPE"),
+        ("registry arm type", "a ratio cannot be checked"),
+    ),
+    "ENDPOINT_THRESHOLD_VS_TITLE": (
+        lambda w: w.result(endpoint=w.endpoint("proportion of participants with >=20% body-weight reduction", "WEIGHT_RESPONDER", threshold=10.0, unit="% of participants"), registry=True, value=18.4, unit="% of participants", ci_low=None, ci_high=None, ci_level=None),
+        lambda w: w.result(endpoint=w.endpoint("proportion of participants with >=20% body-weight reduction", "WEIGHT_RESPONDER", threshold=20.0, unit="% of participants"), registry=True, value=18.4, unit="% of participants", ci_low=None, ci_high=None, ci_level=None),
+        ("threshold 10%", "'>=20%'"),
     ),
     "HYPOTHESIS_FIELDS_INCONSISTENT": (
         lambda w: _hazard_ratio(w, registry=True, locator_quote=None, estimate=0.92, ci_low=0.83, ci_high=1.01, superiority_met="YES"),

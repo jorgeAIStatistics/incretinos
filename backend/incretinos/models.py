@@ -490,7 +490,15 @@ class StudyArm(Base):
     origin: Mapped[str] = mapped_column(String(10), default=Origin.REGISTRY.value)
     label: Mapped[str] = mapped_column(Text)
     norm_label: Mapped[str] = mapped_column(Text, index=True)
-    arm_type: Mapped[str | None] = mapped_column(Text)  # EXPERIMENTAL | PLACEBO_COMPARATOR | ACTIVE_COMPARATOR ...
+    # EXPERIMENTAL | PLACEBO_COMPARATOR | ACTIVE_COMPARATOR ... as registered; SEQUENCE for a placebo/active switch
+    # arm; RESULTS_GROUP / CURATED for arms that are not registered groups.
+    arm_type: Mapped[str | None] = mapped_column(Text)
+    # The arm type exactly as the registry posts it (NULL for arms that are not registered groups).
+    registered_arm_type: Mapped[str | None] = mapped_column(Text)
+    # What the arm is in its trial (vocab.ArmRole): PLACEBO | ACTIVE_COMPARATOR | STUDY_DRUG | SEQUENCE | UNCLASSIFIED,
+    # derived from stored arm data and the trial's drug roles by vocab.classify_arm_role, with the reason.
+    arm_role: Mapped[str | None] = mapped_column(String(20))
+    arm_role_basis: Mapped[str | None] = mapped_column(Text)
     description: Mapped[str | None] = mapped_column(Text)
     drug_slug: Mapped[str | None] = mapped_column(String(60))
     is_placebo: Mapped[bool] = mapped_column(Boolean, default=False)

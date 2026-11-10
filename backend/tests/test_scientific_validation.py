@@ -535,7 +535,9 @@ def test_c1_registry_and_curated_record_of_one_arm_are_not_a_treatment_compariso
     release = _pick(db, ATTAIN1, arm="36 mg", estimand="EFFICACY", tier="PRESS_RELEASE", weeks=72)
     comparison = compare_findings(db, registry, release)
     assert comparison.classification == "NOT SUITABLE FOR EFFICACY COMPARISON"  # was DIRECT RANDOMIZED COMPARISON with a "difference" of 0.05
-    assert registry.arm_id != release.arm_id and registry.arm_group_key == release.arm_group_key  # two arm rows, one randomized group
+    # One randomized group: the release's "orforglipron 36 mg once daily (investigational capsule dose as reported)" is now
+    # attached to the registered arm itself (same drug, dose and formulation), so both records sit on one arm row.
+    assert registry.arm_id == release.arm_id and registry.arm_group_key == release.arm_group_key
     assert comparison.relationship == "SAME_ARM_TWO_REPORTS"
     assert "not a treatment comparison" in comparison.headline and "not a treatment comparison" in _factor(comparison, "randomization").explanation
     assert comparison.descriptive_difference is None and comparison.reported_analyses == []
@@ -549,7 +551,10 @@ def test_c1_capsule_dose_and_its_documented_tablet_equivalent_are_one_arm(db):
     comparison = compare_findings(db, capsule, tablet)
     assert not comparison.classification.startswith("DIRECT") and comparison.descriptive_difference is None  # was DIRECT with a "difference" of −0.1
     assert comparison.relationship == "SAME_ARM_TWO_REPORTS"
-    assert "documented exposure-equivalent pair" in _factor(comparison, "randomization").explanation
+    # The label's 17.2 mg tablet dosage is the documented bioequivalent of the 36 mg capsule arm: the label row is attached
+    # to that registered arm, and the row says on which documented pair the attachment rests.
+    assert capsule.arm_id == tablet.arm_id and "same arm" in _factor(comparison, "randomization").explanation
+    assert "documented bioequivalent dose" in (db.get(OutcomeResult, tablet.result_id).notes or "")
     # A different dose of the same drug is a different arm: 36 mg capsule versus the label's 9 mg tablet (= 12 mg capsule).
     other = _pick(db, ATTAIN1, arm="FOUNDAYO 9 mg", weeks=72)
     assert compare_findings(db, capsule, other).relationship == "RANDOMIZED_ARMS_OF_ONE_TRIAL"
@@ -751,17 +756,19 @@ def test_c7_null_value_follows_the_stated_scale():
     assert any("includes 1" in s for s in ratio["does_not_establish"])
 
 
-def test_c7_bioequivalence_ratios_stored_as_differences_are_not_read_against_zero(db):
+def test_c7_bioequivalence_ratios_are_read_against_one_not_zero(db):
+    """The 12 tablet/capsule ratios are stored as ratios of geometric least-squares means (DR-8), so their scale is established."""
     study = db.scalar(select(Study).where(Study.nct_id == BIOEQ))
     ratios = [a for a in study.analyses if a.unit == "ratio"]
     assert len(ratios) >= 12
     for analysis in ratios:
         dto = analysis_dto(analysis)
         reading = interpret_analysis(dto)
-        assert dto["effect_scale"]["scale"] == "NOT_ESTABLISHED" and dto["effect_scale"]["null_value"] is None, analysis.id  # 'difference' by name, 'ratio' by unit
-        assert reading["ci_excludes_no_difference"] is None and not reading["establishes"], analysis.id
-        assert not any(s.startswith("A confirmatory conclusion") for s in reading["does_not_establish"]), analysis.id  # the old reading: "the interval excludes no difference, but…"
-        assert any("scale" in m for m in reading["missing"])
+        assert analysis.param_type == "Ratio of geometric least-squares means", analysis.id
+        assert dto["effect_scale"]["scale"] == "RATIO" and dto["effect_scale"]["null_value"] == 1.0, analysis.id
+        assert not reading["establishes"], analysis.id  # no hypothesis on record: nothing confirmatory
+        assert reading["ci_excludes_no_difference"] == (not analysis.ci_low <= 1.0 <= analysis.ci_high), analysis.id
+        assert not any("excludes 0" in s or "includes 0" in s for s in reading["does_not_establish"]), analysis.id
         assert "90% CI" in reading["observed"] if analysis.ci_low is not None else "confidence interval not reported" in reading["observed"]
     assert sum(a.ci_level == 90 for a in ratios) >= 11
 

@@ -31,28 +31,21 @@ estimands:
   - event: TREATMENT_DISCONTINUATION
     strategy: TREATMENT_POLICY
 endpoints:
-- key: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-1e3c26cb
-  title: percent change in body weight from baseline
-  role: KEY_SECONDARY
-  category: WEIGHT_PCT_CHANGE
-  unit: '%'
-  timepoint_weeks: 80
-  multiplicity_controlled: NOT_STATED
-- key: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+- key: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-f91c958d
   title: percent change in body weight from baseline
   role: PRIMARY
   category: WEIGHT_PCT_CHANGE
   unit: '%'
   timepoint_weeks: 80
   multiplicity_controlled: NOT_STATED
-- key: weight-pct-change-w80-difference-in-percent-change-in-body-weight-40dbcdeb
+- key: weight-pct-change-w80-difference-in-percent-change-in-body-weight-a98f5241
   title: difference in percent change in body weight vs placebo
   role: PRIMARY
   category: WEIGHT_PCT_CHANGE
   unit: percentage points
   timepoint_weeks: 80
   multiplicity_controlled: NOT_STATED
-- key: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-4e28cb61
+- key: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-9523843d
   title: percent change in body weight from baseline (extension subset)
   role: NOT_STATED
   category: WEIGHT_PCT_CHANGE
@@ -60,7 +53,7 @@ endpoints:
   timepoint_weeks: 104
   multiplicity_controlled: NOT_STATED
 results:
-- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-1e3c26cb
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-f91c958d
   estimand: treatment_regimen@pubmed:42814954
   arm: retatrutide 4 mg
   scope: ARM
@@ -71,8 +64,8 @@ results:
   source: pubmed:42814954
   quote: The mean percent change in body weight in the retatrutide groups was -17.6% (4-mg dose), -23.7% (9-mg dose), and -25.0% (12-mg dose) versus -3.9%
   notes: Abstract states primary outcomes were evaluated in the 9-mg and 12-mg groups each vs placebo; 4 mg vs placebo was a key secondary per S8. Per-arm CI not in abstract; NEJM full text not accessible.
-    ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+    ci_not_reported_in_this_source The research note for this row records the endpoint role of this comparison as KEY_SECONDARY; the endpoint record holds PRIMARY.
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-f91c958d
   estimand: treatment_regimen@pubmed:42814954
   arm: retatrutide 9 mg
   scope: ARM
@@ -84,7 +77,7 @@ results:
   quote: The mean percent change in body weight in the retatrutide groups was -17.6% (4-mg dose), -23.7% (9-mg dose), and -25.0% (12-mg dose) versus -3.9%
   notes: Abstract states primary outcomes were evaluated in the 9-mg and 12-mg groups each vs placebo; 4 mg vs placebo was a key secondary per S8. Per-arm CI not in abstract; NEJM full text not accessible.
     ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-f91c958d
   estimand: treatment_regimen@pubmed:42814954
   arm: retatrutide 12 mg
   scope: ARM
@@ -96,7 +89,7 @@ results:
   quote: The mean percent change in body weight in the retatrutide groups was -17.6% (4-mg dose), -23.7% (9-mg dose), and -25.0% (12-mg dose) versus -3.9%
   notes: Abstract states primary outcomes were evaluated in the 9-mg and 12-mg groups each vs placebo; 4 mg vs placebo was a key secondary per S8. Per-arm CI not in abstract; NEJM full text not accessible.
     ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-f91c958d
   estimand: treatment_regimen@pubmed:42814954
   arm: placebo
   scope: ARM
@@ -108,7 +101,7 @@ results:
   quote: The mean percent change in body weight in the retatrutide groups was -17.6% (4-mg dose), -23.7% (9-mg dose), and -25.0% (12-mg dose) versus -3.9%
   notes: Abstract states primary outcomes were evaluated in the 9-mg and 12-mg groups each vs placebo; 4 mg vs placebo was a key secondary per S8. Per-arm CI not in abstract; NEJM full text not accessible.
     ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-1e3c26cb
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-f91c958d
   estimand: efficacy@web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv
   arm: retatrutide 4 mg
   scope: ARM
@@ -120,9 +113,9 @@ results:
   quote: Those taking the 4 mg dose of retatrutide, with just a single dose escalation step, lost an average of 47.2 lbs (19.0%).
   notes: 'Efficacy estimand per source: efficacy had all randomized participants remained on study intervention without initiating prohibited weight management treatments. Table header: "TRIUMPH-1 Efficacy
     Estimand Results". Do not merge with treatment-regimen values. ci_not_reported_in_this_source Sign: the source prints this number without a minus sign and states the loss or reduction in words; it is
-    stored as a negative change.'
+    stored as a negative change. The research note for this row records the endpoint role of this comparison as KEY_SECONDARY; the endpoint record holds PRIMARY.'
   sign_basis: DIRECTION_WORDING
-- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-f91c958d
   estimand: efficacy@web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv
   arm: retatrutide 9 mg
   scope: ARM
@@ -136,7 +129,7 @@ results:
     Estimand Results". Do not merge with treatment-regimen values. ci_not_reported_in_this_source Sign: the source prints this number without a minus sign and states the loss or reduction in words; it is
     stored as a negative change.'
   sign_basis: DIRECTION_WORDING
-- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-f91c958d
   estimand: efficacy@web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv
   arm: retatrutide 12 mg
   scope: ARM
@@ -150,7 +143,7 @@ results:
     Estimand Results". Do not merge with treatment-regimen values. ci_not_reported_in_this_source Sign: the source prints this number without a minus sign and states the loss or reduction in words; it is
     stored as a negative change.'
   sign_basis: DIRECTION_WORDING
-- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-f91c958d
   estimand: efficacy@web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv
   arm: placebo
   scope: ARM
@@ -162,7 +155,7 @@ results:
   quote: -2.2% (-2.5 kg; -5.5 lbs)
   notes: 'Efficacy estimand per source: efficacy had all randomized participants remained on study intervention without initiating prohibited weight management treatments. Table header: "TRIUMPH-1 Efficacy
     Estimand Results". Do not merge with treatment-regimen values. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-cb5825b0
+- endpoint: weight-pct-change-w80-percent-change-in-body-weight-from-baseline-f91c958d
   estimand: treatment_regimen@web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv
   arm: retatrutide 12 mg
   scope: ARM
@@ -173,7 +166,7 @@ results:
   source: web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv
   quote: -25.0% (-28.2 kg; -62.1 lbs; 12 mg) and -3.9% (-4.4 kg; -9.7 lbs; placebo)
   notes: 'Treatment-regimen estimand per source: average treatment effect regardless of adherence to study intervention or initiation of prohibited weight management treatments. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-4e28cb61
+- endpoint: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-9523843d
   estimand: efficacy@web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv
   arm: retatrutide 4 mg to MTD
   scope: ARM
@@ -186,7 +179,7 @@ results:
   notes: 'Extension subset only: 532 participants with baseline BMI >=35 who completed 80 weeks on study drug; all arms escalated (blinded) to retatrutide MTD (9 or 12 mg) for 24 more weeks. Baseline is
     week 0 (subset mean 121.7 kg). Source calls it a "pre-specified extension"; multiplicity control not stated. Registry lists week-104 weight in the extension subset among primary outcomes. Selected (completer)
     population - not comparable to the 80-week randomized comparison. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-4e28cb61
+- endpoint: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-9523843d
   estimand: treatment_regimen@web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv
   arm: retatrutide 4 mg to MTD
   scope: ARM
@@ -199,7 +192,7 @@ results:
   notes: 'Extension subset only: 532 participants with baseline BMI >=35 who completed 80 weeks on study drug; all arms escalated (blinded) to retatrutide MTD (9 or 12 mg) for 24 more weeks. Baseline is
     week 0 (subset mean 121.7 kg). Source calls it a "pre-specified extension"; multiplicity control not stated. Registry lists week-104 weight in the extension subset among primary outcomes. Selected (completer)
     population - not comparable to the 80-week randomized comparison. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-4e28cb61
+- endpoint: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-9523843d
   estimand: efficacy@web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv
   arm: retatrutide 9 mg to MTD
   scope: ARM
@@ -212,7 +205,7 @@ results:
   notes: 'Extension subset only: 532 participants with baseline BMI >=35 who completed 80 weeks on study drug; all arms escalated (blinded) to retatrutide MTD (9 or 12 mg) for 24 more weeks. Baseline is
     week 0 (subset mean 121.7 kg). Source calls it a "pre-specified extension"; multiplicity control not stated. Registry lists week-104 weight in the extension subset among primary outcomes. Selected (completer)
     population - not comparable to the 80-week randomized comparison. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-4e28cb61
+- endpoint: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-9523843d
   estimand: treatment_regimen@web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv
   arm: retatrutide 9 mg to MTD
   scope: ARM
@@ -225,7 +218,7 @@ results:
   notes: 'Extension subset only: 532 participants with baseline BMI >=35 who completed 80 weeks on study drug; all arms escalated (blinded) to retatrutide MTD (9 or 12 mg) for 24 more weeks. Baseline is
     week 0 (subset mean 121.7 kg). Source calls it a "pre-specified extension"; multiplicity control not stated. Registry lists week-104 weight in the extension subset among primary outcomes. Selected (completer)
     population - not comparable to the 80-week randomized comparison. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-4e28cb61
+- endpoint: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-9523843d
   estimand: efficacy@web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv
   arm: retatrutide 12 mg to MTD
   scope: ARM
@@ -238,7 +231,7 @@ results:
   notes: 'Extension subset only: 532 participants with baseline BMI >=35 who completed 80 weeks on study drug; all arms escalated (blinded) to retatrutide MTD (9 or 12 mg) for 24 more weeks. Baseline is
     week 0 (subset mean 121.7 kg). Source calls it a "pre-specified extension"; multiplicity control not stated. Registry lists week-104 weight in the extension subset among primary outcomes. Selected (completer)
     population - not comparable to the 80-week randomized comparison. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-4e28cb61
+- endpoint: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-9523843d
   estimand: treatment_regimen@web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv
   arm: retatrutide 12 mg to MTD
   scope: ARM
@@ -251,7 +244,7 @@ results:
   notes: 'Extension subset only: 532 participants with baseline BMI >=35 who completed 80 weeks on study drug; all arms escalated (blinded) to retatrutide MTD (9 or 12 mg) for 24 more weeks. Baseline is
     week 0 (subset mean 121.7 kg). Source calls it a "pre-specified extension"; multiplicity control not stated. Registry lists week-104 weight in the extension subset among primary outcomes. Selected (completer)
     population - not comparable to the 80-week randomized comparison. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-4e28cb61
+- endpoint: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-9523843d
   estimand: efficacy@web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv
   arm: placebo to retatrutide MTD
   scope: ARM
@@ -264,7 +257,7 @@ results:
   notes: 'Extension subset only: 532 participants with baseline BMI >=35 who completed 80 weeks on study drug; all arms escalated (blinded) to retatrutide MTD (9 or 12 mg) for 24 more weeks. Baseline is
     week 0 (subset mean 121.7 kg). Source calls it a "pre-specified extension"; multiplicity control not stated. Registry lists week-104 weight in the extension subset among primary outcomes. Selected (completer)
     population - not comparable to the 80-week randomized comparison. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-4e28cb61
+- endpoint: weight-pct-change-w104-percent-change-in-body-weight-from-baseline-9523843d
   estimand: treatment_regimen@web:eli-lilly-an-2026-05-21-lilly-s-triple-agonist-retatrutide-deliv
   arm: placebo to retatrutide MTD
   scope: ARM
@@ -278,7 +271,7 @@ results:
     week 0 (subset mean 121.7 kg). Source calls it a "pre-specified extension"; multiplicity control not stated. Registry lists week-104 weight in the extension subset among primary outcomes. Selected (completer)
     population - not comparable to the 80-week randomized comparison. ci_not_reported_in_this_source'
 analyses:
-- endpoint: weight-pct-change-w80-difference-in-percent-change-in-body-weight-40dbcdeb
+- endpoint: weight-pct-change-w80-difference-in-percent-change-in-body-weight-a98f5241
   estimand: treatment_regimen@pubmed:42814954
   treatment: retatrutide 9 mg
   comparator: placebo
@@ -292,7 +285,7 @@ analyses:
   source: pubmed:42814954
   quote: (differences, -19.8 and -21.0 percentage points, respectively; P<0.001 for both comparisons)
   notes: Abstract gives differences for two comparisons (primary 9-mg and 12-mg comparisons). ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w80-difference-in-percent-change-in-body-weight-40dbcdeb
+- endpoint: weight-pct-change-w80-difference-in-percent-change-in-body-weight-a98f5241
   estimand: treatment_regimen@pubmed:42814954
   treatment: retatrutide 12 mg
   comparator: placebo

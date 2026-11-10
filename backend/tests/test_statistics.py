@@ -248,7 +248,10 @@ def test_c9_requested_estimand_is_never_mixed_and_arms_are_not_duplicated(db):
         assert len({a["arm_group_key"] for a in profiles["arms"]}) == len(profiles["arms"]) == len({a["key"] for a in profiles["arms"]})
         assert profiles["selection"]["weight_pct"]["estimand"] == estimand and profiles["selection"]["weight_pct"]["estimand_basis"] == "REQUESTED"
     top = next(a for a in profiles["arms"] if a["dose_amount"] == 36)
-    assert any("FOUNDAYO 17.2" in label for label in top["labels_merged"])  # the label's tablet dose is the same arm, not a second profile
+    assert not [a for a in profiles["arms"] if "FOUNDAYO" in a["label"]]  # the label's tablet dose is the same arm, not a second profile
+    study = db.scalar(select(Study).where(Study.nct_id == ATTAIN1))
+    label_rows = [r for r in study.results if r.arm_label.startswith("FOUNDAYO 17.2")]
+    assert label_rows and {r.arm.label for r in label_rows} == {top["label"]}  # attached to the registered 36 mg arm (documented bioequivalent dose)
 
 
 def test_c9_an_arm_without_the_requested_estimand_gets_no_value(db):
@@ -273,10 +276,16 @@ def test_c9_without_a_request_one_estimand_and_one_week_are_chosen_and_stated(db
 
 
 def test_c9_no_fallback_to_another_week(db):
-    profiles = benefit_risk.arm_profiles(db, SM4)  # planned randomized treatment is 52 weeks; values are stored at study weeks 64 and 88
+    # The randomized period is 52 weeks; values are stored at study weeks 64 and 88. A week without values is never
+    # filled from another week.
+    profiles = benefit_risk.arm_profiles(db, SM4, timepoint_weeks=52)
     assert not any(a["efficacy"] for a in profiles["arms"])
     assert profiles["selection"]["weight_pct"]["arms_by_week"] == {"64": 2, "88": 2}
     assert any("week(s) 64, 88" in m and "none is substituted" in m for m in profiles["messages"])
+    # BR-4: the default week is the primary assessment week as the registry reports it (study week 88), not the
+    # length of the randomized period.
+    default = benefit_risk.arm_profiles(db, SM4)
+    assert default["selection"]["weight_pct"]["timepoint_weeks"] == 88 and not default["messages"]
     at88 = benefit_risk.arm_profiles(db, SM4, timepoint_weeks=88)
     entries = [a["efficacy"]["weight_pct"] for a in at88["arms"] if "weight_pct" in a["efficacy"]]
     assert sorted(e["value"] for e in entries) == [-6.7, 14.8] and {e["baseline_class"] for e in entries} == {"RANDOMIZATION_AFTER_LEAD_IN"}
@@ -383,12 +392,16 @@ def test_c10_two_records_of_one_arm_are_not_contrasted(db):
     from sqlalchemy import select
 
     from incretinos.engines.benefit_risk import adverse_event_contrast
-    from incretinos.models import Study
+    from incretinos.models import Study, StudyArm
 
     study = db.scalar(select(Study).where(Study.nct_id == ATTAIN1))
     registry = next(e for e in study.adverse_events if e.term.lower() == "nausea" and e.origin == "REGISTRY" and e.arm_label == "36 mg Orforglipron" and not e.is_serious)
     twin = next(e for e in study.adverse_events if e.term.lower() == "nausea" and e.origin == "REGISTRY" and e.arm_label == "Placebo" and not e.is_serious)
-    curated_arm = next(a for a in study.arms if a.origin == "CURATED" and a.dose_amount == 36 and a.formulation_key == "orforglipron-capsule")
+    # A second arm row for the same randomized group (curated sources now attach to the registered arm, so it is made here).
+    curated_arm = StudyArm(study_id=study.id, origin="CURATED", label="orforglipron 36 mg once daily (investigational capsule dose as reported)", norm_label="36mg orforglipron",
+                           arm_type="CURATED", drug_slug="orforglipron", dose_amount=36.0, dose_unit="mg", formulation_key="orforglipron-capsule")
+    db.add(curated_arm)
+    db.flush()
     twin.arm_id, twin.arm = curated_arm.id, curated_arm  # the same counts, now filed under the curated label of the 36 mg arm
     db.flush()
     with pytest.raises(StatsInputError, match="same arm"):
