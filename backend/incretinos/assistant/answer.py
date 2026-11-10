@@ -60,7 +60,7 @@ from .facts import (
     verification_summary,
 )
 from .providers import CardSet, LLMProvider, NullProvider, call_with_deadline, sanitize_card_text
-from .verifier import verify_draft
+from .verifier import instruction_like, verify_draft, withheld_report
 
 log = logging.getLogger(__name__)
 
@@ -550,9 +550,14 @@ def _model_summary(session: Session, question: str, provider: LLMProvider, compo
     """Ask the provider for a draft and keep it only if the deterministic verifier supports every sentence."""
     meta: dict[str, Any] = {"provider": provider.name, "used": False}
     blocks = [b for b in composer.blocks if b.card_id]
-    offered = blocks[:MAX_MODEL_CARDS]
+    # A card whose text addresses a reader or a model ("Ignore all previous instructions ...") is never shown to the model,
+    # and a draft citing it is refused (the verifier treats such a card as no evidence).
+    usable = [b for b in blocks if b.fact is None or not instruction_like(replace(b.fact, text=sanitize_card_text(b.text)))]
+    offered = usable[:MAX_MODEL_CARDS]
     truncated = len(offered) < len(blocks)
     meta["cards"] = {"offered": len(offered), "available": len(blocks), "truncated": truncated}
+    if len(usable) < len(blocks):
+        meta["cards"]["withheld_instruction_like"] = len(blocks) - len(usable)
     checker_cards = cards_for_verification(offered)
     model_cards = CardSet(
         ({"id": c["id"], "text": c["text"], "source_ids": c["source_ids"], "qualifiers": _card_qualifiers(c["fact"]), "facts": c["fact"].public()} for c in checker_cards),
@@ -572,10 +577,12 @@ def _model_summary(session: Session, question: str, provider: LLMProvider, compo
         meta["rejected"] = True
         meta["error"] = "VerificationError"
         return meta
-    meta["citation_check"] = check
     if not check["passed"]:
+        # the withheld draft itself is never returned: verdicts, claimed values and reasons only
+        meta["citation_check"] = withheld_report(check)
         meta["rejected"] = True
         return meta
+    meta["citation_check"] = check
     cited_ids = list(dict.fromkeys(re.findall(r"C\d+", " ".join(re.findall(r"\[([^\]]*)\]", draft)))))
     cited_sources = [sid for cid in cited_ids for sid in markers.get(cid, {}).get("source_ids", [])]
     note = f"Drafted from {len(offered)} of {len(blocks)} evidence cards; the remaining cards were not shown to the model." if truncated else None
