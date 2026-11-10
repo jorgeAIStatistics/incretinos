@@ -54,6 +54,7 @@ pydantic-settings==2.15.0
 pydantic==2.14.1
 pydantic_core==2.50.1
 Pygments==2.21.0
+pypdf==7.0.0
 pytest-cov==7.1.0
 pytest==9.1.1
 python-dateutil==2.9.0.post0
