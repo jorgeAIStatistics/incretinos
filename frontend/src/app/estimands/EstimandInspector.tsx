@@ -6,17 +6,111 @@ import Link from "next/link";
 import { useState } from "react";
 import { ChartFrame, ChartTable, IntervalChart } from "@/components/charts";
 import { Async, Callout, Drawer, EmptyState, EpistemicBadge, ErrorState, Loading, Missing, PageHeader, Panel, Qualifiers, Section, Select, SourceLine, TableCard, TableSkeleton, Term, TierBadge, VerificationBadge } from "@/components/ui";
-import { fmt, useApi } from "@/lib/api";
+import { fmt, titleCase, useApi } from "@/lib/api";
 import { enumLabel } from "@/lib/format";
 import { useQueryParams } from "@/lib/hooks";
 import { useWholeList } from "@/lib/paging";
-import { estimandLabel, findingRow } from "@/lib/rows";
+import { byRoleThenDose, estimandLabel, findingRow, isWeightPercentChange, reportedText, sourceShort, unitLabel, weekLabel, withUnit } from "@/lib/rows";
 import type { EstimandDefinition, EstimandInspector as EstimandData, EstimandRow, Finding, FindingDetail, StudyListItem } from "@/lib/types";
 
 /** Estimand columns in reading order. Any other label found in the data gets its own column after these. */
 const KNOWN_COLUMNS = ["TREATMENT_REGIMEN", "EFFICACY", "NOT_STATED"];
 
-const isPercent = (unit: string | null | undefined) => /percent|%/i.test(unit ?? "");
+/** The two named estimands, in the order they are drawn for each arm. */
+const CHARTED = ["TREATMENT_REGIMEN", "EFFICACY"];
+
+type Entry = { arm: string; estimand: string; f: Finding };
+type EstimandSet = { key: string; first: Finding; entries: Entry[]; estimands: string[]; arms: number; extra: number };
+
+/**
+ * The chart plots one result set at a time: the values ONE source reports for the arms of this trial, at one time
+ * point, from one baseline, in percent change in body weight. Within a set each arm appears at most once per
+ * estimand, so when a source reports both estimands, the gap between an arm's two rows reflects only how treatment
+ * discontinuation was handled. Values from different sources (a label's tablet doses, a press release, the registry)
+ * are never drawn on one axis as if they were further arms; the reader picks the set.
+ */
+function estimandSets(rows: EstimandRow[]): EstimandSet[] {
+  const sets = new Map<string, EstimandSet>();
+  for (const r of rows) {
+    for (const estimand of CHARTED) {
+      for (const f of r.by_estimand[estimand] ?? []) {
+        if (!isWeightPercentChange({ category: r.category, unit: f.unit }) || f.value == null) continue;
+        const key = [f.source?.id ?? "no-source", f.tier, f.timepoint_weeks ?? "no-time", f.baseline_definition ?? "", unitLabel(f.unit), f.threshold ?? "", f.class_title ?? ""].join("¦");
+        const set = sets.get(key) ?? { key, first: f, entries: [], estimands: [], arms: 0, extra: 0 };
+        sets.set(key, set);
+        const arm = f.arm_group_key ?? r.arm;
+        // One value per arm and estimand in a set; a second one from the same source stays in the table below.
+        if (set.entries.some((x) => (x.f.arm_group_key ?? x.arm) === arm && x.estimand === estimand)) {
+          set.extra += 1;
+          continue;
+        }
+        set.entries.push({ arm: r.arm, estimand, f });
+      }
+    }
+  }
+  return [...sets.values()]
+    .map((set) => ({ ...set, estimands: CHARTED.filter((e) => set.entries.some((x) => x.estimand === e)), arms: new Set(set.entries.map((x) => x.f.arm_group_key ?? x.arm)).size }))
+    .sort((a, b) => b.estimands.length - a.estimands.length || b.arms - a.arms);
+}
+
+/** Short enough to show in full in the select; the caption above the chart describes the chosen set completely. */
+function setOptions(sets: EstimandSet[]): { value: string; label: string }[] {
+  const short = (set: EstimandSet) => `${set.first.source?.tier_label ?? titleCase(set.first.tier)} · ${weekLabel(set.first.timepoint_weeks)} · ${set.estimands.map((e) => estimandLabel(e).replace(/ estimand$/, "")).join(" and ")} (${set.arms} ${set.arms === 1 ? "arm" : "arms"})`;
+  return sets.map((set) => {
+    const repeated = sets.filter((other) => short(other) === short(set)).length > 1;
+    return { value: set.key, label: repeated ? `${short(set)} · ${sourceShort(set.first.source)}` : short(set) };
+  });
+}
+
+function EstimandChart({ data }: { data: EstimandData }) {
+  const sets = estimandSets(data.rows);
+  const [picked, setPicked] = useState<string | null>(null);
+  const current = sets.find((s) => s.key === picked) ?? sets[0];
+  if (!current) {
+    return (
+      <Callout tone="muted" title="No percent change in body weight under a named estimand is stored for this trial.">
+        Values in other units, and values whose estimand is not stated, are listed in the table below. Other endpoints are on the trial&apos;s page in the trial atlas.
+      </Callout>
+    );
+  }
+  const first = current.first;
+  // Ordered by arm role, then dose; the treatment-regimen row of an arm comes before its efficacy row.
+  const ordered = byRoleThenDose(
+    current.entries.map((x, index) => {
+      const row = { ...findingRow(x.f, { drugs: data.study.drugs }), key: `${x.f.result_id}`, label: x.arm };
+      return { row, group: row.group, dose: x.f.dose_amount ?? null, index, armOrder: current.entries.findIndex((y) => (y.f.arm_group_key ?? y.arm) === (x.f.arm_group_key ?? x.arm)), estimandOrder: CHARTED.indexOf(x.estimand) };
+    }).sort((a, b) => a.armOrder - b.armOrder || a.estimandOrder - b.estimandOrder),
+    (x) => x.dose,
+  );
+  const rows = ordered.map((x) => x.row);
+  const both = current.estimands.length > 1;
+  const missingOther = both ? current.arms * 2 - current.entries.length : 0;
+  return (
+    <ChartFrame
+      level={2}
+      title={`Percent change in body weight at ${weekLabel(first.timepoint_weeks)}, by estimand`}
+      subtitle={
+        <span data-testid="estimand-caption">
+          {current.arms} {current.arms === 1 ? "arm" : "arms"} from one result set: <span className="font-medium text-ink-2">{first.source?.tier_label ?? titleCase(first.tier)} — {sourceShort(first.source)} · {weekLabel(first.timepoint_weeks)}{first.baseline_definition ? ` · from ${first.baseline_definition}` : " · baseline definition not recorded for this source"} · values in %</span>.{" "}
+          {both
+            ? `This source reports both estimands for ${missingOther ? "some of " : ""}these arms, so the gap between the two rows of one arm reflects how treatment discontinuation was handled — it is not a treatment effect.`
+            : `This source reports only the ${estimandLabel(current.estimands[0]).toLowerCase()} for these arms. Values under the other estimand come from other sources and are a different result set: they are not drawn beside these rows.`}
+        </span>
+      }
+      controls={sets.length > 1 ? <Select label={`Result set (${sets.length} on record — one is plotted at a time, never mixed)`} value={current.key} onChange={setPicked} options={setOptions(sets)} /> : undefined}
+      table={<ChartTable rows={rows} unit="%" valueHeader="Change, %" />}
+      footnote={
+        <>
+          <span className="block" data-testid="estimand-source">Source of every plotted value: <SourceLine source={first.source} /></span>
+          {current.extra ? <span className="mt-1 block">{current.extra} further {current.extra === 1 ? "value" : "values"} from this source for an arm and estimand already plotted {current.extra === 1 ? "is" : "are"} listed in the table below, not plotted.</span> : null}
+          <span className="mt-1 block">{data.rule}</span>
+        </>
+      }
+    >
+      <IntervalChart rows={rows} unit="%" mark="dot" axisLabel="Percent change in body weight" />
+    </ChartFrame>
+  );
+}
 
 /**
  * The trial shown when the address names none. It is chosen from the trial list, not written into the code:
@@ -84,9 +178,9 @@ function ValueButtons({ items, onPick, picked }: { items: Finding[] | undefined;
             picked === f.result_id && "bg-accent-soft shadow-[inset_0_0_0_1px_var(--accent)]",
           )}
         >
-          <span className="num w-16 shrink-0 text-right font-semibold text-ink">
-            {fmt(f.value)}
-            {isPercent(f.unit) ? "%" : ""}
+          <span className="num min-w-16 shrink-0 whitespace-nowrap text-right font-semibold text-ink" data-testid="estimand-value">
+            {f.value == null ? "not reported" : withUnit(reportedText(f.value, f.value_text), f.unit)}
+            {f.value != null && !unitLabel(f.unit) ? <span className="font-normal text-ink-3"> (unit not recorded)</span> : null}
           </span>
           <span className="text-caption text-ink-3">
             {f.source?.tier_label ?? "Source not recorded"}
@@ -155,22 +249,6 @@ function FindingInspector({ id }: { id: number }) {
 }
 
 function Results({ data, picked, onPick }: { data: EstimandData; picked: number | null; onPick: (id: number) => void }) {
-  const weight = data.rows.filter((r) => r.category === "WEIGHT_PCT_CHANGE");
-  // The chart shows the time point at which the most estimands are reported.
-  const mainWeeks = weight.length ? weight.reduce((best, r) => (Object.keys(r.by_estimand).length > Object.keys(best.by_estimand).length ? r : best), weight[0]).timepoint_weeks : null;
-  const chartRows = weight
-    .filter((r) => r.timepoint_weeks === mainWeeks)
-    .flatMap((r) =>
-      ["TREATMENT_REGIMEN", "EFFICACY"]
-        .filter((e) => r.by_estimand[e]?.length)
-        .map((e) => {
-          // Several sources can report one arm under one estimand. The one plotted is the one the shared display rule
-          // puts first (reported interval, then dispersion, then n, then stored first), never the one of a preferred tier.
-          const leadId = r.display_lead?.[e];
-          const f = r.by_estimand[e].find((x) => x.result_id === leadId) ?? r.by_estimand[e][0];
-          return { ...findingRow(f, { drugs: data.study.drugs }), key: `${f.result_id}`, label: r.arm, sub: `${estimandLabel(e, f.estimand_basis)} · ${f.source?.tier_label ?? "source not recorded"}` };
-        }),
-    );
   const extraColumns = Array.from(new Set(data.rows.flatMap((r) => Object.keys(r.by_estimand)))).filter((label) => !KNOWN_COLUMNS.includes(label));
   const columns = [...KNOWN_COLUMNS, ...extraColumns];
 
@@ -195,26 +273,8 @@ function Results({ data, picked, onPick }: { data: EstimandData; picked: number 
         )}
       </Section>
 
-      <div className="mb-8">
-        {chartRows.length ? (
-          <ChartFrame
-            title={`Percent change in body weight at week ${fmt(mainWeeks, 0)}, by estimand`}
-            subtitle="Each arm appears once per estimand. The gap between the two rows of one arm reflects the handling of treatment discontinuation — it is not a treatment effect."
-            table={<ChartTable rows={chartRows} unit="%" valueHeader="Change, %" />}
-            footnote={
-              <>
-                {data.rule}
-                {data.display_rule ? <span className="mt-1 block">{data.display_rule}</span> : null}
-              </>
-            }
-          >
-            <IntervalChart rows={chartRows} unit="%" mark="dot" axisLabel="Percent change in body weight" />
-          </ChartFrame>
-        ) : (
-          <Callout tone="muted" title="No weight-change results under a named estimand are stored for this trial.">
-            Select another trial, or see its full results in the trial atlas.
-          </Callout>
-        )}
+      <div className="mb-8" data-testid="estimand-chart">
+        <EstimandChart key={data.study.nct_id} data={data} />
       </div>
 
       <Section title="Reported values by estimand" hint="Select any value to inspect its source, analysis and limits. Several values in one cell come from different sources and are kept separate.">
