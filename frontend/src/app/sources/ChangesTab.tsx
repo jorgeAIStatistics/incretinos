@@ -2,7 +2,7 @@
 
 import { Check, X } from "lucide-react";
 import { type FormEvent, useState } from "react";
-import { Badge, Button, Callout, type Column, DataTable, EmptyState, ErrorState, Hypothetical, Loading, Modal, Pagination, Panel, SegmentedControl, TableCard, TableSkeleton, TextArea, TextField, useToast } from "@/components/ui";
+import { Badge, Button, Callout, type Column, DataTable, EmptyState, ErrorState, Hypothetical, Loading, Modal, Pagination, Panel, SecretField, SegmentedControl, TableCard, TableSkeleton, TextArea, TextField, useToast } from "@/components/ui";
 import { apiPost, day, errorMessage, useApi } from "@/lib/api";
 import { enumLabel, formatCount } from "@/lib/format";
 import { rowsOf, usePagedList } from "@/lib/paging";
@@ -195,10 +195,11 @@ export function ChangesTab({ reviewer, onReviewer }: { reviewer: Reviewer; onRev
         ) : reviewEnabled ? (
           <>
             <p className="max-w-[80ch] text-data text-ink-2">Recording a decision requires the reviewer token and your name. Each decision asks for a rationale and is written to the audit log.</p>
-            <form onSubmit={(e) => e.preventDefault()} className="mt-3 flex flex-wrap items-start gap-3">
+            {/* Not a <form>: a name field beside a password field in a form is what password managers offer to save. */}
+            <div role="group" aria-label="Reviewer identity" className="mt-3 flex flex-wrap items-start gap-3">
               <TextField label="Reviewer name" name="reviewer" autoComplete="name" value={reviewer.name} onChange={(name) => onReviewer({ ...reviewer, name })} hint="Stored with each decision." className="w-full sm:w-60" />
-              <TextField label="Reviewer token" name="reviewer-token" type="password" autoComplete="off" spellCheck={false} value={reviewer.token} onChange={(token) => onReviewer({ ...reviewer, token })} hint="Kept in memory only; cleared on reload." className="w-full sm:w-60" />
-            </form>
+              <SecretField label="Reviewer token" initial={reviewer.token} onChange={(token) => onReviewer({ ...reviewer, token })} hint="Kept in memory only; cleared on reload." className="w-full sm:w-60" />
+            </div>
             {!ready ? <p className="mt-2 text-caption text-ink-3">Enter your name and the reviewer token to enable the decision buttons.</p> : null}
           </>
         ) : (

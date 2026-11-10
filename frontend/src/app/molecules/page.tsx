@@ -4,7 +4,7 @@ import clsx from "clsx";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { Badge, Button, Callout, ErrorNote, KV, Loading, NumberField, PageHeader, Panel, RegulatoryBadge, Section, Select, SourceLine, VerificationBadge } from "@/components/ui";
+import { Badge, Button, Callout, EmptyState, ErrorNote, ErrorState, KV, Loading, NumberField, PageHeader, Panel, RegulatoryBadge, Section, Select, SourceLine, VerificationBadge } from "@/components/ui";
 import { apiGet, fmt, phaseLabel, titleCase, useApi, diabetesLabel } from "@/lib/api";
 import { useRows } from "@/lib/paging";
 
@@ -61,9 +61,10 @@ function Harmonizer({ drug }: { drug: any }) {
 }
 
 function MoleculeDetail({ slug }: { slug: string }) {
-  const { data: d, error, loading } = useApi(`/drugs/${slug}`);
-  if (error) return <ErrorNote message={error} />;
-  if (loading || !d) return <Loading rows={7} />;
+  const request = useApi(`/drugs/${slug}`);
+  const d = request.data;
+  if (request.status === "error") return <ErrorState title="This molecule could not be loaded" message={request.error ?? ""} onRetry={request.reload} />;
+  if (!d) return <Loading rows={7} />;
   return (
     <div className="fade-in min-w-0">
       <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -73,7 +74,7 @@ function MoleculeDetail({ slug }: { slug: string }) {
         <RegulatoryBadge status={d.regulatory_status} />
       </div>
       <Panel className="mb-6">
-        <p className="text-[11.5px] font-medium uppercase tracking-wide text-ink-3">Pharmacologic class — derived from the receptor actions below</p>
+        <p className="text-data font-medium text-ink-3">Pharmacologic class — derived from the receptor actions below</p>
         <p className="mt-1 text-[18px] font-semibold text-ink">{d.classification.class_label}</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
           <Badge tone={d.classification.is_glp1_receptor_agonist ? "info" : "muted"} icon={false}>{d.classification.is_glp1_receptor_agonist ? "GLP-1 receptor agonist activity" : "Not a GLP-1 receptor agonist"}</Badge>
@@ -186,12 +187,13 @@ function MoleculeDetail({ slug }: { slug: string }) {
 function Explorer() {
   const params = useSearchParams();
   const router = useRouter();
-  const { data: drugs, error } = useRows<any>("/drugs");
+  const { data: drugs, error, reload } = useRows<any>("/drugs");
   const slug = params.get("drug") ?? drugs?.[0]?.slug ?? null; // without a choice in the URL, the first molecule the API lists
-  if (error) return <ErrorNote message={error} />;
+  const header = <PageHeader eyebrow="Molecule explorer" title="Mechanism, status and formulation — each with its source" lede="A molecule's class is computed from its recorded receptor actions, and “approved” appears only when FDA labeling has been ingested." />;
+  if (error) return <>{header}<ErrorState title="The molecule list could not be loaded" message={error} onRetry={reload} /></>;
   return (
     <>
-      <PageHeader eyebrow="Molecule explorer" title="Mechanism, status and formulation — each with its source" lede="A molecule's class is computed from its recorded receptor actions, and “approved” appears only when FDA labeling has been ingested." />
+      {header}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[230px_minmax(0,1fr)]">
         <nav aria-label="Molecules" className="flex gap-1.5 overflow-x-auto lg:flex-col">
           {(drugs ?? []).map((d) => (
@@ -202,7 +204,7 @@ function Explorer() {
             </button>
           ))}
         </nav>
-        {slug ? <MoleculeDetail key={slug} slug={slug} /> : <Loading rows={7} />}
+        {slug ? <MoleculeDetail key={slug} slug={slug} /> : drugs ? <EmptyState title="No molecule is on record">Molecules appear here once they have been ingested.</EmptyState> : <Loading rows={7} />}
       </div>
     </>
   );

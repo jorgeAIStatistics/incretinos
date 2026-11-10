@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { Search, X } from "lucide-react";
-import { type HTMLInputTypeAttribute, type ReactNode, useId } from "react";
+import { type HTMLInputTypeAttribute, type ReactNode, useEffect, useId, useRef } from "react";
 
 /*
  * Form controls. The label sits above the control and is always visible (a placeholder is an example, never a label).
@@ -76,6 +76,48 @@ export function TextField({
         inputMode={inputMode}
         spellCheck={spellCheck}
         required={required}
+        disabled={disabled}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
+        className={clsx(CONTROL, "font-normal")}
+      />
+      <Messages hint={hint} error={error} hintId={`${id}-hint`} errorId={`${id}-error`} />
+    </div>
+  );
+}
+
+/**
+ * A secret, such as an access token, typed by the user and kept in memory only.
+ *
+ * The input is uncontrolled: React never writes the secret into the element's `value` attribute, so it does not
+ * appear in the DOM markup, in attribute selectors or in page snapshots. It is a password input with autocomplete
+ * off and no `name`, and carries the opt-out markers that password managers read, so it is not offered for saving.
+ * `initial` is copied into the element's `value` property (never the attribute) when the field mounts, so a field
+ * that is shown again (after a tab switch) still holds the secret the page has in memory.
+ */
+export function SecretField({ label, initial = "", onChange, hint, error, className, disabled }: Omit<FieldCommon, "name"> & { initial?: string; onChange: (value: string) => void }) {
+  const id = useId();
+  const ref = useRef<HTMLInputElement>(null);
+  const first = useRef(initial);
+  useEffect(() => {
+    if (ref.current) ref.current.value = first.current;
+  }, []);
+  return (
+    <div className={clsx(FIELD, className)}>
+      <label htmlFor={id}>{label}</label>
+      <input
+        ref={ref}
+        id={id}
+        type="password"
+        autoComplete="off"
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+        data-1p-ignore=""
+        data-lpignore="true"
+        data-bwignore=""
+        data-form-type="other"
+        onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}

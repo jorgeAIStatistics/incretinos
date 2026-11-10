@@ -18,8 +18,9 @@ export function Tabs({ value, onValueChange, items, label, children, className }
   const box = useIndicator(list, '[role="tab"][data-state="active"]', value);
   return (
     <RadixTabs.Root value={value} onValueChange={onValueChange} className={className}>
-      <div className="mb-4 overflow-x-auto border-b border-hairline [scrollbar-width:none]">
-        <RadixTabs.List ref={list} aria-label={label} className="relative flex w-max min-w-full gap-5">
+      {/* The scroll box clips whatever overflows it, so it keeps 4px of room on every side for the 2px focus ring and its 2px offset. */}
+      <div className="-mx-1 -mt-1 mb-3 overflow-x-auto px-1 pb-1 pt-1 [scrollbar-width:none]" data-testid="tab-scroll">
+        <RadixTabs.List ref={list} aria-label={label} className="relative flex w-max min-w-full gap-5 border-b border-hairline">
           {items.map((item) => (
             <RadixTabs.Trigger
               key={item.value}
