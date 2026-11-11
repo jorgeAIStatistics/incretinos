@@ -38,7 +38,7 @@ export function Portfolio({ drugs, studies }: { drugs: DrugSummary[]; studies: A
       key: "molecule",
       header: "Molecule and mechanism (derived)",
       rowHeader: true,
-      className: "min-w-[150px] sm:min-w-[230px]",
+      className: "min-w-[150px] sm:min-w-[200px]",
       cell: (d) => {
         const code = d.code_name ?? d.brand_names?.join(" / ");
         return (
@@ -61,10 +61,13 @@ export function Portfolio({ drugs, studies }: { drugs: DrugSummary[]; studies: A
     {
       key: "status",
       header: "Regulatory status",
-      className: "min-w-[250px]",
+      className: "min-w-[230px]",
       cell: (d) => (
         <span className="flex flex-col items-start gap-1">
-          <RegulatoryBadge status={d.regulatory_status} available={d.regulatory_status_available} note={d.regulatory_status_note} />
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <RegulatoryBadge status={d.regulatory_status} available={d.regulatory_status_available} note={d.regulatory_status_note} />
+            {d.regulatory_status_available === false ? null : <span className="num whitespace-nowrap text-caption text-ink-3">as of {d.regulatory_as_of ?? "date not recorded"}</span>}
+          </span>
           {d.regulatory_status_available === false ? null : d.regulatory_source ? (
             <span className="flex flex-wrap items-center gap-1">
               <TierBadge tier={d.regulatory_source.tier} label={d.regulatory_source.tier_label} />
@@ -73,7 +76,6 @@ export function Portfolio({ drugs, studies }: { drugs: DrugSummary[]; studies: A
           ) : (
             <Missing>Source not recorded</Missing>
           )}
-          {d.regulatory_status_available === false ? null : <span className="num whitespace-nowrap text-caption text-ink-3">as of {d.regulatory_as_of ?? "date not recorded"}</span>}
         </span>
       ),
     },

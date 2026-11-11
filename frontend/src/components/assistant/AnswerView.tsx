@@ -133,7 +133,7 @@ export function AnswerRail({ answer, drugs }: { answer: Answer; drugs: DrugSumma
                 const statuses = Array.from(new Set(block?.verification?.statuses ?? []));
                 return (
                   <tr key={id} className="align-top">
-                    <th scope="row" className="py-1.5 pr-2 text-left font-normal">
+                    <th scope="row" className="w-12 py-1.5 pr-2 text-left font-normal">
                       <MarkerLink id={id} />
                     </th>
                     <td className="py-1.5 pr-2">
@@ -146,7 +146,7 @@ export function AnswerRail({ answer, drugs }: { answer: Answer; drugs: DrugSumma
                         </span>
                       ) : null}
                     </td>
-                    <td className="num py-1.5 text-right text-caption">
+                    <td className="num w-16 py-1.5 text-right text-caption">
                       {mk.source_ids.length ? (
                         mk.source_ids.map((sid) => (
                           <a key={sid} href={`#source-${sourceNumber.get(sid) ?? sid}`} className="ml-1">
