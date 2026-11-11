@@ -4,20 +4,20 @@
 study: NCT04255433
 estimands: []
 endpoints:
-- key: mace-wna-time-to-first-mace-3-cv-deat
+- key: mace-wna-time-to-first-mace-3-cv-death-mi-or-stroke-f74d1a3b
   title: time to first MACE-3 (CV death, MI, or stroke)
   role: PRIMARY
   category: MACE
   unit: hazard ratio
   multiplicity_controlled: NOT_STATED
-- key: mace-w210-1-time-to-first-mace-3-cv-deat
+- key: mace-w210-1-time-to-first-mace-3-cv-death-non-fatal-mi-o-cf41b1b0
   title: time to first MACE-3 (CV death, non-fatal MI, or non-fatal stroke)
   role: PRIMARY
   category: MACE
   unit: hazard ratio
   timepoint_weeks: 210.1
   multiplicity_controlled: NOT_STATED
-- key: mortality-w210-1-all-cause-death
+- key: mortality-w210-1-all-cause-death-bdbe582c
   title: all-cause death
   role: SECONDARY
   category: MORTALITY
@@ -26,7 +26,7 @@ endpoints:
   multiplicity_controlled: 'NO'
 results: []
 analyses:
-- endpoint: mace-wna-time-to-first-mace-3-cv-deat
+- endpoint: mace-wna-time-to-first-mace-3-cv-death-mi-or-stroke-f74d1a3b
   treatment: tirzepatide
   comparator: dulaglutide 1.5 mg
   hypothesis_type: NON_INFERIORITY
@@ -40,8 +40,9 @@ analyses:
   source: pubmed:41406444
   quote: (hazard ratio, 0.92; 95.3% confidence interval, 0.83 to 1.01; P = 0.003 for noninferiority; P = 0.09 for superiority)
   notes: 'CI level is 95.3%, not 95%. 13,299 randomized; 134 excluded for not meeting inclusion criteria; modified ITT = 6586 (tirzepatide) and 6579 (dulaglutide); n left null (per-arm Ns not summed). Event-driven;
-    timepoint not a fixed week (label: median follow-up 210.1 weeks).'
-- endpoint: mace-w210-1-time-to-first-mace-3-cv-deat
+    timepoint not a fixed week (label: median follow-up 210.1 weeks). ni_met is left NOT_STATED: no quote from the cited source states in words that non-inferiority was met (the quote gives a non-inferiority
+    p-value or the design, not the conclusion) — needs human curation.'
+- endpoint: mace-w210-1-time-to-first-mace-3-cv-death-non-fatal-mi-o-cf41b1b0
   treatment: tirzepatide
   comparator: dulaglutide 1.5 mg
   hypothesis_type: NON_INFERIORITY
@@ -56,8 +57,9 @@ analyses:
   source: openfda-label:mounjaro
   quote: 'The estimated hazard ratio for time to first MACE was 0.92 (95.3% CI: 0.83, 1.01) for MOUNJARO compared to dulaglutide.'
   notes: 'timepoint_weeks = median follow-up 210.1 weeks. CONFLICT with NEJM abstract: different analysis population (6,647 per arm vs 6586/6579), event counts (803/863 vs 801/862) and noninferiority p-value
-    (0.007 vs 0.003). HR and CI agree.'
-- endpoint: mortality-w210-1-all-cause-death
+    (0.007 vs 0.003). HR and CI agree. ni_met is left NOT_STATED: no quote from the cited source states in words that non-inferiority was met (the quote gives a non-inferiority p-value or the design, not
+    the conclusion) — needs human curation.'
+- endpoint: mortality-w210-1-all-cause-death-bdbe582c
   treatment: tirzepatide
   comparator: dulaglutide 1.5 mg
   hypothesis_type: NOT_STATED

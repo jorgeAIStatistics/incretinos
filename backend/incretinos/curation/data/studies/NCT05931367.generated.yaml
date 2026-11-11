@@ -3,22 +3,26 @@
 # Verification status is assigned by the loader (quote anchoring) — nothing here is human-verified.
 study: NCT05931367
 estimands:
-- key: efficacy
+- key: efficacy@web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   label: EFFICACY
-  description: 'Efficacy estimand as named by the source: the treatment effect had participants remained on study treatment (hypothetical strategy for treatment discontinuation).'
+  basis: INFERRED_BY_CURATOR
+  description: 'Efficacy estimand as recorded in the research note for this source; the note holds no verbatim quote from the source that names the estimand, so the label is the curator''s attribution:
+    the treatment effect had participants remained on study treatment (hypothetical strategy for treatment discontinuation).'
   source: web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   strategies:
   - event: TREATMENT_DISCONTINUATION
     strategy: HYPOTHETICAL
-- key: treatment_regimen
+- key: treatment_regimen@web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   label: TREATMENT_REGIMEN
-  description: 'Treatment-regimen estimand as named by the source: the treatment effect regardless of treatment discontinuation (treatment-policy strategy).'
+  basis: INFERRED_BY_CURATOR
+  description: 'Treatment-regimen estimand as recorded in the research note for this source; the note holds no verbatim quote from the source that names the estimand, so the label is the curator''s attribution:
+    the treatment effect regardless of treatment discontinuation (treatment-policy strategy).'
   source: web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   strategies:
   - event: TREATMENT_DISCONTINUATION
     strategy: TREATMENT_POLICY
 endpoints:
-- key: weight-pct-change-w68-percent-change-in-body-weigh
+- key: weight-pct-change-w68-percent-change-in-body-weight-from-baseline-7fd7282c
   title: percent change in body weight from baseline
   role: PRIMARY
   category: WEIGHT_PCT_CHANGE
@@ -26,8 +30,8 @@ endpoints:
   timepoint_weeks: 68
   multiplicity_controlled: NOT_STATED
 results:
-- endpoint: weight-pct-change-w68-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w68-percent-change-in-body-weight-from-baseline-7fd7282c
+  estimand: efficacy@web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   arm: retatrutide 9 mg
   scope: ARM
   value: -26.4
@@ -37,8 +41,8 @@ results:
   source: web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   quote: -26.4% (-29.1 kg; -64.2 lbs)
   notes: Co-primary endpoint. Topline press release only; no peer-reviewed publication located as of 2026-10-13. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w68-percent-change-in-body-weigh
-  estimand: treatment_regimen
+- endpoint: weight-pct-change-w68-percent-change-in-body-weight-from-baseline-7fd7282c
+  estimand: treatment_regimen@web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   arm: retatrutide 9 mg
   scope: ARM
   value: -20.0
@@ -48,8 +52,8 @@ results:
   source: web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   quote: 'change in body weight: -20.0% (-22.9 kg; -50.5 lbs; 9 mg); -23.7% (-27.2 kg; -60.0 lbs; 12 mg) and -4.6% (-5.3 kg; -11.7 lbs; placebo)'
   notes: Co-primary endpoint; source says statistically significant for both co-primary endpoints under the treatment-regimen estimand (p-values not given). ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w68-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w68-percent-change-in-body-weight-from-baseline-7fd7282c
+  estimand: efficacy@web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   arm: retatrutide 12 mg
   scope: ARM
   value: -28.7
@@ -59,8 +63,8 @@ results:
   source: web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   quote: -28.7% (-32.3 kg; -71.2 lbs)
   notes: Co-primary endpoint. Topline press release only; no peer-reviewed publication located as of 2026-10-13. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w68-percent-change-in-body-weigh
-  estimand: treatment_regimen
+- endpoint: weight-pct-change-w68-percent-change-in-body-weight-from-baseline-7fd7282c
+  estimand: treatment_regimen@web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   arm: retatrutide 12 mg
   scope: ARM
   value: -23.7
@@ -70,8 +74,8 @@ results:
   source: web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   quote: 'change in body weight: -20.0% (-22.9 kg; -50.5 lbs; 9 mg); -23.7% (-27.2 kg; -60.0 lbs; 12 mg) and -4.6% (-5.3 kg; -11.7 lbs; placebo)'
   notes: Co-primary endpoint; source says statistically significant for both co-primary endpoints under the treatment-regimen estimand (p-values not given). ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w68-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w68-percent-change-in-body-weight-from-baseline-7fd7282c
+  estimand: efficacy@web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   arm: placebo
   scope: ARM
   value: -2.1
@@ -81,8 +85,8 @@ results:
   source: web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   quote: -2.1% (-2.1 kg; -4.6 lbs)
   notes: Co-primary endpoint. Topline press release only; no peer-reviewed publication located as of 2026-10-13. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w68-percent-change-in-body-weigh
-  estimand: treatment_regimen
+- endpoint: weight-pct-change-w68-percent-change-in-body-weight-from-baseline-7fd7282c
+  estimand: treatment_regimen@web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   arm: placebo
   scope: ARM
   value: -4.6
@@ -130,8 +134,8 @@ adverse_events:
 - arm: retatrutide 9 mg
   scope: ARM
   term: dysesthesia
-  category: DISCONTINUATION
-  measure_kind: TREATMENT_DISCONTINUATION_DUE_TO_AE
+  category: OTHER
+  measure_kind: PARTICIPANTS_WITH_EVENT
   is_serious: false
   source: web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   quote: Dysesthesia occurred in 8.8% and 20.9% (9 mg and 12 mg, respectively) of patients treated with retatrutide, compared to 0.7% with placebo.
@@ -141,8 +145,8 @@ adverse_events:
 - arm: retatrutide 12 mg
   scope: ARM
   term: dysesthesia
-  category: DISCONTINUATION
-  measure_kind: TREATMENT_DISCONTINUATION_DUE_TO_AE
+  category: OTHER
+  measure_kind: PARTICIPANTS_WITH_EVENT
   is_serious: false
   source: web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   quote: Dysesthesia occurred in 8.8% and 20.9% (9 mg and 12 mg, respectively) of patients treated with retatrutide, compared to 0.7% with placebo.
@@ -152,8 +156,8 @@ adverse_events:
 - arm: placebo
   scope: ARM
   term: dysesthesia
-  category: DISCONTINUATION
-  measure_kind: TREATMENT_DISCONTINUATION_DUE_TO_AE
+  category: OTHER
+  measure_kind: PARTICIPANTS_WITH_EVENT
   is_serious: false
   source: web:eli-lilly-an-2025-12-11-lilly-s-triple-agonist-retatrutide-deliv
   quote: Dysesthesia occurred in 8.8% and 20.9% (9 mg and 12 mg, respectively) of patients treated with retatrutide, compared to 0.7% with placebo.

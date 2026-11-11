@@ -2,33 +2,81 @@
 
 Pipeline: guard the question → retrieve structured evidence → compose a deterministic,
 cited answer from that evidence → optionally add a model-drafted summary that is kept only
-if every number in it is traceable to a cited evidence card.
+if every sentence in it is SUPPORTED by the structured facts behind the cards it cites
+(``assistant.verifier``; the language model is never the authority).
 
 Answer blocks are typed so the interface can keep them visually apart:
-VERIFIED_EVIDENCE (reported values with citations), INTERPRETATION (rule-based reading),
-UNAVAILABLE (what the stored sources do not contain), HYPOTHESIS, REFUSAL and
-MODEL_SUMMARY (machine-drafted prose, clearly marked).
+REPORTED_EVIDENCE (values and statements as the cited source reports them), INTERPRETATION
+(rule-based reading), UNAVAILABLE (what the stored sources do not contain), HYPOTHESIS, REFUSAL
+and MODEL_SUMMARY (machine-drafted prose, clearly marked).
+
+"Reported" is deliberate. A block says what a source reports; how far the record behind it has
+been checked is a separate fact, carried on every evidence block as ``verification`` (labels from
+``review.policy``). A block is human-verified only if every record behind it is HUMAN_VERIFIED.
+Records a reviewer rejected never become evidence cards.
 """
 
 from __future__ import annotations
 
+import logging
 import math
 import re
 from collections import Counter
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..engines.comparability import compare_findings, find_head_to_head_trials
-from ..engines.findings import Finding, analysis_dto, build_finding, source_ref
+from ..engines.findings import (
+    Finding,
+    analysis_dto,
+    baseline_class,
+    build_finding,
+    display_lead,
+    resolve_arm,
+    source_ref,
+)
 from ..engines.gaps import NATURE_LABEL, priority
-from ..engines.interpretation import classify_drug, guard_statement, interpret_analysis
+from ..engines.interpretation import classify_drug, interpret_analysis
 from ..engines.safety import SPONTANEOUS_REPORT_CAVEATS
-from ..models import Drug, EvidenceClaim, EvidenceGap, OutcomeResult, StatisticalAnalysis, Study
-from ..vocab import DRUG_ALIASES
-from .providers import LLMProvider, NullProvider
+from ..models import (
+    REVIEWABLE_MODELS,
+    Drug,
+    EvidenceClaim,
+    EvidenceGap,
+    OutcomeResult,
+    StatisticalAnalysis,
+    Study,
+)
+from ..review import policy
+from ..vocab import DRUG_ALIASES, is_placebo_arm
+from .claims import Vocabulary
+from .facts import (
+    EvidenceFact,
+    claim_text,
+    drug_profile_text,
+    fact_from_analysis,
+    fact_from_claim,
+    fact_from_drug,
+    fact_from_finding,
+    fact_from_result,
+    fact_from_study,
+    fact_from_text,
+    usable_mechanisms,
+    verification_summary,
+)
+from .providers import CardSet, LLMProvider, NullProvider, call_with_deadline, sanitize_card_text
+from .verifier import instruction_like, verify_draft, withheld_report
+
+log = logging.getLogger(__name__)
+
+#: Block kinds that are offered to a model as evidence cards and can be cited as [C#].
+CARD_KINDS = ("REPORTED_EVIDENCE", "INTERPRETATION", "UNAVAILABLE")
+#: Most cards offered to a model in one request. More than this is never dropped silently: the model is told,
+#: the response says so, and the verifier refuses exhaustive statements drafted from a partial set.
+MAX_MODEL_CARDS = 40
 
 KEY_CATEGORIES = {"WEIGHT_PCT_CHANGE", "HBA1C_CHANGE", "MACE", "MORTALITY", "BODY_COMPOSITION", "PHYSICAL_FUNCTION", "WEIGHT_RESPONDER"}
 
@@ -43,10 +91,29 @@ _CAUSAL_SPONTANEOUS = re.compile(r"\b(does|do|did|can|will)\b.{0,40}\bcause[sd]?
 
 @dataclass
 class Block:
-    kind: str  # VERIFIED_EVIDENCE | INTERPRETATION | UNAVAILABLE | HYPOTHESIS | REFUSAL | MODEL_SUMMARY
+    kind: str  # REPORTED_EVIDENCE | INTERPRETATION | UNAVAILABLE | HYPOTHESIS | REFUSAL | MODEL_SUMMARY
     text: str
     citations: list[int] = field(default_factory=list)  # evidence_source ids
     result_ids: list[int] = field(default_factory=list)
+    card_id: str | None = None  # the [C#] marker a model summary uses for this block
+    evidence: list[dict[str, Any]] = field(default_factory=list)  # records behind the block: {type, id, verification_status}
+    verification: dict[str, Any] | None = None  # statuses of those records; None when no reviewable record is behind the block
+    tier: str | None = None
+    note: str | None = None
+    fact: EvidenceFact | None = field(default=None, repr=False, compare=False)  # structured fact; not serialised with the block
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "text": self.text,
+            "citations": list(self.citations),
+            "result_ids": list(self.result_ids),
+            "card_id": self.card_id,
+            "evidence": list(self.evidence),
+            "verification": self.verification,
+            "tier": self.tier,
+            "note": self.note,
+        }
 
 
 @dataclass
@@ -57,9 +124,18 @@ class Answer:
     sources: list[dict[str, Any]]
     llm: dict[str, Any]
     retrieved: list[dict[str, Any]] = field(default_factory=list)
+    markers: dict[str, dict[str, Any]] = field(default_factory=dict)  # [C#] -> block, sources and evidence it stands for
 
     def as_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return {
+            "question": self.question,
+            "intent": self.intent,
+            "blocks": [block.as_dict() for block in self.blocks],
+            "sources": self.sources,
+            "llm": self.llm,
+            "retrieved": self.retrieved,
+            "markers": self.markers,
+        }
 
 
 # --------------------------------------------------------------------------- retrieval
@@ -78,23 +154,46 @@ def build_cards(session: Session) -> list[dict[str, Any]]:
             continue
         if result.origin == "REGISTRY" and endpoint.role not in ("PRIMARY",):
             continue
+        if not policy.is_usable(result.verification_status):
+            continue  # rejected in review: kept for audit, never used as evidence
         finding = build_finding(session, result)
-        cards.append({"kind": "RESULT", "ref": result.id, "text": finding.statement, "source_id": result.source_id, "study": finding.study_name, "drug": finding.drug_slug, "tier": result.tier})
+        cards.append({"kind": "RESULT", "ref": result.id, "text": finding.statement, "source_id": result.source_id, "study": finding.study_name, "drug": finding.drug_slug, "tier": result.tier,
+                      "verification_status": policy.canonical_status(result.verification_status)})
     for analysis in session.scalars(select(StatisticalAnalysis).join(StatisticalAnalysis.endpoint)):
         if analysis.endpoint.category not in KEY_CATEGORIES or analysis.estimate is None:
             continue
         if analysis.origin == "REGISTRY" and analysis.endpoint.role != "PRIMARY":
             continue
+        if not policy.is_usable(analysis.verification_status):
+            continue
         dto = analysis_dto(analysis)
         reading = interpret_analysis(dto)
         text = f"{dto['study_name']} — {dto['endpoint_title']}: {reading['observed']} Qualifiers: {'; '.join(label['text'] for label in dto['labels'])}."
-        cards.append({"kind": "ANALYSIS", "ref": analysis.id, "text": text, "source_id": analysis.source_id, "study": dto["study_name"], "drug": None, "tier": analysis.tier})
+        cards.append({"kind": "ANALYSIS", "ref": analysis.id, "text": text, "source_id": analysis.source_id, "study": dto["study_name"], "drug": None, "tier": analysis.tier,
+                      "verification_status": policy.canonical_status(analysis.verification_status)})
     for claim in session.scalars(select(EvidenceClaim)):
-        subject = claim.drug.name if claim.drug else (claim.study.display_name if claim.study else "General")
-        cards.append({"kind": "CLAIM", "ref": claim.id, "text": f"{subject}: {claim.statement}", "source_id": claim.source_id, "study": claim.study.display_name if claim.study else None, "drug": claim.drug.slug if claim.drug else None, "tier": claim.tier})
+        if not policy.is_usable(claim.verification_status):
+            continue
+        cards.append({"kind": "CLAIM", "ref": claim.id, "text": claim_text(claim), "source_id": claim.source_id, "study": claim.study.display_name if claim.study else None, "drug": claim.drug.slug if claim.drug else None,
+                      "tier": claim.tier, "verification_status": policy.canonical_status(claim.verification_status)})
     for gap in session.scalars(select(EvidenceGap)):
-        cards.append({"kind": "GAP", "ref": gap.id, "text": f"Open question: {gap.question} Available: {gap.available_evidence} Missing: {gap.missing_evidence}", "source_id": (gap.source_ids or [None])[0], "study": None, "drug": gap.drug.slug if gap.drug else None, "tier": "GAP"})
+        cards.append({"kind": "GAP", "ref": gap.id, "text": f"Open question: {gap.question} Available: {gap.available_evidence} Missing: {gap.missing_evidence}", "source_id": (gap.source_ids or [None])[0], "study": None, "drug": gap.drug.slug if gap.drug else None, "tier": "GAP",
+                      "verification_status": None})
     return cards
+
+
+def card_fact(session: Session, card: dict[str, Any]) -> EvidenceFact | None:
+    """The structured fact behind a retrieval card."""
+    if card["kind"] == "RESULT":
+        result = session.get(OutcomeResult, card["ref"])
+        return fact_from_result(session, result) if result is not None else None
+    if card["kind"] == "ANALYSIS":
+        analysis = session.get(StatisticalAnalysis, card["ref"])
+        return fact_from_analysis(analysis, text=card["text"]) if analysis is not None else None
+    if card["kind"] == "CLAIM":
+        claim = session.get(EvidenceClaim, card["ref"])
+        return fact_from_claim(claim, text=card["text"]) if claim is not None else None
+    return None
 
 
 def bm25_search(cards: list[dict[str, Any]], query: str, k: int = 8) -> list[dict[str, Any]]:
@@ -142,7 +241,7 @@ def detect_drug_slugs(session: Session, text: str) -> list[str]:
 def detect_studies(session: Session, text: str) -> list[Study]:
     low = text.lower()
     out = []
-    for study in session.scalars(select(Study)):
+    for study in session.scalars(select(Study).order_by(Study.id)):
         name = study.display_name.lower()
         if study.nct_id.lower() in low or re.search(rf"(?<![a-z0-9]){re.escape(name)}(?![a-z0-9\-])", low):
             out.append((low.find(name) if name in low else low.find(study.nct_id.lower()), study))
@@ -150,7 +249,21 @@ def detect_studies(session: Session, text: str) -> list[Study]:
 
 
 def _best_weight_result(session: Session, study: Study, estimand: str | None = None, highest_dose: bool = True) -> OutcomeResult | None:
-    rows = [r for r in study.results if r.endpoint.category == "WEIGHT_PCT_CHANGE" and r.value is not None and r.scope == "ARM" and r.arm is not None and not r.arm.is_placebo and not r.arm.is_pooled and " minus " not in r.arm_label and " to " not in r.arm_label.lower()]
+    """The arm-level percent-weight-change record an answer leads with for one study.
+
+    Two separate choices, neither of them made by evidence tier:
+
+    * which quantity: the highest-dose active arm, at the trial's planned treatment duration when results exist
+      there, under the requested estimand. When no estimand is requested, one estimand is still used throughout:
+      the treatment-regimen estimand if the trial reports it, else the efficacy estimand, else whatever is stored.
+      Values reported under different estimands are never ranked against each other;
+    * which record of that quantity, when several sources report it (same arm group, estimand, time point and
+      baseline class): the shared display rule ``findings.display_lead`` (a reported interval first, then reported
+      dispersion, then a reported number analysed, then the record stored first). The other sources are not hidden
+      from the user: findings and comparisons list them.
+    """
+    rows = [r for r in sorted(study.results, key=lambda r: r.id) if r.endpoint.category == "WEIGHT_PCT_CHANGE" and r.value is not None and r.scope == "ARM" and r.arm is not None and not is_placebo_arm(r.arm) and not r.arm.is_pooled and " minus " not in r.arm_label and " to " not in r.arm_label.lower()
+            and policy.is_usable(r.verification_status)]
     weeks = (study.design_features or {}).get("treatment_weeks")
     if weeks:
         at_primary = [r for r in rows if r.timepoint_weeks is not None and abs(r.timepoint_weeks - weeks) < 0.5]
@@ -158,14 +271,22 @@ def _best_weight_result(session: Session, study: Study, estimand: str | None = N
     if estimand:
         labelled = [r for r in rows if r.estimand is not None and r.estimand.label == estimand]
         rows = labelled or []
+    else:
+        for preferred in ("TREATMENT_REGIMEN", "EFFICACY"):
+            labelled = [r for r in rows if r.estimand is not None and r.estimand.label == preferred]
+            if labelled:
+                rows = labelled
+                break
     if not rows:
         return None
-    tier_order = {"REGULATORY_LABEL": 0, "PEER_REVIEWED": 1, "REGISTRY_RESULTS": 2, "PRESS_RELEASE": 3}
-    rows.sort(key=lambda r: (tier_order.get(r.tier, 9), -(r.arm.dose_amount or 0) if highest_dose else 0, r.value))
-    top_tier = rows[0].tier
-    same_tier = [r for r in rows if r.tier == top_tier]
-    same_tier.sort(key=lambda r: (-(r.arm.dose_amount or 0), r.value))
-    return same_tier[0]
+
+    def quantity(r: OutcomeResult) -> tuple:
+        return (resolve_arm(session, r.arm).group_key, r.estimand.label if r.estimand is not None else "NOT_STATED", r.timepoint_weeks,
+                baseline_class(study.design_features, r.baseline_definition))
+
+    target = min(rows, key=lambda r: (-(r.arm.dose_amount or 0) if highest_dose else 0, r.value, r.id))
+    lead, _others = display_lead([r for r in rows if quantity(r) == quantity(target)])
+    return lead
 
 
 class _Composer:
@@ -181,11 +302,28 @@ class _Composer:
                 self.source_ids.append(s)
         return ids
 
-    def add(self, kind: str, text: str, *source_ids: int | None, result_ids: list[int] | None = None) -> None:
-        self.blocks.append(Block(kind, text, self.cite(*source_ids), result_ids or []))
+    def add(self, kind: str, text: str, *source_ids: int | None, result_ids: list[int] | None = None, fact: EvidenceFact | None = None) -> None:
+        block = Block(kind, text, self.cite(*source_ids), result_ids or [])
+        if kind in CARD_KINDS:
+            block.fact = fact or fact_from_text(f"text:{len(self.blocks) + 1}", text, block.citations)
+            block.evidence = [dict(record) for record in block.fact.records]
+            block.verification = verification_summary(block.evidence)
+            block.tier = block.fact.tier
+        self.blocks.append(block)
 
     def finding(self, f: Finding) -> None:
-        self.add("VERIFIED_EVIDENCE", f.statement, (f.source or {}).get("id"), result_ids=[f.result_id])
+        if not policy.is_usable(f.verification_status):
+            return  # rejected in review
+        self.add("REPORTED_EVIDENCE", f.statement, (f.source or {}).get("id"), result_ids=[f.result_id], fact=fact_from_finding(f))
+
+    def analysis(self, analysis: StatisticalAnalysis, text: str) -> None:
+        self.add("REPORTED_EVIDENCE", text, analysis.source_id, fact=fact_from_analysis(analysis, text=text))
+
+    def claim(self, claim: EvidenceClaim, text: str) -> None:
+        self.add("REPORTED_EVIDENCE", text, claim.source_id, fact=fact_from_claim(claim, text=text))
+
+    def study_record(self, study: Study, text: str) -> None:
+        self.add("REPORTED_EVIDENCE", text, study.source_id, fact=fact_from_study(study, text))
 
     def sources(self) -> list[dict[str, Any]]:
         from ..models import EvidenceSource
@@ -194,9 +332,11 @@ class _Composer:
 
 
 def _drug_profile(c: _Composer, drug: Drug) -> None:
-    cls = classify_drug([(m.target, m.action) for m in drug.mechanisms])
-    mech_sources = [m.source_id for m in drug.mechanisms]
-    c.add("VERIFIED_EVIDENCE", f"{drug.name} — pharmacologic class: {cls['class_label']} (derived from sourced receptor actions). Regulatory status: {drug.regulatory_status.lower()} as of {drug.regulatory_as_of}. {drug.regulatory_summary}", drug.regulatory_source_id, *mech_sources)
+    fact = fact_from_drug(c.session, drug, text=drug_profile_text(drug))
+    if not fact.usable:  # the regulatory-status statement itself was rejected in review
+        c.add("UNAVAILABLE", f"The stored regulatory-status statement for {drug.name} was rejected in review and is not used.")
+        return
+    c.add("REPORTED_EVIDENCE", fact.text, *fact.source_ids, fact=fact)
 
 
 # --------------------------------------------------------------------------- intents
@@ -208,7 +348,7 @@ def _intent_compare_drugs(c: _Composer, slugs: list[str]) -> None:
     picked: list[Finding] = []
     for drug in drugs:
         _drug_profile(c, drug)
-        studies = [s for s in session.scalars(select(Study)) if any(link.drug_id == drug.id and link.role != "COMPARATOR" for link in s.drug_links)]
+        studies = [s for s in session.scalars(select(Study).order_by(Study.id)) if any(link.drug_id == drug.id and link.role != "COMPARATOR" for link in s.drug_links)]
         phase3 = [s for s in studies if s.phase and "PHASE3" in s.phase and s.population and s.population.diabetes_status == "NO_T2D"]
         best = None
         for study in sorted(phase3, key=lambda s: s.display_name):
@@ -228,7 +368,11 @@ def _intent_compare_drugs(c: _Composer, slugs: list[str]) -> None:
     if trials and not reported:
         for t in trials:
             study = session.scalar(select(Study).where(Study.nct_id == t["nct_id"]))
-            c.add("VERIFIED_EVIDENCE", f"A registered trial includes both agents: {t['display_name']} ({t['nct_id']}), {t['phase']}, status {t['overall_status']}, primary completion {t['primary_completion_date']} ({(t['primary_completion_type'] or 'type not stated').lower()}). No results are posted or published.", study.source_id if study else None)
+            text = f"A registered trial includes both agents: {t['display_name']} ({t['nct_id']}), {t['phase']}, status {t['overall_status']}, primary completion {t['primary_completion_date']} ({(t['primary_completion_type'] or 'type not stated').lower()}). No results are posted or published."
+            if study is not None:
+                c.study_record(study, text)
+            else:
+                c.add("REPORTED_EVIDENCE", text)
         c.add("UNAVAILABLE", f"No randomized head-to-head result comparing {a.name} with {b.name} is publicly available in the stored sources.")
     elif not trials:
         c.add("UNAVAILABLE", f"No registered trial including both {a.name} and {b.name} was found among tracked studies (a statement about tracked records, not proof that none exists).")
@@ -237,7 +381,7 @@ def _intent_compare_drugs(c: _Composer, slugs: list[str]) -> None:
         c.add("INTERPRETATION", f"Comparability of the two results above: {comparison.classification} — {comparison.headline}. " + " ".join(comparison.reasons[:4]))
         c.add("INTERPRETATION", "What may not be concluded: " + " ".join(comparison.prohibited_statements[:3]))
         c.add("INTERPRETATION", "What a rigorous comparison would require: " + " ".join(comparison.requirements[:3]))
-    cls_a, cls_b = (classify_drug([(m.target, m.action) for m in d.mechanisms]) for d in (a, b))
+    cls_a, cls_b = (classify_drug([(m.target, m.action) for m in usable_mechanisms(d)]) for d in (a, b))
     extra = sorted(set(cls_a["agonist_targets"]) ^ set(cls_b["agonist_targets"]))
     if extra:
         c.add("HYPOTHESIS", f"The agents differ in receptor targets ({', '.join(extra)}). Whether that difference translates into different clinical outcomes is a hypothesis until a randomized comparison reports.")
@@ -246,17 +390,19 @@ def _intent_compare_drugs(c: _Composer, slugs: list[str]) -> None:
 def _intent_exploratory(c: _Composer, studies: list[Study], slugs: list[str]) -> None:
     session = c.session
     if not studies and slugs:
-        studies = [s for s in session.scalars(select(Study)) if any(link.drug.slug in slugs for link in s.drug_links)]
+        studies = [s for s in session.scalars(select(Study).order_by(Study.id)) if any(link.drug.slug in slugs for link in s.drug_links)]
     found = False
     for study in studies[:6]:
-        exploratory = [a for a in study.analyses if a.endpoint.role in ("EXPLORATORY", "POST_HOC") or a.multiplicity_controlled == "NO"]
+        exploratory = [a for a in sorted(study.analyses, key=lambda a: a.id) if (a.endpoint.role in ("EXPLORATORY", "POST_HOC") or a.multiplicity_controlled == "NO") and policy.is_usable(a.verification_status)]
         for analysis in exploratory[:8]:
             dto = analysis_dto(analysis)
-            c.add("VERIFIED_EVIDENCE", f"{study.display_name} — {dto['endpoint_title']}: {interpret_analysis(dto)['observed']} [{'; '.join(label['text'] for label in dto['labels'])}]", analysis.source_id)
+            c.analysis(analysis, f"{study.display_name} — {dto['endpoint_title']}: {interpret_analysis(dto)['observed']} [{'; '.join(label['text'] for label in dto['labels'])}]")
             found = True
         for claim in session.scalars(select(EvidenceClaim).where(EvidenceClaim.study_id == study.id)):
+            if not policy.is_usable(claim.verification_status):
+                continue
             if re.search(r"exploratory|multiplicity|type 1 error|type i error|secondary endpoints", claim.statement, re.IGNORECASE):
-                c.add("VERIFIED_EVIDENCE", f"{study.display_name}: {claim.statement}", claim.source_id)
+                c.claim(claim, f"{study.display_name}: {claim.statement}")
                 found = True
         unstated = [e for e in study.endpoints if e.kind != "PROTOCOL" and e.multiplicity_controlled == "NOT_STATED"]
         if unstated and not exploratory:
@@ -276,10 +422,10 @@ def _intent_gaps(c: _Composer, slugs: list[str]) -> None:
         c.add("INTERPRETATION", f"{gap.question} — Available: {gap.available_evidence} Missing: {gap.missing_evidence} Why it is open: {NATURE_LABEL.get(gap.gap_nature, gap.gap_nature)}", *(gap.source_ids or [])[:3])
     for slug in slugs[:1]:
         drug = session.scalar(select(Drug).where(Drug.slug == slug))
-        ongoing = [s for s in session.scalars(select(Study)) if any(link.drug.slug == slug for link in s.drug_links) and s.phase and "PHASE3" in s.phase and not s.has_results and (s.overall_status or "") in ("RECRUITING", "ACTIVE_NOT_RECRUITING", "NOT_YET_RECRUITING")]
+        ongoing = [s for s in session.scalars(select(Study).order_by(Study.id)) if any(link.drug.slug == slug for link in s.drug_links) and s.phase and "PHASE3" in s.phase and not s.has_results and (s.overall_status or "") in ("RECRUITING", "ACTIVE_NOT_RECRUITING", "NOT_YET_RECRUITING")]
         for study in ongoing[:8]:
             primary = [e.title for e in study.endpoints if e.kind == "PROTOCOL" and e.role == "PRIMARY"][:2]
-            c.add("VERIFIED_EVIDENCE", f"Ongoing Phase 3 for {drug.name}: {study.display_name} ({study.nct_id}) — {study.brief_title}. Status {study.overall_status}; planned enrollment {study.enrollment}; primary completion {study.primary_completion_date} ({(study.primary_completion_type or '').lower()}). Registered primary endpoint(s): {'; '.join(primary) or 'not listed'}.", study.source_id)
+            c.study_record(study, f"Ongoing Phase 3 for {drug.name}: {study.display_name} ({study.nct_id}) — {study.brief_title}. Status {study.overall_status}; planned enrollment {study.enrollment}; primary completion {study.primary_completion_date} ({(study.primary_completion_type or '').lower()}). Registered primary endpoint(s): {'; '.join(primary) or 'not listed'}.")
 
 
 def _intent_rigorous(c: _Composer, studies: list[Study]) -> None:
@@ -304,7 +450,7 @@ def _intent_rigorous(c: _Composer, studies: list[Study]) -> None:
 def _intent_hypothetical(c: _Composer, studies: list[Study], slugs: list[str]) -> None:
     session = c.session
     c.add("INTERPRETATION", "Results reported under the efficacy estimand depend on hypothetical treatment continuation: they estimate the effect had every participant remained on the assigned treatment (ICH E9(R1) hypothetical strategy). Results under the treatment-regimen estimand do not.")
-    pool = studies or [s for s in session.scalars(select(Study)) if not slugs or any(link.drug.slug in slugs for link in s.drug_links)]
+    pool = studies or [s for s in session.scalars(select(Study).order_by(Study.id)) if not slugs or any(link.drug.slug in slugs for link in s.drug_links)]
     shown = 0
     for study in pool:
         row = _best_weight_result(session, study, "EFFICACY")
@@ -330,14 +476,14 @@ def _intent_cvot(c: _Composer, slugs: list[str]) -> None:
             continue
         any_found = True
         kind = "dedicated outcomes trial" if feats.get("outcomes_trial") else "trial with a pre-specified cardiovascular safety assessment"
-        c.add("VERIFIED_EVIDENCE", f"{', '.join(drug_names)}: {study.display_name} ({study.nct_id}) — {kind}; status {study.overall_status}; enrollment {study.enrollment} ({(study.enrollment_type or '').lower()}); primary completion {study.primary_completion_date} ({(study.primary_completion_type or '').lower()}); registry results posted: {'yes' if study.has_results else 'no'}.", study.source_id)
-        for analysis in [a for a in study.analyses if a.endpoint.category == "MACE"][:2]:
+        c.study_record(study, f"{', '.join(drug_names)}: {study.display_name} ({study.nct_id}) — {kind}; status {study.overall_status}; enrollment {study.enrollment} ({(study.enrollment_type or '').lower()}); primary completion {study.primary_completion_date} ({(study.primary_completion_type or '').lower()}); registry results posted: {'yes' if study.has_results else 'no'}.")
+        for analysis in [a for a in sorted(study.analyses, key=lambda a: a.id) if a.endpoint.category == "MACE" and policy.is_usable(a.verification_status)][:2]:
             dto = analysis_dto(analysis)
             reading = interpret_analysis(dto)
-            c.add("VERIFIED_EVIDENCE", f"{study.display_name} — {dto['endpoint_title']}: {reading['observed']}", analysis.source_id)
+            c.analysis(analysis, f"{study.display_name} — {dto['endpoint_title']}: {reading['observed']}")
             for item in reading["does_not_establish"][:2]:
                 c.add("INTERPRETATION", f"{study.display_name}: does not establish — {item}")
-    core_without = [d for d in session.scalars(select(Drug).where(Drug.tier_group == "CORE")) if (not slugs or d.slug in slugs) and not any((s.design_features or {}).get("outcomes_trial") for s in session.scalars(select(Study)) if any(link.drug_id == d.id and link.role != "COMPARATOR" for link in s.drug_links))]
+    core_without = [d for d in session.scalars(select(Drug).where(Drug.tier_group == "CORE").order_by(Drug.id)) if (not slugs or d.slug in slugs) and not any((s.design_features or {}).get("outcomes_trial") for s in session.scalars(select(Study).order_by(Study.id)) if any(link.drug_id == d.id and link.role != "COMPARATOR" for link in s.drug_links))]
     for drug in core_without:
         c.add("UNAVAILABLE", f"No prospective cardiovascular outcomes trial of {drug.name} was found among tracked registry records (not proof that none exists).")
     if not any_found and not core_without:
@@ -364,35 +510,127 @@ INTENTS = [
 # --------------------------------------------------------------------------- citation fidelity
 
 
-def numbers_in(text: str) -> set[str]:
-    cleaned = re.sub(r"\[C\d+\]", " ", text.replace("−", "-").replace("−", "-"))
-    return {n.lstrip("-+").rstrip(".") for n in re.findall(r"[-+]?\d+(?:\.\d+)?", cleaned)}
+def check_citation_fidelity(draft: str, cards: list[dict[str, Any]], vocabulary: Vocabulary | None = None, truncated: bool = False) -> dict[str, Any]:
+    """Decide whether a model draft may be shown: every sentence that asserts something must be SUPPORTED.
+
+    ``cards`` are ``{"id": "C1", "text": ..., "fact": EvidenceFact}``; a card without a ``fact`` is checked as a
+    statement (its wording is the only evidence). The result keeps the earlier contract (``passed``, ``problems``,
+    ``sentences_checked``) and adds the per-sentence report: sentence, structured claims, verdict and reasons.
+    """
+    return verify_draft(draft, cards, vocabulary=vocabulary, truncated=truncated)
 
 
-def check_citation_fidelity(draft: str, cards: list[dict[str, Any]]) -> dict[str, Any]:
-    """Reject a model draft that states an uncited fact or a number absent from its cited cards."""
-    by_id = {card["id"]: card for card in cards}
-    problems: list[str] = []
-    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+(?=[A-Z0-9\[])", draft) if s.strip()]
-    for sentence in sentences:
-        cited = re.findall(r"\[(C\d+)\]", sentence)
-        unknown = [cid for cid in cited if cid not in by_id]
-        if unknown:
-            problems.append(f"Cites unknown card(s) {unknown}: “{sentence[:120]}”")
+def _card_qualifiers(fact: EvidenceFact) -> str:
+    """Tier, verification status and role of the record behind a card, in the words a summary may use."""
+    parts = []
+    if fact.tier:
+        parts.append(f"evidence tier: {fact.tier.lower().replace('_', ' ')}")
+    summary = verification_summary(fact.records)
+    if summary:
+        parts.append(f"verification: {summary['label'].lower()}" + ("" if summary["human_verified"] else " (not human-verified)"))
+    elif fact.kind in ("STUDY_RECORD", "DERIVED_TEXT"):
+        parts.append("verification: none recorded (not human-verified)")
+    if fact.endpoint_role:
+        parts.append(f"endpoint role: {fact.endpoint_role.lower().replace('_', ' ')}")
+    if fact.multiplicity_controlled:
+        parts.append(f"multiplicity controlled: {fact.multiplicity_controlled.lower().replace('_', ' ')}")
+    if fact.hypothesis_type:
+        parts.append(f"hypothesis: {fact.hypothesis_type.lower().replace('_', ' ')}")
+    return "; ".join(parts)
+
+
+def cards_for_verification(blocks: list[Block]) -> list[dict[str, Any]]:
+    """Evidence cards as the verifier checks them: id, the text a model is shown, and the structured fact behind it.
+
+    The text is the sanitised, length-limited text of the prompt, never a longer original, so a draft cannot be
+    supported by wording the model was not shown.
+    """
+    cards = []
+    for block in blocks:
+        if not block.card_id or block.fact is None:
             continue
-        figures = numbers_in(sentence)
-        if figures and not cited:
-            problems.append(f"States a number without a citation: “{sentence[:120]}”")
-            continue
-        if cited:
-            allowed = set().union(*(numbers_in(by_id[cid]["text"]) for cid in cited))
-            missing = sorted(n for n in figures if n not in allowed)
-            if missing:
-                problems.append(f"Number(s) {missing} not found in the cited card(s): “{sentence[:120]}”")
-    for violation in guard_statement(draft, cross_trial=True, lean_mass=True, data_family="SPONTANEOUS" if re.search(r"faers|spontaneous", draft, re.IGNORECASE) else None):
-        if violation["code"] in ("CROSS_TRIAL_SUPERIORITY", "LEAN_AS_MUSCLE", "RECOMMENDATION", "SPONTANEOUS_AS_INCIDENCE", "SPONTANEOUS_AS_CAUSAL"):
-            problems.append(f"{violation['message']} “{violation['sentence'][:120]}”")
-    return {"passed": not problems, "problems": problems, "sentences_checked": len(sentences)}
+        shown = sanitize_card_text(block.text)
+        cards.append({"id": block.card_id, "text": shown, "source_ids": list(block.citations), "fact": replace(block.fact, text=shown)})
+    return cards
+
+
+def _model_summary(session: Session, question: str, provider: LLMProvider, composer: _Composer, markers: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """Ask the provider for a draft and keep it only if the deterministic verifier supports every sentence."""
+    meta: dict[str, Any] = {"provider": provider.name, "used": False}
+    blocks = [b for b in composer.blocks if b.card_id]
+    # A card whose text addresses a reader or a model ("Ignore all previous instructions ...") is never shown to the model,
+    # and a draft citing it is refused (the verifier treats such a card as no evidence).
+    usable = [b for b in blocks if b.fact is None or not instruction_like(replace(b.fact, text=sanitize_card_text(b.text)))]
+    offered = usable[:MAX_MODEL_CARDS]
+    truncated = len(offered) < len(blocks)
+    meta["cards"] = {"offered": len(offered), "available": len(blocks), "truncated": truncated}
+    if len(usable) < len(blocks):
+        meta["cards"]["withheld_instruction_like"] = len(blocks) - len(usable)
+    checker_cards = cards_for_verification(offered)
+    model_cards = CardSet(
+        ({"id": c["id"], "text": c["text"], "source_ids": c["source_ids"], "qualifiers": _card_qualifiers(c["fact"]), "facts": c["fact"].public()} for c in checker_cards),
+        omitted=len(blocks) - len(offered),
+    )
+    draft, error = call_with_deadline(provider, question, model_cards)
+    if error:
+        meta["error"] = error
+        return meta
+    if not draft:
+        meta["reason"] = "provider returned no text"
+        return meta
+    try:
+        check = check_citation_fidelity(draft, checker_cards, vocabulary=Vocabulary.from_session(session), truncated=truncated)
+    except Exception:  # fail closed: a draft the verifier cannot read is withheld, and the deterministic answer stands
+        log.exception("claim verification failed; the model draft is withheld")
+        meta["rejected"] = True
+        meta["error"] = "VerificationError"
+        return meta
+    if not check["passed"]:
+        # the withheld draft itself is never returned: verdicts, claimed values and reasons only
+        meta["citation_check"] = withheld_report(check)
+        meta["rejected"] = True
+        return meta
+    meta["citation_check"] = check
+    cited_ids = list(dict.fromkeys(re.findall(r"C\d+", " ".join(re.findall(r"\[([^\]]*)\]", draft)))))
+    cited_sources = [sid for cid in cited_ids for sid in markers.get(cid, {}).get("source_ids", [])]
+    note = f"Drafted from {len(offered)} of {len(blocks)} evidence cards; the remaining cards were not shown to the model." if truncated else None
+    composer.blocks.append(Block("MODEL_SUMMARY", draft, composer.cite(*cited_sources), note=note))
+    meta["used"] = True
+    meta["cited_markers"] = cited_ids
+    return meta
+
+
+# --------------------------------------------------------------------------- review identity of the records behind a block
+
+#: Record types of the assistant's facts that are named differently in the review lifecycle.
+_REVIEW_TYPE = {"drug_mechanism": "mechanism"}
+
+
+def attach_review_identity(session: Session, blocks: list[Block]) -> None:
+    """Add the review lifecycle's lasting identity to every record behind a block: ``evidence_type`` (the review
+    vocabulary) and ``evidence_key``, so a reader can open exactly that record in Evidence Review.
+
+    Read-only and cheap: one indexed query per evidence type, on rows the answer already cites. Only the serialised
+    block records gain the two fields; the facts the claim verifier and a model see are unchanged. A record that is
+    not reviewable (a registry study record) gets neither field.
+    """
+    wanted: dict[str, set[int]] = {}
+    for block in blocks:
+        for record in block.evidence:
+            etype = _REVIEW_TYPE.get(record.get("type", ""), record.get("type", ""))
+            if etype in REVIEWABLE_MODELS and isinstance(record.get("id"), int):
+                wanted.setdefault(etype, set()).add(record["id"])
+    keys: dict[tuple[str, int], str | None] = {}
+    for etype, ids in wanted.items():
+        model = REVIEWABLE_MODELS[etype]
+        for row_id, key in session.execute(select(model.id, model.evidence_key).where(model.id.in_(sorted(ids)))):
+            keys[(etype, row_id)] = key
+    for block in blocks:
+        for record in block.evidence:
+            etype = _REVIEW_TYPE.get(record.get("type", ""), record.get("type", ""))
+            if (etype, record.get("id")) in keys:
+                record["evidence_type"] = etype
+                record["evidence_key"] = keys[(etype, record["id"])]
 
 
 # --------------------------------------------------------------------------- entry point
@@ -436,26 +674,26 @@ def ask(session: Session, question: str, provider: LLMProvider | None = None) ->
         if not retrieved:
             composer.add("UNAVAILABLE", "No stored evidence matches this question. The platform answers only from ingested public sources.")
         for card in retrieved:
-            composer.add("VERIFIED_EVIDENCE" if card["kind"] in ("RESULT", "ANALYSIS", "CLAIM") else "INTERPRETATION", card["text"], card["source_id"], result_ids=[card["ref"]] if card["kind"] == "RESULT" else [])
+            composer.add("REPORTED_EVIDENCE" if card["kind"] in ("RESULT", "ANALYSIS", "CLAIM") else "INTERPRETATION", card["text"], card["source_id"], result_ids=[card["ref"]] if card["kind"] == "RESULT" else [], fact=card_fact(session, card))
 
-    llm_meta: dict[str, Any] = {"provider": provider.name, "used": False}
+    attach_review_identity(session, composer.blocks)
+    # Every block a summary may cite gets its marker, with or without a model: the reader can always resolve [C#].
+    markers: dict[str, dict[str, Any]] = {}
+    for index, block in enumerate(composer.blocks):
+        if block.kind in CARD_KINDS:
+            block.card_id = f"C{len(markers) + 1}"
+            markers[block.card_id] = {
+                "block": index,
+                "kind": block.kind,
+                "source_ids": list(block.citations),
+                "evidence": [dict(record) for record in block.evidence],
+                "verification": block.verification["label"] if block.verification else None,
+                "human_verified": bool(block.verification and block.verification["human_verified"]),
+                "fact": block.fact.fact_id if block.fact is not None else None,
+            }
+
     if provider.name != "none":
-        llm_cards = [{"id": f"C{i + 1}", "text": block.text, "source_ids": block.citations} for i, block in enumerate(b for b in composer.blocks if b.kind in ("VERIFIED_EVIDENCE", "INTERPRETATION", "UNAVAILABLE"))][:14]
-        try:
-            draft = provider.summarize(question, llm_cards)
-        except Exception as exc:  # a provider failure never breaks the deterministic answer
-            draft, llm_meta["error"] = None, f"{type(exc).__name__}: {exc}"[:200]
-        if draft:
-            check = check_citation_fidelity(draft, llm_cards)
-            llm_meta["citation_check"] = check
-            if check["passed"]:
-                cited = sorted({sid for cid in re.findall(r"\[(C\d+)\]", draft) for card in llm_cards if card["id"] == cid for sid in card["source_ids"]})
-                composer.blocks.append(Block("MODEL_SUMMARY", draft, composer.cite(*cited)))
-                llm_meta["used"] = True
-            else:
-                llm_meta["rejected"] = True
-        elif "error" not in llm_meta:
-            llm_meta["reason"] = "provider returned no text"
+        llm_meta = _model_summary(session, question, provider, composer, markers)
     else:
-        llm_meta["reason"] = "no language model configured; answer composed deterministically from stored evidence"
-    return Answer(question, intent, composer.blocks, composer.sources(), llm_meta, retrieved)
+        llm_meta = {"provider": provider.name, "used": False, "reason": "no language model configured; answer composed deterministically from stored evidence"}
+    return Answer(question, intent, composer.blocks, composer.sources(), llm_meta, retrieved, markers)

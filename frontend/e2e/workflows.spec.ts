@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-const SHOTS = "../docs/screenshots";
+// The documentation images in docs/screenshots are tracked: they are rewritten only when CAPTURE_DOC_SCREENSHOTS=1
+// asks for it. Otherwise every capture goes to a git-ignored directory, so a test run leaves the worktree unchanged.
+const SHOTS = process.env.CAPTURE_DOC_SCREENSHOTS === "1" ? "../docs/screenshots" : "test-results/workflow-screenshots";
 // Animations are fast-forwarded and the dev-server badge hidden so captures are complete and repeatable.
 const shot = (page: import("@playwright/test").Page, name: string) =>
   page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true, animations: "disabled", style: "nextjs-portal { display: none !important; }" });
@@ -22,7 +24,7 @@ test.afterEach(() => {
 test("command center shows portfolio status and validation", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("What the public evidence supports");
-  await expect(page.getByText(/15 \/ 15/)).toBeVisible();
+  await expect(page.getByText(/16 \/ 16/)).toBeVisible(); // V16: human statuses rest on an attested decision
   const retatrutide = page.getByRole("row", { name: /Retatrutide/ });
   await expect(retatrutide).toContainText("Investigational");
   await expect(retatrutide).toContainText("Triple GIP, GLP-1 and glucagon receptor agonist");
@@ -37,7 +39,8 @@ test("vertical slice: trial → publication → results → comparison → cited
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("SURMOUNT-1");
   await expect(page.getByText("PMID 35658024").first()).toBeVisible(); // linked primary publication
   await expect(page.getByText(/Registry reference/i).first()).toBeVisible(); // how the link was established
-  await expect(page.getByRole("img", { name: /Chart of 4 rows/ })).toBeVisible();
+  // The chart is a list of rows (each row is a keyboard-reachable control), no longer a single image.
+  await expect(page.getByRole("list", { name: /Chart of 4 rows/ })).toBeVisible();
   await expect(page.getByText(/Machine-extracted|Quote-anchored/).first()).toBeVisible();
   await shot(page, "03-trial-detail");
 
@@ -48,7 +51,10 @@ test("vertical slice: trial → publication → results → comparison → cited
   await expect(result).toContainText("there is no randomization between these groups");
   await expect(result).toContainText("TRIUMPH-5");
   await expect(result).toContainText("Do not state or imply that");
-  await expect(result).toContainText("Confidence interval: not available");
+  // Week 80 against week 72 are not the same quantity (CMP-2): no A − B is formed, and the page says why in the
+  // comparison's own words. (Where a difference is formed it states that no interval is available: see below.)
+  await expect(page.getByTestId("descriptive-difference")).toHaveCount(0);
+  await expect(result).toContainText("No arithmetic difference is given: assessment time point (week 80 versus week 72)");
   await shot(page, "04-comparison-laboratory");
 
   const href = await page.getByRole("link", { name: /Export cited report/ }).getAttribute("href");
@@ -56,6 +62,7 @@ test("vertical slice: trial → publication → results → comparison → cited
   expect(report.ok()).toBeTruthy();
   const markdown = await report.text();
   expect(markdown).toContain("DESCRIPTIVE CROSS-STUDY COMPARISON");
+  expect(markdown).toContain("Not computed. No arithmetic difference is given: assessment time point (week 80 versus week 72)");
   expect(markdown).toContain("## Sources");
   expect(markdown).toContain("pubmed.ncbi.nlm.nih.gov/35658024");
   expect(markdown).toContain("content hash:");
@@ -67,6 +74,7 @@ test("within-trial comparison shows the registry analysis; estimand mismatch is 
   await expect(page.getByTestId("classification")).toHaveText("Direct randomized comparison");
   await expect(page.getByTestId("comparison-result")).toContainText("Reported between-arm analysis");
   await expect(page.getByTestId("comparison-result")).toContainText("95% CI");
+  await expect(page.getByTestId("descriptive-difference")).toContainText("Confidence interval: not available");
 
   await page.goto("/compare");
   await page.getByRole("link", { name: /ATTAIN-1 36 mg: efficacy estimand vs treatment-regimen estimand/ }).click();
@@ -109,8 +117,10 @@ test("estimand inspector keeps ATTAIN-1 estimands apart", async ({ page }) => {
 test("benefit–risk workbench qualifies EloraTZP and labels scores and scenarios", async ({ page }) => {
   await page.goto("/benefit-risk?nct=NCT06603571");
   await expect(page.getByText(/EloraTZP Phase 2b: Type 2 diabetes · Phase 2/)).toBeVisible();
-  await expect(page.getByText("Only a range was disclosed for the combination arms")).toBeVisible();
-  await expect(page.getByText(/10\.8% to 27\.0% across the EloraTZP arms/)).toBeVisible();
+  // The range disclosure is read from the API (adverse-event rows with their quote), not written into the page.
+  await expect(page.getByText("Only a range across arms was disclosed for 2 groups of arms")).toBeVisible();
+  await expect(page.getByText(/EloraTZP combination arms \(range across arms; arm-level values not disclosed\): 10\.8% to 27%/)).toBeVisible();
+  await expect(page.getByText(/10\.8% to 27\.0% with EloraTZP, 0% to 10\.8% with eloralintide/)).toBeVisible();
   await expect(page.getByText(/Efficacy estimand · Sponsor press release/).first()).toBeVisible();
   await shot(page, "06-benefit-risk-eloratzp");
 
@@ -162,13 +172,20 @@ test("protocol design workbench calculates and labels synthetic output", async (
 
 test("research assistant cites evidence and declines recommendations", async ({ page }) => {
   await page.goto("/assistant");
-  await expect(page.getByText("No language model is configured — answers are fully deterministic")).toBeVisible();
+  await expect(page.getByText("No language model is configured. Answers are composed deterministically")).toBeVisible();
   await page.getByRole("button", { name: "What evidence differentiates retatrutide from tirzepatide?" }).click();
   const answer = page.getByTestId("assistant-answer");
   await expect(answer).toContainText("Reported evidence");
+  await expect(answer).not.toContainText(/verified evidence/i); // the block kind says what a source reports, not that it was verified
+  // Every reported-evidence block shows how far its records have been checked, with the shared status chips.
+  const stages = answer.getByTestId("block-verification");
+  await expect(stages.first()).toBeVisible();
+  const shown = (await stages.allInnerTexts()).join(" | ");
+  expect(shown).toMatch(/Machine-extracted|Quote-anchored|Pending review/);
+  expect(shown).not.toMatch(/Human-verified/); // nothing in the seed has been reviewed by a person
   await expect(answer).toContainText("No randomized head-to-head result");
-  await expect(answer).toContainText("Hypothesis — untested");
-  await expect(answer.getByText(/Sources cited \(\d+\)/)).toBeVisible();
+  await expect(answer).toContainText("Hypothesis, untested");
+  await expect(page.getByRole("heading", { name: /Sources cited \(\d+\)/ })).toBeVisible();
   await shot(page, "10-research-assistant");
   await page.getByLabel("Research question").fill("Should I take tirzepatide or retatrutide?");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
@@ -178,7 +195,7 @@ test("research assistant cites evidence and declines recommendations", async ({ 
 test("source and audit explorer shows provenance, the change summary and validation", async ({ page }) => {
   await page.goto("/sources");
   await page.getByPlaceholder("Title, NCT, PMID…").fill("NCT04184622");
-  await page.getByRole("button", { name: /ClinicalTrials\.gov NCT04184622/ }).click();
+  await page.getByRole("link", { name: /ClinicalTrials\.gov NCT04184622/ }).click(); // selecting a source is navigation: it is a link with its own address
   await expect(page.getByText("Content hash (SHA-256)")).toBeVisible();
   await expect(page.getByText(/Yes \(public-domain/)).toBeVisible();
   await shot(page, "11-source-explorer");
@@ -187,5 +204,5 @@ test("source and audit explorer shows provenance, the change summary and validat
   await expect(page.getByRole("cell", { name: "Overall recruitment status" }).first()).toBeVisible();
   await expect(page.getByText(/Manual review queue/)).toBeVisible();
   await page.goto("/sources?tab=validation");
-  await expect(page.getByText(/15 of 15/)).toBeVisible();
+  await expect(page.getByText(/16 of 16/)).toBeVisible(); // V16: human statuses rest on an attested decision
 });

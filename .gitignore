@@ -12,6 +12,8 @@ backend/var/
 # Node
 node_modules/
 .next/
+.next-e2e/
+.next-*/
 out/
 playwright-report/
 test-results/

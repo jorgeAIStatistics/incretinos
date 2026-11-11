@@ -4,14 +4,14 @@
 study: NCT04881760
 estimands: []
 endpoints:
-- key: weight-pct-change-w24-percent-change-in-body-weigh
+- key: weight-pct-change-w24-percent-change-in-body-weight-from-baseline-4577b75c
   title: percent change in body weight from baseline
   role: PRIMARY
   category: WEIGHT_PCT_CHANGE
   unit: '%'
   timepoint_weeks: 24
   multiplicity_controlled: NOT_STATED
-- key: weight-pct-change-w48-percent-change-in-body-weigh
+- key: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   title: percent change in body weight from baseline
   role: SECONDARY
   category: WEIGHT_PCT_CHANGE
@@ -19,7 +19,7 @@ endpoints:
   timepoint_weeks: 48
   multiplicity_controlled: NOT_STATED
 results:
-- endpoint: weight-pct-change-w24-percent-change-in-body-weigh
+- endpoint: weight-pct-change-w24-percent-change-in-body-weight-from-baseline-4577b75c
   arm: retatrutide 1 mg
   scope: ARM
   value: -7.2
@@ -29,7 +29,7 @@ results:
   source: pubmed:37366315
   quote: -7.2% in the 1-mg group, -12.9% in the combined 4-mg group, -17.3% in the combined 8-mg group, and -17.5% in the 12-mg group
   notes: Estimand not named in abstract; Lilly press release (S51) says results are from the analysis guided by the efficacy estimand. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w24-percent-change-in-body-weigh
+- endpoint: weight-pct-change-w24-percent-change-in-body-weight-from-baseline-4577b75c
   arm: retatrutide 4 mg (combined)
   scope: ARM
   value: -12.9
@@ -39,7 +39,7 @@ results:
   source: pubmed:37366315
   quote: -7.2% in the 1-mg group, -12.9% in the combined 4-mg group, -17.3% in the combined 8-mg group, and -17.5% in the 12-mg group
   notes: Estimand not named in abstract; Lilly press release (S51) says results are from the analysis guided by the efficacy estimand. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w24-percent-change-in-body-weigh
+- endpoint: weight-pct-change-w24-percent-change-in-body-weight-from-baseline-4577b75c
   arm: retatrutide 8 mg (combined)
   scope: ARM
   value: -17.3
@@ -49,7 +49,7 @@ results:
   source: pubmed:37366315
   quote: -7.2% in the 1-mg group, -12.9% in the combined 4-mg group, -17.3% in the combined 8-mg group, and -17.5% in the 12-mg group
   notes: Estimand not named in abstract; Lilly press release (S51) says results are from the analysis guided by the efficacy estimand. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w24-percent-change-in-body-weigh
+- endpoint: weight-pct-change-w24-percent-change-in-body-weight-from-baseline-4577b75c
   arm: retatrutide 12 mg
   scope: ARM
   value: -17.5
@@ -59,7 +59,7 @@ results:
   source: pubmed:37366315
   quote: -7.2% in the 1-mg group, -12.9% in the combined 4-mg group, -17.3% in the combined 8-mg group, and -17.5% in the 12-mg group
   notes: Estimand not named in abstract; Lilly press release (S51) says results are from the analysis guided by the efficacy estimand. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w24-percent-change-in-body-weigh
+- endpoint: weight-pct-change-w24-percent-change-in-body-weight-from-baseline-4577b75c
   arm: placebo
   scope: ARM
   value: -1.6
@@ -69,7 +69,7 @@ results:
   source: pubmed:37366315
   quote: as compared with -1.6% in the placebo group
   notes: Estimand not named in abstract. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w48-percent-change-in-body-weigh
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   arm: retatrutide 1 mg
   scope: ARM
   value: -8.7
@@ -79,7 +79,7 @@ results:
   source: pubmed:37366315
   quote: -8.7% in the 1-mg group, -17.1% in the combined 4-mg group, -22.8% in the combined 8-mg group, and -24.2% in the 12-mg group
   notes: Estimand not named in abstract; S51 labels the 48-week result efficacy estimand. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w48-percent-change-in-body-weigh
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   arm: retatrutide 4 mg (combined)
   scope: ARM
   value: -17.1
@@ -89,7 +89,7 @@ results:
   source: pubmed:37366315
   quote: -8.7% in the 1-mg group, -17.1% in the combined 4-mg group, -22.8% in the combined 8-mg group, and -24.2% in the 12-mg group
   notes: Estimand not named in abstract; S51 labels the 48-week result efficacy estimand. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w48-percent-change-in-body-weigh
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   arm: retatrutide 8 mg (combined)
   scope: ARM
   value: -22.8
@@ -99,7 +99,7 @@ results:
   source: pubmed:37366315
   quote: -8.7% in the 1-mg group, -17.1% in the combined 4-mg group, -22.8% in the combined 8-mg group, and -24.2% in the 12-mg group
   notes: Estimand not named in abstract; S51 labels the 48-week result efficacy estimand. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w48-percent-change-in-body-weigh
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   arm: retatrutide 12 mg
   scope: ARM
   value: -24.2
@@ -109,7 +109,7 @@ results:
   source: pubmed:37366315
   quote: -8.7% in the 1-mg group, -17.1% in the combined 4-mg group, -22.8% in the combined 8-mg group, and -24.2% in the 12-mg group
   notes: Estimand not named in abstract; S51 labels the 48-week result efficacy estimand. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w48-percent-change-in-body-weigh
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   arm: placebo
   scope: ARM
   value: -2.1

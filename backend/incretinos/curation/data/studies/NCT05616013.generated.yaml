@@ -3,50 +3,61 @@
 # Verification status is assigned by the loader (quote anchoring) — nothing here is human-verified.
 study: NCT05616013
 estimands:
-- key: treatment_regimen
+- key: treatment_regimen@pubmed:41772149
   label: TREATMENT_REGIMEN
-  description: 'Treatment-regimen estimand as named by the source: the treatment effect regardless of treatment discontinuation (treatment-policy strategy).'
+  basis: INFERRED_BY_CURATOR
+  description: 'Treatment-regimen estimand as recorded in the research note for this source; the note holds no verbatim quote from the source that names the estimand, so the label is the curator''s attribution:
+    the treatment effect regardless of treatment discontinuation (treatment-policy strategy).'
   source: pubmed:41772149
   strategies:
   - event: TREATMENT_DISCONTINUATION
     strategy: TREATMENT_POLICY
-- key: efficacy
+- key: efficacy@pubmed:41772149
   label: EFFICACY
-  description: 'Efficacy estimand as named by the source: the treatment effect had participants remained on study treatment (hypothetical strategy for treatment discontinuation).'
+  basis: INFERRED_BY_CURATOR
+  description: 'Efficacy estimand as recorded in the research note for this source; the note holds no verbatim quote from the source that names the estimand, so the label is the curator''s attribution:
+    the treatment effect had participants remained on study treatment (hypothetical strategy for treatment discontinuation).'
   source: pubmed:41772149
   strategies:
   - event: TREATMENT_DISCONTINUATION
     strategy: HYPOTHETICAL
 endpoints:
-- key: weight-abs-change-w48-absolute-change-from-baselin
+- key: weight-abs-change-w48-absolute-change-from-baseline-in-body-weight-dfd080dc
   title: absolute change from baseline in body weight (LS mean)
   role: PRIMARY
   category: WEIGHT_ABS_CHANGE
   unit: kg
   timepoint_weeks: 48
   multiplicity_controlled: 'NO'
-- key: weight-pct-change-w48-percent-change-in-body-weigh
+- key: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-6fbb36e3
   title: percent change in body weight from baseline (LS mean)
   role: SECONDARY
   category: WEIGHT_PCT_CHANGE
   unit: '%'
   timepoint_weeks: 48
   multiplicity_controlled: 'NO'
-- key: weight-pct-change-w72-percent-change-in-body-weigh
+- key: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-ad024f44
   title: percent change in body weight from baseline (LS mean)
   role: SECONDARY
   category: WEIGHT_PCT_CHANGE
   unit: '%'
   timepoint_weeks: 72
   multiplicity_controlled: 'NO'
-- key: body-composition-w48-percent-change-in-total-body
+- key: body-composition-w48-percent-change-in-total-body-lean-mass-by-dx-13ba53de
   title: percent change in total body lean mass by DXA (LS mean)
   role: SECONDARY
   category: BODY_COMPOSITION
   unit: '%'
   timepoint_weeks: 48
   multiplicity_controlled: 'NO'
-- key: body-composition-w48-proportion-of-weight-loss-du
+- key: body-composition-w48-percent-change-in-total-body-fat-mass-by-dxa-77c82418
+  title: percent change in total body fat mass by DXA (LS mean)
+  role: SECONDARY
+  category: BODY_COMPOSITION
+  unit: '%'
+  timepoint_weeks: 48
+  multiplicity_controlled: 'NO'
+- key: body-composition-w48-proportion-of-weight-loss-due-to-fat-mass-by-b5a45a2a
   title: proportion of weight loss due to fat mass by DXA (fat loss index)
   role: SECONDARY
   category: BODY_COMPOSITION
@@ -54,8 +65,8 @@ endpoints:
   timepoint_weeks: 48
   multiplicity_controlled: 'NO'
 results:
-- endpoint: weight-abs-change-w48-absolute-change-from-baselin
-  estimand: treatment_regimen
+- endpoint: weight-abs-change-w48-absolute-change-from-baseline-in-body-weight-dfd080dc
+  estimand: treatment_regimen@pubmed:41772149
   arm: bimagrumab 30 mg/kg
   scope: ARM
   value: -9.3
@@ -65,8 +76,8 @@ results:
   quote: -9.3 kg (bimagrumab 30 mg kg), -14.2 kg (semaglutide 2.4 mg) and -17.8 kg (bimagrumab 30 mg kgplus semaglutide 2.4 mg
   notes: 'Quote from the PubMed abstract as returned by PubMed (superscripts flattened: ''mg kg'' = mg/kg; ''kgplus'' is a flattening artefact). Estimand label as used in the full text: ''Treatment regimen
     estimand''. CI not reported in the article text read; registry (S22) gives SE and CIs for differences. ci_not_reported_in_this_source'
-- endpoint: weight-abs-change-w48-absolute-change-from-baselin
-  estimand: treatment_regimen
+- endpoint: weight-abs-change-w48-absolute-change-from-baseline-in-body-weight-dfd080dc
+  estimand: treatment_regimen@pubmed:41772149
   arm: semaglutide 2.4 mg
   scope: ARM
   value: -14.2
@@ -76,8 +87,8 @@ results:
   quote: -9.3 kg (bimagrumab 30 mg kg), -14.2 kg (semaglutide 2.4 mg) and -17.8 kg (bimagrumab 30 mg kgplus semaglutide 2.4 mg
   notes: 'Quote from the PubMed abstract as returned by PubMed (superscripts flattened: ''mg kg'' = mg/kg; ''kgplus'' is a flattening artefact). Estimand label as used in the full text: ''Treatment regimen
     estimand''. CI not reported in the article text read; registry (S22) gives SE and CIs for differences. ci_not_reported_in_this_source'
-- endpoint: weight-abs-change-w48-absolute-change-from-baselin
-  estimand: treatment_regimen
+- endpoint: weight-abs-change-w48-absolute-change-from-baseline-in-body-weight-dfd080dc
+  estimand: treatment_regimen@pubmed:41772149
   arm: bimagrumab 30 mg/kg + semaglutide 2.4 mg (high-dose combination)
   scope: ARM
   value: -17.8
@@ -87,8 +98,8 @@ results:
   quote: -9.3 kg (bimagrumab 30 mg kg), -14.2 kg (semaglutide 2.4 mg) and -17.8 kg (bimagrumab 30 mg kgplus semaglutide 2.4 mg
   notes: 'Quote from the PubMed abstract as returned by PubMed (superscripts flattened: ''mg kg'' = mg/kg; ''kgplus'' is a flattening artefact). Estimand label as used in the full text: ''Treatment regimen
     estimand''. CI not reported in the article text read; registry (S22) gives SE and CIs for differences. ci_not_reported_in_this_source'
-- endpoint: weight-abs-change-w48-absolute-change-from-baselin
-  estimand: treatment_regimen
+- endpoint: weight-abs-change-w48-absolute-change-from-baseline-in-body-weight-dfd080dc
+  estimand: treatment_regimen@pubmed:41772149
   arm: placebo
   scope: ARM
   value: -3.3
@@ -98,8 +109,8 @@ results:
   quote: versus -3.3 kg (placebo) (all P < 0.001 versus placebo)
   notes: 'Quote from the PubMed abstract as returned by PubMed (superscripts flattened: ''mg kg'' = mg/kg; ''kgplus'' is a flattening artefact). Estimand label as used in the full text: ''Treatment regimen
     estimand''. CI not reported in the article text read; registry (S22) gives SE and CIs for differences. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w48-percent-change-in-body-weigh
-  estimand: treatment_regimen
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-6fbb36e3
+  estimand: treatment_regimen@pubmed:41772149
   arm: combination groups (range across four arms)
   scope: RANGE_ACROSS_ARMS
   value_low: -16.4
@@ -109,8 +120,8 @@ results:
   source: pubmed:41772149
   quote: −5.6% to −8.6% (bimagrumab), −9.8% to −13.5% (semaglutide) and −12.0% to −16.4% (combination) compared to −3.5% (placebo)
   notes: Range across arms; arm-level values not in the text read. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w48-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-6fbb36e3
+  estimand: efficacy@pubmed:41772149
   arm: combination groups (range across four arms)
   scope: RANGE_ACROSS_ARMS
   value_low: -20.2
@@ -120,8 +131,8 @@ results:
   source: pubmed:41772149
   quote: −5.0% to −9.7% (bimagrumab), −11.0% to −14.8% (semaglutide) and −14.3% to −20.2% (combination) versus −2.5% (placebo)
   notes: ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w72-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-ad024f44
+  estimand: efficacy@pubmed:41772149
   arm: bimagrumab 30 mg/kg + semaglutide 2.4 mg (high-dose combination)
   scope: ARM
   value: -22.1
@@ -131,8 +142,8 @@ results:
   quote: −12.0 kg (−10.8%; bimagrumab 30 mg kg), −16.5 kg (−15.7%; semaglutide 2.4 mg) and −24.2 kg (−22.1%; high-dose combination)
   notes: 'Open-label extension; ''all week 72 analyses were considered post hoc''; no true placebo group after week 48. Comparator values in the same sentence: semaglutide 2.4 mg -15.7%, bimagrumab 30 mg/kg
     -10.8%. ci_not_reported_in_this_source'
-- endpoint: body-composition-w48-percent-change-in-total-body
-  estimand: treatment_regimen
+- endpoint: body-composition-w48-percent-change-in-total-body-lean-mass-by-dx-13ba53de
+  estimand: treatment_regimen@pubmed:41772149
   arm: combination groups (range across four arms)
   scope: RANGE_ACROSS_ARMS
   value_low: -2.3
@@ -142,8 +153,8 @@ results:
   source: pubmed:41772149
   quote: +1.0% to +1.1% (bimagrumab), −4.7% to −6.9% (semaglutide) and −0.8% to −2.3% (combination) versus −0.9% (placebo)
   notes: ci_not_reported_in_this_source
-- endpoint: body-composition-w48-percent-change-in-total-body
-  estimand: efficacy
+- endpoint: body-composition-w48-percent-change-in-total-body-lean-mass-by-dx-13ba53de
+  estimand: efficacy@pubmed:41772149
   arm: combination groups (range across four arms)
   scope: RANGE_ACROSS_ARMS
   value_low: -2.6
@@ -153,8 +164,8 @@ results:
   source: pubmed:41772149
   quote: +2.3% to +2.7% (bimagrumab), −5.3% to −7.9% (semaglutide) and −1.1% to −2.6% (combination) versus −0.5% (placebo)
   notes: ci_not_reported_in_this_source
-- endpoint: body-composition-w48-percent-change-in-total-body
-  estimand: treatment_regimen
+- endpoint: body-composition-w48-percent-change-in-total-body-fat-mass-by-dxa-77c82418
+  estimand: treatment_regimen@pubmed:41772149
   arm: combination groups (range across four arms)
   scope: RANGE_ACROSS_ARMS
   value_low: -33.7
@@ -164,8 +175,8 @@ results:
   source: pubmed:41772149
   quote: −13.0% to −18.9% (bimagrumab), −16.0% to −21.1% (semaglutide) and −24.7% to −33.7% (combination) compared to −5.6% (placebo)
   notes: ci_not_reported_in_this_source
-- endpoint: body-composition-w48-percent-change-in-total-body
-  estimand: efficacy
+- endpoint: body-composition-w48-percent-change-in-total-body-fat-mass-by-dxa-77c82418
+  estimand: efficacy@pubmed:41772149
   arm: combination groups (range across four arms)
   scope: RANGE_ACROSS_ARMS
   value_low: -42.2
@@ -175,8 +186,8 @@ results:
   source: pubmed:41772149
   quote: −15.9% to −25.3% (bimagrumab), −18.4% to −24.8% (semaglutide) and −30.6% to −42.2% (combination) compared to −5.2% (placebo)
   notes: ci_not_reported_in_this_source
-- endpoint: body-composition-w48-proportion-of-weight-loss-du
-  estimand: treatment_regimen
+- endpoint: body-composition-w48-proportion-of-weight-loss-due-to-fat-mass-by-b5a45a2a
+  estimand: treatment_regimen@pubmed:41772149
   arm: bimagrumab 30 mg/kg + semaglutide 2.4 mg (high-dose combination)
   scope: ARM
   value: 92.3

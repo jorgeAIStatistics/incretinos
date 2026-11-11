@@ -3,6 +3,28 @@
 One code path serves live ingestion, fixture recording and the offline demo; only the
 transport differs. A failure in one source is recorded and queued for review — it
 never aborts the run and never results in partially invented data.
+
+Loads rebuild evidence rows (delete and re-insert), so the review lifecycle follows every step that
+touches them, in the same transaction as the step:
+
+* ``reconcile`` (full pass) re-keys the rebuilt rows, re-applies recorded human decisions, re-checks
+  quote anchoring and reports rows whose content changed. It needs a complete state, so a full seed
+  runs it once, after the curated load; a partial refresh (check-updates, the scheduler) runs it
+  after each of its steps, because nothing else follows.
+* ``hold_rejections`` (protective pass) runs after a step that rebuilt rows while more steps are
+  still to come. It only puts rejected rows back to REJECTED.
+
+Either way a rejected row is never committed with a mechanical status, not even between two steps.
+
+Failure handling, in two layers:
+
+* A registry study is ingested inside its own savepoint. Whatever goes wrong while it is fetched, parsed or
+  written (a transport error, an unexpected payload shape, a value the database refuses), the savepoint is
+  rolled back, so the study leaves no rows; the failure is recorded against that study and the next study is
+  processed. A study is listed in the report only after its savepoint has been released.
+* If a whole step fails anyway, its transaction is rolled back and the report is put back to what it said
+  before the step, so the report never lists work that is not in the database. Failures already recorded
+  for individual items of that step are written again, because the rollback removed their review items.
 """
 
 from __future__ import annotations
@@ -18,7 +40,9 @@ from sqlalchemy.orm import Session
 
 from ..config import Settings
 from ..curation import loader
-from ..models import Drug, IngestionRun, Publication, Study, StudyPublication, utcnow
+from ..db import rejected_visible
+from ..models import Drug, EvidenceSource, IngestionRun, Publication, Study, StudyPublication, utcnow
+from ..review.lifecycle import ReconcileReport, hold_rejections, reconcile
 from .ctgov import CTGovAdapter
 from .ctgov_diff import diff_studies, overall_significance, summarize_changes
 from .openfda import OpenFDAFaersAdapter, OpenFDALabelAdapter
@@ -31,6 +55,11 @@ from .transport import FixtureMissing, Transport, TransportError, build_transpor
 # derived from the real record by the labelled edits in ``make_synthetic_prior_version``
 # and is flagged is_synthetic everywhere it is stored or shown.
 DEMO_CHANGE_NCT = "NCT07321886"
+
+#: Steps after which evidence rows or their sources may differ, so the review lifecycle must reconcile.
+RECONCILE_AFTER = frozenset({"ctgov", "openfda-label", "curated-evidence", "fulltext", "review-reconcile"})
+#: Steps that read evidence analytically and must not see rejected rows.
+ANALYTIC_STEPS = frozenset({"gap-engine"})
 
 
 def make_synthetic_prior_version(raw: dict) -> dict:
@@ -66,10 +95,22 @@ class IngestReport:
     faers: list[dict[str, Any]] = field(default_factory=list)
     discovered: int = 0
     curated: dict[str, Any] = field(default_factory=dict)
+    fulltext: dict[str, Any] = field(default_factory=dict)
     failures: list[dict[str, str]] = field(default_factory=list)
+    # Review lifecycle: counts from the last reconcile of the run, and every stored row whose content changed.
+    review: dict[str, Any] = field(default_factory=dict)
+    evidence_changes: list[dict[str, Any]] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
         return self.__dict__
+
+    def snapshot(self) -> dict[str, Any]:
+        """A copy of what the report says now (the failure list excepted), to restore if a step is rolled back."""
+        return {name: copy.deepcopy(value) for name, value in self.__dict__.items() if name != "failures"}
+
+    def restore(self, snapshot: dict[str, Any]) -> None:
+        for name, value in snapshot.items():
+            setattr(self, name, value)
 
 
 class Pipeline:
@@ -83,17 +124,52 @@ class Pipeline:
         self.labels = OpenFDALabelAdapter(self.transport)
         self.faers = OpenFDAFaersAdapter(self.transport)
         self.report = IngestReport(mode=self.transport.mode)
+        self._reconciled = False
+        self._record = record
 
     # -- helpers
-    def _run(self, adapter: str, fn: Callable[[], dict | None]) -> None:
+    def reconcile_review(self) -> ReconcileReport:
+        """Re-key rebuilt rows, re-apply review decisions and collect changed evidence (same transaction)."""
+        outcome = reconcile(self.session)
+        self.report.review = outcome.summary()
+        self.report.evidence_changes.extend(outcome.changed)
+        self._reconciled = True
+        return outcome
+
+    def _run(self, adapter: str, fn: Callable[[], dict | None], *, review: str | None = None) -> None:
+        """Run one step in its own transaction, followed by the review pass it needs.
+
+        ``review`` is "reconcile" (full pass), "hold" (protective pass: more steps follow) or "none";
+        by default a step in RECONCILE_AFTER gets the full pass.
+        """
+        review = review or ("reconcile" if adapter in RECONCILE_AFTER else "none")
         run = IngestionRun(adapter=adapter, mode=self.transport.mode)
         self.session.add(run)
         self.session.flush()
+        before = self.report.snapshot()
+        failures_before = len(self.report.failures)
         try:
-            run.stats = fn() or {}
+            if adapter in ANALYTIC_STEPS:
+                stats = fn() or {}
+            else:
+                # Loaders must see rejected rows (to delete or update them) even though analytic code never does.
+                with rejected_visible(self.session):
+                    stats = fn() or {}
+            # Inside the try: if the review pass fails, the step is rolled back with it rather than committed unprotected.
+            if review == "reconcile":
+                stats = {**stats, "review": self.reconcile_review().summary()}
+            elif review == "hold":
+                self._reconciled = False
+                stats = {**stats, "rejections_held": hold_rejections(self.session)}
+            run.stats = stats
             run.status = "SUCCEEDED"
         except Exception as exc:  # recorded, surfaced, never swallowed silently
             self.session.rollback()
+            # The step's rows are gone, so the report must not list them; failures recorded for single items
+            # during the step did happen, and the rollback removed their review items, so they are recorded again.
+            self.report.restore(before)
+            for failure in self.report.failures[failures_before:]:
+                self._record_failure(failure["target"], failure["error"])
             run = IngestionRun(adapter=adapter, mode=self.transport.mode, status="FAILED", error=f"{type(exc).__name__}: {exc}")
             self.session.add(run)
             self._fail(adapter, exc)
@@ -103,6 +179,9 @@ class Pipeline:
     def _fail(self, what: str, exc: Exception) -> None:
         message = f"{type(exc).__name__}: {exc}"
         self.report.failures.append({"target": what, "error": message})
+        self._record_failure(what, message)
+
+    def _record_failure(self, what: str, message: str) -> None:
         enqueue_review(
             self.session,
             item_type="INGEST_FAILURE",
@@ -118,13 +197,16 @@ class Pipeline:
     # -- steps
     def ingest_studies(self, *, demo_change: bool = True, only: list[str] | None = None) -> dict:
         watchlist = loader.read_watchlist(self.settings.curated_dir)
-        ingested = 0
+        ingested = failed = 0
         for watch in watchlist.studies:
             if only and watch.nct not in only:
                 continue
+            change: dict[str, Any] | None = None
             try:
                 with self.session.begin_nested():
-                    already = self.session.scalar(select(Study).where(Study.nct_id == watch.nct)) is not None
+                    # The synthetic prior version is seeded once per database. After `seed --reset` the study row is gone
+                    # but its source and snapshots (the synthetic one included) are preserved history: do not add it again.
+                    already = self.session.scalar(select(EvidenceSource.id).where(EvidenceSource.key == f"ctgov:{watch.nct}")) is not None
                     synthetic_prior = False
                     if demo_change and watch.nct == DEMO_CHANGE_NCT and not already:
                         real = json.loads(self.ctgov.fetch_raw(watch.nct))
@@ -144,12 +226,19 @@ class Pipeline:
                             title=f"{watch.display_name} ({watch.nct}) registry record updated",
                             is_synthetic=synthetic_prior,
                         )
-                        self.report.changes.append({"nct": watch.nct, "summary": event.summary, "significance": event.significance, "synthetic": synthetic_prior})
-                ingested += 1
-                self.report.studies.append(watch.nct)
-            except (TransportError, ValueError, KeyError) as exc:
+                        change = {"nct": watch.nct, "summary": event.summary, "significance": event.significance, "synthetic": synthetic_prior}
+            except Exception as exc:
+                # Any error, not a chosen few: the savepoint has been rolled back, so this study left no rows
+                # (and no half-written ones), and the studies before and after it are unaffected.
+                failed += 1
                 self._fail(f"ctgov:{watch.nct}", exc)
-        return {"studies": ingested, "changes": len(self.report.changes)}
+                continue
+            # Reported only now, after the savepoint was released and its rows are part of the transaction.
+            ingested += 1
+            self.report.studies.append(watch.nct)
+            if change is not None:
+                self.report.changes.append(change)
+        return {"studies": ingested, "failed": failed, "changes": len(self.report.changes)}
 
     def ingest_publications(self) -> dict:
         watchlist = loader.read_watchlist(self.settings.curated_dir)
@@ -256,6 +345,14 @@ class Pipeline:
         self.report.curated = stats
         return stats
 
+    def ingest_fulltext(self) -> dict:
+        """Full-text documents (curation/data/fulltext.yaml): FULLTEXT rows, each PENDING_HUMAN_REVIEW, with cell-level provenance."""
+        from ..fulltext.loader import FullTextStep
+
+        stats = FullTextStep(self.session, self.transport, curated_dir=self.settings.curated_dir, fixture_dir=self.settings.fixture_dir, record=self._record).run()
+        self.report.fulltext = stats
+        return stats
+
     def refresh_gaps(self) -> dict:
         from ..engines.gaps import refresh_gaps
 
@@ -265,17 +362,26 @@ class Pipeline:
     def run(self, *, demo_change: bool = True, only: list[str] | None = None, skip: set[str] | None = None) -> IngestReport:
         skip = skip or set()
         self._run("curated-sources", lambda: {"sources": loader.load_sources(self.session, self.settings.curated_dir), "drugs": len(loader.load_drug_identities(self.session, self.settings.curated_dir))})
-        self._run("ctgov", lambda: self.ingest_studies(demo_change=demo_change, only=only))
+        # The curated load below completes the picture (arm annotations, curated rows), so the full reconcile waits for it.
+        self._run("ctgov", lambda: self.ingest_studies(demo_change=demo_change, only=only), review="hold")
         if "pubmed" not in skip:
             self._run("pubmed", self.ingest_publications)
         if "labels" not in skip:
-            self._run("openfda-label", self.ingest_labels)
+            self._run("openfda-label", self.ingest_labels, review="none")
         if "faers" not in skip:
             self._run("openfda-faers", self.ingest_faers)
         if "discover" not in skip:
             self._run("ctgov-discovery", self.discover)
-        self._run("curated-evidence", self.load_curated)
+        fulltext = "fulltext" not in skip
+        # The full-text step maps document columns onto the arms the curated load annotates, so it runs after it; the full
+        # reconcile then follows the full-text step (the curated step only re-hides rejections in between).
+        self._run("curated-evidence", self.load_curated, review="hold" if fulltext else None)
+        if fulltext:
+            self._run("fulltext", self.ingest_fulltext)
+        if not self._reconciled:
+            # The curated load failed and was rolled back: reconcile what is there rather than leave rows unkeyed.
+            self._run("review-reconcile", lambda: {})
         self._run("gap-engine", self.refresh_gaps)
-        audit(self.session, "ingestion.completed", mode=self.transport.mode, studies=len(self.report.studies), failures=len(self.report.failures))
+        audit(self.session, "ingestion.completed", mode=self.transport.mode, studies=len(self.report.studies), failures=len(self.report.failures), review=self.report.review)
         self.session.commit()
         return self.report

@@ -1,0 +1,81 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // Linter: oxlint. ESLint with typescript-eslint cannot be used here: typescript-eslint 8 requires
+  // TypeScript < 6.1 and the TypeScript 7 package this project builds with has no JavaScript compiler API to parse with.
+  "plugins": ["typescript", "react", "jsx-a11y", "nextjs", "unicorn", "oxc"],
+  "categories": { "correctness": "error", "suspicious": "warn" },
+  "env": { "browser": true, "es2022": true },
+  // Every Next.js build directory (.next, and any NEXT_DIST_DIR such as .next-e2e or .next-e2e-prod) is generated code.
+  "ignorePatterns": [".next/**", ".next*/**", "node_modules/**", "next-env.d.ts", "playwright-report/**", "test-results/**", "blob-report/**"],
+  "rules": {
+    // Hooks: breaking the rules of hooks is a bug; a missing dependency is reviewed case by case.
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react/react-in-jsx-scope": "off",
+    // Derive state or update it in the event handler instead. Existing pages still do this (audit WEB-19), so it warns there.
+    "react/set-state-in-effect": "warn",
+    // role="status", "region" and "search" on generic elements are deliberate and widely supported.
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // Untyped API payloads hide exactly the mistakes this product cannot afford. An error everywhere, except in the
+    // files listed at the end that still contain `any` (a warning there until they are typed; remove a file from that
+    // list as soon as it has none, so it cannot gain one back).
+    "typescript/no-explicit-any": "error",
+    // Accessibility rules the design system depends on.
+    "jsx-a11y/alt-text": "error",
+    "jsx-a11y/anchor-is-valid": "error",
+    "jsx-a11y/aria-props": "error",
+    "jsx-a11y/aria-role": "error",
+    "jsx-a11y/click-events-have-key-events": "error",
+    "jsx-a11y/label-has-associated-control": "error",
+    "jsx-a11y/no-autofocus": "error",
+    "jsx-a11y/no-noninteractive-tabindex": "warn",
+    "jsx-a11y/no-static-element-interactions": "error",
+    "jsx-a11y/role-has-required-aria-props": "error",
+    "jsx-a11y/tabindex-no-positive": "error",
+    // Table column renderers are plain functions called by DataTable, not components; this rule cannot tell them apart.
+    "react/no-unstable-nested-components": "off",
+    // `[...rows].sort()` is deliberate: Array#toSorted is newer than the ES2022 target.
+    "unicorn/no-array-sort": "off",
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }]
+  },
+  "overrides": [
+    {
+      // The shared foundation and the pages built on it must stay fully typed.
+      "files": [
+        "src/lib/**",
+        "src/components/ui/**",
+        "src/components/ui.tsx",
+        "src/components/Shell.tsx",
+        "src/app/*.tsx",
+        "src/app/trials/*.tsx",
+        "src/app/gaps/**",
+        "src/app/sources/**",
+        "src/app/estimands/**",
+        "src/app/review/**",
+        "src/app/quality/**",
+        "src/app/conflicts/**"
+      ],
+      "rules": { "typescript/no-explicit-any": "error", "react/set-state-in-effect": "error", "react/exhaustive-deps": "error", "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }] }
+    },
+    { "files": ["e2e/**", "*.config.ts"], "rules": { "no-console": "off" } },
+    {
+      // Files that still contain `any` (audit WEB-15). src/lib/rows.ts waits for the charts and number formatting,
+      // which own it, to be typed; the pages wait for their DTOs from src/lib/types.ts.
+      "files": [
+        "src/lib/rows.ts",
+        "src/app/assistant/page.tsx",
+        "src/app/benefit-risk/page.tsx",
+        "src/app/compare/page.tsx",
+        "src/app/design/page.tsx",
+        "src/app/molecules/page.tsx",
+        "src/app/safety/page.tsx",
+        "src/app/trials/[[]nct]/page.tsx",
+        "e2e/presentation.spec.ts",
+        // Written in parallel with the rule above (review-fixes branch); its API payloads are untyped like presentation.spec.ts.
+        "e2e/review-fixes.spec.ts"
+      ],
+      "rules": { "typescript/no-explicit-any": "warn" }
+    }
+  ]
+}

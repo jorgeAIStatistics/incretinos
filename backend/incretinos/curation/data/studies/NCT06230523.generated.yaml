@@ -3,22 +3,33 @@
 # Verification status is assigned by the loader (quote anchoring) — nothing here is human-verified.
 study: NCT06230523
 estimands:
-- key: efficacy
+- key: efficacy@pubmed:41207310
   label: EFFICACY
-  description: 'Efficacy estimand as named by the source: the treatment effect had participants remained on study treatment (hypothetical strategy for treatment discontinuation).'
+  basis: INFERRED_BY_CURATOR
+  description: 'Efficacy estimand as recorded in the research note for this source; the note holds no verbatim quote from the source that names the estimand, so the label is the curator''s attribution:
+    the treatment effect had participants remained on study treatment (hypothetical strategy for treatment discontinuation).'
   source: pubmed:41207310
   strategies:
   - event: TREATMENT_DISCONTINUATION
     strategy: HYPOTHETICAL
+- key: efficacy@web:lilly-pr-2025-11-06-eloralintide-ph2
+  label: EFFICACY
+  basis: STATED_BY_SOURCE
+  description: 'Efficacy estimand as named by the source: the treatment effect had participants remained on study treatment (hypothetical strategy for treatment discontinuation).'
+  source: web:lilly-pr-2025-11-06-eloralintide-ph2
+  strategies:
+  - event: TREATMENT_DISCONTINUATION
+    strategy: HYPOTHETICAL
+  quote: The efficacy estimand represents efficacy had all randomized participants remained on study intervention (with possible dose interruptions and/or dose modifications) for 48 weeks.
 endpoints:
-- key: weight-pct-change-w48-percent-change-in-body-weigh
+- key: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
   title: percent change in body weight from baseline
   role: PRIMARY
   category: WEIGHT_PCT_CHANGE
   unit: '%'
   timepoint_weeks: 48
   multiplicity_controlled: NOT_STATED
-- key: weight-pct-change-w48-mean-percent-change-in-body
+- key: weight-pct-change-w48-mean-percent-change-in-body-weight-from-base-c63d7bca
   title: mean percent change in body weight from baseline
   role: PRIMARY
   category: WEIGHT_PCT_CHANGE
@@ -26,8 +37,8 @@ endpoints:
   timepoint_weeks: 48
   multiplicity_controlled: 'NO'
 results:
-- endpoint: weight-pct-change-w48-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
+  estimand: efficacy@pubmed:41207310
   arm: eloralintide 1 mg
   scope: ARM
   value: -9
@@ -41,8 +52,8 @@ results:
   quote: -9% (1 mg, 95% CI -12·6 to -6·3)
   notes: Point estimate is given as a whole-number percent in the abstract (placebo to one decimal) while the CI is to one decimal; do not treat the rounded point estimate as exact. n = randomised per arm
     from the same abstract. Abstract states the mean; registry (S6) reports LS means from MMRM.
-- endpoint: weight-pct-change-w48-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
+  estimand: efficacy@pubmed:41207310
   arm: eloralintide 3 mg
   scope: ARM
   value: -12
@@ -56,8 +67,8 @@ results:
   quote: -12% (3 mg, -14·9 to -9·8)
   notes: Point estimate is given as a whole-number percent in the abstract (placebo to one decimal) while the CI is to one decimal; do not treat the rounded point estimate as exact. n = randomised per arm
     from the same abstract. Abstract states the mean; registry (S6) reports LS means from MMRM.
-- endpoint: weight-pct-change-w48-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
+  estimand: efficacy@pubmed:41207310
   arm: eloralintide 6 mg
   scope: ARM
   value: -18
@@ -71,8 +82,8 @@ results:
   quote: -18% (6 mg, -20·7 to -14·5)
   notes: Point estimate is given as a whole-number percent in the abstract (placebo to one decimal) while the CI is to one decimal; do not treat the rounded point estimate as exact. n = randomised per arm
     from the same abstract. Abstract states the mean; registry (S6) reports LS means from MMRM.
-- endpoint: weight-pct-change-w48-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
+  estimand: efficacy@pubmed:41207310
   arm: eloralintide 9 mg
   scope: ARM
   value: -20
@@ -86,8 +97,8 @@ results:
   quote: -20% (9 mg, -22·7 to -17·5)
   notes: Point estimate is given as a whole-number percent in the abstract (placebo to one decimal) while the CI is to one decimal; do not treat the rounded point estimate as exact. n = randomised per arm
     from the same abstract. Abstract states the mean; registry (S6) reports LS means from MMRM.
-- endpoint: weight-pct-change-w48-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
+  estimand: efficacy@pubmed:41207310
   arm: eloralintide 6-9 mg (dose escalation)
   scope: ARM
   value: -20
@@ -101,8 +112,8 @@ results:
   quote: -20% (6-9 mg, -22·7 to -17·0)
   notes: Point estimate is given as a whole-number percent in the abstract (placebo to one decimal) while the CI is to one decimal; do not treat the rounded point estimate as exact. n = randomised per arm
     from the same abstract. Abstract states the mean; registry (S6) reports LS means from MMRM.
-- endpoint: weight-pct-change-w48-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
+  estimand: efficacy@pubmed:41207310
   arm: eloralintide 3-9 mg (dose escalation)
   scope: ARM
   value: -16
@@ -116,8 +127,8 @@ results:
   quote: -16% (3-9 mg, -18·6 to -14·1)
   notes: Point estimate is given as a whole-number percent in the abstract (placebo to one decimal) while the CI is to one decimal; do not treat the rounded point estimate as exact. n = randomised per arm
     from the same abstract. Abstract states the mean; registry (S6) reports LS means from MMRM.
-- endpoint: weight-pct-change-w48-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w48-percent-change-in-body-weight-from-baseline-8168ba34
+  estimand: efficacy@pubmed:41207310
   arm: placebo
   scope: ARM
   value: -0.4
@@ -131,8 +142,8 @@ results:
   quote: compared with -0·4% (-2·2 to 1·4) in the placebo group
   notes: Point estimate is given as a whole-number percent in the abstract (placebo to one decimal) while the CI is to one decimal; do not treat the rounded point estimate as exact. n = randomised per arm
     from the same abstract. Abstract states the mean; registry (S6) reports LS means from MMRM.
-- endpoint: weight-pct-change-w48-mean-percent-change-in-body
-  estimand: efficacy
+- endpoint: weight-pct-change-w48-mean-percent-change-in-body-weight-from-base-c63d7bca
+  estimand: efficacy@web:lilly-pr-2025-11-06-eloralintide-ph2
   arm: eloralintide 1 mg
   scope: ARM
   value: -9.5
@@ -141,8 +152,8 @@ results:
   source: web:lilly-pr-2025-11-06-eloralintide-ph2
   quote: Eloralintide 1 mg | -9.5% (-10.2 kg; -22.5 lbs)
   notes: 'Table row from release (cells joined with ''|''). Absolute change as stated: -10.2 kg; -22.5 lbs. Per-arm n not given in this source. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w48-mean-percent-change-in-body
-  estimand: efficacy
+- endpoint: weight-pct-change-w48-mean-percent-change-in-body-weight-from-base-c63d7bca
+  estimand: efficacy@web:lilly-pr-2025-11-06-eloralintide-ph2
   arm: eloralintide 3 mg
   scope: ARM
   value: -12.4
@@ -151,8 +162,8 @@ results:
   source: web:lilly-pr-2025-11-06-eloralintide-ph2
   quote: Eloralintide 3 mg | -12.4% (-13.3 kg; -29.3 lbs)
   notes: 'Table row from release (cells joined with ''|''). Absolute change as stated: -13.3 kg; -29.3 lbs. Per-arm n not given in this source. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w48-mean-percent-change-in-body
-  estimand: efficacy
+- endpoint: weight-pct-change-w48-mean-percent-change-in-body-weight-from-base-c63d7bca
+  estimand: efficacy@web:lilly-pr-2025-11-06-eloralintide-ph2
   arm: eloralintide 6 mg
   scope: ARM
   value: -17.6
@@ -161,8 +172,8 @@ results:
   source: web:lilly-pr-2025-11-06-eloralintide-ph2
   quote: Eloralintide 6 mg | -17.6% (-18.7 kg; -41.2 lbs)
   notes: 'Table row from release (cells joined with ''|''). Absolute change as stated: -18.7 kg; -41.2 lbs. Per-arm n not given in this source. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w48-mean-percent-change-in-body
-  estimand: efficacy
+- endpoint: weight-pct-change-w48-mean-percent-change-in-body-weight-from-base-c63d7bca
+  estimand: efficacy@web:lilly-pr-2025-11-06-eloralintide-ph2
   arm: eloralintide 9 mg
   scope: ARM
   value: -20.1
@@ -171,8 +182,8 @@ results:
   source: web:lilly-pr-2025-11-06-eloralintide-ph2
   quote: Eloralintide 9 mg | -20.1% (-21.3 kg; -47.0 lbs)
   notes: 'Table row from release (cells joined with ''|''). Absolute change as stated: -21.3 kg; -47.0 lbs. Per-arm n not given in this source. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w48-mean-percent-change-in-body
-  estimand: efficacy
+- endpoint: weight-pct-change-w48-mean-percent-change-in-body-weight-from-base-c63d7bca
+  estimand: efficacy@web:lilly-pr-2025-11-06-eloralintide-ph2
   arm: eloralintide 6/9 mg (dose escalation)
   scope: ARM
   value: -19.9
@@ -181,8 +192,8 @@ results:
   source: web:lilly-pr-2025-11-06-eloralintide-ph2
   quote: Eloralintide 6/9 mg | -19.9% (-21.0 kg; -46.3 lbs)
   notes: 'Table row from release (cells joined with ''|''). Absolute change as stated: -21.0 kg; -46.3 lbs. Per-arm n not given in this source. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w48-mean-percent-change-in-body
-  estimand: efficacy
+- endpoint: weight-pct-change-w48-mean-percent-change-in-body-weight-from-base-c63d7bca
+  estimand: efficacy@web:lilly-pr-2025-11-06-eloralintide-ph2
   arm: eloralintide 3/6/9 mg (dose escalation)
   scope: ARM
   value: -16.4
@@ -191,8 +202,8 @@ results:
   source: web:lilly-pr-2025-11-06-eloralintide-ph2
   quote: Eloralintide 3/6/9 mg | -16.4% (-17.8 kg; -39.2 lbs)
   notes: 'Table row from release (cells joined with ''|''). Absolute change as stated: -17.8 kg; -39.2 lbs. Per-arm n not given in this source. ci_not_reported_in_this_source'
-- endpoint: weight-pct-change-w48-mean-percent-change-in-body
-  estimand: efficacy
+- endpoint: weight-pct-change-w48-mean-percent-change-in-body-weight-from-base-c63d7bca
+  estimand: efficacy@web:lilly-pr-2025-11-06-eloralintide-ph2
   arm: placebo
   scope: ARM
   value: -0.4

@@ -3,86 +3,39 @@
 # Verification status is assigned by the loader (quote anchoring) — nothing here is human-verified.
 study: NCT05803421
 estimands:
-- key: efficacy
+- key: efficacy@web:eli-lilly-an-2026-09-30-lilly-s-oral-glp-1-foundayo-orforglipron
   label: EFFICACY
+  basis: STATED_BY_SOURCE
   description: 'Efficacy estimand as named by the source: the treatment effect had participants remained on study treatment (hypothetical strategy for treatment discontinuation).'
   source: web:eli-lilly-an-2026-09-30-lilly-s-oral-glp-1-foundayo-orforglipron
-  quote: Results of A1C and body weight were based on efficacy estimand. … -1.6 %
   strategies:
   - event: TREATMENT_DISCONTINUATION
     strategy: HYPOTHETICAL
+  quote: Results of A1C and body weight were based on efficacy estimand. … -1.6 %
 endpoints:
-- key: mace-wna-participants-with-a-mace-4-e
-  title: participants with a MACE-4 event
-  role: PRIMARY
-  category: MACE
-  unit: '% of participants'
-  multiplicity_controlled: NOT_STATED
-- key: mortality-wna-all-cause-death-participants
-  title: all-cause death (participants)
-  role: EXPLORATORY
-  category: MORTALITY
-  unit: '% of participants'
-  multiplicity_controlled: 'NO'
-- key: hba1c-change-w52-change-from-baseline-in-hba1
+- key: hba1c-change-w52-change-from-baseline-in-hba1c-51fb5c81
   title: change from baseline in HbA1c
   role: KEY_SECONDARY
   category: HBA1C_CHANGE
   unit: '% HbA1c'
   timepoint_weeks: 52
   multiplicity_controlled: NOT_STATED
-- key: weight-pct-change-w52-percent-change-in-body-weigh
+- key: weight-pct-change-w52-percent-change-in-body-weight-from-baseline-005a662b
   title: percent change in body weight from baseline
   role: KEY_SECONDARY
   category: WEIGHT_PCT_CHANGE
   unit: '%'
   timepoint_weeks: 52
   multiplicity_controlled: NOT_STATED
-- key: other-wna-incidence-of-clinically-sign
+- key: other-wna-incidence-of-clinically-significant-or-sever-f5d4d0ff
   title: incidence of clinically significant or severe hypoglycaemia
   role: SECONDARY
   category: OTHER
   unit: '% of participants'
   multiplicity_controlled: NOT_STATED
 results:
-- endpoint: mace-wna-participants-with-a-mace-4-e
-  arm: orforglipron maximum tolerated dose (up to 36 mg capsule, stated as equivalent to 17.2 mg tablet)
-  scope: ARM
-  value: 4.2
-  unit: '% of participants'
-  n_analyzed: 1358
-  source: pubmed:42815506
-  quote: 57 (4·2%) of 1358 orforglipron participants
-  notes: Crude proportion over median 2-year follow-up (not a Kaplan-Meier rate); timepoint_weeks left null because follow-up was event-driven. ci_not_reported_in_this_source
-- endpoint: mace-wna-participants-with-a-mace-4-e
-  arm: insulin glargine (titrated, once daily, subcutaneous)
-  scope: ARM
-  value: 5.0
-  unit: '% of participants'
-  n_analyzed: 1343
-  source: pubmed:42815506
-  quote: 67 (5·0%) of 1343 insulin glargine participants
-  notes: Crude proportion over median 2-year follow-up (not a Kaplan-Meier rate); timepoint_weeks left null because follow-up was event-driven. ci_not_reported_in_this_source
-- endpoint: mortality-wna-all-cause-death-participants
-  arm: orforglipron maximum tolerated dose (up to 36 mg capsule, stated as equivalent to 17.2 mg tablet)
-  scope: ARM
-  value: 1.4
-  unit: '% of participants'
-  n_analyzed: 1371
-  source: pubmed:42815506
-  quote: 19 (1·4%) of 1371 participants receiving orforglipron
-  notes: Peer-reviewed counts; the hazard ratio for all-cause death is not in the abstract (see release finding). Multiplicity status per Lilly releases. ci_not_reported_in_this_source
-- endpoint: mortality-wna-all-cause-death-participants
-  arm: insulin glargine (titrated, once daily, subcutaneous)
-  scope: ARM
-  value: 3.2
-  unit: '% of participants'
-  n_analyzed: 1355
-  source: pubmed:42815506
-  quote: 43 (3·2%) of 1355 participants receiving insulin glargine
-  notes: Peer-reviewed counts; the hazard ratio for all-cause death is not in the abstract (see release finding). Multiplicity status per Lilly releases. ci_not_reported_in_this_source
-- endpoint: hba1c-change-w52-change-from-baseline-in-hba1
-  estimand: efficacy
+- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-51fb5c81
+  estimand: efficacy@web:eli-lilly-an-2026-09-30-lilly-s-oral-glp-1-foundayo-orforglipron
   arm: orforglipron maximum tolerated dose (up to 36 mg capsule, stated as equivalent to 17.2 mg tablet)
   scope: ARM
   value: -1.6
@@ -92,8 +45,8 @@ results:
   quote: Results of A1C and body weight were based on efficacy estimand. … -1.6 %
   notes: Release table 'Key Secondary Endpoints'; estimated treatment difference -0.66 (95.0% CI -0.74 to -0.58), p<0.001. Treatment-regimen-estimand values for ACHIEVE-4 were not found. Lilly Medical Information
     (S27) states mean baseline HbA1c 8.23. ci_not_reported_in_this_source
-- endpoint: hba1c-change-w52-change-from-baseline-in-hba1
-  estimand: efficacy
+- endpoint: hba1c-change-w52-change-from-baseline-in-hba1c-51fb5c81
+  estimand: efficacy@web:eli-lilly-an-2026-09-30-lilly-s-oral-glp-1-foundayo-orforglipron
   arm: insulin glargine (titrated, once daily, subcutaneous)
   scope: ARM
   value: -1.0
@@ -103,8 +56,8 @@ results:
   quote: Results of A1C and body weight were based on efficacy estimand. … -1.0 %
   notes: Release table 'Key Secondary Endpoints'; estimated treatment difference -0.66 (95.0% CI -0.74 to -0.58), p<0.001. Treatment-regimen-estimand values for ACHIEVE-4 were not found. Lilly Medical Information
     (S27) states mean baseline HbA1c 8.23. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w52-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w52-percent-change-in-body-weight-from-baseline-005a662b
+  estimand: efficacy@web:eli-lilly-an-2026-09-30-lilly-s-oral-glp-1-foundayo-orforglipron
   arm: orforglipron maximum tolerated dose (up to 36 mg capsule, stated as equivalent to 17.2 mg tablet)
   scope: ARM
   value: -8.8
@@ -113,8 +66,8 @@ results:
   source: web:eli-lilly-an-2026-09-30-lilly-s-oral-glp-1-foundayo-orforglipron
   quote: Results of A1C and body weight were based on efficacy estimand. … -8.8%
   notes: Release table 'Key Secondary Endpoints'; estimated treatment difference -10.42% (95.0% CI -10.92 to -9.93), p<0.001. ci_not_reported_in_this_source
-- endpoint: weight-pct-change-w52-percent-change-in-body-weigh
-  estimand: efficacy
+- endpoint: weight-pct-change-w52-percent-change-in-body-weight-from-baseline-005a662b
+  estimand: efficacy@web:eli-lilly-an-2026-09-30-lilly-s-oral-glp-1-foundayo-orforglipron
   arm: insulin glargine (titrated, once daily, subcutaneous)
   scope: ARM
   value: 1.7
@@ -123,7 +76,7 @@ results:
   source: web:eli-lilly-an-2026-09-30-lilly-s-oral-glp-1-foundayo-orforglipron
   quote: Results of A1C and body weight were based on efficacy estimand. … +1.7%
   notes: Release table 'Key Secondary Endpoints'; estimated treatment difference -10.42% (95.0% CI -10.92 to -9.93), p<0.001. ci_not_reported_in_this_source
-- endpoint: other-wna-incidence-of-clinically-sign
+- endpoint: other-wna-incidence-of-clinically-significant-or-sever-f5d4d0ff
   arm: orforglipron maximum tolerated dose (up to 36 mg capsule, stated as equivalent to 17.2 mg tablet)
   scope: ARM
   value: 6.8
@@ -132,7 +85,7 @@ results:
   source: pubmed:42815506
   quote: 93 (6·8%) of 1371 orforglipron participants
   notes: ci_not_reported_in_this_source
-- endpoint: other-wna-incidence-of-clinically-sign
+- endpoint: other-wna-incidence-of-clinically-significant-or-sever-f5d4d0ff
   arm: insulin glargine (titrated, once daily, subcutaneous)
   scope: ARM
   value: 19.2

@@ -4,7 +4,7 @@
 study: NCT05822830
 estimands: []
 endpoints:
-- key: weight-pct-change-w72-percent-change-in-body-weigh
+- key: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   title: percent change in body weight from baseline
   role: PRIMARY
   category: WEIGHT_PCT_CHANGE
@@ -12,7 +12,7 @@ endpoints:
   timepoint_weeks: 72
   multiplicity_controlled: NOT_STATED
 results:
-- endpoint: weight-pct-change-w72-percent-change-in-body-weigh
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   arm: tirzepatide MTD (10 or 15 mg)
   scope: ARM
   value: -20.2
@@ -25,7 +25,7 @@ results:
   source: pubmed:40353578
   quote: -20.2% (95% confidence interval [CI], -21.4 to -19.1) with tirzepatide and -13.7% (95% CI, -14.9 to -12.6) with semaglutide (P<0.001)
   notes: NEJM abstract does not name the estimand; Lilly release S36 states these values use the treatment-regimen estimand. Open-label trial.
-- endpoint: weight-pct-change-w72-percent-change-in-body-weigh
+- endpoint: weight-pct-change-w72-percent-change-in-body-weight-from-baseline-56800034
   arm: semaglutide MTD (1.7 or 2.4 mg)
   scope: ARM
   value: -13.7

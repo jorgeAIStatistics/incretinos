@@ -70,15 +70,38 @@ class ClaimKind(StrEnum):
 class VerificationStatus(StrEnum):
     MACHINE_EXTRACTED = "MACHINE_EXTRACTED"  # parsed from a structured API payload whose snapshot hash is stored
     QUOTE_ANCHORED = "QUOTE_ANCHORED"  # curated value whose locator quote was found in the source text
-    CURATED_PENDING_REVIEW = "CURATED_PENDING_REVIEW"  # curated; not automatically anchorable; awaits human review
-    HUMAN_VERIFIED = "HUMAN_VERIFIED"  # approved through a ReviewDecision
-    CONFLICT = "CONFLICT"  # disagrees with another source
-    REJECTED = "REJECTED"
+    PENDING_HUMAN_REVIEW = "PENDING_HUMAN_REVIEW"  # no mechanical support could be established; awaits a human decision
+    CURATED_PENDING_REVIEW = "CURATED_PENDING_REVIEW"  # legacy name of PENDING_HUMAN_REVIEW (stored values are migrated)
+    HUMAN_VERIFIED = "HUMAN_VERIFIED"  # approved by an explicit, authorized human decision on this exact evidence version
+    REJECTED = "REJECTED"  # rejected by a human decision; excluded from comparisons, summaries and reports
+    SOURCE_CHANGED_RECHECK_REQUIRED = "SOURCE_CHANGED_RECHECK_REQUIRED"  # reviewed earlier, but the evidence or its source has changed since
+    CONFLICT = "CONFLICT"  # unused legacy value; cross-source disagreement is tracked by the conflict engine, not as a status
+
+
+class ReviewDecisionKind(StrEnum):
+    """What a reviewer can record about one exact evidence version."""
+
+    APPROVE = "APPROVE"  # the stored evidence matches the source: value, arm, endpoint, estimand, population
+    REJECT = "REJECT"  # the stored evidence is wrong or unsupported; it must not be used
+    REQUEST_INFO = "REQUEST_INFO"  # more information is needed; the verification status does not change
+    FLAG_WRONG_ATTRIBUTION = "FLAG_WRONG_ATTRIBUTION"  # the number exists but belongs to another arm / endpoint / estimand; treated as a rejection
+    PROPOSE_CORRECTION = "PROPOSE_CORRECTION"  # a correction for a person to act on; never applied automatically
+
+
+class ActorKind(StrEnum):
+    """Who recorded a decision. Only HUMAN decisions with the attestation flag can verify or reject evidence."""
+
+    HUMAN = "HUMAN"
+    AUTOMATION = "AUTOMATION"
+    SYSTEM = "SYSTEM"
 
 
 class Origin(StrEnum):
     REGISTRY = "REGISTRY"  # produced by an ingestion adapter
     CURATED = "CURATED"  # produced from the curated evidence files
+    # Machine-parsed from a full-text document (a JATS table or sentence, an FDA review PDF table). Always
+    # PENDING_HUMAN_REVIEW mechanically, and kept out of every analytic surface until a reviewer approves it.
+    FULLTEXT = "FULLTEXT"
 
 
 class RegulatoryStatus(StrEnum):
@@ -187,8 +210,10 @@ class IceEvent(StrEnum):
 
 
 class EstimandBasis(StrEnum):
-    STATED_BY_SOURCE = "STATED_BY_SOURCE"
+    STATED_BY_SOURCE = "STATED_BY_SOURCE"  # a quote from the cited source names the estimand
     INFERRED_FROM_ANALYSIS_DESCRIPTION = "INFERRED_FROM_ANALYSIS_DESCRIPTION"
+    # Curated label for which no quote from the cited source naming the estimand is held: the curator's attribution.
+    INFERRED_BY_CURATOR = "INFERRED_BY_CURATOR"
     NOT_DETERMINABLE = "NOT_DETERMINABLE"
 
 
@@ -215,7 +240,10 @@ class AeMeasureKind(StrEnum):
     TREATMENT_DISCONTINUATION_DUE_TO_AE = "TREATMENT_DISCONTINUATION_DUE_TO_AE"
     # Participants who did not complete the STUDY (period) with "adverse event" as the reason (registry participant flow).
     STUDY_WITHDRAWAL_DUE_TO_AE = "STUDY_WITHDRAWAL_DUE_TO_AE"
+    # Participants who did not complete the STUDY (period) for any reason (registry participant flow).
     DISCONTINUATION_ANY_REASON = "DISCONTINUATION_ANY_REASON"
+    # Participants who stopped study TREATMENT for any reason (as reported in publications/releases).
+    TREATMENT_DISCONTINUATION_ANY_REASON = "TREATMENT_DISCONTINUATION_ANY_REASON"
     DEATHS = "DEATHS"
 
 
@@ -224,6 +252,7 @@ AE_KIND_LABEL: dict[str, str] = {
     "TREATMENT_DISCONTINUATION_DUE_TO_AE": "Discontinued study treatment because of an adverse event",
     "STUDY_WITHDRAWAL_DUE_TO_AE": "Did not complete the study period; reason recorded as adverse event",
     "DISCONTINUATION_ANY_REASON": "Did not complete the study period (any reason)",
+    "TREATMENT_DISCONTINUATION_ANY_REASON": "Discontinued study treatment for any reason",
     "DEATHS": "Deaths (all causes)",
 }
 
@@ -231,6 +260,7 @@ DISCONTINUATION_KINDS = {
     "TREATMENT_DISCONTINUATION_DUE_TO_AE",
     "STUDY_WITHDRAWAL_DUE_TO_AE",
     "DISCONTINUATION_ANY_REASON",
+    "TREATMENT_DISCONTINUATION_ANY_REASON",
 }
 
 
@@ -273,6 +303,7 @@ class GapNature(StrEnum):
     EVIDENCE_IN_GENERATION = "EVIDENCE_IN_GENERATION"  # a registered study is ongoing
     NOT_KNOWN_TO_BE_STUDIED = "NOT_KNOWN_TO_BE_STUDIED"  # no registered study located in tracked sources
     METHODOLOGICAL = "METHODOLOGICAL"  # data exist but cannot answer the question as analysed
+    NOT_YET_EXTRACTED = "NOT_YET_EXTRACTED"  # a publication linked to the study is on record; its results are not in use here
     SOURCE_CONFLICT = "SOURCE_CONFLICT"
     RECORD_CHANGE = "RECORD_CHANGE"
 
@@ -283,6 +314,7 @@ class ReviewStatus(StrEnum):
     CONFIRMED = "CONFIRMED"
     DISMISSED = "DISMISSED"
     RESOLVED = "RESOLVED"
+    RETIRED = "RETIRED"  # legacy queue items superseded by evidence-level review; kept as history, never decided
 
 
 class LinkBasis(StrEnum):

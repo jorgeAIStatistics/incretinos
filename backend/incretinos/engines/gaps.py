@@ -24,12 +24,20 @@ from ..models import (
     ChangeEvent,
     Drug,
     EvidenceGap,
-    ExposureEquivalence,
     SpontaneousReportSeries,
     Study,
     StudyDrug,
 )
-from .findings import baseline_class
+from ..vocab import is_placebo_arm
+from .conflicts import (
+    CLASS_LABEL,
+    TRUE_CONFLICT,
+    ConflictGroup,
+    ConflictIssue,
+    gap_issues,
+    issue_rows,
+    study_groups,
+)
 
 DEFAULT_WEIGHTS = {"clinical_importance": 0.4, "uncertainty": 0.3, "tractability": 0.15, "actionability": 0.15}
 _UNCERTAINTY = {"VERY_LOW": 1.0, "LOW": 0.75, "MODERATE": 0.5, "HIGH": 0.25}
@@ -46,6 +54,7 @@ NATURE_LABEL = {
     GapNature.EVIDENCE_IN_GENERATION.value: "Evidence in generation — a registered study addressing this is ongoing.",
     GapNature.NOT_KNOWN_TO_BE_STUDIED.value: "No study found among tracked registry records — not proof that none exists.",
     GapNature.METHODOLOGICAL.value: "Methodological — data exist but cannot answer the question as analysed.",
+    GapNature.NOT_YET_EXTRACTED.value: "Not yet extracted — a publication linked to the study is on record, but its results are not in analytic use here.",
     GapNature.SOURCE_CONFLICT.value: "Source conflict — public sources disagree.",
     GapNature.RECORD_CHANGE.value: "Record change — a tracked source changed and awaits review.",
 }
@@ -71,16 +80,22 @@ class GapDraft:
     related_ncts: list[str] = field(default_factory=list)
 
 
-def _decimals(text: str) -> int:
-    return len(text.split(".")[1]) if "." in text else 0
-
-
 def _names(studies: list[Study]) -> str:
     return ", ".join(f"{s.display_name} ({s.nct_id})" for s in studies) or "none"
 
 
 def _has_any_results(study: Study) -> bool:
     return bool(study.has_results) or any(r.origin == "CURATED" for r in study.results) or any(a.origin == "CURATED" for a in study.analyses)
+
+
+def _linked_publications(study: Study) -> list[str]:
+    """Publications linked to the study, as "PMID n (title)" — a linked paper may report results the database lacks."""
+    return [f"PMID {link.publication.pmid} ({(link.publication.title or '')[:90]})" for link in study.publication_links if link.publication.pmid]
+
+
+def _unextracted_note(studies: list[Study]) -> str:
+    notes = [f"{s.display_name} ({s.nct_id}): {'; '.join(_linked_publications(s))}" for s in studies if _linked_publications(s)]
+    return (" Publications linked to these studies are on record — " + " · ".join(notes) + " — so results may be public without being extracted here.") if notes else ""
 
 
 def _ongoing(study: Study) -> bool:
@@ -102,14 +117,56 @@ def _months_since(iso: str | None, today: date) -> float | None:
     return (today - then).days / 30.44
 
 
+def _conflict_gap(drug: Drug, study: Study, issue: ConflictIssue) -> GapDraft:
+    """A gap for a true conflict or an unreconciled difference. The evidence tier is listed with each value as context;
+    nothing here prefers one value over another."""
+    group = issue.group
+    rows = issue_rows(issue)
+    title = group.title()
+    detail = "; ".join(f"{r.printed.replace('−', '-')} ({r.tier.replace('_', ' ').lower()}, source #{r.source_id})" for r in rows)
+    what = f"{title['quantity']} in {study.display_name}, {title['arm']}" + (f", {title['time_point']}" if title["time_point"] else "")
+    reasons = list(dict.fromkeys(reason for c in issue.comparisons for reason in c["possible_reasons"]))
+    missing = list(dict.fromkeys(f"{m['source']}: {m['detail']}" for c in issue.comparisons for m in c["missing_details"]))
+    actions = list(dict.fromkeys(action for c in issue.comparisons for action in c["next_actions"]))
+    if issue.cls == TRUE_CONFLICT:
+        estimand = (rows[0].estimand_label or "").replace("_", " ").lower()
+        question = f"Why do public sources give different values for {what}" + (f" ({estimand} estimand)?" if estimand and rows[0].evidence_type != "adverse_event" else "?")
+        missing_text = ("An explanation of the discrepancy: every stored detail that defines the quantity is the same and the values differ beyond the precision printed. "
+                        + " ".join(reasons[:3]))
+        importance = 4 if any(_material(c) for c in issue.comparisons) else 2
+    else:
+        question = f"Do the public sources' different values for {what} report the same quantity?"
+        missing_text = "The stored records cannot tell whether these values are the same quantity. Missing: " + " ".join(missing[:4])
+        importance = 3
+    return GapDraft(
+        key=f"{drug.slug}:conflict:{study.nct_id}:{issue.key_suffix}", rule_id="G12_SOURCE_CONFLICT", drug_id=drug.id, program=study.program, category="SOURCE_DISCREPANCY",
+        question=question, available_evidence=f"Reported values: {detail}. Classification: {CLASS_LABEL[issue.cls].lower()} (conflict group {group.group_id}).",
+        missing_evidence=missing_text, gap_nature=GapNature.SOURCE_CONFLICT.value, clinical_importance=importance, evidence_certainty="MODERATE", tractability=5,
+        analytic_approach="Show every value with its source, estimand, baseline and analysis set side by side; no value is chosen by the kind of source. " + " ".join(actions[:3]),
+        data_required="Full publication, supplementary appendix, label tables or FDA review tables that state the estimand, analysis set and handling of missing data.",
+        source_ids=sorted({r.source_id for r in rows if r.source_id}), related_ncts=[study.nct_id])
+
+
+def _material(comparison: dict) -> bool:
+    """A difference of half a unit or more on the reported scale (the threshold the earlier rule used for importance)."""
+    try:
+        return comparison["values"]["difference"] is not None and float(comparison["values"]["difference"].replace("−", "-")) >= 0.5
+    except ValueError:
+        return False
+
+
 def detect_gaps(session: Session, today: date | None = None) -> list[GapDraft]:
     today = today or date.today()
     gaps: list[GapDraft] = []
-    drugs = [d for d in session.scalars(select(Drug)) if d.tier_group in ("CORE", "ADJACENT")]
+    groups_by_study: dict[int, list[ConflictGroup]] = {}
+    conflict_keys: set[str] = set()
 
-    equivalent_dose: dict[tuple[str | None, float | None], float] = {}
-    for eq in session.scalars(select(ExposureEquivalence)):
-        equivalent_dose[(eq.dose_b.formulation.key, eq.dose_b.amount)] = eq.dose_a.amount
+    def conflict_groups(study: Study) -> list[ConflictGroup]:
+        if study.id not in groups_by_study:
+            groups_by_study[study.id] = study_groups(session, study)
+        return groups_by_study[study.id]
+
+    drugs = [d for d in session.scalars(select(Drug)) if d.tier_group in ("CORE", "ADJACENT")]
 
     for drug in drugs:
         links = session.scalars(select(StudyDrug).where(StudyDrug.drug_id == drug.id)).all()
@@ -134,17 +191,26 @@ def detect_gaps(session: Session, today: date | None = None) -> list[GapDraft]:
             continue
 
         # 1 long-term safety / durability of follow-up
+        # Long-term evidence must be controlled: a week counts only when a placebo or active-comparator arm of the same
+        # study reports at that week too. Later uncontrolled assessments (extensions, single-arm follow-up) are named.
         longest: tuple[float, Study] | None = None
+        longest_any: tuple[float, Study] | None = None
         for study in with_results:
+            control_weeks = {r.timepoint_weeks for r in study.results if r.timepoint_weeks and r.arm is not None and (is_placebo_arm(r.arm) or r.arm.arm_role == "ACTIVE_COMPARATOR")}
             weeks = [r.timepoint_weeks for r in study.results if r.timepoint_weeks]
-            if weeks and (longest is None or max(weeks) > longest[0]):
-                longest = (max(weeks), study)
+            controlled = [w for w in weeks if w in control_weeks]
+            if controlled and (longest is None or max(controlled) > longest[0]):
+                longest = (max(controlled), study)
+            if weeks and (longest_any is None or max(weeks) > longest_any[0]):
+                longest_any = (max(weeks), study)
+        uncontrolled_note = (f" A later assessment without a concurrent control arm is on record (week {longest_any[0]:.0f} in {longest_any[1].display_name}); it is not counted as controlled long-term evidence."
+                             if longest_any and (longest is None or longest_any[0] > longest[0]) else "")
         long_ongoing = [s for s in studies if _ongoing(s) and (feats(s).get("outcomes_trial") or feats(s).get("maintenance"))]
         if longest is None or longest[0] < 104:
             gaps.append(GapDraft(
                 key=f"{drug.slug}:long-term-safety", rule_id="G01_LONG_TERM", drug_id=drug.id, program=None, category="LONG_TERM_SAFETY",
                 question=f"Are safety and efficacy results beyond two years available for {name}?",
-                available_evidence=(f"Longest reported assessment among tracked studies: week {longest[0]:.0f} in {longest[1].display_name}." if longest else "No reported results among tracked studies."),
+                available_evidence=(f"Longest controlled assessment among tracked studies: week {longest[0]:.0f} in {longest[1].display_name}." if longest else "No controlled results among tracked studies.") + uncontrolled_note,
                 missing_evidence="Controlled follow-up of two years or more with systematic adverse-event ascertainment.",
                 gap_nature=(GapNature.EVIDENCE_IN_GENERATION if long_ongoing else GapNature.NOT_KNOWN_TO_BE_STUDIED).value,
                 clinical_importance=5, evidence_certainty="LOW", tractability=2,
@@ -160,7 +226,9 @@ def detect_gaps(session: Session, today: date | None = None) -> list[GapDraft]:
             gaps.append(GapDraft(
                 key=f"{drug.slug}:direct-comparative", rule_id="G02_DIRECT_COMPARISON", drug_id=drug.id, program=None, category="COMPARATIVE_EVIDENCE",
                 question=f"Is there randomized head-to-head evidence comparing {name} with another active therapy?",
-                available_evidence=("Registered active-comparator trials without public results: " + _names(active_pending) + "." if active_pending else "Only placebo-controlled trials among tracked studies."),
+                available_evidence=("Registered active-comparator trials without results in analytic use here: " + _names(active_pending) + "." + _unextracted_note(active_pending) if active_pending else
+                                    "No tracked trial compares it with another active therapy. Tracked studies: "
+                                    + "; ".join(f"{s.display_name} ({'dose comparison' if feats(s).get('comparator_type') == 'ACTIVE_DOSE' else (feats(s).get('comparator_type') or 'comparator not stated').lower().replace('_', ' ')})" for s in studies) + "."),
                 missing_evidence="Results of a randomized active-comparator trial.",
                 gap_nature=(GapNature.EVIDENCE_IN_GENERATION if any(_ongoing(s) for s in active_pending) else GapNature.PUBLIC_REPORTING_GAP if active_pending else GapNature.NOT_KNOWN_TO_BE_STUDIED).value,
                 clinical_importance=4, evidence_certainty="VERY_LOW", tractability=3,
@@ -243,9 +311,9 @@ def detect_gaps(session: Session, today: date | None = None) -> list[GapDraft]:
             gaps.append(GapDraft(
                 key=f"{drug.slug}:treatment-withdrawal", rule_id="G07_WITHDRAWAL", drug_id=drug.id, program=None, category="MAINTENANCE_AFTER_WITHDRAWAL",
                 question=f"What happens to body weight after {name} is stopped, and is maintenance studied?",
-                available_evidence=("Registered maintenance/withdrawal studies without results in stored sources: " + _names(withdrawal) + "." if withdrawal else "No randomized-withdrawal or maintenance study among tracked studies."),
+                available_evidence=("Registered maintenance/withdrawal studies with no results in analytic use here: " + _names(withdrawal) + "." + _unextracted_note(withdrawal) if withdrawal else "No randomized-withdrawal or maintenance study among tracked studies."),
                 missing_evidence="Randomized-withdrawal or maintenance results with weight change measured from the withdrawal baseline.",
-                gap_nature=(GapNature.EVIDENCE_IN_GENERATION if any(_ongoing(s) for s in withdrawal) else GapNature.PUBLIC_REPORTING_GAP if withdrawal else GapNature.NOT_KNOWN_TO_BE_STUDIED).value,
+                gap_nature=(GapNature.EVIDENCE_IN_GENERATION if any(_ongoing(s) for s in withdrawal) else GapNature.NOT_YET_EXTRACTED if any(_linked_publications(s) for s in withdrawal) else GapNature.PUBLIC_REPORTING_GAP if withdrawal else GapNature.NOT_KNOWN_TO_BE_STUDIED).value,
                 clinical_importance=4, evidence_certainty="VERY_LOW", tractability=3,
                 analytic_approach="Randomized-withdrawal design; report change from the randomization baseline separately from change from study entry.",
                 data_required="Withdrawal-period weight trajectories by arm.", source_ids=_sources(withdrawal), related_ncts=[s.nct_id for s in withdrawal]))
@@ -315,7 +383,16 @@ def detect_gaps(session: Session, today: date | None = None) -> list[GapDraft]:
 
         # 11 completed without public results / press-release only
         for study in studies:
-            if (study.overall_status or "") == "COMPLETED" and not _has_any_results(study):
+            if (study.overall_status or "") == "COMPLETED" and not _has_any_results(study) and _linked_publications(study):
+                gaps.append(GapDraft(
+                    key=f"{drug.slug}:unreported:{study.nct_id}", rule_id="G11_UNREPORTED", drug_id=drug.id, program=study.program, category="RESULTS_NOT_EXTRACTED",
+                    question=f"Are the results of {study.display_name} ({study.nct_id}) in the linked publication(s), and should they be extracted?",
+                    available_evidence="Registry status COMPLETED; no posted registry results and no results in analytic use here. Linked publication(s) on record: " + "; ".join(_linked_publications(study)) + ".",
+                    missing_evidence="Extraction of the publication's results with locator quotes, followed by human review. This is not evidence that results are unpublished.",
+                    gap_nature=GapNature.NOT_YET_EXTRACTED.value, clinical_importance=3, evidence_certainty="VERY_LOW", tractability=5,
+                    analytic_approach="Read the linked publication; curate its results (or extract them where the licence allows) and send them to review.",
+                    data_required="The linked publication's results.", source_ids=_sources([study]), related_ncts=[study.nct_id]))
+            elif (study.overall_status or "") == "COMPLETED" and not _has_any_results(study):
                 months = _months_since(study.primary_completion_date, today)
                 gaps.append(GapDraft(
                     key=f"{drug.slug}:unreported:{study.nct_id}", rule_id="G11_UNREPORTED", drug_id=drug.id, program=study.program, category="RESULTS_NOT_PUBLIC",
@@ -336,39 +413,17 @@ def detect_gaps(session: Session, today: date | None = None) -> list[GapDraft]:
                     analytic_approach="Re-extract on publication and reconcile every topline number against the published value.",
                     data_required="Peer-reviewed article and registry-posted results.", source_ids=sorted({r.source_id for r in study.results if r.source_id}), related_ncts=[study.nct_id]))
 
-        # 12 conflicts between sources
+        # 12 conflicts between sources: the conflict engine classifies every group of rows that report one quantity. True
+        # conflicts and differences the stored records cannot reconcile are open questions; explained differences
+        # (estimand, baseline, analysis set, follow-up, endpoint definition) and agreements are not.
         for study in with_results:
-            groups: dict[tuple, list] = defaultdict(list)
-            for r in study.results:
-                if r.value is None or r.scope != "ARM" or r.arm is None or r.estimand is None or r.estimand.label == "NOT_STATED":
-                    continue
-                if r.arm.dose_amount is None and not r.arm.is_placebo:
-                    continue
-                # A documented exposure-equivalent dose identifies the same arm under another formulation's label.
-                dose = equivalent_dose.get((r.arm.formulation_key, r.arm.dose_amount), r.arm.dose_amount)
-                arm_key = "placebo" if r.arm.is_placebo else f"{r.arm.drug_slug}|{dose:g}"
-                if r.endpoint.category not in ("WEIGHT_PCT_CHANGE", "HBA1C_CHANGE") or " minus " in r.arm_label:
-                    continue
-                groups[(r.endpoint.category, arm_key, r.estimand.label, r.timepoint_weeks, baseline_class(study.design_features, r.baseline_definition))].append(r)
-            for (category, arm_key, estimand, weeks, _), rows in groups.items():
-                by_source: dict[int, float] = {}
-                precision: dict[int, int] = {}
-                for r in rows:
-                    by_source.setdefault(r.source_id, r.value)
-                    precision.setdefault(r.source_id, _decimals(r.value_text if r.value_text is not None else f"{r.value:g}"))
-                values = sorted(set(by_source.values()))
-                # Values disagree only if they cannot be rounding variants of one another at the coarser reported precision.
-                tolerance = 0.5 * 10 ** (-min(precision.values())) + 1e-9 if precision else 0.0
-                if len(values) > 1 and (max(values) - min(values)) > tolerance:
-                    detail = "; ".join(f"{r.value:g} ({r.source.tier.replace('_', ' ').lower()}, source #{r.source_id})" for r in {r.source_id: r for r in rows}.values())
-                    gaps.append(GapDraft(
-                        key=f"{drug.slug}:conflict:{study.nct_id}:{category}:{arm_key}:{estimand}:{weeks}", rule_id="G12_SOURCE_CONFLICT", drug_id=drug.id, program=study.program, category="SOURCE_DISCREPANCY",
-                        question=f"Why do public sources give different values for {category.replace('_', ' ').lower()} in {study.display_name}, {arm_key.replace('|', ' ')} mg ({estimand.replace('_', ' ').lower()} estimand, week {weeks:g})?" if weeks else f"Why do public sources differ for {study.display_name} {arm_key}?",
-                        available_evidence=f"Reported values: {detail}.",
-                        missing_evidence="An explanation of the discrepancy (rounding, analysis population, data cut, or model) from the statistical analysis plan or full publication.",
-                        gap_nature=GapNature.SOURCE_CONFLICT.value, clinical_importance=2 if (max(values) - min(values)) < 0.5 else 4, evidence_certainty="MODERATE", tractability=5,
-                        analytic_approach="Show each value with its source and tier; prefer the regulator-reviewed or peer-reviewed value for citation and note the others.",
-                        data_required="Full publication, supplementary appendix or FDA review tables.", source_ids=sorted(by_source), related_ncts=[study.nct_id]))
+            for group in conflict_groups(study):
+                for issue in gap_issues(group):
+                    draft = _conflict_gap(drug, study, issue)
+                    if draft.key in conflict_keys:  # two groups under one earlier-style key: the later one is keyed by its group
+                        draft.key = f"{drug.slug}:conflict:{study.nct_id}:{group.group_id.split('-', 1)[1]}:{issue.key_suffix.rsplit(':', 2)[-2]}"
+                    conflict_keys.add(draft.key)
+                    gaps.append(draft)
 
     # specific head-to-head question: retatrutide vs tirzepatide
     reta, tirz = (session.scalar(select(Drug).where(Drug.slug == s)) for s in ("retatrutide", "tirzepatide"))
@@ -421,6 +476,26 @@ def refresh_gaps(session: Session) -> int:
                 gap.review_status = ReviewStatus.RESOLVED.value
     session.flush()
     return len(drafts)
+
+
+def refresh_gaps_after_review(session: Session) -> int:
+    """Refresh hook for the review lifecycle: recompute the gaps after a decision changed what evidence may be used.
+
+    The gaps quote evidence values (G12 lists the conflicting reported values), so a value a reviewer rejects must
+    leave them in the same transaction as the decision. Detection always runs with analytic visibility: even when
+    the caller's session was opened for inspection (rejected rows visible), the gaps are computed as every analytic
+    surface would see the evidence.
+    """
+    from ..db import INCLUDE_REJECTED
+
+    previous = session.info.pop(INCLUDE_REJECTED, None)
+    try:
+        session.flush()
+        session.expire_all()
+        return refresh_gaps(session)
+    finally:
+        if previous is not None:
+            session.info[INCLUDE_REJECTED] = previous
 
 
 def priority(gap: EvidenceGap, weights: dict[str, float] | None = None) -> dict[str, Any]:

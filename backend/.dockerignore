@@ -1,7 +1,31 @@
-.venv
+# The API image is built from this directory. It needs the package, the migrations, the fixtures and the benchmark
+# sets (see Dockerfile); local state, secrets and tooling must never reach an image layer.
+# Environment files (API keys, reviewer tokens, database passwords).
+.env*
+!.env.example
+# Local databases, caches and logs.
 var
-__pycache__
-tests
+*.db
+*.sqlite
+*.log
+# Python environments and build or test output.
+.venv
+venv
+**/__pycache__
+**/*.py[cod]
+*.egg-info
+build
+dist
 .pytest_cache
 .ruff_cache
-*.egg-info
+.mypy_cache
+.coverage
+.coverage.*
+htmlcov
+tests
+# Tooling and repository metadata.
+.DS_Store
+.git
+.claude
+Dockerfile
+.dockerignore
