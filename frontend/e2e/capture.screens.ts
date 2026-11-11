@@ -27,7 +27,10 @@ const EXTRA: [name: string, path: string][] = [
   ["conflicts", "/conflicts"],
 ];
 // Tab and selection states that are not the default view of a route. Each is captured and measured like a route.
+// A tab name selects that tab; "button:<name>" presses that button and waits for the network to settle (the
+// research assistant answering one of its example questions).
 const STATES: [name: string, path: string, tab: string][] = [
+  ["assistant-answer", "/assistant", "button:What evidence differentiates retatrutide from tirzepatide?"],
   ["design-simulation", "/design", "Synthetic simulation and sensitivity"],
   ["design-coverage", "/design", "Population coverage"],
   ["design-eligibility", "/design", "Eligibility and amendments"],
@@ -44,7 +47,9 @@ test.beforeAll(() => {
   mkdirSync(OUT, { recursive: true });
 });
 
-const routes: [name: string, path: string, tab?: string][] = [...(process.env.CAPTURE_EXTRA ? [...ROUTES, ...EXTRA] : ROUTES), ...STATES];
+// CAPTURE_ONLY=home,assistant,assistant-answer restricts the run to the named captures (the priority-page reviews).
+const ONLY = (process.env.CAPTURE_ONLY ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+const routes: [name: string, path: string, tab?: string][] = [...(process.env.CAPTURE_EXTRA ? [...ROUTES, ...EXTRA] : ROUTES), ...STATES].filter(([name]) => ONLY.length === 0 || ONLY.includes(name));
 let first = true;
 
 for (const viewport of VIEWPORTS) {
@@ -56,7 +61,8 @@ for (const viewport of VIEWPORTS) {
       await page.goto(path, { waitUntil: "networkidle" });
       await page.locator("h1").first().waitFor({ state: "visible", timeout: 60_000 });
       // Wait until no loading placeholder is left, then let late requests settle.
-      if (tab) await page.getByRole("tab", { name: tab, exact: true }).click();
+      if (tab?.startsWith("button:")) await page.getByRole("button", { name: tab.slice("button:".length), exact: true }).first().click();
+      else if (tab) await page.getByRole("tab", { name: tab, exact: true }).click();
       await page.waitForLoadState("networkidle");
       await page.waitForFunction(() => !document.querySelector('[role="status"][aria-label^="Loading"], .skeleton'), null, { timeout: 60_000 }).catch(() => undefined);
       await page.waitForLoadState("networkidle");
