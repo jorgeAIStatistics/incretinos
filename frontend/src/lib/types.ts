@@ -83,6 +83,8 @@ export type DrugSummary = {
   /** False when the statement the status rests on was rejected or is held in review: the status is then UNKNOWN and withheld. */
   regulatory_status_available?: boolean;
   regulatory_status_note?: string | null;
+  /** Verification status of the stored regulatory-status statement the status rests on (absent from an older API). */
+  regulatory_statement_status?: string | null;
   classification: DrugClassification;
   n_studies: number;
   notes: string | null;

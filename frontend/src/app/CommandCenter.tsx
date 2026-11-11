@@ -1,297 +1,138 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
-import Link from "next/link";
-import {
-  Async,
-  Badge,
-  Callout,
-  ClassificationBadge,
-  type Column,
-  DataTable,
-  EmptyState,
-  ErrorNote,
-  Hypothetical,
-  LinkButton,
-  Loading,
-  Missing,
-  PageHeader,
-  Panel,
-  RegulatoryBadge,
-  Section,
-  Skeleton,
-  StatTile,
-  Term,
-  TierBadge,
-  VerificationBadge,
-} from "@/components/ui";
-import { day, phaseLabel, useApi } from "@/lib/api";
-import { countByStatus, VERIFICATION_ORDER } from "@/lib/evidence";
-import { formatCount, share, trialStatusLabel } from "@/lib/format";
-import type { DrugSummary, Meta, Overview, StudyBrief, ValidationReport } from "@/lib/types";
+import type { ReactNode } from "react";
+import { Attention } from "@/components/command/Attention";
+import { Development } from "@/components/command/Development";
+import { Portfolio } from "@/components/command/Portfolio";
+import { Quality } from "@/components/command/Quality";
+import { Changes, Comparisons, Gaps } from "@/components/command/Signals";
+import type { ConflictListExtra } from "@/components/conflicts/types";
+import { Async, ErrorState, Ledger, LedgerItem, LinkButton, NextLink, PageHeader, Skeleton } from "@/components/ui";
+import { type ApiState, useApi } from "@/lib/api";
+import { formatCount } from "@/lib/format";
+import { useWholeList } from "@/lib/paging";
+import type { QualityOverview } from "@/lib/quality";
+import type { ReviewSummary } from "@/lib/review";
+import type { ChangeEvent, Overview, StudyListItem, ValidationReport } from "@/lib/types";
 
-/**
- * How the stored results were checked. Every status the API reports is counted, including ones this interface
- * does not know. Quote-anchored and machine-extracted results are listed as what they are: mechanical checks.
- * They are never added together into a "verified" total; only a recorded human decision is verification.
+/*
+ * Research Command Center. One reading order, top to bottom:
+ *   1. what this is (header) and how much evidence is on record (ledger)
+ *   2. the portfolio by molecule, beside the unresolved work that needs a person
+ *   3. clinical development: trials by phase and status, completions, completed trials without posted results
+ *   4. evidence quality, dimension by dimension (never one score)
+ *   5. open evidence questions and recent source changes
+ *   6. where to go next: the worked comparisons
+ * Each block loads on its own: a slow or failed request affects only its block, never the page.
  */
-function VerificationBreakdown({ meta }: { meta: Meta }) {
-  const { known, unknown, total } = countByStatus(meta.result_verification);
-  const rows = [...VERIFICATION_ORDER.map((status) => ({ status: status as string, n: known[status], recognised: true })), ...unknown.map((u) => ({ status: u.status, n: u.n, recognised: false }))];
+
+function Heading({ id, title, hint, action }: { id: string; title: string; hint?: string; action?: ReactNode }) {
   return (
-    <div className="mt-5 border-t border-hairline pt-4">
-      <h3 className="text-body font-semibold text-ink">How the stored results were checked</h3>
-      <p className="mt-0.5 max-w-[70ch] text-data text-ink-3">
-        A result counts as verified only after a reviewer&rsquo;s recorded decision. <Term k="machine-extracted">Machine-extracted</Term> and <Term k="quote-anchored">quote-anchored</Term> are automatic checks, not verification.
-      </p>
-      <table className="mt-3 w-full border-collapse text-data">
-        <caption className="sr-only">Stored results by verification status</caption>
-        <thead className="sr-only">
-          <tr>
-            <th scope="col">Verification status</th>
-            <th scope="col">Results</th>
-            <th scope="col">Share of all results</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const pct = share(row.n, total);
-            return (
-              <tr key={row.status} className="align-middle">
-                <th scope="row" className="py-1 pr-3 text-left font-normal">
-                  <VerificationBadge status={row.status} compact />
-                </th>
-                <td className="num w-16 py-1 pr-3 text-right font-semibold text-ink">{formatCount(row.n)}</td>
-                <td className="w-[42%] py-1">
-                  <span className="flex items-center gap-2">
-                    {/* Bars share one scale that starts at zero. They repeat the counts; the numbers are the content. */}
-                    <span aria-hidden className="relative h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-grid">
-                      <span className="absolute inset-y-0 left-0 rounded-full bg-series-1" style={{ width: `${pct ?? 0}%` }} />
-                    </span>
-                    <span className="num w-11 shrink-0 text-right text-caption text-ink-3">{pct === null ? "—" : `${pct < 0.05 && row.n > 0 ? "<0.1" : pct.toFixed(1)}%`}</span>
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="mb-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
+      <div className="min-w-0">
+        <h2 id={id} className="text-title font-semibold text-ink">
+          {title}
+        </h2>
+        {hint ? <p className="mt-0.5 max-w-[72ch] text-data text-ink-3">{hint}</p> : null}
+      </div>
+      {action ? <div className="shrink-0 text-data">{action}</div> : null}
     </div>
   );
 }
 
-function ValidationPanel() {
-  const validation = useApi<ValidationReport>("/validation");
+/** A request that has answered, with data or with an error. */
+const settled = (state: ApiState<unknown>): boolean => state.status === "success" || state.status === "error";
+
+function OverviewSkeleton() {
   return (
-    <Panel as="section" title="Scientific validation rules" level={2} className="!p-5">
-      <Async state={validation} errorTitle="The validation rules could not be loaded" loading={<Loading rows={5} label="Running validation rules…" />}>
-        {(report) => {
-          const failing = report.rules.filter((r) => !r.passed);
-          // Failures always come first; passing rules only fill the remaining places.
-          const listed = [...failing, ...report.rules.filter((r) => r.passed)].slice(0, Math.max(5, failing.length));
-          return (
-            <>
-              <p className="text-hero font-semibold text-ink">
-                {report.passed} / {report.total} <span className="text-body font-medium text-ink-3">passing</span>
-              </p>
-              <ul className="mt-3 space-y-2 text-data text-ink-2">
-                {listed.map((r) => (
-                  <li key={r.rule_id} className="flex items-start gap-2">
-                    <Badge tone={r.passed ? "ok" : "critical"}>{r.passed ? "Pass" : "Fail"}</Badge>
-                    <span className="min-w-0 leading-snug">
-                      <span className="mono text-ink-3">{r.rule_id}</span> {r.title}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-3 text-data">
-                <Link href="/sources?tab=validation" className="font-medium">
-                  All {report.total} rules and what they check <ArrowRight aria-hidden size={13} className="inline align-[-2px]" />
-                </Link>
-              </p>
-            </>
-          );
-        }}
-      </Async>
-    </Panel>
+    <div role="status" aria-label="Loading the evidence overview…">
+      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        {Array.from({ length: 6 }, (_, i) => (
+          <Skeleton key={i} className="h-14" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <Skeleton className="h-96" />
+        <Skeleton className="h-96" />
+      </div>
+      <span className="sr-only">Loading the evidence overview…</span>
+    </div>
   );
 }
-
-const PORTFOLIO: Column<DrugSummary>[] = [
-  {
-    key: "molecule",
-    header: "Molecule",
-    rowHeader: true,
-    className: "min-w-[150px] sm:min-w-[190px]",
-    cell: (d) => {
-      const code = d.code_name ?? d.brand_names?.join(" / ");
-      return (
-        <>
-          <Link href={`/molecules?drug=${d.slug}`} className="font-semibold">
-            {d.name}
-          </Link>
-          {code ? <span className="mono ml-2 text-ink-3" translate="no">{code}</span> : null}
-          {d.tier_group === "ADJACENT" ? <span className="block text-caption text-ink-3">Adjacent pipeline</span> : null}
-        </>
-      );
-    },
-  },
-  { key: "class", header: "Class (derived)", className: "min-w-[180px]", cell: (d) => d.classification.class_label },
-  { key: "status", header: "Regulatory status", cell: (d) => <RegulatoryBadge status={d.regulatory_status} available={d.regulatory_status_available} note={d.regulatory_status_note} /> },
-  {
-    key: "source",
-    header: "Status source",
-    className: "min-w-[150px]",
-    cell: (d) =>
-      d.regulatory_source ? (
-        <>
-          <TierBadge tier={d.regulatory_source.tier} label={d.regulatory_source.tier_label} />
-          <span className="num mt-0.5 block whitespace-nowrap text-caption text-ink-3">as of {d.regulatory_as_of ?? "date not recorded"}</span>
-        </>
-      ) : (
-        <Missing>Source not recorded</Missing>
-      ),
-  },
-  { key: "trials", header: "Trials tracked", align: "right", cell: (d) => formatCount(d.n_studies) },
-];
-
-const READOUTS: Column<StudyBrief>[] = [
-  {
-    key: "trial",
-    header: "Trial",
-    rowHeader: true,
-    className: "min-w-[150px]",
-    cell: (s) => (
-      <Link href={`/trials/${s.nct_id}`} className="font-medium">
-        {s.display_name}
-      </Link>
-    ),
-  },
-  { key: "phase", header: "Phase", className: "whitespace-nowrap", cell: (s) => phaseLabel(s.phase) },
-  { key: "status", header: "Status", cell: (s) => trialStatusLabel(s.overall_status) },
-  {
-    key: "completion",
-    header: "Primary completion",
-    className: "whitespace-nowrap",
-    cell: (s) =>
-      s.primary_completion_date ? (
-        <>
-          <span className="num">{s.primary_completion_date}</span>
-          {s.primary_completion_type ? <span className="text-ink-3"> ({s.primary_completion_type.toLowerCase()})</span> : null}
-        </>
-      ) : (
-        <Missing />
-      ),
-  },
-];
 
 function Dashboard({ data }: { data: Overview }) {
   const m = data.meta;
+  const studies = useWholeList<StudyListItem>("/studies");
+  // The four heavy reads run one after another, most urgent first. Fired together they compete for the same
+  // server and every one of them arrives late (measured: about 17 s together against about 3 s in sequence).
+  const summary = useApi<ReviewSummary>("/review/summary");
+  const conflicts = useApi<ConflictListExtra>(settled(summary) ? "/conflicts?limit=1" : null);
+  const validation = useApi<ValidationReport>(settled(conflicts) ? "/validation" : null);
+  const quality = useApi<QualityOverview>(settled(validation) ? "/quality" : null);
+  const gapLabels = useApi<{ nature_labels?: Record<string, string> }>("/gaps?limit=1");
+  const changes = useApi<{ total: number; rows: ChangeEvent[] }>("/changes");
+  const openChanges = changes.data ? changes.data.rows.filter((c) => c.review_status === "OPEN").length : null;
+
   return (
     <>
-      <div className="mb-8 grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-        <Panel as="section" title="Evidence on record" level={2} className="!p-5">
-          <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
-            <StatTile label="Trials in depth" value={formatCount(m.counts.studies)} note={`${formatCount(m.counts.discovered_trials)} in the registry index`} />
-            <StatTile label="Reported results" value={formatCount(m.counts.results)} note={`${formatCount(m.counts.analyses)} between-arm analyses`} />
-            <StatTile label="Sources" value={formatCount(m.counts.sources)} note="Hashed and versioned" />
-            <StatTile label="Open evidence gaps" value={formatCount(m.counts.gaps)} note={m.review ? `${formatCount(m.review.needs_review)} evidence records awaiting review · ${formatCount(m.counts.open_review_items)} open queue ${m.counts.open_review_items === 1 ? "item" : "items"}` : `${formatCount(m.counts.open_review_items)} items awaiting review`} />
-          </div>
-          <VerificationBreakdown meta={m} />
-        </Panel>
-        <ValidationPanel />
+      <section aria-labelledby="on-record" className="mb-9">
+        <h2 id="on-record" className="sr-only">
+          Evidence on record
+        </h2>
+        <Ledger label="Evidence on record">
+          <LedgerItem label="Trials in depth" value={formatCount(m.counts.studies)} href="/trials" linkLabel={`${formatCount(m.counts.studies)} trials ingested in depth: open the trial atlas`} note={`${formatCount(m.counts.discovered_trials)} in the registry index`} testId="ledger-trials" />
+          <LedgerItem label="Reported results" value={formatCount(m.counts.results)} note={`in analytic use; ${formatCount(m.counts.analyses)} between-arm analyses`} />
+          <LedgerItem label="Adverse-event rows" value={formatCount(m.counts.adverse_event_rows)} />
+          <LedgerItem label="Publications" value={formatCount(m.counts.publications)} />
+          <LedgerItem label="Sources" value={formatCount(m.counts.sources)} href="/sources" linkLabel={`${formatCount(m.counts.sources)} sources: open Sources and Audit`} note="hashed and versioned" testId="ledger-sources" />
+          <LedgerItem label="Open evidence questions" value={formatCount(m.counts.gaps)} href="/gaps" linkLabel={`${formatCount(m.counts.gaps)} open evidence questions: open the gap tracker`} note="each with the reason it is open" testId="ledger-gaps" />
+        </Ledger>
+      </section>
+
+      <div className="mb-10 grid grid-cols-1 gap-x-10 gap-y-9 lg:grid-cols-[minmax(0,1fr)_21rem]">
+        <section aria-labelledby="portfolio" className="min-w-0">
+          <Heading id="portfolio" title="Portfolio" action={<NextLink href="/molecules">Molecule explorer</NextLink>} />
+          <Portfolio drugs={data.drugs} studies={studies} />
+        </section>
+        <aside aria-labelledby="attention" className="min-w-0 lg:border-l lg:border-hairline lg:pl-8">
+          <Heading id="attention" title="Needs attention" hint="Unresolved review work. Each count opens the list it counts." />
+          <Attention summary={summary} conflicts={conflicts} queueItems={m.counts.open_review_items} validation={validation} />
+        </aside>
       </div>
 
-      <Section title="Portfolio" hint="Pharmacologic class is derived from sourced receptor actions. Regulatory status reads “approved” only when FDA labeling is on record.">
-        <DataTable
-          label="Portfolio molecules"
-          columns={PORTFOLIO}
-          rows={data.drugs}
-          rowKey={(d) => d.slug}
-          maxHeight="none"
-          pinFirstColumn
-          minWidth={700}
-          empty={<p className="px-3 py-5 text-ink-3">No molecule is on record.</p>}
-          footer={<p className="num text-data text-ink-2">{formatCount(data.drugs.length)} of {formatCount(data.drugs.length)} tracked molecules</p>}
-        />
-      </Section>
+      <section aria-labelledby="development" className="mb-10">
+        <Heading id="development" title="Clinical development" action={<NextLink href="/trials">Clinical trial atlas</NextLink>} />
+        <Development studies={studies} upcoming={data.upcoming_readouts} completedWithoutResults={data.completed_without_registry_results} />
+      </section>
 
-      <div className="grid grid-cols-1 gap-x-8 lg:grid-cols-2">
-        <Section title="Worked comparisons" hint="Each opens with its classification and the reasons for it.">
-          {data.presets.length === 0 ? (
-            <EmptyState title="No worked comparison is available">Build one in the comparison laboratory by choosing two reported results.</EmptyState>
-          ) : (
-            <ul className="divide-y divide-hairline rounded-panel border border-hairline bg-surface">
-              {data.presets.map((p) => (
-                <li key={`${p.title}:${p.a}:${p.b}`} className="px-4 py-3">
-                  {p.a === p.b ? (
-                    <p className="text-body font-medium text-ink">{p.title}</p>
-                  ) : (
-                    <Link href={`/compare?a=${p.a}&b=${p.b}`} className="text-body font-medium">
-                      {p.title}
-                    </Link>
-                  )}
-                  <p className="mt-0.5 text-data text-ink-3">{p.question}</p>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                    <ClassificationBadge value={p.classification} />
-                    {p.a === p.b ? <span className="text-caption text-warn">Both sides resolve to the same stored result, so this comparison cannot be opened.</span> : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
-        <div>
-          <Section title="Highest-priority open questions" action={<Link href="/gaps" className="font-medium">All gaps <ArrowRight aria-hidden size={13} className="inline align-[-2px]" /></Link>}>
-            {data.top_gaps.length === 0 ? (
-              <EmptyState title="No open question is recorded" />
-            ) : (
-              <ul className="divide-y divide-hairline rounded-panel border border-hairline bg-surface">
-                {data.top_gaps.map((g) => (
-                  <li key={g.id} className="px-4 py-3">
-                    <p className="text-body font-medium leading-snug text-ink">{g.question}</p>
-                    {g.gap_nature_label ? <p className="mt-1 text-caption text-ink-3">{g.gap_nature_label}</p> : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-          <Section title="Source changes awaiting review" action={<Link href="/sources?tab=changes" className="font-medium">Review queue <ArrowRight aria-hidden size={13} className="inline align-[-2px]" /></Link>}>
-            {data.changes.length === 0 ? <p className="text-data text-ink-3">No tracked source has changed since the last ingestion.</p> : null}
-            <div className="space-y-2">
-              {data.changes.map((c) =>
-                c.is_synthetic ? (
-                  <Hypothetical key={c.id} label="Synthetic demonstration change">
-                    {c.summary} The “before” version was generated from the real record to demonstrate change review; it is not a real registry change.
-                  </Hypothetical>
-                ) : (
-                  <Callout key={c.id} tone="info" title={`Detected ${day(c.detected_at)}`}>
-                    {c.summary}
-                  </Callout>
-                ),
-              )}
-            </div>
-          </Section>
-          <Section title="Next expected primary completions" hint="Registry dates for trials without posted results.">
-            <DataTable label="Next expected primary completions" columns={READOUTS} rows={data.upcoming_readouts} rowKey={(s) => s.nct_id} maxHeight="none" minWidth={460} empty={<p className="px-3 py-5 text-ink-3">No ongoing trial without posted results has a primary completion date on record.</p>} />
-          </Section>
-        </div>
+      <section aria-labelledby="quality" className="mb-10">
+        <Heading id="quality" title="Evidence quality" />
+        <Quality meta={m} quality={quality} />
+      </section>
+
+      <div className="mb-10 grid grid-cols-1 gap-x-10 gap-y-9 lg:grid-cols-2">
+        <section aria-labelledby="gaps" className="min-w-0">
+          <Heading id="gaps" title="Open evidence questions" />
+          <Gaps total={m.counts.gaps} byNature={data.gaps_by_nature} top={data.top_gaps} natureLabels={gapLabels.data?.nature_labels} />
+        </section>
+        <section aria-labelledby="changes" className="min-w-0">
+          <Heading
+            id="changes"
+            title="Recent source changes"
+            hint={openChanges !== null ? `${formatCount(openChanges)} of ${formatCount(changes.data?.total ?? 0)} detected changes await review.` : undefined}
+            action={<NextLink href="/sources?tab=changes">Changes and review queue</NextLink>}
+          />
+          {changes.status === "error" ? <ErrorState title="The change count could not be loaded" message={changes.error ?? ""} onRetry={changes.reload} className="mb-3" /> : null}
+          <Changes changes={data.changes} />
+        </section>
       </div>
+
+      <section aria-labelledby="next" className="mb-4">
+        <Heading id="next" title="Worked comparisons" hint="Each opens in the comparison laboratory with its classification and the reasons for it." />
+        <Comparisons presets={data.presets} />
+      </section>
     </>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <div role="status" aria-label="Loading the evidence overview…">
-      <div className="mb-8 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-        <Skeleton className="h-72" />
-        <Skeleton className="h-72" />
-      </div>
-      <Skeleton className="mb-3 h-6 w-40" />
-      <Skeleton className="h-80" />
-      <span className="sr-only">Loading the evidence overview…</span>
-    </div>
   );
 }
 
@@ -301,20 +142,16 @@ export function CommandCenter() {
     <>
       <PageHeader
         eyebrow="Research command center"
-        title="What the public evidence supports — and what it does not"
+        title="What the public evidence supports, and what it does not"
         lede="Lilly's incretin and amylin portfolio, read from registries, publications, FDA labeling and sponsor disclosures. Every number carries its source, estimand and verification status."
       >
         <LinkButton href="/compare">
           Open the comparison laboratory <ArrowRight aria-hidden size={15} />
         </LinkButton>
       </PageHeader>
-      {overview.status === "error" ? (
-        <ErrorNote message={`The evidence overview could not be loaded. ${overview.error ?? ""}`} onRetry={overview.reload} />
-      ) : (
-        <Async state={overview} loading={<DashboardSkeleton />}>
-          {(data) => <Dashboard data={data} />}
-        </Async>
-      )}
+      <Async state={overview} errorTitle="The evidence overview could not be loaded" loading={<OverviewSkeleton />}>
+        {(data) => <Dashboard data={data} />}
+      </Async>
     </>
   );
 }

@@ -168,6 +168,12 @@ test("verification statuses are counted separately and only a human decision rea
   await expect(anchored).not.toHaveClass(/bg-ok-soft|text-ok/);
   await expect(table.getByRole("row", { name: /Human-verified/ }).locator("button span").first()).toHaveClass(/text-ok/);
   // Its explanation says what was and was not checked, and Escape dismisses it.
+  // The table now sits below the fold, under blocks that load after it. A Radix tooltip closes on scroll, and a block
+  // above that finishes loading moves the page (scroll anchoring), so the page is left to settle and the chip is
+  // brought into view before it is focused.
+  await settled(page);
+  await table.getByRole("button", { name: "Quote-anchored" }).scrollIntoViewIfNeeded();
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))); // let the scroll event fire first
   await table.getByRole("button", { name: "Quote-anchored" }).focus();
   const tip = page.getByRole("tooltip");
   await expect(tip).toContainText("no person has checked that");
