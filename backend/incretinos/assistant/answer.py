@@ -41,7 +41,15 @@ from ..engines.findings import (
 from ..engines.gaps import NATURE_LABEL, priority
 from ..engines.interpretation import classify_drug, interpret_analysis
 from ..engines.safety import SPONTANEOUS_REPORT_CAVEATS
-from ..models import Drug, EvidenceClaim, EvidenceGap, OutcomeResult, StatisticalAnalysis, Study
+from ..models import (
+    REVIEWABLE_MODELS,
+    Drug,
+    EvidenceClaim,
+    EvidenceGap,
+    OutcomeResult,
+    StatisticalAnalysis,
+    Study,
+)
 from ..review import policy
 from ..vocab import DRUG_ALIASES, is_placebo_arm
 from .claims import Vocabulary
@@ -592,6 +600,39 @@ def _model_summary(session: Session, question: str, provider: LLMProvider, compo
     return meta
 
 
+# --------------------------------------------------------------------------- review identity of the records behind a block
+
+#: Record types of the assistant's facts that are named differently in the review lifecycle.
+_REVIEW_TYPE = {"drug_mechanism": "mechanism"}
+
+
+def attach_review_identity(session: Session, blocks: list[Block]) -> None:
+    """Add the review lifecycle's lasting identity to every record behind a block: ``evidence_type`` (the review
+    vocabulary) and ``evidence_key``, so a reader can open exactly that record in Evidence Review.
+
+    Read-only and cheap: one indexed query per evidence type, on rows the answer already cites. Only the serialised
+    block records gain the two fields; the facts the claim verifier and a model see are unchanged. A record that is
+    not reviewable (a registry study record) gets neither field.
+    """
+    wanted: dict[str, set[int]] = {}
+    for block in blocks:
+        for record in block.evidence:
+            etype = _REVIEW_TYPE.get(record.get("type", ""), record.get("type", ""))
+            if etype in REVIEWABLE_MODELS and isinstance(record.get("id"), int):
+                wanted.setdefault(etype, set()).add(record["id"])
+    keys: dict[tuple[str, int], str | None] = {}
+    for etype, ids in wanted.items():
+        model = REVIEWABLE_MODELS[etype]
+        for row_id, key in session.execute(select(model.id, model.evidence_key).where(model.id.in_(sorted(ids)))):
+            keys[(etype, row_id)] = key
+    for block in blocks:
+        for record in block.evidence:
+            etype = _REVIEW_TYPE.get(record.get("type", ""), record.get("type", ""))
+            if (etype, record.get("id")) in keys:
+                record["evidence_type"] = etype
+                record["evidence_key"] = keys[(etype, record["id"])]
+
+
 # --------------------------------------------------------------------------- entry point
 
 
@@ -635,6 +676,7 @@ def ask(session: Session, question: str, provider: LLMProvider | None = None) ->
         for card in retrieved:
             composer.add("REPORTED_EVIDENCE" if card["kind"] in ("RESULT", "ANALYSIS", "CLAIM") else "INTERPRETATION", card["text"], card["source_id"], result_ids=[card["ref"]] if card["kind"] == "RESULT" else [], fact=card_fact(session, card))
 
+    attach_review_identity(session, composer.blocks)
     # Every block a summary may cite gets its marker, with or without a model: the reader can always resolve [C#].
     markers: dict[str, dict[str, Any]] = {}
     for index, block in enumerate(composer.blocks):

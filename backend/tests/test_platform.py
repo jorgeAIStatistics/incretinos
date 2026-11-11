@@ -294,6 +294,26 @@ def test_assistant_endpoint_labels_evidence_honestly_and_returns_the_claim_repor
     assert claim["magnitude"] == -20.9 and claim["ci"] == {"low": -21.8, "high": -19.9, "level": 95.0} and claim["timepoints_weeks"] == [72.0]
 
 
+def test_assistant_records_carry_their_review_identity(client, db):
+    """Each reviewable record behind a block names its review type and lasting evidence key (read-only), so the
+    interface can open it in Evidence Review; markers carry the same; a registry study record carries neither."""
+    from incretinos.models import REVIEWABLE_MODELS
+
+    body = client.post("/api/assistant/ask", json={"question": "What evidence differentiates retatrutide from tirzepatide?"}).json()
+    records = [record for block in body["blocks"] for record in block["evidence"]]
+    reviewable = [r for r in records if r["type"] != "study"]
+    assert reviewable and all(r["evidence_type"] in REVIEWABLE_MODELS and len(r["evidence_key"]) == 64 for r in reviewable)
+    assert {r["evidence_type"] for r in records if r["type"] == "drug_mechanism"} == {"mechanism"}
+    for r in reviewable:
+        row = db.get(REVIEWABLE_MODELS[r["evidence_type"]], r["id"])
+        assert row.evidence_key == r["evidence_key"]
+        assert client.get(f"/api/review/evidence/by-key/{r['evidence_type']}/{r['evidence_key']}").status_code == 200
+    assert all("evidence_key" not in r and "evidence_type" not in r for r in records if r["type"] == "study")
+    for marker in body["markers"].values():
+        block = body["blocks"][marker["block"]]
+        assert marker["evidence"] == block["evidence"]
+
+
 def test_retrieval_returns_cited_cards(db):
     cards = build_cards(db)
     hits = bm25_search(cards, "ACHIEVE-4 MACE-4 hazard ratio insulin glargine non-inferiority", k=5)
