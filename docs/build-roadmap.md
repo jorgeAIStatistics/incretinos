@@ -1,6 +1,6 @@
 # Build roadmap
 
-Status as of 2026-11-10, at the merge of the last Session 2 wave (branch `s2/integration3`). "Verified" means demonstrated by an automated test or a recorded run in this repository — not asserted. Where a number is given, it is from a run on that code.
+Status as of 2026-11-11, at the merge of the last Session 2 branch (`s2/priority-pages`). "Verified" means demonstrated by an automated test or a recorded run in this repository — not asserted. Where a number is given, it is from a run on that code.
 
 ## Session 2 delivered
 
@@ -19,6 +19,7 @@ Status as of 2026-11-10, at the merge of the last Session 2 wave (branch `s2/int
 | Source conflicts (`/conflicts`) | Every group of rows from several sources reporting the same quantity is classified true conflict, insufficient information, explainable difference or consistent, field by field, at the precision printed; evidence tier is context only; the gap tracker's G12 follows the classification | `test_conflicts.py`, `conflicts.spec.ts` (3); demonstration C |
 | Evidence Quality (`/quality`, `/quality/records`) | Six separate dimensions with true totals and exact drill-downs, no combined score; the conflict dimension counts the conflict engine's groups class by class and opens them on `/conflicts` | `test_quality.py`, `quality.spec.ts` (7) |
 | Anchored indirect comparison | Bucher method from two stored contrasts with a feasibility checklist (twelve requirements, including no open source conflict); refusals with reasons; the comparison laboratory section; the direct comparison's reported effect | `test_indirect.py` (checked against a weighted least-squares fit, statsmodels and Monte Carlo coverage), `indirect.spec.ts` (3); demonstration E |
+| Priority pages | The Research Command Center (portfolio, attention rail, clinical development, six quality dimensions, open questions, source changes; every count opens its filtered list) and the Research Assistant (question in the address, typed answer blocks with verification chips, resolving citation markers, each record opening in Evidence Review, what the answer cannot tell you); before and after captures at 1440, 834 and 390 px in `docs/design/` | `priority.spec.ts` (9), `test_platform.py` |
 | Integration | The wave-by-wave guarantees between branches; the end-to-end user journey | `test_integration_wave1.py`, `test_integration_wave2.py`, `test_integration_wave3.py`; `journey.spec.ts` (demonstration F) |
 | Validation rules | 16 rules (V01–V12 the mandatory scientific cases; V16: human-verified and rejected statuses rest on an attested decision for the exact version) | `incretinos validate`: 16/16 PASS on a fresh SQLite seed and on PostgreSQL 17 |
 
@@ -27,18 +28,18 @@ Status as of 2026-11-10, at the merge of the last Session 2 wave (branch `s2/int
 | Check | Result |
 |---|---|
 | `ruff check incretinos tests scripts` | clean |
-| Backend tests | 1,161 passed on SQLite; 1,161 passed on PostgreSQL 17 (`INCRETINOS_TEST_DATABASE_URL`, throwaway container) |
+| Backend tests | 1,162 passed on SQLite; 1,162 passed on PostgreSQL 17 (`INCRETINOS_TEST_DATABASE_URL`, throwaway container) |
 | Alembic | one head (`cb85e55cbfb4`); upgrade, `alembic check` (no drift), downgrade to base and upgrade again clean on SQLite and PostgreSQL; downgrade of `cb85e55cbfb4` on a seeded database removes the FULLTEXT rows |
 | Fresh seed | 45 trials, 27,760 reviewable rows: 26,999 machine-extracted, 494 quote-anchored, 267 pending human review, 0 human-verified, 0 decisions |
 | Claim benchmarks | dev 100% detection / 0.0% false rejection; dev-review 100% / 4.0%; heldout (v1) 100% / 0.0%; **heldout-v2 (blind) 99.3% (147/148) / 19.2% (14/73)** |
 | Frontend | `tsc` (application and browser tests) clean; lint 0 errors (282 warnings); `next build` (Next.js 16.4.6) succeeds; `npm audit --omit=dev` 0 vulnerabilities |
-| Browser tests | 89 tests in 10 specs, passing against `next dev` and against the production build |
+| Browser tests | 98 tests in 11 specs, passing against `next dev` and against the production build |
 
 Benchmark protocol: `dev` and `dev-review` are development data. `heldout` (heldout-v1) was measured once, blind, on the merged Session 2 code (98.3% detection, 20.8% false rejection) and has been development data since its misses were studied. `heldout-v2` was written without sight of the verifier and is reported as measured, without tuning.
 
 ### Continuous integration
 
-The hosted CI run on `576030d` succeeded (earlier documents that called CI "written, not run" were out of date). The workflow now runs the backend on SQLite and on PostgreSQL, the claim benchmarks, the container images, and every browser spec in both development and production modes (a test checks that the workflow names every spec). The merged Session 2 code has not yet run on the hosted runner, because nothing has been pushed from this session; every step except the container-image job was run locally with the results above.
+The hosted CI run on `576030d` succeeded (earlier documents that called CI "written, not run" were out of date). The workflow now runs the backend on SQLite and on PostgreSQL, the claim benchmarks, the container images, and every browser spec in both development and production modes (a test checks that the workflow names every spec). Session 2 is on pull request #1. The two hosted runs on it so far (`3e88424`, `6ec8266`) ended *cancelled*: the PostgreSQL job and the container-image job (build, start, smoke test through the published ports) passed; the SQLite job stopped during the test step, and the browser job, which waits for it, did not start. The SQLite job runs the suite under coverage plus a seed, validation and four benchmark sets inside a 15-minute limit; the limit is now 30 minutes. Until a hosted run of the SQLite and browser jobs completes, those results rest on the local runs above.
 
 ## Partially implemented
 
@@ -68,7 +69,7 @@ The hosted CI run on `576030d` succeeded (earlier documents that called CI "writ
 2. **Extract the linked ACHIEVE-2 and ATTAIN-MAINTAIN publications** that the gap tracker now reports as *not yet extracted*.
 3. **Reduce the verifier's false rejections** without loosening detection, measured on a new blind set (heldout-v3); heldout-v2 becomes development data once its misses are studied.
 4. **Extend full-text extraction** to the FDA review's configured-out key secondary tables (25, 32, 33).
-5. **Run the merged code on the hosted CI**, including the container-image job.
+5. **A complete hosted CI run**: the SQLite and browser jobs have not yet finished on the hosted runner.
 
 ## Session 1 (for reference)
 
