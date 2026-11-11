@@ -172,7 +172,7 @@ test("protocol design workbench calculates and labels synthetic output", async (
 
 test("research assistant cites evidence and declines recommendations", async ({ page }) => {
   await page.goto("/assistant");
-  await expect(page.getByText("No language model is configured — answers are fully deterministic")).toBeVisible();
+  await expect(page.getByText("No language model is configured. Answers are composed deterministically")).toBeVisible();
   await page.getByRole("button", { name: "What evidence differentiates retatrutide from tirzepatide?" }).click();
   const answer = page.getByTestId("assistant-answer");
   await expect(answer).toContainText("Reported evidence");
@@ -184,8 +184,8 @@ test("research assistant cites evidence and declines recommendations", async ({ 
   expect(shown).toMatch(/Machine-extracted|Quote-anchored|Pending review/);
   expect(shown).not.toMatch(/Human-verified/); // nothing in the seed has been reviewed by a person
   await expect(answer).toContainText("No randomized head-to-head result");
-  await expect(answer).toContainText("Hypothesis — untested");
-  await expect(answer.getByText(/Sources cited \(\d+\)/)).toBeVisible();
+  await expect(answer).toContainText("Hypothesis, untested");
+  await expect(page.getByRole("heading", { name: /Sources cited \(\d+\)/ })).toBeVisible();
   await shot(page, "10-research-assistant");
   await page.getByLabel("Research question").fill("Should I take tirzepatide or retatrutide?");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
