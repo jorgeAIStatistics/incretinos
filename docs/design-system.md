@@ -196,8 +196,8 @@ Rules:
   `translate="no"`.
 - Sentence case for headings, labels, buttons and table columns. Navigation entries keep their existing Title Case
   names. No uppercase with letter-spacing (none is left in the pages; the review screens are owned separately).
-- **Recorded exception: arbitrary sizes in older pages.** The trial detail, compare, benefit–risk, safety, design,
-  molecules and assistant pages were written before this scale and still use arbitrary `text-[Npx]` sizes (about
+- **Recorded exception: arbitrary sizes in older pages.** The trial detail, compare, benefit–risk, safety, design
+  and molecules pages were written before this scale (the assistant page was rebuilt on it in P3) and still use arbitrary `text-[Npx]` sizes (about
   160 uses, 14 distinct sizes, all between 11 and 30 px). They are converted when a page is next reworked; new
   code uses the named scale only. A heading keeps its element (`h2`, `h3`) whatever size class it carries.
 - Typographic characters: `…` not `...`, curly quotes, a true minus sign for negative values (from `fmt`).
@@ -322,6 +322,9 @@ buttons are at least 24 px high, which meets WCAG 2.5.8.
 - Content replacing a skeleton fades in once.
 - Buttons, links, rows and controls change colour on hover and move 1 px on press.
 - A list that is fetching again dims in place (filter feedback).
+
+- A block or source reached through a citation marker or source number (`:target`) gains a 2 px accent edge; only
+  the edge transitions (160 ms). An example question's arrow moves 2 px on hover (transform, 120 ms).
 
 **What must never animate**
 
@@ -510,7 +513,7 @@ Import from `@/components/ui`. Every export that existed before the split still 
 | Component | Use it for | Notes |
 |---|---|---|
 | `Button`, `LinkButton`, `IconButton` | Actions; navigation that looks like a button; icon-only actions | Variants `primary`, `secondary` (`ghost` is its earlier name), `quiet`, `danger`; sizes `md`, `sm`; `loading`. `IconButton` requires `label`. A link navigates, a button acts |
-| `TextField`, `SearchField`, `NumberField`, `TextArea`, `Select`, `Slider` | Form controls | Label above, hint below, error replaces hint. The label is tied by id, not by wrapping. Debounce a request driven by typing with `useDebounced`. A `Select` that holds a qualifier (time point, estimand, measure) is not given a fixed width: `w-full sm:w-auto` lets it grow to its longest option, so the selected value is never cut; a long parenthetical goes in the hint |
+| `TextField`, `SearchField`, `NumberField`, `TextArea`, `Select`, `Slider` | Form controls | Label above, hint below, error replaces hint. `TextField maxLength` states the longest value the service accepts (the assistant question: 1000). The label is tied by id, not by wrapping. Debounce a request driven by typing with `useDebounced`. A `Select` that holds a qualifier (time point, estimand, measure) is not given a fixed width: `w-full sm:w-auto` lets it grow to its longest option, so the selected value is never cut; a long parenthetical goes in the hint |
 | `SecretField` | A token or other secret typed by the user | Uncontrolled password input: the secret is never written to the `value` attribute (so not into the DOM markup), no `name`, autocomplete off and the password-manager opt-out attributes; not placed in a `<form>` beside a name field. The page keeps the secret in memory only |
 | `SegmentedControl` | Two to four exclusive choices | Native radio group: arrow keys and form semantics come from the browser |
 | `Tabs`, `TabPanel` | Views of one subject | Radix tabs; sliding underline. Inactive panels unmount: keep state that must survive in the parent, and keep the tab in the address. The tab list scrolls sideways inside a box that keeps 4 px of room on every side, so a focused tab's ring is never clipped. Use these, not raw Radix tabs |
@@ -526,10 +529,49 @@ Import from `@/components/ui`. Every export that existed before the split still 
 | `ErrorBoundary` | Containing a rendering failure | One wraps page content in the shell; `app/error.tsx` covers a route |
 | `Modal`, `Drawer` | Blocking decisions; detail beside a list, navigation on small screens | Focus trapped, Escape closes, focus returns to the opener, background inert |
 | `ToastProvider`, `useToast` | Confirming an action just taken | Polite live region; errors stay until dismissed. Not for anything the reader must act on |
+| `Ledger`, `LedgerItem` | A row of headline counts in plain layout (no card per count), divided by hairlines from `lg` | A count that has a page listing exactly what it counts is a link to that page (`href`, `linkLabel`); a count without one is plain text. Zero is shown, never dropped |
+| `Timeline`, `TimelineItem` | Dated entries on a vertical rule: registry completions, detected source changes | The date is printed as the source gives it (often partial), with its qualifier ("estimated", "actual", "detected"). The marker is a 1 px tick, not a coloured dot |
+| `NextLink` | "Where to go next" under a section: text, then an arrow | Navigation only; never an action |
 | `Callout`, `Hypothetical`, `Disclosure`, `Meter`, `KV`, `SourceLine`, `ValueCell` | Notes, non-evidence containers, collapsible detail, 0 to 1 scores, key and value lists, provenance, a value with its interval | `ValueCell` formats through `fmt`, which is owned with the charts |
 
 Icons: lucide only, one family. Size 12 in chips, 13 to 15 in buttons, 16 in navigation. Decorative icons carry
 `aria-hidden`; an icon-only control has a label.
+
+### Page-level patterns (P3: command center and research assistant)
+
+These live with their pages (`components/command/`, `components/assistant/`, `lib/assistant.ts`) because they encode
+page logic, but the rules are system rules.
+
+- **A count is a door.** On the command center every count that has a filtered page is a link to it, and the
+  filtered page shows the same number: attention counts open `/review?status=…`, `/conflicts?class=…`,
+  `/quality/records?metric=…` or the review queue; phase and status counts open `/trials?phase=…&status=…&results=…`
+  (the trial atlas gained these three filters, kept in the address); gap natures open `/gaps?nature=…`; quality
+  figures open their `/quality/records` list. The link's accessible name states the number and what it counts. A
+  count that has not arrived shows "Not loaded" or a skeleton, never a number. Asserted in `e2e/priority.spec.ts`.
+- **Separate dimensions, no score.** Evidence quality is a ledger of the six dimensions of `/api/quality`, each with
+  its own figures ("1,862 of 1,889 results in analytic use (98.6%)"). Nothing is added across dimensions, and the
+  result-level verification breakdown sits beside them, its universe named.
+- **Derived is labelled derived.** The portfolio's development stage is "most advanced tracked trial", counted from
+  the trial list by the atlas's own filter rules and explained by a `Term`; it is not the sponsor's declared stage.
+  The regulatory status is the API's, including "Status withheld in review"; the review status of the statement it
+  rests on is shown beside its source tier.
+- **Heavy reads in sequence.** The command center asks for `/review/summary`, then `/conflicts`, then
+  `/validation`, then `/quality`, each after the one before has answered (with data or an error). Fired together
+  they competed for the server and all arrived after about 17 s; in sequence the page settles in about 4 s. Each
+  block keeps its own loading and error state, so a failure costs one block, not the page.
+- **Answer blocks keep the evidence-state outlines.** Reported evidence and model text: solid frame. Rule-based
+  interpretation: inset (sunken) frame. Hypothesis: dashed frame. Refusal: critical frame and a ban icon. Not
+  available: no frame, grey text, the missing icon. Every block names its kind in words with an icon; its
+  verification chips are the API's statuses, one per distinct status.
+- **Markers resolve.** Each block with a `[C#]` marker has the anchor `#card-C#`; the marker on the block and every
+  marker in the rail's index, in a model summary and in a withheld-draft report links there. Source numbers link to
+  `#source-n` in the rail. Each record behind a block links to Evidence Review by its evidence key
+  (`/review?type=…&key=…`, from the API's `evidence_key`). Follow-ups are only links the answer already implies: the
+  cited finding, an NCT number in the text, the first two reported findings compared, the molecules the question
+  names.
+- **A withheld model draft is never shown.** Only the API's per-sentence report: verdict, cited markers, reasons and
+  the mismatched fields (claimed against stored).
+- **The question is in the address** (`/assistant?q=…`), so an answer can be linked to and reloaded.
 
 ## 14. Data states and lists
 
@@ -792,6 +834,61 @@ fresh image to a crop; a fresh capture of the same page is the closest equivalen
 - The combinatorial variation engine, hero rules, section packs and image system (12, 14, 19, 20, 33): marketing
   site material.
 
+### Priority pages (P3): Research Command Center and Research Assistant
+
+The same four skills were applied again to the two priority pages. The before captures are in
+`docs/design/before-priority/` and were analysed before any change; the after captures are in
+`docs/design/after-priority/`.
+
+**Image-to-Code, applied to the before captures** (no image generation was available; its analysis rules were used
+on real screenshots, sections 8, 9, 15 to 17 and 21 to 25)
+
+| Aspect | Observed before | Decision |
+|---|---|---|
+| Hierarchy | Command center: four equal stat tiles, then validation, then a long worked-comparison list in the middle; upcoming completions last. Several API fields were never shown (trials by status, completed trials without results, quality, conflicts) | One reading order: what this is, how much evidence, the portfolio beside what needs attention, development, quality, gaps and changes, then where to go next |
+| Micro-UI clutter | Five green "Pass" chips repeated for passing rules | Only failing rules are listed; "16 / 16 passing" and a link otherwise |
+| Phone | The portfolio's regulatory-status column was off-screen behind the class column | Mechanism moved under the molecule name; status is the second column |
+| Assistant colour | Block kinds told apart by left-border colours, one a raw hex and one the retired teal | Evidence-state outlines plus icon and words; no raw colour |
+| Assistant controls | Example questions as six pills (a radius the system reserves for meters), wrapping to three rows | A two-column list of text buttons, folded away once a question is asked |
+| Assistant resolution | `[C#]` were inert chips; the question type was a raw enum; no route to the review record | Markers are links; the question type is in words with the code beside it; records link to Evidence Review |
+| Still unclear from images | Keyboard order, live regions, the withheld-draft path | Checked in `e2e/priority.spec.ts` |
+
+**Taste** (product-UI parts only, as before)
+
+- Redesign protocol (11): mode "redesign, preserve". Routes, navigation labels, the page title and the copy voice
+  were kept; the hierarchy and layout were recomposed (lever 5) because the information architecture of the page,
+  not its styling, was the problem.
+- Layout discipline (4.7): an asymmetric two-column composition (a wide main column and a 21 rem rail) instead of a
+  grid of identical cards; every multi-column block declares its single-column base; one eyebrow on each page.
+- No three equal cards and no card per metric (4.4, 9.C): the ledger and the quality dimensions are plain rows with
+  hairlines; panels are kept only for tables.
+- Long lists (4.9): gap natures as a two-column table, worked comparisons in two columns, completions on a timeline.
+- States (4.5): skeletons shaped like their blocks; an error per block with a retry; zeros written as zeros.
+- The em-dash ban (9.G): applied to all new interface copy on both pages ("Hypothesis, untested", "No language model
+  is configured. Answers are composed deterministically"). Text the API returns (gap-nature labels, block text) is
+  printed as returned: it is scientific content, not interface copy.
+- No decorative status dots (9.F): the timeline marker is a 1 px tick.
+- Not adopted: "no filled-track bars" (9.F) for the verification breakdown, whose zero-based bars repeat the counts
+  and are asserted by tests; the counts remain the content.
+
+**Web Interface Guidelines** (the already fetched rule list, used as a checklist)
+
+- URL reflects state: the assistant's question (`?q=`), the trial atlas's phase, status and results filters.
+- Links for navigation (every count, marker and follow-up is an `<a>`), buttons for actions (Ask, examples).
+- Forms: visible label, `name`, `maxLength`, `autocomplete="off"`, placeholder ending in "…", the submit button stays
+  enabled and shows progress ("Asking…"), an inline error with `role="alert"` for a question that is too short.
+- Async updates announced: a polite status line when an answer arrives; loading states end with "…".
+- `translate="no"` on NCT numbers, marker ids and molecule codes; tabular figures on counts in columns.
+- Flex and grid children shrink (`min-w-0`); no route scrolls sideways at 390, 834 or 1440 px.
+
+**Awesome Design**
+
+- `theverge`: its timeline rail (a dated feed on a vertical rule) became `Timeline` for registry completions and
+  source changes, without its colours, type or radii.
+- `ibm` (read earlier in this session): density as a decision. "Needs attention" is a dense list, one row per kind of
+  work, with the count first and the label and its meaning beside it.
+- Nothing was copied beyond structure: no brand colour, face or geometry.
+
 ## 18. Screenshots
 
 `docs/design/before/` holds every route at 1440 x 900, 834 x 1112 and 390 x 844 before the Session 2 design work,
@@ -808,4 +905,6 @@ INCRETINOS_API_PORT=8025 INCRETINOS_WEB_PORT=3025 CAPTURE_LABEL=after CAPTURE_EX
 ```
 
 `CAPTURE_LABEL` names the folder under `docs/design/`; `CAPTURE_EXTRA=1` adds `/review`, `/quality` and
-`/conflicts`.
+`/conflicts`; `CAPTURE_ONLY=home,assistant,assistant-answer` restricts a run to the named captures
+(`assistant-answer` is the assistant after its first example question). The priority-page captures were made with
+`CAPTURE_LABEL=before-priority` (before any change) and `CAPTURE_LABEL=after-priority`.

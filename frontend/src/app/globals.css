@@ -238,6 +238,13 @@
   .hatch { background-image: var(--hatch); }
 }
 
+/*
+ * A block or source reached through a citation marker or a source number ([C2], [3]): an accent edge, not a fill, so
+ * the reader sees where the link landed. Only the edge colour transitions; the text never moves or changes.
+ */
+.answer-block, .answer-source { transition: box-shadow var(--dur-base) var(--easing-standard); }
+.answer-block:target, .answer-source:target { box-shadow: 0 0 0 2px var(--accent); }
+
 /* Entrances. Only opacity and transform ever animate. */
 .fade-in { animation: enter var(--dur-base) var(--easing-standard) both; }
 @keyframes enter { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }

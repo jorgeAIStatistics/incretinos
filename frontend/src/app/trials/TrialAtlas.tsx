@@ -143,6 +143,10 @@ export function TrialAtlas() {
   const [param, setParams] = useQueryParams();
   const drug = param("drug");
   const evidence = param("evidence");
+  // Registry phase, recruitment status and whether results are posted: the command center links its trial counts here.
+  const phase = param("phase");
+  const status = param("status");
+  const results = param("results");
   const tab = param("tab") === "index" ? "index" : "depth";
   const density: Density = param("density") === "compact" ? "compact" : "comfortable";
   const [q, setQ] = useState(param("q"));
@@ -157,23 +161,29 @@ export function TrialAtlas() {
   const all = studies.data?.rows;
   // The evidence filter offers exactly the tiers that occur in the data, so it cannot go stale.
   const tierOptions = useMemo(() => Array.from(new Set((all ?? []).flatMap((s) => s.evidence_tiers))).sort(), [all]);
+  // Like the evidence filter, phase and status offer exactly the values that occur in the data (a value in the address that no trial has is kept, so the filter says what it is).
+  const phaseOptions = useMemo(() => Array.from(new Set([...(all ?? []).map((s) => s.phase ?? ""), ...(phase ? [phase] : [])])).sort(), [all, phase]);
+  const statusOptions = useMemo(() => Array.from(new Set([...(all ?? []).map((s) => s.overall_status ?? ""), ...(status ? [status] : [])])).sort(), [all, status]);
   const filtered = useMemo(
     () =>
       (all ?? []).filter(
         (s) =>
           (!drug || s.drugs.some((d) => d.slug === drug)) &&
           (!query || `${s.display_name} ${s.brief_title} ${s.nct_id}`.toLowerCase().includes(query.toLowerCase())) &&
-          (!evidence || (evidence === "none" ? s.evidence_tiers.length === 0 : s.evidence_tiers.includes(evidence))),
+          (!evidence || (evidence === "none" ? s.evidence_tiers.length === 0 : s.evidence_tiers.includes(evidence))) &&
+          (!phase || (s.phase ?? "") === (phase === "none" ? "" : phase)) &&
+          (!status || (s.overall_status ?? "") === (status === "none" ? "" : status)) &&
+          (!results || (results === "yes" ? s.has_results : results === "no" ? !s.has_results : true)),
       ),
-    [all, drug, query, evidence],
+    [all, drug, query, evidence, phase, status, results],
   );
   const { sort, setSort, sorted } = useSort(filtered, DEPTH_COLUMNS);
-  const paging = useClientPaging(sorted, { pageSize: 50, resetKey: `${drug}|${evidence}|${query}|${sort?.key}|${sort?.direction}` });
+  const paging = useClientPaging(sorted, { pageSize: 50, resetKey: `${drug}|${evidence}|${phase}|${status}|${results}|${query}|${sort?.key}|${sort?.direction}` });
 
-  const filtersActive = Boolean(drug || evidence || query);
+  const filtersActive = Boolean(drug || evidence || phase || status || results || query);
   const clear = () => {
     setQ("");
-    setParams({ drug: null, evidence: null, q: null });
+    setParams({ drug: null, evidence: null, phase: null, status: null, results: null, q: null });
   };
 
   return (
@@ -200,6 +210,34 @@ export function TrialAtlas() {
           onChange={(v) => setParams({ evidence: v })}
           options={[{ value: "", label: "Any" }, ...tierOptions.map((t) => ({ value: t, label: isTier(t) ? TIERS[t].label : t })), { value: "none", label: "No results on record" }]}
           className="w-full sm:w-64"
+        />
+        <Select
+          label="Phase"
+          name="phase"
+          value={phase}
+          onChange={(v) => setParams({ phase: v })}
+          options={[{ value: "", label: "Any phase" }, ...phaseOptions.map((p) => ({ value: p || "none", label: p ? phaseLabel(p) : "Phase not reported" }))]}
+          className="w-full sm:w-40"
+        />
+        <Select
+          label="Recruitment status"
+          name="status"
+          value={status}
+          onChange={(v) => setParams({ status: v })}
+          options={[{ value: "", label: "Any status" }, ...statusOptions.map((v) => ({ value: v || "none", label: v ? trialStatusLabel(v) : "Status not reported" }))]}
+          className="w-full sm:w-56"
+        />
+        <Select
+          label="Registry results"
+          name="results"
+          value={results}
+          onChange={(v) => setParams({ results: v })}
+          options={[
+            { value: "", label: "Posted or not" },
+            { value: "yes", label: "Results posted" },
+            { value: "no", label: "No results posted" },
+          ]}
+          className="w-full sm:w-44"
         />
         <SearchField
           label="Search"
@@ -261,7 +299,7 @@ export function TrialAtlas() {
               }
               empty={
                 <EmptyState title={filtersActive ? "No trial matches these filters" : "No trial has been ingested in depth"} className="m-3 border-0" action={filtersActive ? <button type="button" onClick={clear} className="rounded-chip font-medium text-accent hover:underline">Clear filters</button> : undefined}>
-                  {filtersActive ? "Try a different molecule, evidence tier or search term. The registry index tab lists trials that are tracked by summary only." : "Run an ingestion to load trials."}
+                  {filtersActive ? "Try a different molecule, evidence tier, phase, status or search term. The registry index tab lists trials that are tracked by summary only." : "Run an ingestion to load trials."}
                 </EmptyState>
               }
               footer={<Pagination page={paging.page} pageSize={paging.pageSize} total={paging.total} onPage={paging.setPage} onPageSize={paging.setPageSize} noun="trials" unfiltered={studies.data.total} truncated={studies.data.truncated} />}

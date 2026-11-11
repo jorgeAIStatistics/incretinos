@@ -50,9 +50,12 @@ export function TextField({
   inputMode,
   spellCheck,
   required,
+  maxLength,
 }: FieldCommon & {
   value: string;
   onChange: (value: string) => void;
+  /** The longest value the service accepts; the browser stops typing there. */
+  maxLength?: number;
   type?: HTMLInputTypeAttribute;
   /** An example of the expected input, ending with an ellipsis. It disappears on typing, so it never replaces the label. */
   placeholder?: string;
@@ -76,6 +79,7 @@ export function TextField({
         inputMode={inputMode}
         spellCheck={spellCheck}
         required={required}
+        maxLength={maxLength}
         disabled={disabled}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
