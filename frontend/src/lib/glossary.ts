@@ -135,6 +135,47 @@ export const GLOSSARY = {
     term: "Priority score",
     definition: "A weighted sum of four judgments scored from 0 to 1: clinical importance, uncertainty, tractability and whether action is possible now. It orders the list; it is not a measurement.",
   },
+  "pending-human-review": {
+    term: "Pending human review",
+    definition: "A stored record for which no automatic support could be established. It waits for a reviewer to compare it with its source and is not to be relied on yet.",
+  },
+  "review-hold": {
+    term: "Review hold",
+    definition: "A record kept out of every analysis because a reviewer rejected an earlier version of it and the new version has not been decided yet.",
+  },
+  "orphaned-decision": {
+    term: "Orphaned decision",
+    definition: "A recorded review decision whose evidence record no longer exists, for example after the evidence was rebuilt from a changed source.",
+    caution: "An orphaned rejection means the value it excluded may be in use again until someone decides on it.",
+  },
+  "source-conflict": {
+    term: "True source conflict",
+    definition:
+      "Two or more public sources report the same quantity (same study, randomized group, endpoint, time point, estimand and baseline) and their values differ by more than the precision the sources printed.",
+    caution: "A difference explained by a stated estimand, baseline, analysis set or follow-up is not a conflict. No source wins because of its kind.",
+  },
+  "source-change": {
+    term: "Source change",
+    definition: "A difference detected between two stored versions of a tracked source, such as a registry record whose status, enrollment or outcomes changed. It waits for someone to judge whether it affects the evidence.",
+  },
+  "tracked-development-stage": {
+    term: "Most advanced tracked trial",
+    definition: "The highest registry phase among the tracked trials in which the molecule is a study drug. It is derived from the trials on record here.",
+    caution: "It is not the sponsor's declared development stage, and a trial that is not tracked here is not counted.",
+  },
+  "citation-marker": {
+    term: "Citation marker",
+    definition: "A label such as [C2] that names one block of the answer and the records and sources behind it. A model-drafted summary may cite only these markers, and each cited sentence is checked against the record behind its marker.",
+  },
+  "rule-based-interpretation": {
+    term: "Rule-based interpretation",
+    definition: "Text written by fixed rules from the stored records, for example whether two results may be compared and what may not be concluded. No language model takes part.",
+  },
+  "claim-verification": {
+    term: "Claim verification",
+    definition:
+      "A deterministic check of a model-drafted summary: each sentence is read into structured claims (drug, arm, trial, endpoint, value, time point, estimand and so on) and compared with the record behind the marker it cites. A draft is shown only if every sentence is supported.",
+  },
 } as const satisfies Record<string, GlossaryEntry>;
 
 export type GlossaryKey = keyof typeof GLOSSARY;
